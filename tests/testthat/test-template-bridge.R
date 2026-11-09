@@ -6,11 +6,12 @@ test_that("a cells-sheet edit of a template report writes one item after the tem
   skip_on_cran()
   p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
   o <- tflspec::tfl_output("T-99", "table", population = "SAF",
-                           template = list(name = "demog", args = list(population = "SAF")))
+                           template = list(name = "demog",
+                                         args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   p <- .spec_add_output(p, o, population = "SAF")
   ce <- sheet_rows(p, "cells", "T-99")
   i <- which(ce$row == "Median")[1L]
-  expect_identical(ce$template[i], "{median:.1f}")
+  expect_identical(ce$template[i], "{median}")
   ce$template[i] <- "{median:.2f}"
   q <- .spec_sync(set_sheet_rows(p, "cells", "T-99", ce), p$spec$meta)
   out <- q$spec$outputs[["T-99"]]

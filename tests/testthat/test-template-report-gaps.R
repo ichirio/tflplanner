@@ -11,7 +11,8 @@ tpl_sample_planner <- function() {
 
 tpl_demog_output <- function(id = "T-99") {
   tflspec::tfl_output(id, "table", population = "SAF",
-                      template = list(name = "demog", args = list(population = "SAF")))
+                      template = list(name = "demog",
+                                    args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
 }
 
 # ---- tflspec gives nothing ------------------------------------------------------
@@ -273,9 +274,16 @@ test_that("the verbs after a template's call: the ones its program has", {
 
 test_that("the verbs after a template's call in the program tflspec writes now", {
   skip_on_cran()
-  p <- .spec_add_output(tpl_sample_planner(), tpl_demog_output(), population = "SAF")
+  # (summary: the study standard's verbs follow its call; demog takes them
+  # as its arguments, tflspec#764, and its program has none after it)
+  o <- tflspec::tfl_output("T-99", "table", population = "SAF",
+                           template = list(name = "summary",
+                                         args = list(population = "SAF", continuous = "AGE", categorical = "SEX")))
+  p <- .spec_add_output(tpl_sample_planner(), o, population = "SAF")
   fns <- .tpl_code_fns(p, "T-99")
-  expect_true(all(c("plan_cells", "plan_digits") %in% fns))
+  expect_true(all(c("plan_digits", "plan_stub") %in% fns))
+  q <- .spec_add_output(tpl_sample_planner(), tpl_demog_output(), population = "SAF")
+  expect_identical(.tpl_code_fns(q, "T-99"), character())
 })
 
 test_that("a program with no template call, or that tflspec cannot make, has no verbs", {
@@ -300,4 +308,16 @@ test_that("a template's name in a report's file, and its call in the program", {
   expect_null(.tpl_spec_name(list()))
   expect_identical(.tpl_call_name("demog"), "tfl_tpl()")
   expect_identical(.tpl_call_name("no_such_template"), "tfl_template(no_such_template)")
+})
+
+test_that("a template that hides its analysis set takes it from the report's population, asked in the dialog", {
+  expect_true(.tpl_pop_of_report(.tpl_params("demog")))
+  expect_true(.tpl_pop_of_report(.tpl_params("stf_t02_demog")))
+  # (an argument still; a KM type's analysis set is its data steps')
+  expect_false(.tpl_pop_of_report(.tpl_params("hierarchical")))
+  expect_false(.tpl_pop_of_report(.tpl_params("km_survival")))
+  expect_false(.tpl_pop_of_report(list()))
+  # (not an empty argument of the card: the report's `population:` says it)
+  expect_identical(.tpl_missing("demog", list(by = "TRT01A")), character())
+  expect_identical(.tpl_missing("demog", list()), "by")
 })

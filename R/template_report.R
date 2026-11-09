@@ -400,9 +400,10 @@
   NULL
 }
 
-# The required arguments still empty
+# The required arguments still empty: those the card shows (a hidden one is
+# not the report's argument: demog's `population` is its `population:` field)
 .tpl_missing <- function(name, args, study = NULL) {
-  prm <- .tpl_params(name)
+  prm <- .tpl_shown(.tpl_params(name))
   req <- names(prm)[vapply(prm, function(x) isTRUE(x$required), NA)]
   # (a required argument the study gives -- its treatment for `by` -- is
   # not empty: tflspec fills it)
@@ -453,6 +454,15 @@
 # (the template hides its data stage: km_survival, km_cumulative)
 .tpl_own_data <- function(prm) {
   any(vapply(prm, function(x) isTRUE(x$hidden) && identical(x$stage, "data"), NA))
+}
+
+# Whether the template's analysis set is the report's `population:` field
+# alone: its `population` hidden, required, and not part of the report's own
+# data steps (demog, stf_t02_demog).  The add-report dialog asks for it, and
+# writes it as the report's population, not as an argument.
+.tpl_pop_of_report <- function(prm) {
+  p <- prm[["population"]]
+  !is.null(p) && isTRUE(p$hidden) && isTRUE(p$required) && !.tpl_own_data(prm)
 }
 
 # A report's `data:` steps as the card's fields say them: the dataset

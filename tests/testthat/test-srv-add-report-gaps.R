@@ -154,7 +154,10 @@ test_that("the dialog's Create waits for an ID and the required arguments, and t
     # an ID, but the analysis set is not chosen
     session$setInputs(modal_id = "ZZ-5")
     expect_match(add_html(output$modal_ok_js$html), "prop('disabled', true)", fixed = TRUE)
+    # (the analysis set: the report's population, asked here; `by` has no default)
     session$setInputs(mtpl_demog__population = "SAF")
+    expect_match(add_html(output$modal_ok_js$html), "prop('disabled', true)", fixed = TRUE)
+    session$setInputs(mtpl_demog__by = "TRT01A")
     expect_match(add_html(output$modal_ok_js$html), "prop('disabled', false)", fixed = TRUE)
     # the template's other arguments: each its own input, counted in the heading
     opt <- Filter(function(x) !isTRUE(x$required), .tpl_shown(.tpl_params("demog")))
@@ -173,10 +176,10 @@ test_that("Add from a template writes the report with its template, the argument
     rv <- session$userData$rv
     session$setInputs(add = 1, modal_type = "table", modal_how = "template", modal_tpl_table = "demog",
                       modal_id = "ZZ-5", modal_desc = " Demography ", modal_section = "Sec A",
-                      mtpl_demog__population = "SAF",
+                      mtpl_demog__population = "SAF", mtpl_demog__by = "TRT01A",
                       # (an optional argument left at its default is not written; one changed is)
                       mtpl_demog__total = FALSE,
-                      mtpl_demog__continuous_statistics = c("n", "mean"))
+                      mtpl_demog__continuous = "AGE")
     session$setInputs(add_ok = 1)
     row <- add_row(rv$p, "T-ZZ-5")
     expect_identical(row$description, "Demography")
@@ -184,7 +187,7 @@ test_that("Add from a template writes the report with its template, the argument
     expect_identical(row$population, "SAF")
     tp <- .tpl_of(rv$p, "T-ZZ-5")
     expect_identical(tp$name, "demog")
-    expect_identical(tp$args, list(population = "SAF", continuous_statistics = c("n", "mean")))
+    expect_identical(tp$args, list(continuous = "AGE", by = "TRT01A"))
     expect_identical(add_nav(shown, "step"), "content")
     # the panes of a template table
     session$setInputs(target = "T-ZZ-5", nav = "make", step = "content", content_nav = "content")
@@ -197,10 +200,19 @@ test_that("Add from a template writes the report with its template, the argument
     expect_match(add_text(output$tpl_spec_yaml$html), "Expanded (read only)", fixed = TRUE)
     expect_match(add_text(output$tpl_code_expanded$html), "The content's code expanded", fixed = TRUE)
     expect_match(add_text(output$tpl_code_expanded$html), "plan_cells(", fixed = TRUE)
-    # no ARD made yet: the pane says to update the preview
-    expect_match(add_text(output$tpl_ard_pane$html), "Update preview to see the ARD", fixed = TRUE)
+    # (the new table's first preview has made its ARD: the pane shows it, not "Update preview")
+    pane <- add_text(output$tpl_ard_pane$html)
+    expect_false(grepl("Update preview to see the ARD", pane, fixed = TRUE))
+    expect_match(pane, "A run saves it in the study's ARD", fixed = TRUE)
     expect_match(output$tpl_ard_code, "programs/ard/T-ZZ-5.R", fixed = TRUE)
     expect_match(add_text(output$tpl_ard_code_head$html), "programs/ard/T-ZZ-5.R", fixed = TRUE)
+    # the analysis set: the data step's field, written as the report's population
+    other <- setdiff(stats::na.omit(rv$p$ard$populations$population_id), "SAF")[1L]
+    skip_if(is.na(other), "the sample study has one population")
+    session$setInputs(tpl_report_pop = other)
+    expect_identical(add_row(rv$p, "T-ZZ-5")$population, other)
+    expect_identical(rv$p$spec$outputs[["T-ZZ-5"]]$population, other)
+    expect_null(.tpl_of(rv$p, "T-ZZ-5")$args$population)
   })
 })
 
