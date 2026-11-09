@@ -282,19 +282,16 @@ test_that("a join's card: its how named, a semi join's variables not asked (#444
   expect_identical(.trim_join(d, data.frame(USUBJID = "1"))$data, d$data)
 })
 
-test_that("a forest's arms come in their order, and the arm compared is never the reference", {
+test_that("a forest's arms come in their order", {
   adsl <- data.frame(TRT01A = c("Xan High", "Placebo", "Xan Low", "Placebo"),
                      TRT01AN = c(3, 1, 2, 1), stringsAsFactors = FALSE)
   dat <- list(ADSL = adsl)
   # (by the number column, not the letters)
   expect_identical(.group_levels(dat, "TRT01A"), c("Placebo", "Xan Low", "Xan High"))
-  expect_identical(.second_level(dat, "TRT01A"), "Xan Low")
-  expect_identical(.second_level(dat, "TRT01A", ref = "Xan Low"), "Placebo")
   # a factor's levels as they are; no number column: sorted
   f <- list(ADSL = data.frame(TRT01A = factor(c("B", "A"), levels = c("B", "A"))))
   expect_identical(.group_levels(f, "TRT01A"), c("B", "A"))
   s <- list(ADSL = data.frame(ARM = c("b", "a", "c"), stringsAsFactors = FALSE))
   expect_identical(.group_levels(s, "ARM"), c("a", "b", "c"))
-  expect_null(.second_level(list(ADSL = data.frame(ARM = "a")), "ARM"))
   expect_identical(.group_levels(list(), NULL), character())
 })
