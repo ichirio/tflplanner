@@ -253,6 +253,16 @@
           shiny::div(class = "rp-code", shiny::verbatimTextOutput("pd_yaml"))))))
   })
 
+  # a forest's arm compared is never its reference: the choices follow it
+  shiny::observeEvent(input$pd_tpl_ref, {
+    ds <- input$pd_tpl_data
+    lv <- if (!is.null(ds) && nzchar(ds)) .group_levels(study_data(c(ds, "ADSL"))) else character()
+    ref <- input$pd_tpl_ref
+    rest <- setdiff(lv, if (nzchar(ref)) ref else lv[1L])
+    cur <- input$pd_tpl_comparison
+    shiny::updateSelectizeInput(session, "pd_tpl_comparison", choices = c("", rest),
+                                selected = if (!is.null(cur) && cur %in% rest) cur else "")
+  }, ignoreInit = TRUE)
   output$pd_tpl_more <- shiny::renderUI(tryCatch(pd_tpl_more_ui(), error = function(e) {
     if (inherits(e, "shiny.silent.error")) stop(e)
     message("tflplanner: template form: ", conditionMessage(e))
@@ -301,12 +311,12 @@
                               options = list(plugins = list("remove_button", "drag_drop")))
       },
       if (kind == "forest" && !whole) {
-        g <- .group_choices(cols)
-        lv <- if (length(g)) {
-          v <- cols[[g[[1L]]]]
-          if (is.factor(v)) levels(v) else sort(unique(stats::na.omit(as.character(v))))
-        }
-        sz("pd_tpl_comparison", t("Arm compared with the reference (the first)"), lv[-1L])
+        # (the arms in their order: a factor's levels, else by the number
+        # column; the reference left out of the arm compared)
+        lv <- .group_levels(dat)
+        shiny::tagList(
+          sz("pd_tpl_ref", t("Reference arm"), lv),
+          sz("pd_tpl_comparison", t("Arm shown against the reference"), lv[-1L]))
       },
       if (tp %in% c("box_by_group", "scatter_shift")) sz("pd_tpl_at_visit", t("At visit"),
         if (!is.null(x) && "AVISIT" %in% names(x)) unique(x$AVISIT)),
@@ -386,6 +396,8 @@
         x <- study_data(ds)[[toupper(ds)]]
         !is.null(x) && !all(c(grp, pop) %in% names(x))
       }
+      # (a forest's reference arm; left from a forest chosen before: not for another)
+      ref <- if (identical(templates$kind[templates$template == tp], "forest")) nz(input$pd_tpl_ref)
       args <- list(tp, data = ds, param = nz(input$pd_tpl_param), pop = pop,
                    group = grp, join_adsl = if (isTRUE(join)) TRUE,
                    value = nz(input$pd_tpl_value), x = nz(input$pd_tpl_x), y = nz(input$pd_tpl_y),
@@ -394,10 +406,11 @@
                    at_visit = nz(input$pd_tpl_at_visit),
                    subgroups = if (length(input$pd_tpl_subgroups))
                      paste(input$pd_tpl_subgroups, collapse = ", "),
-                   # the arm compared: the one chosen, else the group's second
-                   # level (the first is the reference)
+                   ref = ref,
+                   # the arm compared: the one chosen, else the first arm
+                   # that is not the reference
                    comparison = nz(input$pd_tpl_comparison) %||%
-                     .second_level(study_data(c(ds, "ADSL")), grp))
+                     .second_level(study_data(c(ds, "ADSL")), grp, ref))
       if (!is.null(nz(input$pd_tpl_unit))) args$time_unit <- input$pd_tpl_unit
       make <- function(a) guarded(do.call(tflspec::tfl_fig_template,
                                           a[!vapply(a, is.null, logical(1))]))
