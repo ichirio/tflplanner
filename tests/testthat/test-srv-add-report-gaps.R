@@ -366,3 +366,139 @@ test_that("a template figure's preview draws the picture, says when the definiti
     expect_identical(add_nav(shown, "fig_right"), "result")
   })
 })
+
+# ---- demog: the dialog's untouched fields, the switch, the population ---------------------
+
+# What a field of the dialog sends untouched, as the browser has it: the
+# start value (the study's, else the default) as tpl_widget() draws it
+add_untouched <- function(x, study) {
+  start <- .tpl_study_value(study, x) %||% x$default
+  switch(.tpl_type(x),
+    flag = isTRUE(start),
+    number = .num_or_null(start),
+    text = if (is.null(start)) "" else .tpl_show(start),
+    list = .tpl_list_text(start, x),
+    vars = , chips = , choices = as.character(start %||% character()),
+    as.character(start %||% "")[1L])
+}
+
+test_that("the dialog writes only the optional arguments changed in it: demog and stf_t02_demog untouched write none", {
+  id <- sample_for_add()
+  shown <- watch_add()
+  shiny::testServer(server_for(id), {
+    rv <- session$userData$rv
+    for (nm in c("demog", "stf_t02_demog")) {
+      rid <- paste0("ZD-", nm)
+      opt <- Filter(function(x) !isTRUE(x$required), .tpl_shown(.tpl_params(nm)))
+      sent <- lapply(opt, add_untouched, study = rv$p$spec$study)
+      names(sent) <- sprintf("mtpl_%s__%s", nm, names(opt))
+      sent <- Filter(Negate(is.null), sent)
+      # (every field as the browser sends it, then the required ones set)
+      do.call(session$setInputs, c(list(add = 1, modal_type = "table", modal_how = "template",
+                                        modal_tpl_table = nm, modal_id = rid, modal_desc = "",
+                                        modal_section = ""), sent))
+      req <- list("SAF", "TRT01A", "AGE", "SEX")
+      names(req) <- sprintf("mtpl_%s__%s", nm, c("population", "by", "continuous", "categorical"))
+      do.call(session$setInputs, req)
+      suppressMessages(session$setInputs(add_ok = which(nm == c("demog", "stf_t02_demog"))))
+      args <- add_args(rv$p, paste0("T-", rid))
+      expect_setequal(names(args), c("by", "continuous", "categorical"))
+      expect_identical(add_row(rv$p, paste0("T-", rid))$population, "SAF")
+    }
+    # (a heading of two lines: a box that keeps the line break)
+    more <- add_html(output$tpl_modal_more$html)
+    expect_match(more, "<textarea[^>]*id=\"mtpl_stf_t02_demog__col_header\"")
+    # (a field changed is written: FALSE blank rows as the flag, not "false")
+    session$setInputs(add = 2, modal_type = "table", modal_how = "template", modal_tpl_table = "demog",
+                      modal_id = "ZD-3", mtpl_demog__population = "SAF", mtpl_demog__by = "TRT01A",
+                      mtpl_demog__col_header = "{col}\nN={n}", mtpl_demog__stub_before = FALSE)
+    suppressMessages(session$setInputs(add_ok = 3))
+    args <- add_args(rv$p, "T-ZD-3")
+    expect_identical(args$col_header, "{col}\nN={n}")
+  })
+})
+
+test_that("a switch to demog keeps population as the report's population; back from demog it is the argument again", {
+  id <- sample_for_add()
+  shown <- watch_add()
+  shiny::testServer(server_for(id), {
+    rv <- session$userData$rv
+    session$setInputs(add = 1, modal_type = "table", modal_how = "template", modal_tpl_table = "shift",
+                      modal_id = "ZZ-7", modal_desc = "", modal_section = "",
+                      mtpl_shift__population = "SAF")
+    suppressMessages(session$setInputs(add_ok = 1))
+    session$setInputs(target = "T-ZZ-7", nav = "make", step = "content", content_nav = "content")
+    invisible(suppressMessages(output$tpl_card$html))
+    session$setInputs(tpl_switch = "demog")
+    dlg <- add_text(add_modal(shown))
+    expect_match(dlg, "To the report's population: population", fixed = TRUE)
+    expect_false(grepl("Arguments dropped:[^.]*population", dlg))
+    suppressWarnings(suppressMessages(session$setInputs(tpl_switch_ok = 1)))
+    expect_identical(.tpl_of(rv$p, "T-ZZ-7")$name, "demog")
+    expect_null(add_args(rv$p, "T-ZZ-7")$population)
+    expect_identical(rv$p$spec$outputs[["T-ZZ-7"]]$population, "SAF")
+    # (back: the report's population is the argument again)
+    session$setInputs(tpl_switch = "shift")
+    dlg <- add_text(add_modal(shown))
+    expect_match(dlg, "From the report's population: population", fixed = TRUE)
+    suppressWarnings(suppressMessages(session$setInputs(tpl_switch_ok = 2)))
+    expect_identical(.tpl_of(rv$p, "T-ZZ-7")$name, "shift")
+    expect_identical(add_args(rv$p, "T-ZZ-7")$population, "SAF")
+  })
+})
+
+test_that("demog with no population: no ARD run and no error note, the preview waits; its field's tip is the usual one", {
+  id <- sample_for_add()
+  shown <- watch_add()
+  shiny::testServer(server_for(id), {
+    rv <- session$userData$rv
+    session$setInputs(add = 1, modal_type = "table", modal_how = "template", modal_tpl_table = "demog",
+                      modal_id = "ZZ-8", modal_desc = "", modal_section = "",
+                      mtpl_demog__population = "SAF", mtpl_demog__by = "TRT01A",
+                      mtpl_demog__continuous = "AGE")
+    # (the dialog's population field: the analysis set's tip, not tflspec's note)
+    dlg <- add_html(add_modal(shown))
+    expect_false(grepl("not a template parameter", dlg, fixed = TRUE))
+    suppressMessages(session$setInputs(add_ok = 1))
+    session$setInputs(target = "T-ZZ-8", nav = "make", step = "data", content_nav = "content")
+    expect_false(grepl("not a template parameter", add_html(output$tpl_card_data$html), fixed = TRUE))
+    session$setInputs(tpl_report_pop = "")
+    expect_identical(.tpl_missing_report(rv$p, "T-ZZ-8"), "population")
+    n0 <- length(shown$notes)
+    suppressWarnings(session$setInputs(tpl_preview = 1))
+    new <- shown$notes[-seq_len(n0)]
+    expect_length(new, 1L)
+    expect_identical(new[[1L]]$type, "warning")
+    expect_match(new[[1L]]$text, "Required arguments are empty: population", fixed = TRUE)
+  })
+})
+
+test_that("demog's preview reads the study standard the report resolves with: its count cells and arm headings", {
+  skip_on_cran()
+  skip_if_not_installed("cards")
+  home <- local_home()
+  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  o <- tflspec::tfl_output("T-DM", "table", label = "Demog", population = "SAF",
+                           template = list(name = "demog",
+                                           args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
+  s$planner <- .spec_add_output(s$planner, o, label = "Demog", population = "SAF")
+  s <- suppressMessages(save_study(s, home = home))
+  suppressMessages(fetch_ard(s, "T-DM", home = home))
+  ard <- ard_raw(s, "T-DM", home = home)
+  skip_if(is.null(ard), "the report's ARD was not made")
+  # (a study standard as tflspec's spec-yaml study says it: plan_cells'
+  # categorical, plan_col_header's lines -- demog's study references)
+  st <- tflspec::tfl_read_study_spec(system.file("extdata", "spec-yaml", package = "tflspec"))
+  s$planner$spec$study$defaults$content <- st$defaults$content
+  r <- tflspec::tfl_resolve_output(.code_spec(s$planner)$outputs[["T-DM"]], .code_spec(s$planner)$study)
+  cells <- Filter(function(it) identical(it$fn, "plan_cells"), r$content)[[1L]]$args
+  expect_false(is.null(cells$categorical))
+  expect_true(any(vapply(r$content, function(it) identical(it$fn, "plan_col_header"), NA)))
+  pages <- .preview_content_pages(s$planner, "T-DM", list(ard = ard))
+  hdr <- unlist(pages[[1L]]$col_header)
+  expect_true(any(grepl("^[(]N=[0-9]+[)]$", hdr)))
+  expect_true("Characteristic" %in% hdr)
+  # (the categorical rows' values, indented: hard spaces taken away)
+  txt <- trimws(gsub(" ", " ", unlist(lapply(pages[[1L]]$data, as.character)), fixed = TRUE))
+  expect_true(all(c("F", "M") %in% txt))
+})
