@@ -99,6 +99,7 @@ preview_pages <- function(x, output_id, data) {
   })
   st <- x$study["rounding"]
   sheets$study <- if (!is.na(st)) st
+  sheets$codelists <- .codelists_of_reports(sheets$codelists)
   spec <- tflspec::tfl_table_spec(sheets)
   plan <- rtfreporter::plan_cells(tflspec::tfl_table_plan(data, spec, output_id),
                                   notes = FALSE)
@@ -175,6 +176,9 @@ header_token_labels <- function(choices, tokens = NULL) {
     tok <- tok[names(tok) != "STUDY_ID"]
   }
   rx <- "\\{[A-Z][A-Z0-9_]*\\}"
+  # the page's heading ({PAGE_HEADING}) depends on the data, so the sample shows
+  # none: a title line of only that is left out, as an empty one is
+  tok[["PAGE_HEADING"]] <- ""
   # a line whose tokens are all empty, the rest blanks or brackets, is not
   # printed (rtfreporter's drop_empty_rows)
   empty <- function(cells) {
@@ -230,9 +234,56 @@ header_token_labels <- function(choices, tokens = NULL) {
     htmltools::div(class = "rp-page-foot", block("footer", "foot")))
 }
 
+# The longest line of each column over the pages shown (its cells and its
+# plain header cells), in characters; NULL when the pages do not have the
+# same columns
+.pv_shared_widths <- function(pages) {
+  if (!length(pages)) return(NULL)
+  nc <- vapply(pages, function(pg) ncol(pg$data) %||% 0L, 1L)
+  if (any(nc != nc[[1L]]) || !nc[[1L]]) return(NULL)
+  longest <- function(x) {
+    x <- as.character(unlist(x))
+    x <- x[!is.na(x)]
+    if (!length(x)) return(0L)
+    max(nchar(unlist(strsplit(x, "\n", fixed = TRUE)), type = "width"), 0L)
+  }
+  w <- integer(nc[[1L]])
+  for (pg in pages) {
+    for (k in seq_len(nc[[1L]])) w[k] <- max(w[k], longest(pg$data[[k]]))
+    for (line in pg$col_header) {
+      spans <- is.list(line) && length(line) &&
+        all(vapply(line, function(x) is.list(x) && !is.null(x$from), NA))
+      if (spans) next
+      line <- as.list(line)
+      for (k in seq_len(min(length(line), nc[[1L]]))) w[k] <- max(w[k], longest(line[[k]]))
+    }
+  }
+  w
+}
+
+# The preview table's <colgroup> and width: the report's widths
+# (`col_rel_width`, as the RTF is laid out) over the card's width, else the
+# pages' longest lines; NULL when there is no column
+.pv_colgroup <- function(rel, n, fallback) {
+  if (!n) return(NULL)
+  col <- function(w) htmltools::tags$col(style = paste0("width: ", w, ";"))
+  if (is.numeric(rel) && length(rel) == n && all(is.finite(rel)) && all(rel > 0)) {
+    return(list(group = htmltools::tags$colgroup(lapply(
+      sprintf("%.3f%%", rel / sum(rel) * 100), col)),
+      style = "width: 100%; min-width: 36em;"))
+  }
+  if (is.null(fallback) || length(fallback) != n) return(NULL)
+  w <- sprintf("calc(%dch + 12px)", as.integer(fallback))
+  list(group = htmltools::tags$colgroup(lapply(w, col)),
+       style = sprintf("width: calc(%dch + %dpx);", sum(as.integer(fallback)), 12L * n))
+}
+
 #' @rdname preview_pages
 #' @noRd
 preview_html <- function(pages, max_pages = 3L, align = "center") {
+  # the columns' widths the pages share, so that page 1 and page 2 line up
+  # (a page by itself would size its columns to its own rows)
+  fallback <- .pv_shared_widths(pages[seq_len(min(length(pages), max_pages))])
   one <- function(pg, i) {
     d <- pg$data
     blank_after <- attr(d, "rtf_blank_rows") %||% pg$blank_rows %||%
@@ -299,26 +350,33 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
           val(d[r, k]))))))
       if (r %in% blank_after) body <- c(body, list(blank))
     }
+    cols <- .pv_colgroup(pg$col_rel_width, ncol(d), fallback)
     htmltools::tagList(
       if (length(pages) > 1L) htmltools::div(
         class = "rp-pv-page", sprintf("%d / %d", i, length(pages))),
-      htmltools::tags$table(
-        class = paste(c("rp-pv", if (identical(align, "left")) "rp-pv-left"),
-                      collapse = " "),
-        htmltools::tags$thead(head), htmltools::tags$tbody(body)))
+      # (wider than the card: it scrolls, it is not cut)
+      htmltools::div(
+        class = "rp-pv-wrap",
+        htmltools::tags$table(
+          class = paste(c("rp-pv", if (identical(align, "left")) "rp-pv-left",
+                          if (!is.null(cols)) "rp-pv-fixed"), collapse = " "),
+          style = cols$style,
+          cols$group,
+          htmltools::tags$thead(head), htmltools::tags$tbody(body))))
   }
   n <- min(length(pages), max_pages)
   htmltools::tagList(lapply(seq_len(n), function(i) one(pages[[i]], i)))
 }
 
-# A table of records (`data: {source: dataset}`), or one with parts
-# (plan_append()): its pages are its content run on the objects its program
-# makes -- `data` its records, `ard` the report's ARD as read -- not the
-# ARD's sheets.  FALSE for the others.
+# A table of records (`data: {source: dataset}`), one with parts
+# (plan_append()), or one from a template: its pages are its content run on
+# the objects its program makes -- `data` its records, `ard` the report's ARD
+# as read -- not the ARD's sheets (a template's items are not in them: the
+# sheets hold the study's defaults).  FALSE for the others.
 .preview_by_content <- function(x, output_id) {
   o <- tryCatch(.code_spec(x)$outputs[[output_id]], error = function(e) NULL)
   if (is.null(o) || inherits(o$content, "tfl_r")) return(FALSE)
-  identical(o$data$source, "dataset") ||
+  !is.null(o$template) || identical(o$data$source, "dataset") ||
     any(vapply(o$content %||% list(), function(it) identical(it$fn, "plan_append"), NA))
 }
 
@@ -333,10 +391,26 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
   if (!length(dc)) return(list())
   old <- setwd(study_dir)
   on.exit(setwd(old), add = TRUE)
-  env <- new.env(parent = globalenv())
+  # as a program runs under the study's setup: the functions it calls
+  # (order_levels() ... from the study's own programs/study_helpers.R, else
+  # tflspec's) and the packages it attaches, the app's session left as it is
+  env <- new.env(parent = .ard_program_env())
+  .source_study_helpers(env, study_dir)
   eval(parse(text = unlist(dc, use.names = FALSE), keep.source = FALSE), envir = env)
   # (a plain data frame: the plan reads columns it may not have by `$`)
   lapply(mget(names(dc), envir = env), as.data.frame)
+}
+
+# The study's own programs/study_helpers.R run in `env` (what its setup
+# sources); none there: tflspec's helpers, already in the parents, stand.
+# A file that stops is said as such, not as the data code's error
+.source_study_helpers <- function(env, study_dir) {
+  f <- file.path(study_dir, .study_helpers_path())
+  if (!file.exists(f)) return(invisible(env))
+  tryCatch(sys.source(f, envir = env, keep.source = FALSE),
+           error = function(e) stop(sprintf("%s stopped: %s", .study_helpers_path(),
+                                            conditionMessage(e)), call. = FALSE))
+  invisible(env)
 }
 
 # Its pages: the report resolved, its content run (tflspec::tfl_content_run())
@@ -344,8 +418,49 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
 .preview_content_pages <- function(x, output_id, objects) {
   sp <- .code_spec(x)
   r <- tflspec::tfl_resolve_output(sp$outputs[[output_id]], sp$study)
-  plan <- tflspec::tfl_content_run(r, objects)
-  res <- suppressMessages(rtfreporter::plan_apply(plan))
+  # (a table with no records of its own and no parts -- a template's -- reads
+  # the ARD itself, as its program does: not a list of objects)
+  objects_for <- function(r) {
+    own <- identical(r$data$source, "dataset") ||
+      any(vapply(r$content %||% list(), function(it) identical(it$fn, "plan_append"), NA))
+    if (!own && !is.null(objects$ard)) objects$ard else objects
+  }
+  # A part that stops the table (whatever its error: a source with no
+  # statistics to read, ...) stops the program as it stops here: the table is
+  # shown without it when it then runs, the parts' names said
+  # (`dropped_parts`) with why (`part_errors`)
+  dropped <- character()
+  why_dropped <- character()
+  # (the plan and its pages: a part's source with no statistics to read stops
+  # at plan_apply(), not when the plan is made)
+  run_pages <- function(r) {
+    plan <- tflspec::tfl_content_run(r, objects_for(r))
+    list(plan = plan, res = suppressMessages(rtfreporter::plan_apply(plan)))
+  }
+  made <- tryCatch(run_pages(r), error = function(e) {
+    parts <- which(vapply(r$content %||% list(), function(it) identical(it$fn, "plan_append"), NA))
+    if (!length(parts)) stop(e)
+    run_with <- function(keep) {
+      r2 <- r
+      r2$content <- r$content[sort(c(setdiff(seq_along(r$content), parts), keep))]
+      tryCatch(run_pages(r2), error = function(e2) e2)
+    }
+    pname <- function(i) r$content[[i]]$args$name %||% NA_character_
+    # (the table without any part must run: else the parts are not the cause)
+    base <- run_with(integer())
+    if (inherits(base, "error")) stop(e)
+    # (each part alone with the table: the ones that stop it)
+    alone <- lapply(parts, run_with)
+    bad <- parts[vapply(alone, inherits, NA, "error")]
+    if (!length(bad)) stop(e)
+    made2 <- run_with(setdiff(parts, bad))
+    if (inherits(made2, "error")) stop(made2)
+    dropped <<- vapply(bad, pname, "")
+    why_dropped <<- vapply(alone[match(bad, parts)], conditionMessage, "")
+    made2
+  })
+  plan <- made$plan
+  res <- made$res
   if (is.data.frame(res)) {
     res <- list(structure(list(data = res, col_header = list(names(res)),
                                blank_rows = integer()),
@@ -359,5 +474,13 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
   })
   attr(res, "header_tokens") <- tryCatch(rtfreporter::plan_header_tokens(plan),
                                          error = function(e) NULL)
+  if (length(dropped)) {
+    attr(res, "dropped_parts") <- dropped
+    attr(res, "part_errors") <- stats::setNames(why_dropped, dropped)
+  }
+  # where each part's rows start (the cut pages do not say which rows are a
+  # part's; the table before it is cut does): .part_start_page()
+  attr(res, "part_first") <- .part_first_rows(
+    tryCatch(suppressMessages(rtfreporter::plan_apply(plan, "table")), error = function(e) NULL))
   res
 }

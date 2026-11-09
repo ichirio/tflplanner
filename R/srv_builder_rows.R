@@ -95,7 +95,7 @@
     ev <- input$b_cv_ev
     id <- bform$id
     v <- ev$v %||% ""
-    shiny::req(!is.null(id), identical(id, current()), nzchar(v))
+    shiny::req(!is.null(id), identical(id, bcur()), nzchar(v))
     p <- rv$p
     m <- bform$meta
     st <- bform$st
@@ -340,8 +340,9 @@
     shiny::req(bform_drawn() > 0L)
     id <- bform$id
     # (a template report: its items are the template's; nothing written
-    # for a preview -- R/template_report.R)
-    if (!is.null(.tpl_of(rv$p, id %||% ""))) {
+    # for a preview -- R/template_report.R; a part, likewise: its items are
+    # its card's, R/builder_parts.R)
+    if (!is.null(.part_of(id)) || !is.null(.tpl_of(rv$p, id %||% ""))) {
       bform$fresh <- FALSE
       return()
     }
@@ -392,7 +393,7 @@
   shiny::observeEvent(input$b_lv_reset, builder_guard({
     nm <- input$b_lv_reset$variable
     st <- shiny::isolate(bstate())
-    shiny::req(length(nm) == 1L, !is.null(st), identical(bform$id, current()))
+    shiny::req(length(nm) == 1L, !is.null(st), identical(bform$id, bcur()))
     if (identical(nm, "variable")) {
       ard <- bform$st$variable_ard
       shiny::req(length(ard))
@@ -423,6 +424,8 @@
   }))
   shiny::observeEvent(input$b_add_n, {
     id <- bform$id
+    # (the report's ARD, not a part's)
+    shiny::req(is.null(.part_of(id)))
     key <- bform$st$key[1L]
     p2 <- guarded(add_group_n(rv$p, id, key))
     if (is.null(p2)) return()

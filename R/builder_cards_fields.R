@@ -16,7 +16,7 @@
   if (grepl("^(list|vec)<", first)) {
     inner <- sub("^(list|vec)<(.*)>$", "\\2", first)
     return(if (grepl("^column", inner) || grepl("^string", inner) ||
-                 grepl("^number|^integer", inner)) "list" else "r")
+                 grepl("^number|^integer|^date", inner)) "list" else "r")
   }
   if (grepl("^map<", first)) return("map")
   if (grepl("^call", first)) return("call")
@@ -90,6 +90,8 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
   r_text <- if (is_r) as.character(unclass(value)) else ""
   if (is_r) value <- NULL
   if (inherits(value, "tfl_unset")) value <- NULL
+  # (a string in an argument that takes only R is that R's text)
+  if (.type_only_r(type) && !is.null(value)) value <- .only_r_value(value)
   control <- switch(
     kind,
     column = .field_select(fid, choices, value, multiple = FALSE, lang = lang, placeholder = default),

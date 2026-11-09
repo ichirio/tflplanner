@@ -86,6 +86,33 @@ test_that("a save after an outside edit asks to load first; the same part change
   })
 })
 
+test_that("keeping my changes in a conflict keeps a template report's template", {
+  home <- local_home()
+  s0 <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  o <- tflspec::tfl_output("T-TPL", "table", label = "Demographics", population = "SAF",
+                           template = list(name = "demog", args = list(population = "SAF")))
+  s0$planner <- .spec_add_output(s0$planner, o, label = "Demographics", population = "SAF")
+  s <- suppressMessages(save_study(s0, home = home))
+  f <- file.path(s$path, "spec", "outputs", "T-TPL.yml")
+  shiny::testServer(server_for(s$meta$study_id), {
+    rv <- session$userData$rv
+    rv$p <- .spec_set_output(rv$p, "T-TPL", .tpl_output(
+      rv$p, "T-TPL", list(population = "SAF", continuous = "AGE")))
+    rv$p <- set_sheet_rows(rv$p, "titles", "T-TPL", data.frame(line = "1", center = "Mine"))
+    x <- tflspec::tfl_read_output(f)
+    x$page$titles[["1"]]$center <- "Theirs"
+    x$template$args$continuous <- "WEIGHT"
+    tflspec::tfl_write_output(x, f)
+    session$setInputs(spec_reload = 1)
+    expect_false(is.null(rv$spec_merge))
+    session$setInputs(merge_mine = 1)
+    session$setInputs(save = 1)
+    r <- tflspec::tfl_read_output(f)
+    expect_identical(r$template$name, "demog")
+    expect_identical(r$template$args$continuous, "AGE")
+  })
+})
+
 test_that("a draft made before the files changed is merged on open", {
   home <- local_home()
   s <- spec_app_study()

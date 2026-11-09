@@ -302,7 +302,7 @@ set_fig_design <- function(x, output_id, design) {
 #'
 #' Runs a design's script on the study's data, as the figure's program will
 #' (in a temporary folder, so nothing of the study changes), and gives the
-#' PNG it saves -- at its size on the page (step 3) -- with the design's problems
+#' PNG it saves -- at its size on the page (step 4, Page and output) -- with the design's problems
 #' and the figure checks.  The Plot Designer's preview.
 #'
 #' @param study An `rtfstudy`.
@@ -382,7 +382,8 @@ preview_figure <- function(study, output_id,
   no_ard <- if (reads_ard && (is.null(ard) || !NROW(ard))) {
     src <- .fig_ard_source(study$planner, output_id)
     if (src$kind %in% c("own", "table")) {
-      sprintf("The ARD of %s has no rows yet: make it (step 1, or an official run in Runs).", src$id)
+      sprintf(tr("The ARD of %s has no rows yet: make it (step %s, or an official run in Runs)."),
+              src$id, .step_no("ard"))
     }
   }
   warns <- character()

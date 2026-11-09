@@ -10,6 +10,8 @@
 .rp-upload .input-group .btn-file { height: 38px; }
 .rp-upload .input-group .btn-file { display: inline-flex; align-items: center; }
 .rp-upload .checkbox, .rp-upload .form-check { margin: 0; }
+/* a table's header is not broken one character a line (a narrow column) */
+table.dataTable thead th { white-space: nowrap; }
 .rp-upload select { appearance: auto; }
 /* fields that are not used (a data written as R) */
 .rp-greyed { opacity: .45; pointer-events: none; }
@@ -29,6 +31,20 @@
 nav.navbar.navbar-static-top { position: sticky; top: 0; z-index: 1020;
   background-color: var(--bs-body-bg, #fff); }
 html { scroll-padding-top: calc(var(--rp-top, 0px) + .5rem); }
+/* the top bar on one line at 1366 px, in either language: the study's title
+   gives way (cut with ...), the buttons keep their place and order */
+@media (min-width: 992px) {
+nav.navbar .navbar-collapse, nav.navbar .navbar-nav.nav { min-width: 0; flex-wrap: nowrap; }
+nav.navbar .navbar-nav > li { flex-shrink: 0; white-space: nowrap; }
+nav.navbar .navbar-nav > li:has(> #open_study_bar) { flex-shrink: 1; min-width: 0; }
+#open_study_bar { min-width: 0; overflow: hidden; }
+#open_study_bar > a { max-width: 100% !important; }
+}
+/* Japanese breaks at the end of a phrase, not inside one: a label or a
+   notice does not end a line with half of (...) (the page's lang says which) */
+.control-label, .form-label, .form-check-label, .shiny-notification { word-break: auto-phrase; }
+/* ... and no line of a notice ends with one or two characters of its own */
+.shiny-notification { text-wrap: pretty; }
 /* a step's mark worked out again (a run in the background): not faded */
 [id^='step_mark_'].recalculating { opacity: 1 !important; }
 /* While the server works on what the user did (opening a study, switching
@@ -76,6 +92,9 @@ details.ard-fn[open] .ard-fn-closed, details.ard-fn:not([open]) .ard-fn-open { d
 .rp-pv .rp-pv-indent { padding-left: 2.2em; }
 .rp-pv-blank td { height: 1em; }
 .rp-pv-page { font-size: 11px; color: #6b7280; }
+.rp-pv-wrap { max-width: 100%; overflow-x: auto; }
+.rp-pv.rp-pv-fixed { table-layout: fixed; }
+.rp-pv.rp-pv-fixed td { white-space: pre-wrap; overflow-wrap: anywhere; }
 .rp-b-card { border: 1px solid var(--bs-border-color, #dee2e6);
   border-radius: .5rem; padding: .6rem .8rem; margin-bottom: .6rem; }
 .rp-b-card h6 { font-weight: 600; margin-bottom: .4rem; }
@@ -379,8 +398,77 @@ app_ui <- function(lang = "en") {
                  " ", t(.report_state_words[[k]]))))))
 
   # -- the steps of making a report ----------------------------------------
-  step_ard <- shiny::div(
+  # Analysis data (#514): which records -- a code table's analysis data
+  # (its form, SPEC | Result beside it), a figure's data steps, a template
+  # report's "data" arguments (.tpl_arg_section).  A step's own R program is
+  # the ARD step's (its switch is there).
+  step_data <- shiny::div(
     class = "mt-2",
+    shiny::conditionalPanel(
+      "output.data_is_code == 'yes'",
+      shiny::p(class = "alert alert-info py-1 small",
+               sprintf(t("This report's step %s is its own R program: it is on the ARD tab."), .step_no("ard")))),
+    shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_card_data")),
+    shiny::div(
+      class = "rp-code-only",
+      shiny::conditionalPanel(
+        "output.data_is_code != 'yes'",
+        # a figure's: its data steps (its design's; none while its content is
+        # its own code)
+        shiny::conditionalPanel("output.content_is_code != 'yes'", .designer_data_ui()),
+        # a listing's: the dataset and the condition (its columns, order and
+        # type are the Content step's)
+        shiny::conditionalPanel(
+          "output.report_kind == 'listing'",
+          shiny::conditionalPanel(
+            "output.content_is_code != 'yes'",
+            shiny::div(class = "rp-code-only", shiny::uiOutput("lf_data_form"),
+                       # (its rework, process_code: its data after the condition)
+                       shiny::uiOutput("rework_data"))),
+          shiny::conditionalPanel(
+            "output.content_is_code == 'yes'",
+            shiny::p(class = "text-muted small",
+                     t("This listing is its own R program: it reads its data in the Content step.")))),
+        # a figure's own code: no data step of the definition
+        shiny::conditionalPanel(
+          "output.report_kind == 'figure' && output.content_is_code == 'yes'",
+          shiny::p(class = "text-muted small",
+                   t("This figure is its own R program: it reads its data in the Content step."))),
+        shiny::conditionalPanel(
+          "output.report_kind == 'table'",
+          shiny::div(
+            class = "rp-split rp-lay-side",
+            # the report's population, its analysis data (their form below)
+            shiny::div(
+              shiny::uiOutput("ard_report_pop"),
+              shiny::uiOutput("ard_adata"),
+              shiny::uiOutput("adata_detail")),
+            shiny::div(
+              class = "rp-tabs border rounded p-2",
+              bslib::navset_underline(
+                id = "adata_right",
+                bslib::nav_panel(
+                  "SPEC", value = "spec",
+                  shiny::div(
+                    class = "pt-2",
+                    shiny::p(class = "small text-muted mb-1",
+                             t("The rows of analysis_data this report reads, every column, as in the workbook: what the form does not show is written here. A new data's row comes when it is saved.")),
+                    rhandsontable::rHandsontableOutput("hot_adata_report"))),
+                bslib::nav_panel(
+                  t("Result"), value = "result",
+                  shiny::div(
+                    class = "pt-2",
+                    shiny::div(
+                      class = "d-flex flex-wrap gap-2 align-items-center",
+                      .btn("adata_preview", t("Preview"), class = "btn-sm btn-primary"),
+                      shiny::span(class = "small text-muted",
+                                  t("Makes the analysis data of the form (as it is now, not saved yet) from the study's data: its rows and subjects, the first rows."))),
+                    shiny::uiOutput("adata_preview_out"))))))))))
+
+  # (a listing has no ARD: only the note of ard_kind_note stays in #step_ard
+  # -- rp-step-disable)
+  step_ard <- shiny::div(
+    id = "step_ard", class = "mt-2",
     # the definition or the report's own code (R/step_code.R)
     shiny::uiOutput("data_mode_bar"),
     # what a step of its own code reads: its datasets, its ARD
@@ -388,12 +476,12 @@ app_ui <- function(lang = "en") {
     # the report's ARD: a figure's source (one place, either way), a table's
     # taken in
     shiny::uiOutput("ard_kind_note"),
+    # a figure's statistics (a KM fit ...): its data steps from the first
+    # that makes an object on
+    .designer_stat_ui(),
     shiny::conditionalPanel("output.data_is_code == 'yes'", code_step_ui("dc", t, lang)),
     shiny::conditionalPanel(
     "output.data_is_code != 'yes'",
-    # a figure's: its data steps first (its design's; none while its
-    # content is its own code), the numbers from an ARD below
-    shiny::conditionalPanel("output.content_is_code != 'yes'", .designer_data_ui()),
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-center mb-2 small",
       shiny::span(class = "text-muted", t("Layout")),
@@ -409,19 +497,12 @@ app_ui <- function(lang = "en") {
     shiny::div(
       id = "ard_split", class = "rp-split rp-lay-side rp-show-def",
       bslib::card(
-        bslib::card_header(with_tip(t("ARD definition"), t("This report's analyses (the ARD): the data in 1-1, the analyses in 1-2."))),
-        bslib::navset_underline(
-          id = "ard_sheet",
-          bslib::nav_panel(paste0(t("The analyses"), " (analyses)"), value = "analyses",
-                           # 1-1 the analysis data (its form below it), then 1-2
-                           # the analyses
-                           shiny::uiOutput("ard_report_pop"),
-                           shiny::uiOutput("ard_adata"),
-                           shiny::uiOutput("adata_detail"),
-                           shiny::uiOutput("ard_2_2_head"),
-                           # the outline first: a click shows the analysis
-                           # as a form below; the sheet itself folded
-                           shiny::uiOutput("ard_outline"))),
+        bslib::card_header(with_tip(t("ARD definition"), t("This report's analyses (the ARD): the analysis data, and the analyses that read them."))),
+        # the analyses (the analysis data are the first step's)
+        shiny::uiOutput("ard_2_2_head"),
+        # the outline first: a click shows the analysis as a form below; the
+        # sheet itself folded
+        shiny::uiOutput("ard_outline"),
         shiny::uiOutput("ard_check"),
         shiny::div(
           class = "rp-b-card mt-2",
@@ -450,12 +531,22 @@ app_ui <- function(lang = "en") {
             inline = TRUE),
           shiny::uiOutput("ard_prog_state"),
           code_view("ard_code", lang)),
-        result = shiny::uiOutput("ard_result_pane")))))
+        result = shiny::uiOutput("ard_result_pane")))),
+    shiny::conditionalPanel(
+      "output.report_kind == 'table'",
+      shiny::div(
+        class = "d-flex gap-2 align-items-center my-2",
+        .btn("fetch", t("Update preview"), class = "btn-sm btn-outline-primary"),
+        help_tip(t(.preview_tip))),
+      shiny::uiOutput("ard_summary")))
 
-  step_content <- bslib::navset_underline(
-    id = "content_nav",
-    bslib::nav_panel(
-      t("Content"), value = "content",
+  step_content <- shiny::div(
+    class = "mt-2",
+      # the table's rework (process_code): its data made from the ARD, folded
+      # (a template report has none: its content is the template's)
+      shiny::div(class = "rp-code-only",
+                 shiny::conditionalPanel("output.report_kind == 'table'",
+                                         shiny::uiOutput("rework_table"))),
       # (a template report: its content is the template's, no R program)
       shiny::div(class = "rp-code-only", shiny::uiOutput("content_mode_bar")),
       shiny::conditionalPanel("output.content_is_code == 'yes'", code_step_ui("cc", t, lang)),
@@ -478,9 +569,13 @@ app_ui <- function(lang = "en") {
               shiny::uiOutput("builder_ard_card"),
               result_tabs_ui(
               "table_right", lang = lang, selected = "result",
-              # (a template report's: the ARD its template makes)
+              # (a template report's ARD, made in steps of its own before the
+              # report's: its code, the result)
+              ard_code = shiny::tagList(shiny::uiOutput("tpl_ard_code_head"), code_view("tpl_ard_code", lang)),
               ard = shiny::uiOutput("tpl_ard_pane"),
               spec = shiny::tagList(
+                # (in part scope: one line -- the sheets are the table's)
+                shiny::uiOutput("part_spec_note"),
                 shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_spec_yaml")),
                 shiny::div(class = "rp-code-only",
                 shiny::uiOutput("type_note"),
@@ -490,81 +585,80 @@ app_ui <- function(lang = "en") {
                 do.call(bslib::navset_card_underline,
                         c(list(id = "table_sheet"),
                           lapply(setdiff(table_sheets(), "codelists"), sheet_panel))))),
-              code = shiny::tagList(shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_code_ard")),
-                                    code_view("program_table", lang),
+              code = shiny::tagList(code_view("program_table", lang),
                                     shiny::uiOutput("builder_code_jump"),
                                     shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_code_expanded"))),
               result = shiny::tagList(
                 shiny::div(
-                  class = "d-flex justify-content-between small mb-1",
+                  class = "d-flex flex-wrap justify-content-between align-items-center gap-1 small mb-1",
                   shiny::span(t("The table as it will print"),
                               shiny::span(id = "builder_updating",
                                           class = "badge text-bg-warning ms-2 d-none",
                                           t("Updating ..."))),
-                  # (the same Update preview as the other steps', here too:
-                  # a template's step 1 has no other)
+                  # (Update preview is the ARD card's, above the tabs)
                   shiny::div(class = "d-flex gap-2 align-items-center",
-                             .btn("result_fetch", t("Update preview"),
-                                  class = "btn-sm btn-outline-primary py-0"),
                              shiny::uiOutput("builder_pages", inline = TRUE))),
                 shiny::uiOutput("builder_preview"))))))),
       shiny::conditionalPanel(
         "output.report_kind == 'listing' && output.content_is_code != 'yes'",
         shiny::uiOutput("lf_note"),
         bslib::layout_columns(
+          class = "rp-lf-split",
           col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
           shiny::div(
             shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_card_lf")),
             shiny::div(class = "rp-code-only",
                        shiny::uiOutput("lf_form"),
                        shiny::uiOutput("lf_cols_box"))),
+          # (a template listing: its Update preview above the tabs, the pane
+          # in view as the card scrolls)
+          shiny::div(
+            class = "rp-tpl-right",
+            shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_lf_bar")),
           result_tabs_ui(
             "lf_right", lang = lang, selected = "result",
+            # (a template listing's: as a table's -- its ARD, then the YAML)
+            ard_code = shiny::tagList(shiny::uiOutput("tpl_ard_code_head_lf"), code_view("tpl_ard_code_lf", lang)),
+            ard = shiny::uiOutput("tpl_ard_pane_lf"),
             spec = shiny::tagList(
-              shiny::p(class = "small text-muted",
-                       t("The listing's row of the definition (listings); its columns are the grid on the left.")),
-              rhandsontable::rHandsontableOutput("hot_lf_listings")),
-            code = code_view("program_lf", lang),
+              shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_spec_yaml_lf")),
+              shiny::div(
+                class = "rp-code-only",
+                pane_head(t("The listing's row"), t("The listing's row of the definition (listings); its columns are the grid on the left.")),
+                rhandsontable::rHandsontableOutput("hot_lf_listings"))),
+            code = shiny::tagList(code_view("program_lf", lang),
+                                  shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_code_expanded_lf"))),
             result = shiny::tagList(
-              shiny::div(class = "mb-2",
+              shiny::div(class = "mb-2 rp-code-only",
                          .btn("lf_preview", t("Preview the listing"),
                               class = "btn-sm btn-outline-primary")),
-              shiny::uiOutput("lf_preview_out"))))),
-      shiny::conditionalPanel("output.report_kind == 'figure'",
-                              shiny::div(class = "rp-tpl-only",
-                                         shiny::uiOutput("tpl_card_fig"), shiny::uiOutput("tpl_fig_out"))),
+              shiny::uiOutput("lf_preview_out")))))),
+      shiny::conditionalPanel(
+        "output.report_kind == 'figure'",
+        shiny::div(
+          class = "rp-tpl-only",
+          bslib::layout_columns(
+            col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
+            shiny::uiOutput("tpl_card_fig"),
+            # (a template figure: the table's five tabs, its picture the
+            # result, Update preview above them)
+            shiny::div(
+              class = "rp-tpl-right",
+              shiny::uiOutput("tpl_fig_bar"),
+              result_tabs_ui(
+                "fig_right", lang = lang, selected = "result",
+                ard_code = shiny::tagList(shiny::uiOutput("tpl_ard_code_head_fig"), code_view("tpl_ard_code_fig", lang)),
+                ard = shiny::uiOutput("tpl_ard_pane_fig"),
+                spec = shiny::uiOutput("tpl_spec_yaml_fig"),
+                code = shiny::tagList(code_view("program_fig", lang), shiny::uiOutput("tpl_code_expanded_fig")),
+                result = shiny::uiOutput("tpl_fig_out")))))),
       shiny::conditionalPanel("output.content_is_code != 'yes'",
-                              shiny::div(class = "rp-code-only", .designer_ui(t)))),
-    bslib::nav_panel(
-      t("Data code"), value = "code",
-      shiny::uiOutput("current_label"),
-      shiny::div(
-        class = "d-flex flex-wrap gap-2",
-        shiny::div(style = "flex: 3 1 20rem",
-                   shiny::textInput("description", t("Description"), width = "100%")),
-        shiny::div(style = "flex: 1 1 12rem",
-                   shiny::textInput("section", t("Section (heading)"), width = "100%",
-                                    placeholder = t("blank: from the ID")))),
-      shiny::div(
-        class = "rp-code",
-        shiny::conditionalPanel(
-          "output.report_kind == 'table' || output.report_kind == 'listing'",
-          shiny::textAreaInput(
-            "process_code",
-            with_tip(t("Rework"),
-                     paste(t("Rework: usually blank (the standard one). Write code to change the data before the table is made."),
-                           t("A table: make `data` from `ard` (normalize_ard(), then mutate() ...); blank = the company template (normalize). A listing: change `data` after its condition, before its order. (A whole step of your own code: R program at the top of step 1 or 2.)"))),
-            rows = 5, width = "100%", resize = "vertical",
-            placeholder = "data <- normalize_ard(ard)"),
-          shiny::div(
-            class = "d-flex gap-2 align-items-center mb-2",
-            .btn("fetch", t("Update preview"),
-                 class = "btn-sm btn-outline-primary"),
-            help_tip(t(.preview_tip))),
-          shiny::uiOutput("ard_summary")))))
+                              shiny::div(class = "rp-code-only", .designer_ui(t))))
 
   step_page <- shiny::div(
     class = "mt-2",
+    # (a template report's "page" arguments)
+    shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_card_page")),
     pane_head(t("This report's page"), t("The page of the report chosen on the left: its titles, footnotes, its own header or footer, and tokens of your own ({STUDY} ...). Study defaults = every report's.")),
     shiny::tags$style(shiny::HTML(.page_form_css)),
     shiny::tags$script(shiny::HTML(.page_form_js)),
@@ -590,6 +684,7 @@ app_ui <- function(lang = "en") {
       id = "page_split", class = "rp-split rp-lay-side rp-show-def",
       shiny::div(
         # the page as a form: each value with where it comes from
+        shiny::textInput("description", t("Description"), width = "100%"),
         shiny::uiOutput("page_form"),
         # the sheets themselves, the same rows
         shiny::tags$details(
@@ -628,6 +723,7 @@ app_ui <- function(lang = "en") {
     title = "tflplanner",
     # pages scroll: a grid squeezed to fit the window would be 0 px high
     fillable = FALSE,
+    lang = lang,
     theme = bslib::bs_theme(version = 5, preset = "shiny"),
     header = shiny::tagList(shiny::tags$style(shiny::HTML(.code_css)),
                             # a function picked on the ARD form: its list closes
@@ -639,7 +735,10 @@ app_ui <- function(lang = "en") {
                               "  if (e.target.matches && e.target.matches('details.ard-fn') && e.target.open)",
                               "    Shiny.setInputValue('ard_fn_opened', Date.now(), {priority: 'event'});",
                               "}, true);"))),
-                            shiny::tags$script(shiny::HTML(.split_js)),
+                            shiny::tags$script(shiny::HTML(
+                              sub("drag to resize", t("drag to resize"), .split_js, fixed = TRUE))),
+                            shiny::tags$style(shiny::HTML(.error_note_css)),
+                            shiny::tags$script(shiny::HTML(.error_note_js)),
                             shiny::tags$style(shiny::HTML(.result_tabs_css)),
                             shiny::tags$style(shiny::HTML(.builder_cards_css)),
                             shiny::tags$script(shiny::HTML(.builder_cards_js)),
@@ -654,6 +753,7 @@ app_ui <- function(lang = "en") {
                             shiny::tags$script(shiny::HTML(.help_tip_js)),
                             shiny::tags$script(shiny::HTML(.result_tabs_js)),
                             shiny::tags$script(shiny::HTML(.unsaved_js)),
+                            shiny::tags$script(shiny::HTML(.modal_scroll_js)),
                             shiny::tags$script(shiny::HTML(.updating_js)),
                             shiny::tags$script(shiny::HTML(.report_pick_js)),
                             shiny::tags$script(shiny::HTML(.dt_adjust_js)),
@@ -752,7 +852,8 @@ app_ui <- function(lang = "en") {
               shiny::uiOutput("catalog_files_note"),
               shiny::div(
                 class = "d-flex gap-2 align-items-end mt-2 rp-upload",
-                shiny::fileInput("data_upload", t("Add files"), multiple = TRUE)),
+                shiny::fileInput("data_upload", t("Add files"), multiple = TRUE,
+                                 buttonLabel = t("Browse..."), placeholder = t("No file selected"))),
               shiny::div(class = "d-flex gap-2 align-items-center",
                          .btn("data_refresh", t("Refresh")),
                          .btn("data_open", t("Open folder")),
@@ -794,7 +895,7 @@ app_ui <- function(lang = "en") {
         bslib::nav_panel(
           paste0(t("Populations"), " (populations)"), value = "populations",
           pane_head(paste0(t("Populations"), " (populations)"),
-                    paste(t("An analysis set: the subjects of a dataset that a condition keeps (SAFFL == \"Y\"). The Data of an analysis, 1-1\'s Population and a percent\'s denominator choose from here."), edit_note)),
+                    paste(t("An analysis set: the subjects of a dataset that a condition keeps (SAFFL == \"Y\"). The Data of an analysis, the analysis data\'s Population and a percent\'s denominator choose from here."), edit_note)),
           rhandsontable::rHandsontableOutput("hot_ard_populations"),
           shiny::tags$details(
             class = "rp-help mt-2",
@@ -847,6 +948,7 @@ app_ui <- function(lang = "en") {
         shiny::div(class = "rp-report-loading text-muted my-3", t("Loading ...")),
         bslib::navset_pill(
           id = "step",
+          bslib::nav_panel(step_title("data"), value = "data", step_data),
           bslib::nav_panel(step_title("ard"), value = "ard", step_ard),
           bslib::nav_panel(step_title("content"), value = "content", step_content),
           bslib::nav_panel(step_title("page"), value = "page", step_page)))),

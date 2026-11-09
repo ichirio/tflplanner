@@ -133,7 +133,7 @@ set_report_datasets <- function(x, output_id, datasets) {
 # tflspec::tfl_check_code() (U01-U05).
 .code_rules <- c(
   "Register the datasets it reads (above the data step's code). The program reads them first, by their names in lower case (adsl, advs); the code does not read files itself (readRDS(), read_xpt() ...).",
-  "Its ARD through the report: a table's ARD definition or the ARD taken in, a figure's ARD source (step 1). This report's ARD rows are `ard`; the code does not read ard.rds itself.",
+  "Its ARD through the report: a table's ARD definition or the ARD taken in, a figure's ARD source (step %s). This report's ARD rows are `ard`; the code does not read ard.rds itself.",
   "Each step leaves what the next one reads: the data step `data` (a figure: `df`; a table may leave `ard`, normalized for it), the content step `content` -- a table plan, a data frame, rtftable pages, a ggplot or rtfplot, or a list of them.",
   "Code inside the definition stays there: a table's or a listing's rework, a figure's code step or code layer. R program makes the whole step your code.",
   "No library(): the study's setup attaches its packages (the figures': ggplot2, patchwork, dplyr and those of its designs); call others as pkg::fn().",
@@ -145,7 +145,9 @@ set_report_datasets <- function(x, output_id, datasets) {
   # (`name`: code)
   coded <- function(x) shiny::HTML(gsub("`([^`]+)`", "<code>\\1</code>", htmltools::htmlEscape(x)))
   shiny::tagList(
-    shiny::tags$ol(class = "small", lapply(.code_rules, function(r) shiny::tags$li(coded(t(r))))),
+    shiny::tags$ol(class = "small", lapply(.code_rules, function(r) shiny::tags$li(coded(
+      # (the rule that names the ARD step does so by its number)
+      if (grepl("%s", r, fixed = TRUE)) sprintf(t(r), .step_no("ard")) else t(r))))),
     shiny::p(class = "small text-muted",
              coded(t("The code is checked as you write it (under the code) and in Review: a dataset it reads that is not registered, nothing left for the next step, files read or packages attached, `ard` where the report reads none (rules U01-U05)."))))
 }

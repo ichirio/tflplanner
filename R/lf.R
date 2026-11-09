@@ -119,6 +119,16 @@ set_lf_rows <- function(x, sheet, output_id, rows) {
   c(items = if (!is.null(l$content_more)) n_yaml(l$content_more) else 0L,
     columns = if (!is.null(cl$more)) sum(!is.na(cl$more) & nzchar(trimws(cl$more))) else 0L)
 }
+# A listing with items its sheets cannot say (`page_by` ...: a template
+# listing converted to code has them) after an edit of its sheets: the
+# spec takes the edit in, so its program and preview are the content with
+# the edit, not the sheets' code without those items (.is_template_listing())
+.lf_follow_content <- function(p, output_id) {
+  if (is.null(p$spec) || !.lf_more_count(p, output_id)[["items"]]) return(p)
+  p <- .spec_sync(p, p$spec$meta)
+  attr(p, "changed") <- NULL
+  p
+}
 .lf_more_note <- function(x, output_id, t = identity) {
   n <- .lf_more_count(x, output_id)
   if (!sum(n)) return(NULL)
@@ -245,6 +255,13 @@ listing_types <- function() company_standards()$listing_types
 #' options(old)
 #' @export
 preview_listing <- function(study, output_id) {
+  # a template listing whose definition does not hold: that, as one message
+  if (.is_template_listing(study$planner, output_id)) {
+    sp <- .code_spec(study$planner)
+    tryCatch(tflspec::tfl_resolve_output(sp$outputs[[output_id]], sp$study),
+             error = function(e) stop(sprintf(tr("The definition of %s does not hold: %s"),
+                                              output_id, conditionMessage(e)), call. = FALSE))
+  }
   code <- data_lines(study$planner, output_id, todo = FALSE)
   if (is.null(code)) stop("The listing has no data yet.", call. = FALSE)
   code <- c(.report_id_line(output_id), code)
@@ -252,6 +269,11 @@ preview_listing <- function(study, output_id) {
   on.exit(setwd(owd), add = TRUE)
   e <- new.env(parent = .helpers_env(asNamespace("rtfreporter")))
   eval(parse(text = code, encoding = "UTF-8"), envir = e)
+  # a template listing: the template's content on its records, as its
+  # program plans it
+  if (.is_template_listing(study$planner, output_id)) {
+    return(.preview_content_pages(study$planner, output_id, as.data.frame(e$data)))
+  }
   content <- e$content
   if (inherits(content, "rtftable")) content <- list(content)
   content

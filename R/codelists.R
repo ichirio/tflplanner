@@ -12,6 +12,14 @@
 # read (by, strata, variables), the columns its analysis data, datasets and
 # populations derive, what its table shows (tables rows / cols, the
 # variables sheet).  A superset is fine: it only narrows the grid.
+# The note for a study that still has spec/codelists.yml (tflspec no longer
+# reads it; its message goes to the console only): the English text, or NULL.
+.old_codelists_note <- function(path) {
+  if (!is.character(path) || length(path) != 1L || is.na(path) || !nzchar(path)) return(NULL)
+  if (!file.exists(file.path(path, "spec", "codelists.yml"))) return(NULL)
+  "spec/codelists.yml is not read: a code list is now a report's or a layer's. Its rows have no effect; the file is left as it is."
+}
+
 .codelist_vars <- function(x, output_id) {
   if (is.null(output_id)) return(character())
   bar <- function(v) unlist(lapply(v[!is.na(v)], .split_bar))
@@ -148,7 +156,8 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
       shiny::tags$summary(t("Read a file into this report")),
       shiny::fileInput(
         p("file"), t("A code list (xlsx / csv: variable, value, label, order, under)"),
-        accept = c(".xlsx", ".csv"), width = "100%")),
+        accept = c(".xlsx", ".csv"), width = "100%",
+        buttonLabel = t("Browse..."), placeholder = t("No file selected"))),
     shiny::tags$details(
       class = "rp-help mt-2",
       shiny::tags$summary(t("Column help")),
@@ -246,7 +255,7 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
       shiny::p(class = "small text-muted",
                t("The rows copied are this report's own: change them here, and the source stays as it is. A value this report has already is replaced.")),
       footer = shiny::tagList(.btn(p("copy_cancel"), t("Cancel"), class = "btn-outline-secondary"),
-                              .btn(p("copy_ok"), t("Copy"), class = "btn-primary"))))
+                              .btn(p("copy_ok"), t("Copy the lists"), class = "btn-primary"))))
   }
   shiny::observeEvent(input[[p("copy")]], open_copy())
   shiny::observeEvent(input[[p("copy_cancel")]], back())
@@ -394,7 +403,7 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
 
 .moved_headings_msg <- paste(
   "The code lists' rows of `variable` (the variables' headings) are the table's labels now",
-  "(step 2, a variable's label): moved there.  Save the study to keep it.")
+  "(step %s, a variable's label): moved there.  Save the study to keep it.")
 
 .old_format_msg <- paste(
   "This study is in an old format: its analysis data and code lists are the whole study's, not a report's.",
@@ -667,7 +676,7 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
 # The ids of a place's code lists part, from its stem (`adata_cl`) and
 # its dialog's prefix (`cl21`)
 .codelist_part_ids <- function(stem, prefix, edit = paste0(prefix, "_open"),
-                               copy = paste0(prefix, "_copy")) {
+                               copy = paste0(prefix, "_copy_btn")) {
   c(edit = edit, copy = copy, add = paste0(stem, "_add"),
     pick = paste0(stem, "_pick"), new = paste0(stem, "_new"),
     close = paste0(stem, "_close"), detail = paste0(stem, "_detail"),

@@ -1,5 +1,5 @@
 # The study definition as tflspec's YAML spec (2026-10-15): study.yml and
-# spec/ (data.yml, defaults.yml, codelists.yml, toc.yml, patterns/,
+# spec/ (data.yml, defaults.yml, toc.yml, patterns/,
 # outputs/<id>.yml), one file a report.  The planner holds the spec itself
 # and the sheets every screen edits are a view of it (spec_model.R, #407);
 # the view's edits go back through tflspec's tfl_yaml_from_sheets().  A study whose
@@ -26,7 +26,7 @@
 # of what it could not convert and the backups are not the study's)
 .spec_files_yaml <- function(root) {
   sp <- study_layout()[["spec"]]
-  f <- c(.study_file, file.path(sp, c("data.yml", "defaults.yml", "codelists.yml", "toc.yml")))
+  f <- c(.study_file, file.path(sp, c("data.yml", "defaults.yml", "toc.yml")))
   for (d in c("patterns", "outputs")) {
     dd <- file.path(root, sp, d)
     if (dir.exists(dd)) {

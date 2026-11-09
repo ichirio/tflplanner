@@ -18,17 +18,36 @@
 .ai_drafts_on <- function() !isFALSE(getOption("tflplanner.ai_drafts", TRUE))
 
 # A path typed, with Browse... (the computer's dialog) beside it when one
-# can be opened: an input group, as tall as shiny's upload field
-.ai_path_input <- function(id, label, placeholder, browse_id, browse_label) {
+# can be opened: an input group, as tall as shiny's upload field.
+# `commit_id`: the input the page sets (priority "event") with the path
+# typed or pasted when Enter is pressed or the field is left, and clears
+# the field (the references: .ai_draft_js).
+.ai_path_input <- function(id, label, placeholder, browse_id, browse_label, commit_id = NULL) {
   shiny::div(
     class = "form-group shiny-input-container",
     shiny::tags$label(class = "control-label", id = paste0(id, "-label"), `for` = id, label),
     shiny::div(
       class = "input-group",
-      shiny::tags$input(id = id, type = "text", class = "form-control", value = "",
-                        placeholder = placeholder),
+      shiny::tags$input(id = id, type = "text", value = "", placeholder = placeholder,
+                        class = paste("form-control", if (!is.null(commit_id)) "ai-commit"),
+                        `data-commit` = commit_id),
       if (.ai_dialog_ok()) shiny::actionButton(browse_id, browse_label,
                                                class = "btn-outline-secondary ai-browse")))
+}
+
+# A kind's label: its own text (the key's prefix, 'ai-review:', is not shown in English)
+.ai_review_label <- function(kind, t) sub("^ai-review:", "", t(paste0("ai-review:", kind)))
+
+# The review depth's choices (study.yml's ai: review), by their stored text
+.ai_review_choices <- function(t) {
+  stats::setNames(c("none", "0", "1", "2", "3"),
+                  c(t("None"), t("0 check"), t("1 + program"), t("2 + facts"), t("3 + output")))
+}
+
+# How the agent works through the requests (study.yml's ai: run): the choices
+# by their stored text.
+.ai_run_choices <- function(t) {
+  stats::setNames(c("one", "batch"), c(t("One request at a time"), t("Everything together")))
 }
 
 #' @noRd
@@ -65,6 +84,8 @@ ai_ui <- function(id, lang = "en") {
               choiceNames = list(t("The open study"), paste0(t("New study"), " (tfl_ai_study_init)")),
               choiceValues = c("open", "new"), selected = "open"),
             shiny::uiOutput(ns("open_name")),
+            # (step 1 filled from the study's ai/step1.yml; its sheet roles that fit no sheet)
+            shiny::uiOutput(ns("step1_note")),
             shiny::conditionalPanel(
               "input.study_mode == 'new'", ns = ns,
               shiny::div(
@@ -137,6 +158,7 @@ ai_ui <- function(id, lang = "en") {
             .ai_path_input(ns("adam_spec"),
                            paste0(t("ADaM spec (P21 Spec workbook or define.xml)"), " (adam_spec / define)"),
                            "C:/.../define.xml", ns("adam_spec_browse"), t("Browse...")),
+            shiny::uiOutput(ns("adam_spec_check")),
             shiny::div(
               class = "d-flex flex-wrap gap-2 align-items-end",
               shiny::selectInput(ns("toc_sheet"), paste0(t("TOC sheet"), " (toc_sheet)"),
@@ -157,6 +179,23 @@ ai_ui <- function(id, lang = "en") {
                                                            c(t("Japanese"), t("English"), t("the chat's"))),
                                  selected = if (identical(lang, "ja")) "Japanese" else "English",
                                  width = "14rem", selectize = FALSE)),
+            # how deep the agent checks what it built, a level a kind
+            # (study.yml's ai: review; changed here, written at once)
+            shiny::div(
+              class = "mb-2",
+              shiny::tags$label(class = "control-label",
+                                with_tip(paste0(t("Review depth"), " (ai: review)"),
+                                         t("How far the agent checks what it built, by kind of report. None: the agent does not build it (you run run.R). 0: the check alone. 1: + the report's program. 2: + the facts (what R made, in words). 3: + the output (a figure's PNG, a table's pages). Written into study.yml's ai: review."))),
+              shiny::div(
+                class = "d-flex flex-wrap gap-2 align-items-end",
+                shiny::selectInput(ns("review_figure"), .ai_review_label("Figures", t), choices = .ai_review_choices(t),
+                                   selected = "3", width = "10rem", selectize = FALSE),
+                shiny::selectInput(ns("review_table"), .ai_review_label("Tables", t), choices = .ai_review_choices(t),
+                                   selected = "2", width = "10rem", selectize = FALSE),
+                shiny::selectInput(ns("review_listing"), .ai_review_label("Listings", t), choices = .ai_review_choices(t),
+                                   selected = "1", width = "10rem", selectize = FALSE)),
+              shiny::div(class = "small text-muted",
+                         t("0 check only, 1 + the program, 2 + the facts, 3 + the output; None: you run run.R."))),
             shiny::checkboxInput(ns("add"), paste0(t("Add to the earlier requests"), " (add)"),
                                  value = FALSE),
             shiny::checkboxInput(ns("templates"), paste0(t("Use the templates"), " (templates)"),
@@ -177,18 +216,17 @@ ai_ui <- function(id, lang = "en") {
                 value = 3L, min = 0L, step = 1L, width = "14rem"),
               .ai_path_input(ns("ref_path"),
                              with_tip(paste0(t("Add a reference"), " (docs)"),
-                                      t("Only the files chosen here (a SAP, say), named in AGENTS.md. One in the study folder is read where it is (a .docx / .pdf / .xlsx gets a text copy in ai/docs/); one from elsewhere is copied into ai/docs/. None: the agent reads none.")),
-                             "C:/.../SAP.pdf", ns("ref_browse"), t("Browse...")),
-              shiny::div(class = "d-flex gap-2 mb-2",
-                         .btn(ns("ref_add"), t("Add"), class = "btn-sm btn-outline-secondary")),
+                                      t("Only the files chosen here (a SAP, say), named in AGENTS.md. Choose a file with Browse..., or type or paste its path and press Enter (or leave the field): it is added to the list below at once, and the \u00d7 beside it removes it. One in the study folder is read where it is (a .docx / .pdf / .xlsx gets a text copy in ai/docs/); one from elsewhere is copied into ai/docs/. None: the agent reads none.")),
+                             "C:/.../SAP.pdf", ns("ref_browse"), t("Browse..."), commit_id = ns("ref_commit")),
               shiny::uiOutput(ns("ref_list"))),
             shiny::div(
               class = "d-flex flex-wrap gap-2 align-items-center",
               .btn(ns("read"), paste0(t("Read and check"), " (dry_run)"), class = "btn-sm btn-outline-primary"),
-              help_tip(t("Reads the workbook and the ADaM and writes nothing; what was read shows on the right. Check there: every report found its shell (TOC: the shell column), the reports in parts, the types, how the reports go into requests; the ADaM summary that is sent (no records); the sheets and what each was taken for. Then Write the requests.")),
+              help_tip(t("Reads the workbook and the ADaM and writes no requests; what was read shows on the right. Check there: every report found its shell (TOC: the shell column), the reports in parts, the types, how the reports go into requests; the ADaM summary that is sent (no records); the sheets and what each was taken for. Then Write the requests. A study that already has an ai/ folder keeps step 1's settings and the corrected report numbers there.")),
               .btn(ns("write"), t("Write the requests"), class = "btn-sm btn-primary"),
               shiny::uiOutput(ns("write_note"), inline = TRUE)),
-            shiny::uiOutput(ns("prep_status"))),
+            shiny::uiOutput(ns("prep_status")),
+            shiny::uiOutput(ns("data_paths"))),
           bslib::card(
             bslib::card_header(t("What was read (dry_run = TRUE)")),
             shiny::uiOutput(ns("prep_empty")),
@@ -227,6 +265,20 @@ ai_ui <- function(id, lang = "en") {
             t("Give the agent the first message above; it reads these requests itself, in their order, asks in its chat what it cannot decide, and writes each report's SPEC draft (ai/spec/outputs/<id>.yml). Everything else is between you and the agent, in its chat."))),
           .btn(ns("open_requests"), t("Open the folder")),
           .btn(ns("reread"), t("Read again"))),
+        # how the agent works through the requests (study.yml's ai: run; changed here, written at once)
+        shiny::div(
+          class = "mb-2",
+          shiny::selectInput(ns("run"),
+                             with_tip(paste0(t("How the agent works through the requests"), " (ai: run)"),
+                                      c(
+                                        t("One request at a time (recommended): the agent does one request (its questions, its drafts, its build), then asks what next: the next one, the next N, or all the rest together. Try one, check it, then send the rest in one go."),
+                                        t("Everything together: the agent works through every request with defaults and asks all its questions once at the end. For 50 shells / 100 reports: a first run of about 2.5-5 h, then about 25 questions and a short list of the defaults it chose (20-40 min to read), then 5-15 min to rework only the reports affected (about 1 min each)."),
+                                        t("In a batch, read every default the agent took (ai/defaults.md), not only the questions."),
+                                        t("For a long run: raise VS Code's chat.agent.maxRequests (25 by default) and allow Rscript without asking (chat.tools.terminal.autoApprove). With VS Code's auto-summarize on, a restart is rarely needed; otherwise expect about 5 clean stops (/compact or a new chat, then c)."),
+                                        t("Times are estimates from a 24-report test (about 1.4 min a request, at the default review depth). Written into study.yml's ai: run."))),
+                             choices = .ai_run_choices(t), selected = .ai_run_default,
+                             width = "18rem", selectize = FALSE),
+          shiny::uiOutput(ns("run_help"))),
         shiny::uiOutput(ns("agent_card")),
         DT::DTOutput(ns("requests"))),
       bslib::nav_panel(
@@ -280,6 +332,18 @@ ai_ui <- function(id, lang = "en") {
     b.textContent = '\\u2713';
     setTimeout(function() { b.textContent = was; }, 1200);
   }
+  // a path typed or pasted into a field that adds it to a list (the
+  // references): added on Enter or when the field is left, the field cleared
+  function commit(el) {
+    var v = (el.value || '').trim();
+    if (!v || !el.dataset.commit) return;
+    $(el).val('').trigger('input');
+    Shiny.setInputValue(el.dataset.commit, {value: v, n: Date.now()}, {priority: 'event'});
+  }
+  $(document).on('keydown', '.ai-commit', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); commit(this); }
+  });
+  $(document).on('focusout', '.ai-commit', function() { commit(this); });
   $(document).on('click', '.ai-open', function() {
     Shiny.setInputValue(this.dataset.ns + 'open_report', {id: this.dataset.id, item: this.dataset.item || null, n: Date.now()},
                         {priority: 'event'});

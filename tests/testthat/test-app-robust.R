@@ -286,7 +286,7 @@ test_that("the builder of a table with no definition yet writes one, and keeps t
   shiny::testServer(server_for("B1"), {
     rv <- session$userData$rv
     bform <- session$userData$bform
-    session$setInputs(target = "T-DM", nav = "make", step = "content", content_nav = "content", table_nav = "builder")
+    session$setInputs(target = "T-DM", nav = "make", step = "content", table_nav = "builder")
     b <- function(x) paste0("b", bform$n, "_", x)
     v <- list(TRT01A = NULL)
     v[[b("key")]] <- "TRT01A"
@@ -309,10 +309,11 @@ test_that("a table with no ARD says so, and offers the one Preview", {
   local_home()
   create_study("P1", planner = add_output(new_planner(), "T1", type = "table"))
   shiny::testServer(server_for("P1"), {
-    session$setInputs(target = "T1", nav = "make", step = "content", content_nav = "content", table_nav = "builder")
+    session$setInputs(target = "T1", nav = "make", step = "content", table_nav = "builder")
     expect_match(output$assist$html, "Not made")
     expect_match(output$assist$html, 'id="fetch2"')
-    expect_match(output$builder_note$html, 'id="fetch3"')
+    expect_match(output$builder_note$html, "no ARD yet")
+    expect_false(grepl('id="fetch3"', output$builder_note$html, fixed = TRUE))
   })
 })
 
@@ -347,9 +348,10 @@ test_that("a step's right is SPEC | Code | Result, the form on its left", {
     v <- vapply(links, function(x) x$attribs[["data-value"]] %||% "", "")
     unname(v[nzchar(v)])
   }
-  for (id in c("ard_right", "table_right", "lf_right", "dc_right", "cc_right", "page_right")) {
-    # (the table's: an ARD tab first, a template report's -- #440)
-    want <- c(if (identical(id, "table_right")) "ard", "spec", "code", "result")
+  for (id in c("ard_right", "table_right", "lf_right", "fig_right", "dc_right", "cc_right", "page_right")) {
+    # (a template report's: SPEC, then the ARD's own two -- #440, #514)
+    want <- if (id %in% c("table_right", "lf_right", "fig_right")) c("spec", "ard_code", "ard", "code", "result") else
+      c("spec", "code", "result")
     expect_identical(vals(id), want, info = id)
   }
   # the table: the sheets in SPEC, the preview in Result, the builder beside
@@ -374,11 +376,12 @@ test_that("the top tabs are the flow, and a report is made in its steps", {
     unname(v[nzchar(v)])
   }
   expect_identical(vals("nav"), c("study", "data", "ai", "outputs", "make", "review", "results"))
-  expect_identical(vals("step"), c("ard", "content", "page"))
-  expect_identical(vals("content_nav"), c("content", "code"))
+  expect_identical(vals("step"), c("data", "ard", "content", "page"))
+  # (the Content step has no tabs of its own)
+  expect_identical(vals("content_nav"), character())
   expect_identical(vals("page_right"), c("spec", "code", "result"))
   # the steps' names are in one place
-  expect_identical(names(.step_labels), c("ard", "content", "page"))
+  expect_identical(names(.step_labels), c("data", "ard", "content", "page"))
   html <- as.character(app_ui())
   # each kind's content shows for its kind only
   for (k in c("table", "listing", "figure")) {
@@ -400,6 +403,17 @@ test_that("the page sample puts a report's lines over the study defaults", {
   expect_match(h, "Table 1")
   expect_true(regexpr("Company", h) < regexpr("Table 1", h))
   expect_match(h, "BODY")
+})
+
+test_that("the page sample leaves out a title line that is only {PAGE_HEADING}", {
+  p <- new_planner()
+  p <- add_output(p, "T1")
+  p <- set_sheet_rows(p, "titles", "T1", data.frame(
+    line = c("1", "2", "3"), center = c("Table 1", NA, "Pop"),
+    left = c(NA, "{PAGE_HEADING}", NA)))
+  h <- as.character(.page_sample_html(p, "T1", "S-01", htmltools::div("BODY")))
+  expect_false(grepl("PAGE_HEADING", h, fixed = TRUE))
+  expect_equal(lengths(regmatches(h, gregexpr("rp-page-line title", h, fixed = TRUE))), 2L)
 })
 
 test_that("with no study, the app offers the ways to start, the sample first", {
@@ -514,6 +528,23 @@ test_that("a preview's spanning header cells span their columns", {
   expect_match(h, 'colspan="2"[^>]*>Active')
   expect_match(h, "SOC<br>PT")
   expect_match(h, "Placebo")
+})
+
+test_that("a preview's pages share one column layout", {
+  mk <- function(a, ...) structure(list(
+    data = data.frame(a = a, b = c("1", "2"), stringsAsFactors = FALSE),
+    col_header = list(c("Name", "N")), ...), class = "rtftable")
+  # the report's widths, as the RTF lays out: the same on each page
+  h <- as.character(preview_html(
+    list(mk(c("x", "y"), col_rel_width = c(3, 1)), mk(c("long text here", "z"), col_rel_width = c(3, 1))),
+    align = "left"))
+  expect_equal(lengths(regmatches(h, gregexpr("width: 75.000%", h, fixed = TRUE))), 2L)
+  expect_equal(lengths(regmatches(h, gregexpr("width: 25.000%", h, fixed = TRUE))), 2L)
+  # no widths: the longest line over the pages shown, on each of them
+  h <- as.character(preview_html(list(mk(c("x", "y")), mk(c("long text here", "z")))))
+  expect_equal(lengths(regmatches(h, gregexpr("calc(14ch + 12px)", h, fixed = TRUE))), 2L)
+  # a table too wide for the card scrolls in its own box
+  expect_match(h, "rp-pv-wrap", fixed = TRUE)
 })
 
 test_that("tflspec's column help (English) is shown in the app's language", {

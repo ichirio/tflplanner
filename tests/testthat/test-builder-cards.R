@@ -221,7 +221,7 @@ test_that("a card whose on / off cannot work has no switch", {
 
 test_that("the badge says where a value came from; own has its mark when named", {
   expect_match(html(from_badge("own", own = "This table")), ">This table<", fixed = TRUE)
-  expect_match(html(from_badge("own", "ja", own = "This table")), "この表", fixed = TRUE)
+  expect_match(html(from_badge("own", "ja", own = "This table")), "この Table", fixed = TRUE)
   expect_null(from_badge("own"))
   expect_null(from_badge(NULL))
   h <- html(from_badge("defaults"))
@@ -459,6 +459,7 @@ test_that("a type's kind picks the field", {
   expect_identical(.arg_kind("list<column>"), "list")
   expect_identical(.arg_kind("vec<string, column>|map<string, column|guard>|list<column>"), "list")
   expect_identical(.arg_kind("list<number>|r"), "list")
+  expect_identical(.arg_kind("list<date|string|number>|r"), "list")
   expect_identical(.arg_kind("r|list<number>"), "list")
   expect_identical(.arg_kind("enum[sas|r|iec60559]"), "enum")
   expect_identical(.type_enum("enum[sas|r|iec60559]"), c("sas", "r", "iec60559"))
@@ -530,7 +531,7 @@ test_that("the ARD preview, the form as drawn and its other arguments leave the 
     shiny::testServer(server_for("SAMPLE-01"), {
       session$setInputs(target = id, nav = "make", step = "content", content_nav = "content",
                         table_nav = "builder")
-      session$setInputs(fetch3 = 1)
+      session$setInputs(b_preview = 1)
       session$elapse(2000)
       expect_false(session$userData$dirty())
       bf <- session$userData$bform

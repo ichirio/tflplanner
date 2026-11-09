@@ -16,6 +16,7 @@
   min_pct = "Minimum percentage to keep",
   min_pct_in = "Where minimum applies",
   count_cell = "Count cell format",
+  sd_missing = "Missing SD",
   denominator = "Percentage denominator",
   total = "Total column",
   exposure = "Exposure days variable",
@@ -90,6 +91,7 @@
   legend_title = "Legend title",
   legend_median = "Median in the legend",
   legend_median_digits = "Decimals of the legend's median",
+  legend_median_text = "Wording of the legend's median",
   pvalue = "Log-rank p-value",
   pvalue_location = "P-value position",
   title = "Figure title",
@@ -130,12 +132,41 @@
   label = "Row label heading",
   by_response = "Colour bars by response",
   worst = "Worst post-baseline category",
+  worst_by = "Worst order by parameter",
+  percent_of = "Percent of",
   missing_label = "Missing-baseline row label",
   total_label = "All-subjects row label",
   param_page = "One page per parameter",
-  param_heading = "Parameter page name"
+  header_n = "Subjects in the arm headings (N=)",
+  param_heading = "Parameter page name",
+  time_order = "Time point order variable",
+  times = "Time points, in order",
+  blq = "BLQ records",
+  blq_label = "Text for a BLQ value",
+  subject = "Subject row label",
+  subject_heading = "Subject column heading",
+  time_heading = "Heading over the time points",
+  summary_label = "Summary heading row",
+  stats = "Summary statistics rows",
+  split_at = "Time point that starts a second column block",
+  favours = "Favours labels",
+  x_breaks = "Hazard ratio axis ticks",
+  size_by_n = "Point size by subjects",
+  bold_headings = "Bold subgroup headings",
+  n_by_arm = "Events/N by arm",
+  subgroup_labels = "Subgroup headings' labels",
+  post_header = "Header over each post-baseline category",
+  by_break = "How the listing is divided",
+  by_heading = "Page heading",
+  by_na_label = "Text for a blank value",
+  adjust = "Multiplicity adjustment"
 )
 
 .tpl_doc_labels <- c(
-  "the curves' variable (survfit2(~ by), the colours)" = "Variable that splits the curves"
+  "the curves' variable (survfit2(~ by), the colours)" = "Variable that splits the curves",
+  "a page's name in the titles ({<group>}: its value); NULL: the groups' values, a line each" =
+    "Page name in the titles",
+  "the groups: a page each (an analyte, an arm), the summary's too" = "Variable that splits the pages",
+  "the variables that divide the listing (`by_break`); the records are ordered by them first, then by `sort`" =
+    "Variables that divide the listing"
 )

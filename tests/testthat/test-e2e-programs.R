@@ -190,9 +190,10 @@ test_that("every template of tflspec makes its report in an official run", {
                    waterfall = first(dat$adtr$PARAMCD))
   data_of <- list(ancova = "ADLB", listing = "ADAE", param_change = "ADLB")
   # (km_table and stat_block read an ARD defined in the ARD step: not from
-  # the template alone)
+  # the template alone; pk_conc reads ADPC, which this study has not: its ARD
+  # definition would not hold, and no report would have an ARD)
   tp <- tflspec::tfl_templates()
-  tp <- tp[!tp$name %in% c("km_table", "stat_block"), , drop = FALSE]
+  tp <- tp[!tp$name %in% c("km_table", "stat_block", "pk_conc"), , drop = FALSE]
   pops <- s$planner$ard$populations
   saf <- as.list(pops[match("SAF", pops$population_id), intersect(c("population_id", "dataset", "where"),
                                                                     names(pops)), drop = FALSE])
@@ -208,6 +209,8 @@ test_that("every template of tflspec makes its report in an official run", {
       args[[x$name]] <- .tpl_value(v, .tpl_type(x), x)
     }
     if (identical(n, "summary")) args <- c(args, list(continuous = "AGE", categorical = "SEX"))
+    # (km's param is not required, but ADTTE has several: tflspec#727 stops then)
+    if (identical(n, "km")) args$param <- first(dat$adtte$PARAMCD)
     pop <- if (!is.null(args$population)) "SAF" else NA_character_
     steps <- NULL
     if (.tpl_own_data(prm)) {

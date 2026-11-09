@@ -7,7 +7,7 @@ test_that("the sample reads, writes and reads back unchanged", {
   skip_on_cran()
   p <- read_planner(sample_paths())
   expect_equal(p$outputs$output_id, c("DM", "AE", "ORR", "LB", "PK"))
-  p$outputs$process_code[1] <- "data <- normalize_ard(ard)\n# two lines"
+  p$outputs$process_code[1] <- "data <- data |> dplyr::mutate(x = 1)\n# two lines"
   p <- set_step_code(p, "AE", "content", "content <- 1\n# two lines")
   p$outputs$description[2] <- "有害事象"
   p$setup <- "library(cards)"

@@ -16,8 +16,37 @@
 args_to_r <- function(fn, args) {
   args <- args[!vapply(args, inherits, NA, "tfl_unset")]
   if (!length(args)) return("")
-  if (.args_known(fn)) return(tflspec::tfl_args_to_r(fn, args))
+  if (.args_known(fn)) return(tflspec::tfl_args_to_r(fn, .args_only_r_text(fn, args)))
   .args_to_r_own(fn, args)
+}
+
+# A string in an argument that takes only R (plan_filter's where) is that R's
+# text, not a string: `where: AGE >= 18` in the file is the condition, and one
+# tflspec's check refuses (between(AGE, 1, 2)) is shown as written, to be fixed
+.args_only_r_text <- function(fn, args) {
+  for (a in names(args)) {
+    if (nzchar(a) && .type_only_r(.arg_schema_type(fn, a))) args[[a]] <- .only_r_value(args[[a]])
+  }
+  args
+}
+
+.only_r_value <- function(v) {
+  if (is.object(v)) return(v)
+  if (is.character(v) && length(v) == 1L) return(tflspec::tfl_r(v))
+  if (is.list(v) || is.character(v)) return(lapply(v, .only_r_value))
+  v
+}
+
+# the argument's type in the schema, `...`'s for the name it collects; NULL: none
+.arg_schema_type <- function(fn, a) {
+  ent <- .schema_of(fn)
+  ent$args[[a]]$type %||% (if (identical(ent$dots$key, a)) ent$dots$type)
+}
+
+# does the type take only R?  (r, formula, a list of r, or either of these)
+.type_only_r <- function(type) {
+  if (is.null(type) || !nzchar(type)) return(FALSE)
+  all(trimws(.type_split(trimws(type), "|")) %in% c("r", "formula", "list<r>"))
 }
 
 # the app's own: each value by .arg_to_r()
@@ -106,11 +135,14 @@ args_from_r <- function(fn, text) {
 # The problems tflspec's check found in arguments read back from R (its
 # `problems`, a data frame of fn, arg, level, message) as lines of text;
 # none: character()
-.args_problems <- function(args) {
+.args_problems <- function(args, t = identity) {
   pr <- attr(args, "problems")
   if (!is.data.frame(pr) || !nrow(pr)) return(character())
   arg <- ifelse(is.na(pr$arg) | !nzchar(pr$arg), "", paste0("`", pr$arg, "` "))
-  paste0(pr$level, ": ", arg, pr$message)
+  # (a message that starts with the argument's name says it already)
+  arg <- ifelse(nzchar(arg) & startsWith(pr$message, arg), "", arg)
+  msg <- vapply(pr$message, .error_view, "", t = t, USE.NAMES = FALSE)
+  paste0(pr$level, ": ", arg, msg)
 }
 
 # the arguments with the check's problems left off (to compare or write)

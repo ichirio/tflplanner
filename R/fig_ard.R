@@ -104,6 +104,11 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
   if (identical(src, "own")) return(list(kind = "own", id = output_id))
   if (startsWith(src, "table:")) return(list(kind = "table", id = sub("^table:", "", src)))
   if (startsWith(src, "import:")) return(list(kind = "import", file = sub("^import:", "", src)))
+  # a template figure with analyses of its own (forest_hr): the ARD it
+  # makes, though its report row says nothing (derived here, not saved)
+  if (!is.null(.tpl_of(x, output_id)) && NROW(ard_rows(x, "analyses", output_id))) {
+    return(list(kind = "own", id = output_id))
+  }
   list(kind = "none")
 }
 
@@ -123,7 +128,7 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
   switch(src$kind,
     none = if (.fig_reads_ard(design, output_id)) c(
       "# the design reads an ARD (`ard`), but the figure has none",
-      sprintf("stop(\"%s reads an ARD: choose it in the figure's step 2 (ARD).\")", output_id),
+      sprintf("stop(\"%s reads an ARD: choose it in the figure's step %s (ARD).\")", output_id, .step_no("ard")),
       ""),
     own = , table = {
       prog <- file.path(study_layout()[["programs_ard"]], .ard_prog_name(src$id))
@@ -240,7 +245,7 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
   rows <- list()
   add <- function(p, f, rule, tpl, args = character(), sev = "error") {
     rows[[length(rows) + 1L]] <<- list(
-      part = p, field = f, problem = do.call(sprintf, c(list(tpl), as.list(args))),
+      part = p, field = f, problem = do.call(sprintf, c(list(tr(tpl)), as.list(args))),
       severity = sev, rule = rule, template = tpl, args = as.character(args))
   }
   done <- function() {
@@ -262,7 +267,8 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
   }
   if (src$kind == "none") {
     if (reads) add("ard", "ard_source", "F05",
-                   "the design reads an ARD, but the figure has none: choose it in step 2")
+                   "the design reads an ARD, but the figure has none: choose it in step %s",
+                   .step_no("ard"))
     return(done())
   }
   if (!reads) return(done())
@@ -278,8 +284,8 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
   }
   ard <- .fig_ard_rows(study, output_id)
   if (is.null(ard) || !nrow(ard)) {
-    add("ard", "ard_source", "F07", "the ARD of %s is not made yet: make it first (its step 2)",
-        if (src$kind == "import") src$file else src$id, "warning")
+    add("ard", "ard_source", "F07", "the ARD of %s is not made yet: make it first (its step %s)",
+        c(if (src$kind == "import") src$file else src$id, .step_no("ard")), "warning")
     return(done())
   }
   ck <- tflspec::tfl_check_fig_design(design, ard = ard)

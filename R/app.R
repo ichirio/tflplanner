@@ -23,11 +23,13 @@
   titles = "titles", footnotes = "footnotes", tokens = "tokens: your own")
 
 # The steps of making a report (the Make a report tab), by their tab values:
-# their names here only, so a name changes in one place (and its Japanese)
-.step_labels <- c(ard = "1 ARD", content = "2 Content", page = "3 Page and output")
-# a kind's own names of the steps (a figure's step 1 is mostly its data; an
-# ARD only sometimes, as a part of it)
-.step_labels_of <- list(figure = c(ard = "1 Data", content = "2 Figure"))
+# their names here only, so a name changes in one place (and its Japanese).
+# A template report has three of them (.tpl_step_labels).
+.step_labels <- c(data = "1 Analysis data", ard = "2 ARD", content = "3 Content",
+                  page = "4 Page and output")
+
+# a step's number, from .step_labels (a message names a step by it)
+.step_no <- function(step) sub(" .*$", "", .step_labels[[step]])
 
 .type_labels <- c(table = "Table", listing = "Listing", figure = "Figure")
 # a new report's ID begins with its kind's prefix (the Add dialog)
@@ -199,7 +201,18 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
                     if (isTRUE(stop_on_close)) .stop_when_closed(session)
                     start <- .session_study(start_path)
                     app_server(input, output, session, start)
-                  })
+                  },
+                  onStart = function() .app_options())
+}
+
+# The option the app sets while it runs, given back when it stops: the
+# company's AI folder in the home as tflspec.ai_home (tflspec::tfl_ai_reference_build()
+# writes the company's reference pack there, tflspec::tfl_ai_prepare() copies
+# it into each study)
+.app_options <- function(on_stop = shiny::onStop) {
+  old <- options(tflspec.ai_home = .ai_home())
+  on_stop(function() options(old))
+  invisible(old)
 }
 
 # What the launcher asks a running app, at /tflplanner-health/health.txt:

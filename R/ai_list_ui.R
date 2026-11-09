@@ -1,9 +1,10 @@
 # The AI drafts tab's step 4, the list (tflspec::tfl_ai_outputs()): every
 # report the AI was asked for, its draft (ai/spec/outputs) and whether it
 # is adopted into the study (spec/outputs).  A row's RTF opens from here;
-# the reports ticked -- at first the drafts not adopted yet -- are adopted
-# (copied, tflspec::tfl_ai_adopt()); those the study has already are
-# replaced only after a second question that says what may be lost, with
+# the reports ticked -- at first the drafts new to the study or newer than
+# its report -- are adopted (copied, tflspec::tfl_ai_adopt()).  One
+# confirmation lists them: the ones the study has already are overwritten
+# only by their own button, beside the warning of what may be lost, with
 # what changes (tfl_ai_adopted_diff()).  The study is read again, so the
 # adopted reports are on the Report list.
 # Design: _archive/ai-list-corrections-tab-design-2026-10-26.md.
@@ -54,6 +55,7 @@ ai_list_panel <- function(ns, t) {
       .btn(ns("list_none"), t("Untick all")),
       .btn(ns("list_new"), t("Tick only those not in the study yet")),
       .btn(ns("list_newer"), t("Tick only the updated drafts")),
+      .btn(ns("list_changed"), t("Tick only the changed ones")),
       shiny::uiOutput(ns("list_ticked"), inline = TRUE),
       .btn(ns("adopt"), paste0(t("Adopt (copy) the reports ticked into the study"), " (tfl_ai_adopt)"),
            class = "btn-sm btn-primary ms-auto")),
@@ -76,8 +78,25 @@ ai_list_panel <- function(ns, t) {
 .ai_adoptable <- function(d) {
   !is.na(d$file) & nzchar(d$file) & !(as.character(d$status) %in% c("error", "no answer"))
 }
-.ai_ticked_first <- function(d) {
-  d$output_id[.ai_adoptable(d) & as.character(d$adopted) %in% c("no", NA)]
+# A report's copy state: "new" (not in the study), "replace" (the draft is
+# newer), "same", or NA (no draft to copy).  `plan` is .ai_adopt_plan()'s
+# data frame; NULL (tflspec cannot say): `adopted` of the list says it.
+.ai_copy_state <- function(d, plan) {
+  ok <- .ai_adoptable(d)
+  if (is.data.frame(plan) && all(c("output_id", "status") %in% names(plan))) {
+    st <- as.character(plan$status)[match(d$output_id, plan$output_id)]
+    st[!st %in% c("new", "replace", "same")] <- NA_character_
+  } else {
+    a <- as.character(d$adopted)
+    st <- ifelse(is.na(a) | a == "no", "new", ifelse(a == "yes, draft newer", "replace",
+                                                     ifelse(a == "yes", "same", NA_character_)))
+  }
+  st[!ok] <- NA_character_
+  st
+}
+# the rows the list ticks at first: the drafts to copy, new or newer
+.ai_ticked_first <- function(d, state) {
+  d$output_id[.ai_adoptable(d) & state %in% c("new", "replace")]
 }
 
 # The server part: `path()` the study's folder, `ver()` bumped when the
@@ -93,7 +112,14 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
     again()
     .ai_list(path())
   })
-  # the reports ticked: at first the drafts not adopted yet; the boxes, the
+  # what copying each adoptable report would do (the plan asked once)
+  copy_state <- shiny::reactive({
+    d <- listed()
+    if (is.null(d)) return(NULL)
+    ids <- d$output_id[.ai_adoptable(d)]
+    .ai_copy_state(d, if (length(ids)) .ai_adopt_plan(path(), ids))
+  })
+  # the reports ticked: at first the drafts new to the study or newer; the boxes, the
   # buttons change it (the table drawn again only for the buttons)
   ticked <- shiny::reactiveVal(character())
   redraw <- shiny::reactiveVal(0L)
@@ -106,7 +132,7 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
       seen$ids <- NULL
       return(ticked(character()))
     }
-    first <- .ai_ticked_first(d)
+    first <- .ai_ticked_first(d, copy_state())
     ticked(if (is.null(seen$ids)) first
            else union(intersect(ticked(), d$output_id[.ai_adoptable(d)]), setdiff(first, seen$ids)))
     seen$ids <- d$output_id
@@ -127,11 +153,15 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
   shiny::observeEvent(input$list_none, set_ticked(character()))
   shiny::observeEvent(input$list_new, {
     d <- listed()
-    if (!is.null(d)) set_ticked(.ai_ticked_first(d))
+    if (!is.null(d)) set_ticked(d$output_id[.ai_adoptable(d) & copy_state() %in% "new"])
   })
   shiny::observeEvent(input$list_newer, {
     d <- listed()
-    if (!is.null(d)) set_ticked(d$output_id[.ai_adoptable(d) & as.character(d$adopted) %in% "yes, draft newer"])
+    if (!is.null(d)) set_ticked(d$output_id[.ai_adoptable(d) & copy_state() %in% "replace"])
+  })
+  shiny::observeEvent(input$list_changed, {
+    d <- listed()
+    if (!is.null(d)) set_ticked(.ai_ticked_first(d, copy_state()))
   })
   output$list_count <- shiny::renderUI({
     d <- listed()
@@ -166,6 +196,10 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
       ns(""), htmltools::htmlEscape(d$rtf, attribute = TRUE), t("Open")), "")
     # (tflspec's words in the app's language: the state, adopted)
     tw <- function(x) ifelse(is.na(x) | !nzchar(x), "", vapply(as.character(x), t, ""))
+    # (what copying would do, in plain words)
+    state_words <- c(new = t("Not copied"), replace = t("The draft is newer (can overwrite)"),
+                     same = t("Copied (same)"))
+    copy_cell <- unname(state_words[as.character(copy_state())])
     # (a report's status in this list's words: "ok" and "error" are kept in
     # English elsewhere, as program states)
     # (the check's three levels: ERROR, WARNING, OK -- step 3's words)
@@ -177,14 +211,17 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
       out[has] <- vapply(lv[has], t, "", USE.NAMES = FALSE)
       out
     }
-    v <- data.frame(ck, d$output_id, d$title, d$population, d$split, tw_status(d$status),
-                    tw(d$adopted), rtf, d$problem, stringsAsFactors = FALSE)
+    # (a warning's or an error's reason under it, from ai/manifest.csv)
+    v <- data.frame(ck, d$output_id, d$title, d$population, d$split,
+                    .ai_status_cells(tw_status(d$status), d$status, d$output_id,
+                                     .ai_manifest_reasons(path())),
+                    copy_cell, rtf, d$problem, stringsAsFactors = FALSE)
     names(v) <- c(t("Tick to copy"), "output_id", t("Title (title)"), t("Analysis set (population)"),
                   t("Split (split)"), t("Check"), paste0(t("Adopted"), " (adopted)"), "RTF",
                   t("First problem"))
     v[is.na(v)] <- ""
     # (the boxes and the RTF links: not escaped)
-    DT::datatable(v, rownames = FALSE, escape = which(!names(v) %in% c(t("Tick to copy"), "RTF")),
+    DT::datatable(v, rownames = FALSE, escape = which(!names(v) %in% c(t("Tick to copy"), t("Check"), "RTF")),
                   selection = "none",
                   options = list(dom = "t", paging = FALSE, ordering = FALSE, scrollX = TRUE))
   })
@@ -197,25 +234,25 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
     opener <- getOption("tflplanner.open_folder", .external_browser)
     opener(normalizePath(full))
   })
-  # the reports ticked, apart: those not in the study yet, and those it has
-  # (adopting them again replaces the study's: asked twice)
+  # the reports ticked, apart: those not in the study yet, those it has
+  # with an older draft (copying overwrites the study's), and the same ones
   split_ticked <- function() {
     d <- listed()
     ids <- intersect(ticked(), d$output_id[.ai_adoptable(d)])
-    plan <- .ai_adopt_plan(path(), ids)
-    st <- if (!is.null(plan)) stats::setNames(as.character(plan$status), plan$output_id)
-    adopted <- stats::setNames(as.character(d$adopted), d$output_id)[ids]
-    over <- ids[!adopted %in% c("no", NA)]
-    if (!is.null(st)) over <- over[st[over] %in% "replace"]
-    list(fresh = ids[adopted %in% c("no", NA)], over = over,
-         same = if (!is.null(st)) names(st)[st == "same"] else character())
+    # (asked again at the click: the study may have changed since the list was read)
+    st <- stats::setNames(.ai_copy_state(d, .ai_adopt_plan(path(), ids)), d$output_id)
+    list(fresh = ids[st[ids] %in% "new"], over = ids[st[ids] %in% "replace"],
+         same = ids[st[ids] %in% "same"])
   }
   pending <- shiny::reactiveVal(NULL)
   table_of <- function(d, cols, heads) {
-    shiny::tags$table(class = "table table-sm small mb-2",
+    # (one line a row, within the dialog: a cell too long is cut, its full
+    # text on hover)
+    cell <- function(x) shiny::tags$td(class = "text-truncate", title = as.character(x), as.character(x))
+    shiny::tags$table(class = "table table-sm small mb-2", style = "table-layout: fixed; width: 100%",
                       shiny::tags$thead(shiny::tags$tr(lapply(heads, shiny::tags$th))),
                       shiny::tags$tbody(lapply(seq_len(nrow(d)), function(r)
-                        shiny::tags$tr(lapply(d[r, cols], function(x) shiny::tags$td(as.character(x)))))))
+                        shiny::tags$tr(lapply(d[r, cols], cell)))))
   }
   # (not while the study has unsaved changes: the adopted files would be
   # taken in over them, or the study left apart from its files)
@@ -233,6 +270,7 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
       return(notify(t("The reports ticked are in the study as they are: nothing to adopt."), "message"))
     }
     diff <- .ai_adopt_diff(path(), s$over)
+    if (!is.null(diff)) diff$change <- vapply(diff$change, t, "", USE.NAMES = FALSE)
     shiny::showModal(shiny::modalDialog(
       title = t("Adopt (copy) into the study"),
       if (length(s$fresh)) shiny::p(sprintf(t("Not in the study yet, copied to its Report list (%d): %s"),
@@ -240,34 +278,18 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
       if (length(s$over)) shiny::div(
         class = "alert alert-warning py-2 small",
         shiny::strong(sprintf(t("In the study already (%d): %s"), length(s$over), paste(s$over, collapse = ", "))),
-        shiny::p(class = "mb-1", t("Copying these replaces the study's reports with the AI's drafts: settings made on the screen may be lost. They are left as they are unless you go on to replace them.")),
+        shiny::p(class = "mb-1", t("Copying these replaces the study's reports with the AI's drafts: settings made on the screen may be lost. What was set for them in the study and not in the drafts may be lost too. They are left as they are unless you overwrite them.")),
         if (!is.null(diff)) shiny::tags$details(
           open = NA, shiny::tags$summary(sprintf(t("What replacing changes (%d)"), nrow(diff))),
           table_of(diff, c("output_id", "where", "change", "adopted", "draft"),
                    c("output_id", t("Where"), t("Change"), t("In the study"), t("Draft"))))),
       footer = shiny::tagList(
         shiny::modalButton(t("Cancel")),
-        if (length(s$over)) .btn(ns("adopt_over"), t("Replace them too..."), class = "btn-outline-danger"),
+        if (length(s$over)) .btn(ns("adopt_over"), sprintf(t("Overwrite %d and copy"), length(s$over)),
+                                 class = "btn-danger"),
         if (length(s$fresh)) .btn(ns("adopt_fresh"), sprintf(t("Copy the %d not in the study yet"), length(s$fresh)),
                                   class = "btn-primary")),
-      easyClose = TRUE))
-  })
-  # the second question before replacing: said once more, ticked to go on
-  shiny::observeEvent(input$adopt_over, {
-    s <- pending()
-    if (is.null(s) || !length(s$over)) return()
-    shiny::showModal(shiny::modalDialog(
-      title = t("Replace the study's reports?"),
-      shiny::div(class = "alert alert-danger py-2",
-                 sprintf(t("The study's %d reports (%s) are replaced by the AI's drafts. What was set for them in the study and not in the drafts may be lost."),
-                         length(s$over), paste(s$over, collapse = ", "))),
-      shiny::checkboxInput(ns("adopt_sure"), t("I understand that settings of these reports may be lost"), FALSE),
-      footer = shiny::tagList(
-        shiny::modalButton(t("Cancel")),
-        shiny::conditionalPanel(
-          sprintf("input['%s']", ns("adopt_sure")),
-          .btn(ns("adopt_over_ok"), sprintf(t("Replace %d and copy"), length(s$over)), class = "btn-danger"))),
-      easyClose = FALSE))
+      size = "xl", easyClose = TRUE))
   })
   do_adopt <- function(fresh, over) {
     shiny::removeModal()
@@ -293,9 +315,9 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
     s <- pending()
     if (!is.null(s)) do_adopt(s$fresh, character())
   })
-  shiny::observeEvent(input$adopt_over_ok, {
+  shiny::observeEvent(input$adopt_over, {
     s <- pending()
-    if (!is.null(s) && isTRUE(input$adopt_sure)) do_adopt(s$fresh, s$over)
+    if (!is.null(s) && length(s$over)) do_adopt(s$fresh, s$over)
   })
   invisible(listed)
 }
@@ -374,4 +396,35 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
   cf <- tryCatch(tflspec::tfl_ai_confirm(p, where = "adopted"), error = function(e) NULL)
   confirm <- if (is.data.frame(cf) && nrow(cf)) intersect(ids, unique(cf$output_id)) else character()
   list(newer = names(m)[m == "newer"], confirm = confirm)
+}
+
+# The reason a warning or an error report carries: ai/manifest.csv's
+# `reason` column (tflspec's collect writes it; a manifest of before has no
+# such column: no reason, NULL).  A named character vector, output_id ->
+# reason, the rows that have one.
+.ai_manifest_reasons <- function(dir) {
+  f <- if (is.null(dir)) NULL else file.path(dir, "ai", "manifest.csv")
+  if (is.null(f) || !file.exists(f)) return(NULL)
+  m <- tryCatch(utils::read.csv(f, stringsAsFactors = FALSE, colClasses = "character",
+                                encoding = "UTF-8", na.strings = character(), check.names = FALSE),
+                error = function(e) NULL)
+  if (is.null(m) || !all(c("output_id", "reason") %in% names(m))) return(NULL)
+  m <- m[nzchar(trimws(m$reason)) & nzchar(trimws(m$output_id)), , drop = FALSE]
+  m <- m[!duplicated(m$output_id), , drop = FALSE]
+  if (!nrow(m)) return(NULL)
+  stats::setNames(trimws(m$reason), m$output_id)
+}
+
+# The Check cell of step 4's list: the status, and under it the reason of a
+# warning or an error (HTML; the texts escaped).  `status`: the cell's words,
+# `raw`: the report's status (ok / warning / error ...), `reason`: the
+# reasons, as .ai_manifest_reasons() gives them, or NULL.
+.ai_status_cells <- function(status, raw, ids, reason) {
+  out <- htmltools::htmlEscape(status)
+  if (is.null(reason)) return(out)
+  why <- unname(reason[match(ids, names(reason))])
+  show <- as.character(raw) %in% c("warning", "error") & !is.na(why)
+  out[show] <- sprintf("%s<div class=\"small text-muted ai-reason\">%s</div>", out[show],
+                       htmltools::htmlEscape(why[show]))
+  out
 }

@@ -48,7 +48,7 @@ test_that("the row layers are written in their order, the block where it is or n
   expect_identical(.layer_names(".variable", lang = "ja"), "解析変数 (variable)")
   expect_identical(.layer_names(c("subgroup", "subgroup_level", "TRT01A"), lang = "ja",
                                 stack = c("subgroup", "subgroup_level")),
-                   c("subgroup（積み上げ）", "subgroup_level（積み上げ）", "TRT01A（キー）"))
+                   c("subgroup（スタック）", "subgroup_level（スタック）", "TRT01A（キー）"))
   expect_identical(.layer_names(c("AEBODSYS", "AEDECOD"), c("AEBODSYS", "AEDECOD")),
                    c("AEBODSYS (hierarchy)", "AEDECOD (label)"))
   expect_identical(.col_key_names("TRT01A", "ja"), c("TRT01A（列キー）" = "TRT01A"))
@@ -255,7 +255,7 @@ test_that("the new words have their Japanese", {
   ja <- vapply(w, tr, "", lang = "ja")
   expect_true(all(ja != w), info = paste(w[ja == w], collapse = " / "))
   expect_identical(tr(w[[1L]], "ja"),
-                   "解析変数 (variable) は行になりません（1 変数の表、ORR など）")
+                   "解析変数 (variable) は行になりません（1 変数の Table、ORR など）")
 })
 
 test_that("plan_labels(): the labels of the columns the plan makes are the item's, the data's code lists kept", {
@@ -466,6 +466,13 @@ test_that("plan_paginate_group(), plan_paginate_cols(), plan_row_group(): a form
   expect_identical(.plan_form_args(r, it0, "plan_paginate_group"), it0$args)
   r$keep <- FALSE
   expect_false(.plan_form_args(r, it0, "plan_paginate_group")$keep)
+  # a heading of "" (blank) is a value: its blank field keeps it, and a
+  # field emptied of another heading takes that one away
+  st <- list(fn = "plan_stub", args = list(name = "row_label", heading = ""))
+  r <- .plan_form_read(list(c__name = "row_label", c__heading = ""), "c", "plan_stub")
+  expect_identical(.plan_form_args(r, st, "plan_stub"), st$args)
+  st$args$heading <- "Parameter"
+  expect_null(.plan_form_args(r, st, "plan_stub")$heading)
   # written and read back through the sheets
   p <- sample_planner()
   id <- "T-14-1-1"
@@ -499,7 +506,7 @@ test_that("the second bundle's words have their Japanese", {
          "As R: Edit as R changes it.", "Choose or type a column's name", "A new group",
          "No categorical variable to nest.", "Every row key (TRUE)", "Rows under a level",
          "Group column",
-         "The ARD has no comparison records (a test, a difference): add one in step 1, then read the ARD again.")
+         "The ARD has no comparison records (a test, a difference): add one in step %s, then read the ARD again.")
   ja <- vapply(w, tr, "", lang = "ja")
   expect_true(all(ja != w), info = paste(w[ja == w], collapse = " / "))
 })
@@ -564,7 +571,7 @@ test_that("plan_cell_style(): cols, where, the looks as fields, each call its ow
   for (a in c("cols", "header", "where", "bold", "italic", "align", "color", "background")) {
     expect_match(h, sprintf('id="c__%s"', a), fixed = TRUE)
   }
-  expect_match(h, "Not in the code", fixed = TRUE)
+  expect_match(h, "Arguments not in the code", fixed = TRUE)
   # blank fields: nothing (the header's check unticked is its default)
   inp <- list(c__cols = NULL, c__header = FALSE, c__where = "", c__bold = "", c__italic = "",
               c__align = "", c__color = "", c__background = "")
@@ -671,4 +678,5 @@ test_that("every form card shows all its function's arguments: those written abo
   # the same fields whatever the table's kind
   expect_identical(seen[["T-14-1-1"]], seen[["T-14-3-1"]])
   expect_identical(tr("Not in the code", "ja"), "コードに書かれない引数")
+  expect_identical(tr("Arguments not in the code", "ja"), tr("Not in the code", "ja"))
 })
