@@ -261,7 +261,8 @@
       switch(part$kind,
         output = {
           gone <- names(sp$where)[sp$where == r]
-          kept <- .spec_output_parts(sp$outputs[gone], was, r, new$outputs[names(new$where)[new$where == r]])
+          kept <- .spec_output_parts(sp$outputs[gone], was, r, new$outputs[names(new$where)[new$where == r]],
+                                     study = sp$study)
           sp$outputs[gone] <- NULL
           sp$where <- sp$where[!names(sp$where) %in% gone]
           for (id in names(kept$outputs)) {
@@ -339,7 +340,7 @@
 # the bridge's.  The reports to put, and the file's text when it is not
 # the bridge's.  (A file of several reports, or a report new or gone, is
 # the bridge's.)
-.spec_output_parts <- function(spec, was, rel, now) {
+.spec_output_parts <- function(spec, was, rel, now, study = NULL) {
   whole <- list(outputs = now, text = NULL)
   if (is.null(was) || !rel %in% names(was$text) || length(spec) != 1L || length(now) != 1L) {
     return(whole)
@@ -350,13 +351,61 @@
       !identical(spec[[1L]]$id, now[[1L]]$id)) {
     return(whole)
   }
-  m <- .merge3(spec[[1L]], w[[1L]], now[[1L]])
+  w1 <- w[[1L]]
+  n1 <- now[[1L]]
+  # a template report: the sheets have its template's items expanded, its
+  # file the template and its own items -- only the items the edits
+  # change are written, each as the report's own after the template, with
+  # the arguments the edit changed (not the template's items all over again)
+  tc <- .spec_tpl_items(spec[[1L]], w1, n1, study)
+  if (!is.null(tc)) {
+    n1["content"] <- list(if (length(tc)) tc)
+    w1["content"] <- list(spec[[1L]]$content)
+  }
+  m <- .merge3(spec[[1L]], w1, n1)
   if (identical(m, now[[1L]])) return(whole)
   f <- tempfile("tflplanner-output", fileext = ".yml")
   on.exit(unlink(f), add = TRUE)
   tflspec::tfl_write_output(m, f)
   list(outputs = stats::setNames(list(m), m$id),
        text = readLines(f, encoding = "UTF-8", warn = FALSE))
+}
+
+# A template report's own items after an edit of its sheets: `was` and
+# `now` the bridge's report before and after (the template's items
+# expanded, in the same verbs), `spec` the file's.  Each item the edit
+# changed is put as the report's own (tflspec::tfl_item_own(): the
+# arguments it changes over what is below it -- the template's, the
+# study's), the rest of the file's own items as they are.  NULL: not a
+# template report, or an edit that adds or takes away a verb (the general
+# merge then).
+.spec_tpl_items <- function(spec, was, now, study = NULL) {
+  if (is.null(spec) || !is.list(spec$template) || is.null(spec$template$name)) return(NULL)
+  items <- function(x) is.null(x) || (is.list(x) && is.null(names(x)) &&
+                                         all(vapply(x, inherits, NA, "tfl_item")))
+  fns <- function(x) vapply(x, function(i) as.character(i$fn %||% ""), "")
+  wc <- was$content
+  nc <- now$content
+  if (inherits(spec$content, "tfl_r") || !items(wc) || !items(nc) ||
+      !identical(fns(wc), fns(nc))) {
+    return(NULL)
+  }
+  r <- tryCatch(tflspec::tfl_resolve_output(spec, study, provenance = TRUE),
+                error = function(e) NULL)
+  if (is.null(r) || inherits(r$content, "tfl_r")) return(NULL)
+  rf <- fns(r$content)
+  content <- spec$content %||% list()
+  seen <- list()
+  for (i in seq_along(nc)) {
+    fn <- fns(nc)[[i]]
+    k <- (seen[[fn]] %||% 0L) + 1L
+    seen[[fn]] <- k
+    if (identical(wc[[i]], nc[[i]])) next
+    at <- which(rf == fn)
+    below <- if (length(at) >= k) r$content[[at[k]]]$below
+    content <- .content_put(content, fn, k, tflspec::tfl_item_own(nc[[i]], below))
+  }
+  content
 }
 
 # A three-way merge of a value of the spec: `was` and `now` are the
