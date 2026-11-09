@@ -145,10 +145,28 @@ test_that(".tpl_suggest_select: a single pick lists the suggested values as the 
   # (the blank first, the suggestion not again below it)
   expect_lt(regexpr("value=\"\"", h, fixed = TRUE), regexpr("optgroup", h, fixed = TRUE))
   expect_length(gregexpr("value=\"AEDECOD\"", h, fixed = TRUE)[[1L]], 1L)
-  # a multi-pick: Add all (long list cut), the swap in onItemAdd
+  # (Esc closes the list only; the list is no wider than the field)
+  expect_match(h, "stopPropagation", fixed = TRUE)
+  expect_match(h, "max-width", fixed = TRUE)
+})
+
+test_that(".tpl_suggest_select: a multi-pick lists each suggested value, once, with Add all above them", {
+  tt <- function(x) x
   s <- paste0("V", 1:8)
-  h2 <- as.character(.tpl_suggest_select("g", "G", s, s, TRUE, list(), tt))
-  expect_match(h2, "Add all suggested (V1, V2, V3, V4, V5, ...)", fixed = TRUE)
-  expect_match(h2, "onItemAdd", fixed = TRUE)
-  expect_match(h2, "this.addItem", fixed = TRUE)
+  h <- as.character(.tpl_suggest_select("g", "G", c("OTHER", s), s, TRUE, list(), tt))
+  expect_match(h, "Add all suggested (V1, V2, V3, …)", fixed = TRUE)
+  expect_lt(regexpr("Add all", h, fixed = TRUE), regexpr("value=\"V1\"", h, fixed = TRUE))
+  expect_length(gregexpr("value=\"V1\"", h, fixed = TRUE)[[1L]], 1L)
+  expect_lt(regexpr("value=\"V8\"", h, fixed = TRUE), regexpr("value=\"OTHER\"", h, fixed = TRUE))
+  # (the swap and the upkeep of the item: selectize's options, not page script)
+  for (k in c("onItemAdd", "onItemRemove", "addItem", "removeOption", "stopPropagation", "max-width")) {
+    expect_match(h, k, fixed = TRUE)
+  }
+  # (a search never finds it; taking it away is not closing the list)
+  expect_match(h, "getScoreFunction", fixed = TRUE)
+  expect_match(h, "if (value === '__tpl_suggest_all__') return;", fixed = TRUE)
+  # (one suggested value: no Add all)
+  h1 <- as.character(.tpl_suggest_select("g", "G", c("OTHER", s), "V2", TRUE, list(), tt))
+  expect_false(grepl("<option value=\"__tpl_suggest_all__\"", h1, fixed = TRUE))
+  expect_match(h1, "value=\"V2\"", fixed = TRUE)
 })

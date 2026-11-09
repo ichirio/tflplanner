@@ -61,7 +61,7 @@
 
 # The suggestion as one line: the first few, then "..."
 .tpl_suggest_line <- function(sugg, n = 5L) {
-  paste0(paste(utils::head(sugg, n), collapse = ", "), if (length(sugg) > n) ", ...")
+  paste0(paste(utils::head(sugg, n), collapse = ", "), if (length(sugg) > n) ", …")
 }
 
 # A picked "Add all suggested" item taken for the suggested values, in its place
@@ -74,23 +74,64 @@
 # The selectize field of an argument that has a suggestion.  `choices`: the
 # plain ones (an unnamed or named character vector; a blank "" first stays
 # first).  `several`: a multi-pick.  `options`: the field's own selectize options.
+# The suggested values are the group "Suggested", one item each, and are not in
+# the plain list again.  A multi-pick has "Add all suggested (...)" at the top of
+# that group while two or more suggested values are not yet in the field
+# (selectize's onItemAdd / onItemRemove keep it; it is out of the search, and
+# picking it adds the values and drops itself).  Esc in the field only closes its
+# list (not the dialog); its list is no wider than the field.
 .tpl_suggest_select <- function(input_id, lab, choices, sugg, several, options, t) {
   nm <- names(choices)
   if (is.null(nm)) nm <- choices
   choices <- stats::setNames(as.character(choices), nm)
-  top <- if (several) {
-    stats::setNames(.tpl_suggest_all, sprintf(t("Add all suggested (%s)"), .tpl_suggest_line(sugg)))
-  } else stats::setNames(sugg, sugg)
+  group <- t("Suggested")
+  fmt <- sprintf(t("Add all suggested (%s)"), "{names}")
   blank <- choices[choices == ""]
-  rest <- choices[choices != "" & !(!several & choices %in% sugg)]
-  all_choices <- c(as.list(blank), stats::setNames(list(as.list(top)), t("Suggested")), as.list(rest))
-  options$placeholder <- sprintf(t("Suggested: %s"), .tpl_suggest_line(sugg))
-  if (several) {
-    options$onItemAdd <- I(sprintf(
-      paste0("function(value, $item) { if (value !== '%s') return; var all = %s;",
-             " this.removeItem(value); for (var i = 0; i < all.length; i++) this.addItem(all[i]); }"),
-      .tpl_suggest_all, as.character(jsonlite::toJSON(as.character(sugg)))))
+  rest <- choices[choices != "" & !choices %in% sugg]
+  top <- stats::setNames(sugg, sugg)
+  if (several && length(sugg) > 1L) {
+    top <- c(stats::setNames(.tpl_suggest_all, sub("{names}", .tpl_suggest_line(sugg, 3L), fmt, fixed = TRUE)),
+             top)
   }
+  all_choices <- c(as.list(blank), stats::setNames(list(as.list(top)), group), as.list(rest))
+  options$placeholder <- sprintf(t("Suggested: %s"), .tpl_suggest_line(sugg))
+  cfg <- as.character(jsonlite::toJSON(
+    list(all = I(as.character(sugg)), fmt = fmt, group = group, sentinel = .tpl_suggest_all),
+    auto_unbox = TRUE))
+  esc <- paste0("var s = this; this.$control_input.on('keydown', function(e) {",
+                " if (e.key === 'Escape' || e.keyCode === 27) { s.close(); e.stopPropagation(); } });")
+  width <- paste0("function($dd) { $dd.css({'max-width': this.$wrapper.outerWidth() + 'px', 'white-space': 'normal',",
+                  " 'overflow-wrap': 'anywhere'}); }")
+  if (several) {
+    sync <- paste0(
+      "function sync(s) { var C = ", cfg, ";",
+      " var rem = C.all.filter(function(v) { return s.items.indexOf(v) < 0; });",
+      " var has = s.options.hasOwnProperty(C.sentinel);",
+      " if (rem.length >= 2) {",
+      "  var d = {value: C.sentinel, optgroup: C.group, $order: -1,",
+      "   label: C.fmt.replace('{names}', rem.slice(0, 3).join(', ') + (rem.length > 3 ? ', …' : ''))};",
+      "  if (has) s.updateOption(C.sentinel, d); else s.addOption(d);",
+      " } else if (has) s.removeOption(C.sentinel);",
+      " s.refreshOptions(false); }")
+    options$onInitialize <- I(paste0("function() { ", esc, " }"))
+    options$onItemAdd <- I(paste0(
+      "function(value) { ", sync, " var s = this, C = ", cfg, ";",
+      " if (value === C.sentinel) { s.removeItem(value);",
+      "  for (var i = 0; i < C.all.length; i++) s.addItem(C.all[i]); }",
+      " sync(s); }"))
+    # (a value taken away with x: the list closed again -- not the swap of "Add all")
+    options$onItemRemove <- I(paste0(
+      "function(value) { ", sync, " if (value === '", .tpl_suggest_all, "') return;",
+      " sync(this); this.close(); this.blur(); }"))
+    options$onClear <- I(paste0("function() { ", sync, " sync(this); }"))
+    # (a search never finds "Add all": its label holds the names)
+    options$score <- I(paste0(
+      "function(q) { var s = this.getScoreFunction(q);",
+      " return function(it) { return (q && it.value === '", .tpl_suggest_all, "') ? 0 : s(it); }; }"))
+  } else {
+    options$onInitialize <- I(paste0("function() { ", esc, " }"))
+  }
+  options$onDropdownOpen <- I(width)
   shiny::selectizeInput(input_id, lab, all_choices, selected = if (several) character() else "",
                         multiple = several, width = "100%", options = options)
 }
