@@ -252,11 +252,92 @@
   stats::setNames(vals[keep], keys[keep])
 }
 
-# A value as one line to read (a default; a list's value)
+# A value as one line to read (a default; a list's value): a plain string as
+# itself, anything else in YAML flow form (`[a, b]`, `{k: v}`, `!r code` for
+# raw R) -- what .tpl_text_parse() reads back
 .tpl_show <- function(x) {
   if (is.null(x)) return("NULL")
-  if (is.character(x) && length(x) == 1L && is.null(names(x))) return(x)
-  paste(deparse(x, width.cutoff = 500L), collapse = " ")
+  if (is.character(x) && length(x) == 1L && is.null(names(x)) && !inherits(x, "tfl_r")) return(x)
+  .tpl_yaml_flow(x)
+}
+
+# The YAML handlers the card reads text with (`!r` is raw R: a tfl_r)
+# (a sequence holding an `!r` or a map stays a list, as in tflspec's reader, so a
+# guard's R keeps its class; one of plain scalars of one kind is a vector)
+.tpl_yaml_handlers <- function() {
+  seq <- function(x) {
+    if (!length(x)) return(list())
+    if (any(vapply(x, function(e) inherits(e, "tfl_r") || is.list(e), NA))) return(x)
+    if (all(vapply(x, function(e) is.atomic(e) && length(e) == 1L, NA)) &&
+          length(unique(vapply(x, function(e) class(e)[1L], ""))) == 1L) return(unlist(x))
+    x
+  }
+  list(r = function(x) tflspec::tfl_r(as.character(x)), seq = seq)
+}
+
+# A value in YAML flow form (one line).  A string is quoted only when its
+# plain form would not read back as itself.
+.tpl_yaml_flow <- function(x) {
+  back <- function(txt) tryCatch(yaml::yaml.load(paste0("[", txt, "]"), handlers = .tpl_yaml_handlers())[[1L]],
+                                 error = function(e) structure(list(), failed = TRUE))
+  quote_it <- function(s) {
+    s <- gsub("\\", "\\\\", s, fixed = TRUE)
+    s <- gsub("\"", "\\\"", s, fixed = TRUE)
+    s <- gsub("\n", "\n", s, fixed = TRUE)
+    s <- gsub("\t", "\t", s, fixed = TRUE)
+    paste0("\"", s, "\"")
+  }
+  str <- function(s) {
+    if (is.na(s)) return("null")
+    if (!nzchar(s)) return("\"\"")
+    if (identical(back(s), s)) s else quote_it(s)
+  }
+  scalar <- function(v) {
+    if (inherits(v, "tfl_r")) {
+      s <- as.character(unclass(v))[1L]
+      plain <- paste0("!r ", s)
+      if (identical(back(plain), v)) plain else paste0("!r ", quote_it(s))
+    } else if (is.null(v)) "null"
+    else if (is.logical(v)) if (is.na(v)) "null" else if (v) "true" else "false"
+    else if (is.numeric(v)) {
+      if (is.na(v)) ".nan" else if (is.infinite(v)) (if (v > 0) ".inf" else "-.inf") else
+        format(v, scientific = FALSE, drop0trailing = TRUE, trim = TRUE, digits = 15)
+    } else str(as.character(v))
+  }
+  key <- function(k) if (nzchar(k)) str(k) else "\"\""
+  go <- function(v) {
+    if (inherits(v, "tfl_r") || is.null(v)) return(scalar(v))
+    if (is.list(v)) {
+      nm <- names(v)
+      items <- vapply(v, go, "")
+      if (!is.null(nm) && all(nzchar(nm))) {
+        return(paste0("{", paste(paste0(vapply(nm, key, ""), ": ", items), collapse = ", "), "}"))
+      }
+      return(paste0("[", paste(items, collapse = ", "), "]"))
+    }
+    if (length(v) == 1L && is.null(names(v))) return(scalar(v))
+    nm <- names(v)
+    items <- vapply(seq_along(v), function(i) scalar(v[[i]]), "")
+    if (!is.null(nm) && all(nzchar(nm))) {
+      return(paste0("{", paste(paste0(vapply(nm, key, ""), ": ", items), collapse = ", "), "}"))
+    }
+    paste0("[", paste(items, collapse = ", "), "]")
+  }
+  go(x)
+}
+
+# Text in the card's box read as a value.  One starting with `[` or `!r ` is
+# YAML (`!r` raw R, as .tpl_show() writes it): an error (not YAML) is raised
+# for the caller to say.  One starting with `{` is a map only when it parses
+# to a named list with no empty value; otherwise (`{n} ({p:.1f%})`, `{n}`: a
+# format) it is the string as typed, with no error.  Any other text is a string.
+.tpl_text_parse <- function(v) {
+  if (!is.character(v) || length(v) != 1L) return(v)
+  if (grepl("^([[]|!r )", v)) return(yaml::yaml.load(v, handlers = .tpl_yaml_handlers()))
+  if (!startsWith(v, "{")) return(v)
+  r <- tryCatch(yaml::yaml.load(v, handlers = .tpl_yaml_handlers()), error = function(e) NULL)
+  if (is.list(r) && length(r) && !is.null(names(r)) && all(nzchar(names(r))) &&
+        !any(vapply(r, is.null, NA))) r else v
 }
 
 # What an input gives, as the argument's value (NULL: none -- the default)
@@ -276,7 +357,9 @@
     list = , columns = .tpl_list_parse(v, prm),
     {
       v <- trimws(paste(as.character(v), collapse = ""))
-      if (nzchar(v)) v else NULL
+      # (YAML flow or `!r`: what .tpl_show() writes; a text that does not parse is kept as typed --
+      # the card checks it first with .tpl_text_parse())
+      if (nzchar(v)) tryCatch(.tpl_text_parse(v), error = function(e) v) else NULL
     })
 }
 
@@ -783,7 +866,7 @@ $(document).on('shiny:connected', function() {
   if (is.null(o) || is.null(.tpl_spec_name(o))) return(character())
   code <- tryCatch(tflspec::tfl_content_code(tflspec::tfl_resolve_output(o, sp$study)),
                    error = function(e) character())
-  at <- grep("tpl_[A-Za-z0-9_]+\\(", code)
+  at <- grep("(tpl_[A-Za-z0-9_]+|tfl_tpl)\\(", code)
   if (!length(at)) return(character())
   rest <- code[seq_along(code) > at[1L]]
   m <- regmatches(rest, regexpr("^\\s*(plan_[A-Za-z0-9_]+)\\(", rest))
@@ -794,7 +877,7 @@ $(document).on('shiny:connected', function() {
   if (is.list(t) && !is.null(t$name)) t$name else NULL
 }
 
-# A template's call as its program has it: tpl_demog() (a template with no
+# A template's call as its program has it: tfl_tpl() (a template with no
 # call of its own -- a figure's -- tfl_template(<name>))
 .tpl_call_name <- function(name) {
   x <- tryCatch(tflspec::tfl_templates(), error = function(e) NULL)
