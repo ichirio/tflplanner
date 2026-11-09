@@ -783,7 +783,7 @@ $(document).on('shiny:connected', function() {
   if (is.null(o) || is.null(.tpl_spec_name(o))) return(character())
   code <- tryCatch(tflspec::tfl_content_code(tflspec::tfl_resolve_output(o, sp$study)),
                    error = function(e) character())
-  at <- grep("tpl_[A-Za-z0-9_]+\\(", code)
+  at <- grep("(tpl_[A-Za-z0-9_]+|tfl_tpl)\\(", code)
   if (!length(at)) return(character())
   rest <- code[seq_along(code) > at[1L]]
   m <- regmatches(rest, regexpr("^\\s*(plan_[A-Za-z0-9_]+)\\(", rest))
@@ -794,7 +794,7 @@ $(document).on('shiny:connected', function() {
   if (is.list(t) && !is.null(t$name)) t$name else NULL
 }
 
-# A template's call as its program has it: tpl_demog() (a template with no
+# A template's call as its program has it: tfl_tpl() (a template with no
 # call of its own -- a figure's -- tfl_template(<name>))
 .tpl_call_name <- function(name) {
   x <- tryCatch(tflspec::tfl_templates(), error = function(e) NULL)
