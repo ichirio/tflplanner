@@ -175,6 +175,11 @@ builder_card_read <- function(input, id, schema = NULL, args = NULL, logical_fal
   for (a in setdiff(args, "...")) {
     ty <- schema$args[[a]]$type
     kind <- .arg_kind(ty)
+    # ("(none)": `!unset`, the argument left out of the call)
+    if (isTRUE(get(a, "none"))) {
+      out[[a]] <- tflspec::tfl_unset()
+      next
+    }
     if (isTRUE(get(a, "isr"))) {
       txt <- get(a, "r")
       if (!is.null(txt) && nzchar(trimws(txt))) out[[a]] <- tflspec::tfl_r(trimws(txt))
