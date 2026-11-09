@@ -47,3 +47,50 @@
   dataset <- args$data %||% prm$data$default %||% .tpl_suggest_table()[[name]]$data
   .tpl_suggest(name, arg, .tpl_columns(data, dataset), study = study)
 }
+
+# ---- the add-report dialog's field -----------------------------------------
+# A field with no value and no tflspec default shows the suggestion as its grey
+# placeholder and at the top of its choices; nothing is filled in.  Only a value
+# the person picks counts.  One selectize field for every type that can take a
+# suggestion (vars, var, chips, levels): a single pick lists the suggested values
+# as a group "Suggested"; a multi-pick has one item "Add all suggested (...)" there,
+# which selectize's onItemAdd swaps for the suggested values, in order.
+
+# The value of the "Add all suggested" item
+.tpl_suggest_all <- "__tpl_suggest_all__"
+
+# The suggestion as one line: the first few, then "..."
+.tpl_suggest_line <- function(sugg, n = 5L) {
+  paste0(paste(utils::head(sugg, n), collapse = ", "), if (length(sugg) > n) ", ...")
+}
+
+# A picked "Add all suggested" item taken for the suggested values, in its place
+.tpl_suggest_expand <- function(v, sugg) {
+  if (is.null(v) || !.tpl_suggest_all %in% v) return(v)
+  at <- match(.tpl_suggest_all, v)
+  unique(c(v[seq_len(at - 1L)], sugg, v[-seq_len(at)]))
+}
+
+# The selectize field of an argument that has a suggestion.  `choices`: the
+# plain ones (an unnamed or named character vector; a blank "" first stays
+# first).  `several`: a multi-pick.  `options`: the field's own selectize options.
+.tpl_suggest_select <- function(input_id, lab, choices, sugg, several, options, t) {
+  nm <- names(choices)
+  if (is.null(nm)) nm <- choices
+  choices <- stats::setNames(as.character(choices), nm)
+  top <- if (several) {
+    stats::setNames(.tpl_suggest_all, sprintf(t("Add all suggested (%s)"), .tpl_suggest_line(sugg)))
+  } else stats::setNames(sugg, sugg)
+  blank <- choices[choices == ""]
+  rest <- choices[choices != "" & !(!several & choices %in% sugg)]
+  all_choices <- c(as.list(blank), stats::setNames(list(as.list(top)), t("Suggested")), as.list(rest))
+  options$placeholder <- sprintf(t("Suggested: %s"), .tpl_suggest_line(sugg))
+  if (several) {
+    options$onItemAdd <- I(sprintf(
+      paste0("function(value, $item) { if (value !== '%s') return; var all = %s;",
+             " this.removeItem(value); for (var i = 0; i < all.length; i++) this.addItem(all[i]); }"),
+      .tpl_suggest_all, as.character(jsonlite::toJSON(as.character(sugg)))))
+  }
+  shiny::selectizeInput(input_id, lab, all_choices, selected = if (several) character() else "",
+                        multiple = several, width = "100%", options = options)
+}
