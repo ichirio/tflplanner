@@ -478,6 +478,17 @@
     prm <- .tpl_params(name)[[a]]
     type <- .tpl_type(prm, tpl_all_cols())
     if (type %in% c("list", "columns") && is.null(.tpl_list_text(tp$args[[a]] %||% prm$default, prm))) return()
+    if (identical(type, "text") && is.character(v) && length(v) == 1L) {
+      # (the text as it was shown: no edit; YAML that does not parse: said, and the value stays)
+      sh <- tp$args[[a]] %||% .tpl_study_value(rv$p$spec$study, prm) %||% prm$default
+      if (!is.null(sh) && identical(trimws(v), .tpl_show(sh))) return()
+      bad <- tryCatch({ .tpl_text_parse(trimws(v)); NULL }, error = function(e) conditionMessage(e))
+      if (!is.null(bad)) {
+        notify(sprintf(t("%s is not valid YAML, so it is not changed: %s"), a, bad), "error")
+        tpl_ver(tpl_ver() + 1L)
+        return()
+      }
+    }
     val <- .tpl_value(v, type, prm)
     # (a field drawn again says its value back: what it shows already --
     # the report's, the study's or the default -- is no edit)
