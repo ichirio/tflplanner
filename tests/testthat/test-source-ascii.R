@@ -14,7 +14,8 @@ test_that("every file in R/ is ASCII", {
   r_dir <- testthat::test_path("..", "..", "R")
   skip_if_not(dir.exists(r_dir))  # not there in an installed check
   files <- list.files(r_dir, pattern = "\\.[Rr]$", full.names = TRUE)
-  expect_true(length(files) > 0L)
+  # (an installed package's R/ holds no sources, as under covr: nothing to check)
+  skip_if(length(files) == 0L, "no R sources here")
   bad <- unlist(lapply(files, non_ascii_lines))
   expect_true(length(bad) == 0L,
               info = paste("non-ASCII at", paste(bad, collapse = ", ")))
