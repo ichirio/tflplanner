@@ -27,6 +27,13 @@ test_that("a cells-sheet edit of a template report writes one item after the tem
   r <- tflspec::tfl_resolve_output(out, q$spec$study)
   cells <- Filter(function(x) identical(x$fn, "plan_cells"), r$content)
   expect_match(paste(unlist(cells), collapse = " "), "{median:.2f}", fixed = TRUE)
+  # the template's other arguments of the item stay in effect (its
+  # categorical format), and nothing is unset
+  r0 <- tflspec::tfl_resolve_output(p$spec$outputs[["T-99"]], p$spec$study)
+  before <- Filter(function(x) identical(x$fn, "plan_cells"), r0$content)[[1L]]$args
+  expect_identical(cells[[1L]]$args$default, before$default)
+  expect_false(grepl("!unset", txt, fixed = TRUE))
+  expect_false(grepl("default:", txt, fixed = TRUE))
   # a second edit changes the same own item, not a second one
   ce2 <- sheet_rows(q, "cells", "T-99")
   ce2$template[i] <- "{median:.3f}"

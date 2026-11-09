@@ -402,8 +402,19 @@
     seen[[fn]] <- k
     if (identical(wc[[i]], nc[[i]])) next
     at <- which(rf == fn)
-    below <- if (length(at) >= k) r$content[[at[k]]]$below
-    content <- .content_put(content, fn, k, tflspec::tfl_item_own(nc[[i]], below))
+    if (length(at) < k) next
+    below <- r$content[[at[k]]]$below
+    # the item as it is in effect (the template's, with the report's own),
+    # with only the arguments the edit changed (the sheets' view of an item
+    # may not hold every argument: one it lacks is not taken away)
+    args <- r$content[[at[k]]]$args %||% list()
+    wa <- wc[[i]]$args %||% list()
+    na <- nc[[i]]$args %||% list()
+    for (a in union(names(wa), names(na))) {
+      if (!identical(wa[[a]], na[[a]])) args[a] <- list(na[[a]])
+    }
+    args <- Filter(Negate(is.null), args)
+    content <- .content_put(content, fn, k, tflspec::tfl_item_own(tflspec::tfl_item(fn, args), below))
   }
   content
 }
