@@ -18,10 +18,10 @@
   }
 })
 
-# The candidates present in `data_cols`, in candidate order; for a
+# The candidates present in `data_cols` (`dataset`: the one they are of, for a `by_data:` list), in candidate order; for a
 # single-value argument the first present.  character(): none, or the
 # template / argument / list is not in the table.
-.tpl_suggest <- function(name, arg, data_cols, list = .tpl_suggest_list, study = NULL) {
+.tpl_suggest <- function(name, arg, data_cols, list = .tpl_suggest_list, study = NULL, dataset = NULL) {
   # (`by`, of any template: the column variable, the study's settings.treatment
   # of the study spec; none if it has none.  Not in the yml)
   if (identical(arg, "by")) {
@@ -30,7 +30,13 @@
   }
   tp <- .tpl_suggest_table()[[name]]
   if (!is.list(tp[[arg]])) return(character())
-  cand <- as.character(unlist(tp[[arg]][[list]]))
+  cand <- tp[[arg]][[list]]
+  # (`by_data:` a template used on several datasets: the candidates of the
+  # dataset the field reads; none for a dataset it does not list)
+  if (is.list(cand) && !is.null(names(cand)) && "by_data" %in% names(cand)) {
+    cand <- cand$by_data[[toupper(as.character(dataset %||% "")[1L])]]
+  }
+  cand <- as.character(unlist(cand))
   if (!length(cand)) return(character())
   out <- cand[cand %in% as.character(data_cols)]
   if (arg %in% as.character(unlist(tp$single))) utils::head(out, 1L) else out
@@ -45,7 +51,7 @@
 .tpl_suggest_for <- function(name, arg, data, args = list(), prm = .tpl_params(name), study = NULL) {
   if (!identical(arg, "by") && is.null(.tpl_suggest_table()[[name]][[arg]])) return(character())
   dataset <- args$data %||% prm$data$default %||% .tpl_suggest_table()[[name]]$data
-  .tpl_suggest(name, arg, .tpl_columns(data, dataset), study = study)
+  .tpl_suggest(name, arg, .tpl_columns(data, dataset), study = study, dataset = dataset)
 }
 
 # ---- the add-report dialog's field -----------------------------------------

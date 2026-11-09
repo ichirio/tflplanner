@@ -36,6 +36,15 @@ ae_disc_soc_pt:
 ae_max_grade:
   hierarchy:
     max: [AEBODSYS, AEDECOD]
+hierarchical:
+  hierarchy:
+    max:
+      by_data:
+        ADAE: [AEBODSYS, AEDECOD]
+        ADCM: [CMCLAS, CMDECOD]
+ae_eair:
+  hierarchy:
+    max: [AEBODSYS, AEDECOD]
 ae_pt_freq:
   single: [term]
   term:

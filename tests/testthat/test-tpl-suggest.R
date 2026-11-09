@@ -17,6 +17,7 @@ test_that(".tpl_suggest keeps the candidates the data has, in candidate order", 
   expect_identical(.tpl_suggest("stf_t02_demog", "continuous", c("BMIBL", "AGE"), list = "stf"), "AGE")
   expect_identical(.tpl_suggest("ae_soc_pt", "hierarchy", c("AEDECOD", "AEBODSYS")), c("AEBODSYS", "AEDECOD"))
   expect_identical(.tpl_suggest("forest_hr", "subgroups", c("RACE", "SEX")), c("SEX", "RACE"))
+  expect_identical(.tpl_suggest("ae_eair", "hierarchy", c("AEDECOD", "AEBODSYS")), c("AEBODSYS", "AEDECOD"))
 })
 
 test_that(".tpl_suggest: a single-value argument gets the first present; none or unknown is character()", {
@@ -44,4 +45,16 @@ test_that("by: the column variable is the study's treatment setting, else nothin
   expect_identical(.tpl_suggest("demog", "by", "AGE"), character())
   expect_identical(.tpl_suggest("demog", "by", "AGE", study = list(study = list(settings = list()))), character())
   expect_identical(.tpl_suggest_list, "max")
+})
+
+test_that("hierarchical: the candidates are those of the dataset the field reads (by_data)", {
+  data <- list(ADAE = data.frame(AEDECOD = "x", AEBODSYS = "y"),
+               ADCM = data.frame(CMDECOD = "x", CMCLAS = "y"),
+               ADLB = data.frame(AEDECOD = "x", CMDECOD = "z"))
+  prm <- .tpl_params("hierarchical")
+  expect_identical(.tpl_suggest_for("hierarchical", "hierarchy", data, list(), prm), c("AEBODSYS", "AEDECOD"))
+  expect_identical(.tpl_suggest_for("hierarchical", "hierarchy", data, list(data = "ADCM"), prm),
+                   c("CMCLAS", "CMDECOD"))
+  expect_identical(.tpl_suggest_for("hierarchical", "hierarchy", data, list(data = "ADLB"), prm), character())
+  expect_identical(.tpl_suggest("hierarchical", "hierarchy", c("AEBODSYS", "CMCLAS"), dataset = "adcm"), "CMCLAS")
 })
