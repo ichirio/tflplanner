@@ -133,6 +133,7 @@
 "forest_hr","data","data"
 "forest_hr","group","ard"
 "forest_hr","subgroups","ard"
+"forest_hr","ref","ard"
 "forest_hr","comparison","ard"
 "forest_hr","time","ard"
 "forest_hr","censor","ard"

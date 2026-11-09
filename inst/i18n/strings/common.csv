@@ -2159,3 +2159,5 @@
 "the row of the subjects with no baseline category, counted in the Total and in the % denominator; NULL (default): those subjects are left out of the table, not in any row or N","ベースラインのカテゴリが無い被験者の行。Total と % の分母に数えます。NULL（デフォルト）: その被験者は表から除きます（どの行にも N にも入りません）"
 "The figure's own colours are not applied: its 'Colours by' (colour_by) is empty.","Figure 自身の色は使われません。Figure 全体の「色を割り当てる変数」（colour_by）が空です。"
 "The palette %s colours no groups: the figure's 'Colours by' (colour_by) is empty.","パレット %s の色はどの群にも割り当てられません。Figure 全体の「色を割り当てる変数」（colour_by）が空です。"
+"the reference arm, put first; NULL: the first arm in the code list's order, or in its number order","基準群（最初に置きます）; NULL: コードリストの順、それが無ければ番号の順で最初の投与群"
+"the one arm to show against the reference (not the reference itself); NULL: every other arm","基準群に対して示す 1 つの投与群（基準群そのものは選べません）; NULL: 他のすべての投与群"
