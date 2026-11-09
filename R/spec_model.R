@@ -592,26 +592,10 @@
     for (a in w$below_args %||% character()) args[a] <- list(below$args[[a]])
     args <- Filter(Negate(is.null), args)
     own <- if (isTRUE(w$drop_empty) && !length(args) && is.null(below)) NULL else
-      .item_own_unset(fn, args, below)
+      tflspec::tfl_item_own(tflspec::tfl_item(fn, args), below)
     o$content <- .content_put(o$content, fn, k, own)
   }
   .spec_set_output(p, output_id, o, content_only = TRUE)
-}
-
-# An item's own part over what is below it, with `!unset` arguments kept: an
-# argument a card sets to "(none)" is the report's own, left out of the call
-# (tfl_unset()).  tflspec compares the two as R text and stops on an unset
-# argument of a verb with fixed arguments; so the rest is compared, and the
-# unset ones put back after.
-.item_own_unset <- function(fn, args, below) {
-  un <- vapply(args, .is_unset, NA)
-  if (!any(un) || is.null(below)) return(tflspec::tfl_item_own(tflspec::tfl_item(fn, args), below))
-  rest <- args[!un]
-  b <- below
-  b$args <- b$args[setdiff(names(b$args), names(args)[un])]
-  own <- tflspec::tfl_item_own(tflspec::tfl_item(fn, rest), b)
-  args_own <- if (is.null(own)) list() else own$args
-  tflspec::tfl_item(fn, c(args_own, args[un]), from = "own")
 }
 
 # The study's rounding -- plan_digits(rounding = ) of the study's defaults,

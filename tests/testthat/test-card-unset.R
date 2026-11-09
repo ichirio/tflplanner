@@ -116,7 +116,7 @@ test_that("a template argument that is unset is passed as !unset, and the templa
   expect_true(any(grepl("sd_missing: !unset", y, fixed = TRUE)))
   # the program hands it to the template as an unset, which takes the argument out of its own call
   code <- paste(program_code(s$planner, "T-TPL"), collapse = "\n")
-  expect_match(code, 'sd_missing = structure("", class = "tfl_unset"', fixed = TRUE)
+  expect_match(code, "sd_missing = tflspec::tfl_unset()", fixed = TRUE)
   saf <- tflspec::adsl[tflspec::adsl$SAFFL == "Y", ]
   ard <- cards::bind_ard(cards::ard_tabulate(saf, variables = TRT01A),
                          cards::ard_summary(saf, by = TRT01A, variables = AGE))
@@ -167,7 +167,8 @@ test_that("the dialog: an optional argument offers (none), a required one does n
     session$setInputs(mtpl_listing__data = "ADAE", mtpl_listing__columns = "USUBJID | Subject",
                       mtpl_listing__txty = "(none)", mtpl_listing__txtx = "(none)",
                       mtpl_listing__flagx__none = TRUE)
-    args <- tpl_modal_args("listing")
+    session$setInputs(add_ok = 1)
+    args <- .tpl_of(session$userData$rv$p, "L-AE")$args
     expect_s3_class(args$txty, "tfl_unset")
     expect_false("txtx" %in% names(args))
     expect_false("flagx" %in% names(args))
