@@ -52,7 +52,7 @@ test_that("a package that is not installed has no installed version", {
 
 test_that("the repositories fall back to CRAN's cloud when none is chosen", {
   old <- options(repos = c(CRAN = "@CRAN@"))
-  on.exit(options(old))
+  on.exit(options(old), add = TRUE)
   expect_identical(.cran_repos(), c(CRAN = "https://cloud.r-project.org"))
   options(repos = NULL)
   expect_identical(.cran_repos(), c(CRAN = "https://cloud.r-project.org"))
@@ -62,7 +62,7 @@ test_that("the repositories fall back to CRAN's cloud when none is chosen", {
 
 test_that(".read_url() gives the lines of a page, and NULL when it cannot be read", {
   f <- tempfile(fileext = ".txt")
-  on.exit(unlink(f))
+  on.exit(unlink(f), add = TRUE)
   writeLines(c("Version: 1.2.3", "Package: x"), f)
   expect_identical(.read_url(f), c("Version: 1.2.3", "Package: x"))
   expect_null(.read_url(file.path(tempdir(), "no-such-page.txt")))
@@ -147,7 +147,6 @@ test_that("tflplanner_packages(check = TRUE) fills in the newest version of each
 })
 
 test_that("tflplanner_packages(check = TRUE) gives each package its own status", {
-  skip("bug: the status of every installed package is the first one's -- ifelse(!check, NA, ifelse(.newer(...))) has a test of length 1, so it returns only the first element, which the outer ifelse recycles (R/update.R, tflplanner_packages())")
   skip_on_cran()
   local_home()
   pk <- pk_checked()
@@ -327,7 +326,7 @@ test_that("the update's Rscript is Rscript.exe on Windows", {
 test_that("unnamed repositories get names, and the download method is passed on", {
   local_mocked_bindings(.cran_repos = function() c("https://a.example.org", "https://b.example.org"))
   old <- options(download.file.method = "wininet")
-  on.exit(options(old))
+  on.exit(options(old), add = TRUE)
   expect_identical(.update_net_args(),
                    c("--repos=repo1=https://a.example.org;repo2=https://b.example.org",
                      "--method=wininet"))
@@ -341,9 +340,8 @@ test_that("unnamed repositories get names, and the download method is passed on"
 })
 
 test_that("repositories with no CRAN among them are read without an error", {
-  skip("bug: options(repos = c('https://a.example.org')) (no names, or none named CRAN) makes .cran_repos() fail with 'subscript out of bounds' at r[['CRAN']] -- so tflplanner_packages(), update_tflplanner() and the update check all fail for such a site (R/update.R, .cran_repos())")
   old <- options(repos = c("https://a.example.org", "https://b.example.org"))
-  on.exit(options(old))
+  on.exit(options(old), add = TRUE)
   expect_identical(unname(.cran_repos()), c("https://a.example.org", "https://b.example.org"))
 })
 
@@ -413,7 +411,8 @@ test_that("a finished check whose file is missing gives no notice", {
   local_upd_state()
   .upd$proc <- list(is_alive = function() FALSE)
   .upd$file <- file.path(tempdir(), "no-such-result.rds")
-  expect_identical(suppressWarnings(.update_check_result()), list())
+  expect_no_warning(r <- .update_check_result())
+  expect_identical(r, list())
   expect_null(.upd$proc)
   # the answer stays
   expect_identical(.update_check_result(), list())

@@ -25,7 +25,7 @@
 
 .cran_repos <- function() {
   r <- getOption("repos")
-  if (is.null(r) || !length(r) || identical(unname(r[["CRAN"]]), "@CRAN@")) {
+  if (is.null(r) || !length(r) || identical(unname(r["CRAN"]), "@CRAN@")) {
     r <- c(CRAN = "https://cloud.r-project.org")
   }
   r
@@ -118,10 +118,12 @@ tflplanner_packages <- function(check = TRUE, channel = NULL) {
       }
     }
   }
-  out$status <- ifelse(is.na(out$installed), "missing",
-                       ifelse(!check, NA_character_,
-                              ifelse(.newer(out$latest, out$installed),
-                                     "update", "ok")))
+  out$status <- if (!check) {
+    ifelse(is.na(out$installed), "missing", NA_character_)
+  } else {
+    ifelse(is.na(out$installed), "missing",
+           ifelse(.newer(out$latest, out$installed), "update", "ok"))
+  }
   out
 }
 
@@ -343,7 +345,7 @@ update_tflplanner <- function(channel = NULL, from = NULL,
   if (!is.null(.upd$result)) return(.upd$result)
   p <- .upd$proc
   if (is.null(p) || p$is_alive()) return(NULL)
-  latest <- tryCatch(readRDS(.upd$file), error = function(e) NULL)
+  latest <- tryCatch(readRDS(.upd$file), error = function(e) NULL, warning = function(w) NULL)
   unlink(.upd$file)
   .upd$proc <- NULL
   if (is.null(latest)) {
