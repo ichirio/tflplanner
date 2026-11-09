@@ -48,3 +48,4 @@
 "Copied (same)","コピー済み（同じ）"
 "Copying these replaces the study's reports with the AI's drafts: settings made on the screen may be lost. What was set for them in the study and not in the drafts may be lost too. They are left as they are unless you overwrite them.","これらをコピーすると、試験の帳票が AI の下書きで置き換わり、画面で直した設定や、試験で設定していて下書きに無いものが消えるかもしれません。「上書きしてコピー」を押さない限り、そのまま残します。"
 "draft","下書き"
+"%d drafts were not copied: they have an ERROR (fix them in step 3 and check again).","%d 件の下書きは ERROR があるため写していません（3 の段で直して、もう一度確かめてください）。"
