@@ -1,0 +1,133 @@
+# How tflplanner works
+
+## The steps and what each makes
+
+    Reports  added on screen, or taken in from the company's TOC (xlsx / csv)
+    ARD      web GUI  =>  (Excel, optional)  =>  ARD programs  =>  the study ARD
+             (or an ARD made elsewhere, taken in)
+    Tables   the study ARD, by output_id  =>  normalize, rework  =>  RTF
+    Listings, Figures   SDTM / ADaM  =>  report programs  =>  RTF
+    Your own R   a report's data or content step as R code; the report's page wraps it  =>  RTF
+    Official runs   autoexec_*.R  =>  runs/<date>_<time>_<what>/  (logs, results, code)
+
+## The steps of a report
+
+The **Make a report** tab makes one report, in steps.
+
+| Report | Steps |
+|----|----|
+| A code report (table, listing or figure) | 1 Analysis data, 2 ARD, 3 Content, 4 Page and output |
+| A report made from a template | 1 Analysis data, 2 Template, 3 Page and output |
+
+- **1 Analysis data**: a table’s population and analysis data; a
+  listing’s dataset and condition, and its Rework (R that changes its
+  data before it is sorted).
+- **2 ARD**: the analyses that make the report’s ARD. A listing has no
+  ARD, so this step is shut for it.
+- **3 Content**: the table’s layout, the listing’s rows and columns, the
+  figure’s design. A table’s Rework is at the top of this step, folded.
+  The program runs it after `normalize_ard()`: it starts from `data`,
+  the normalized ARD, and leaves its result in `data`.
+- **4 Page and output**: titles, footnotes, header, footer, section and
+  description.
+
+On each step of a code report the right-hand side has three tabs: **SPEC
+\| Code \| Result**.
+
+A table made from a template has five tabs on its Template step, in the
+order things are made: **Template SPEC \| ARD code \| ARD result \|
+Report code \| Report result**. Report result is the one shown first.
+When the template makes no ARD, the two ARD tabs are disabled. A listing
+made from a template is previewed, and its program written, from the
+template’s content, so its `by`, `by_break` and `by_heading` arguments
+take effect.
+
+## What it does
+
+- **The ARD and the reports are separate steps**, which different people
+  can take at different times: a table is made from whatever of the
+  study ARD is there.
+- **The ARD on screen**: any function of cards / cardx chosen from a
+  list, its arguments in a form, analyses run together
+  ([`cards::ard_stack()`](https://pharmaverse.github.io/cards/latest-tag/reference/ard_stack.html)),
+  steps after the ARD (`add_calculated_row()` …), the study’s code lists
+  applied before it, the company’s own ARD functions, and ARDs made
+  elsewhere taken in, checked and compared.
+- **Three kinds of report, each step on screen or in your own R**:
+  tables, listings and figures (a plot designer); a report’s data step
+  (shown on step 2 ARD) and its Content step are each defined on screen
+  or written as an R program (checked against a few rules), and
+  tflplanner adds the page, titles and footnotes.
+- **Company standards**: every default and code list the app offers –
+  dropdowns, presets, ARD methods and statistics, code templates, the
+  rows a new study starts with – comes from one workbook, set up once.
+- **Previews and official runs**: a program run on its own is a preview;
+  an official run keeps each program’s log
+  ([logrx](https://github.com/pharmaverse/logrx)), what it made and the
+  code it ran in a dated run folder.
+- English (default) or Japanese.
+
+## Concept
+
+- **The code is for people to read and finish.** The programs tflplanner
+  writes are short and plain, close to what a statistical programmer
+  writes by hand, and easy to maintain. Typically, you build most of an
+  analysis in the app, copy the program it writes and finish it by hand
+  outside the app.
+- **The typical analyses and layouts, in a few steps.** To keep the code
+  simple, the app covers the analyses and table layouts most studies
+  use, each set with a few simple operations, rather than every possible
+  design.
+- **What the screens cannot say is written as R.** A condition, a
+  derived column, an argument, a step after the ARD – or a whole
+  user-code report – is kept in the spec as R code, and the programs put
+  it where it belongs.
+- **Shared parts are defined once.** The header, footer, page style and
+  the study’s information (company name, analysis type, protocol ID, …)
+  are set once and reused; each report’s program carries only its own
+  values.
+- **Screens =\> spec =\> code.** The app writes the spec (which can also
+  be edited directly), and the programs are written from the spec; a
+  generated program is not edited inside the tool.
+
+## Updating
+
+tflplanner never updates itself or anything else on its own. To update
+rtfreporter, tflspec and tflplanner, close the app and run
+
+``` r
+
+tflplanner::update_tflplanner()          # the released versions
+tflplanner::update_tflplanner("dev")     # the development versions
+tflplanner::update_tflplanner(from = "D:/packages")   # from package files
+```
+
+or start it from the shortcut **tflplanner (update and launch)**, made
+only when asked for: `add_shortcut(update = TRUE)`. The app can say when
+a newer version is out (it looks when it starts): off by default, turned
+on in its settings.
+
+## Setting up from a script
+
+The same steps as code, for scripts:
+
+``` r
+
+library(tflplanner)
+setup_tflplanner(studies_root = "C:/studies",          # once; with the
+                 sample = TRUE)                        #   sample study
+standards_template("company_standards.xlsx")           # the draft to edit
+setup_tflplanner(standards = "company_standards.xlsx") # your standards
+add_shortcut(ask = FALSE)
+run_app()
+```
+
+`sample = TRUE` (or
+[`create_sample_study()`](https://ichirio.github.io/tflplanner/reference/create_sample_study.md),
+or *Add the sample study* in the app’s settings) copies the sample study
+**SAMPLE-01** into the studies folder and makes it: the simulated
+oncology study XYZ-ONC-01 of
+[tflspec](https://github.com/ichirio/tflspec) (Drug X vs Control: its
+ADSL with the screen failures, ADAE, ADVS and ADTTE), one study ARD,
+tables, a listing, two designed figures and two whose content is their
+own R code – a study to try everything on.

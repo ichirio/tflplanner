@@ -1,0 +1,43 @@
+# Check the definition the way the report programs will read it
+
+Writes the workbooks to a temporary folder and reads each report back
+with
+[`tflspec::tfl_read_report_spec()`](https://ichirio.github.io/tflspec/reference/tfl_read_report_spec.html)
+narrowed to it, the call every report program makes. (What needs the
+data – a column the ARD lacks – shows only when the program runs.)
+
+## Usage
+
+``` r
+check_planner(x)
+```
+
+## Arguments
+
+- x:
+
+  An `tflplanner`.
+
+## Value
+
+A data frame: `output_id`, `ok`, `message`.
+
+## Examples
+
+``` r
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+#> The home /tmp/RtmpTnNlOL/tflplanner-home1b1874160a88 is in the temporary folder: it is used in this R session only, not remembered for later ones.
+#> tflplanner home: /tmp/RtmpTnNlOL/tflplanner-home1b1874160a88
+#> new studies go to: /tmp/RtmpTnNlOL/tflplanner-home1b1874160a88/studies
+# \donttest{
+# (a few seconds: the report is written and read back)
+x <- add_output(new_planner(), "F-1", type = "figure")
+check_planner(x)  # one row a report: ok, and the message when not
+#>   output_id   ok message
+#> 1       F-1 TRUE        
+# }
+options(old)
+```
