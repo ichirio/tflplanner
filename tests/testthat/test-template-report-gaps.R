@@ -272,7 +272,6 @@ test_that("the verbs after a template's call: the ones its program has", {
 })
 
 test_that("the verbs after a template's call in the program tflspec writes now", {
-  skip("bug: .tpl_code_fns() finds the call by 'tpl_<name>(' but tflspec 0.0.24.9238 writes tflspec::tfl_tpl(ard, \"demog\", ...), so a demog report gets no verbs (character(0)) and its study-standard cards are not told apart")
   skip_on_cran()
   p <- .spec_add_output(tpl_sample_planner(), tpl_demog_output(), population = "SAF")
   fns <- .tpl_code_fns(p, "T-99")
