@@ -6,11 +6,19 @@
 
 .none_word <- "(none)"
 
+# what "(none)" is said as in any of the app's languages ("(none)",
+# "（なし）"): the screen shows t(.none_word), and a field gives either back
+.none_texts <- function() {
+  s <- .strings()
+  w <- unlist(s[s$en == .none_word, setdiff(names(s), "en")], use.names = FALSE)
+  unique(c(.none_word, w[!is.na(w) & nzchar(w)]))
+}
+
 .is_unset <- function(x) inherits(x, "tfl_unset")
 
-# text an input gives that says "(none)" (a lone item, trimmed)
+# text an input gives that says "(none)", in any language (a lone item, trimmed)
 .is_none_text <- function(v) {
-  is.character(v) && length(v) == 1L && !is.na(v) && identical(trimws(v), .none_word)
+  is.character(v) && length(v) == 1L && !is.na(v) && trimws(v) %in% .none_texts()
 }
 
 # Two values as the same setting: an unset only equals an unset
@@ -23,7 +31,7 @@
 # .pg_btn() itself: that one belongs to the Page form's own click handler.
 .none_btn <- function(t = identity, ...) {
   shiny::tags$button(type = "button", class = "btn btn-link none-btn",
-                     title = t("None here (!unset)"), ..., .none_word)
+                     title = t("None here (!unset)"), ..., t(.none_word))
 }
 
 .none_css <- "
@@ -32,6 +40,7 @@
   min-height: 1rem; }
 .none-note { display: none; font-size: .75rem; color: #6b7280; }
 .none-note.none-on { display: inline; }
+.none-row:has(.none-note.none-on) > .none-btn { display: none; }
 .rp-none-toggle { margin: 0; cursor: pointer; font-size: 11px; font-family: Consolas, 'Courier New', monospace;
   color: #9ca3af; border: 1px solid #e5e7eb; border-radius: .25rem; padding: 0 .3rem; line-height: 1.5; }
 .rp-none-toggle input { display: none; }
@@ -47,9 +56,9 @@
 .none_js <- "
 $(document).on('shiny:connected', function() {
   // a template field's \"(none)\" button: the value of a text, number or list
-  // field becomes \"(none)\" (read on leaving the field), a switch is turned
-  // off and says so to the server
-  window.tplNone = function(id) {
+  // field becomes \"(none)\" as the button says it (read on leaving the
+  // field), a switch is turned off and says so to the server
+  window.tplNone = function(id, btn) {
     var el = document.getElementById(id);
     if (!el) return;
     var box = $(el).closest('.shiny-input-container');
@@ -60,7 +69,7 @@ $(document).on('shiny:connected', function() {
       return;
     }
     if (el.type === 'number') el.type = 'text';
-    el.value = '(none)';
+    el.value = btn ? btn.textContent.trim() : '(none)';
     $(el).trigger('input').trigger('change').trigger('blur');
   };
   // a switch moved by hand is a value again

@@ -341,20 +341,30 @@
         !any(vapply(r, is.null, NA))) r else v
 }
 
+# A number as typed: a whole one an integer where the argument is a count
+# -- its default an integer, or its name says so (max_rows, n_*, *_digits)
+# -- so the SPEC YAML says 25, not 25.0
+.tpl_whole <- function(v, prm) {
+  count <- is.integer(prm$default) || grepl("(^n_|_n$|rows$|lines$|digits$)", prm$name %||% "")
+  if (count && all(is.finite(v)) && all(v == round(v)) && all(abs(v) < .Machine$integer.max)) as.integer(v) else v
+}
+
 # What an input gives, as the argument's value (NULL: none -- the default)
 .tpl_value <- function(v, type, prm = NULL) {
   if (is.null(v)) return(NULL)
   # ("(none)" on an argument that may be left out: `!unset`; among other
   # items of a many-valued field it is just not one of them)
-  if (!isTRUE(prm$required) && is.character(v) && any(trimws(v) == .none_word)) {
+  # (in any language: "(none)", "（なし）")
+  nn <- is.character(v) && !isTRUE(prm$required) && any(trimws(v) %in% .none_texts())
+  if (nn) {
     if (length(v) == 1L) return(tflspec::tfl_unset())
-    v <- v[trimws(v) != .none_word]
+    v <- v[!trimws(v) %in% .none_texts()]
   }
   switch(type,
     flag = isTRUE(v),
     number = {
       v <- suppressWarnings(as.numeric(v))
-      if (!length(v) || is.na(v)) NULL else v
+      if (!length(v) || is.na(v)) NULL else .tpl_whole(v, prm)
     },
     vars = , chips = , choices = , levels = {
       v <- as.character(v)

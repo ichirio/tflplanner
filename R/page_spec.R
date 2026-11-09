@@ -231,7 +231,7 @@
 .pgs_value <- function(v, kind) {
   v <- trimws(v %||% "")
   if (!nzchar(v)) return(NULL)
-  if (identical(v, "(none)")) return(tflspec::tfl_unset())
+  if (.is_none_text(v)) return(tflspec::tfl_unset())
   # a family, or a family per script slot: latin = Courier New | east_asian = MS Mincho
   if (identical(kind, "font")) return(list(list(name = .slots_parse(v))))
   if (identical(kind, "slots")) return(.slots_parse(v))
@@ -476,7 +476,7 @@
       if (.pgs_unset(m)) m else if (is.list(m)) m[[line]]
     }))
     parts <- list(left = left, center = center, right = right)
-    if (any(vapply(parts, function(v) identical(trimws(v %||% ""), "(none)"), NA))) {
+    if (any(vapply(parts, function(v) .is_none_text(v %||% ""), NA))) {
       tflspec::tfl_unset()
     } else {
       cells <- list()

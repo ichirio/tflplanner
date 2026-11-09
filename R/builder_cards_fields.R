@@ -128,7 +128,7 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
     class = "rp-none-toggle", title = t("None here (!unset)"),
     shiny::tags$input(type = "checkbox", id = paste0(fid, "__none"), class = "rp-isnone",
                       `data-init` = if (none) "1", checked = if (none) NA else NULL),
-    shiny::tags$span(.none_word))
+    shiny::tags$span(t(.none_word)))
   cls <- c("rp-field", paste0("rp-field-", kind), if (required) "rp-field-required",
            if (is_r) "rp-field-r", if (none) "rp-field-none",
            if (none || nzchar(r_text) || .has_value(value)) "rp-has-value")

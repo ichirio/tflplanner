@@ -51,13 +51,13 @@ test_that("a template param whose default is unset shows (none), one per widget 
     h <- output$tpl_card_lf$html
     # a select: "(none)" first and selected, the blank "(default)" no longer
     sel <- .select_of(h, "tpl_listing__by_break")
-    expect_match(sel, '<option value="(none)" selected>(none)</option>', fixed = TRUE)
+    expect_match(sel, '<option value="(none)" selected>(none: not passed)</option>', fixed = TRUE)
     expect_false(grepl('<option value="" selected', sel, fixed = TRUE))
     # a selectize with several: the same
-    expect_match(.select_of(h, "tpl_listing__by"), '<option value="(none)" selected>(none)</option>', fixed = TRUE)
+    expect_match(.select_of(h, "tpl_listing__by"), '<option value="(none)" selected>(none: not passed)</option>', fixed = TRUE)
     # a text: "(none)" as its value, and the button
     expect_match(.tag_of(h, "tpl_listing__txtx", "input"), 'value="(none)"', fixed = TRUE)
-    expect_match(h, "tplNone(&#39;tpl_listing__txtx&#39;)", fixed = TRUE)
+    expect_match(h, "tplNone(&#39;tpl_listing__txtx&#39;, this)", fixed = TRUE)
     # a number: the text "(none)" (a number input cannot hold it)
     num <- .tag_of(h, "tpl_listing__numx", "input")
     expect_match(num, 'value="(none)"', fixed = TRUE)
@@ -67,7 +67,7 @@ test_that("a template param whose default is unset shows (none), one per widget 
     expect_match(h, "none-note none-on", fixed = TRUE)
     # a text with a default of its value: its value, and the button still offered
     expect_match(.tag_of(h, "tpl_listing__txty", "input"), 'value="keep"', fixed = TRUE)
-    expect_match(h, "tplNone(&#39;tpl_listing__txty&#39;)", fixed = TRUE)
+    expect_match(h, "tplNone(&#39;tpl_listing__txty&#39;, this)", fixed = TRUE)
   })
 })
 
@@ -82,7 +82,7 @@ test_that("choosing (none) writes tfl_unset into template.args; another value or
     session$setInputs(tpl_listing__by_break = "(none)")
     expect_s3_class(.tpl_of(rv$p, "L-TPL")$args$by_break, "tfl_unset")
     expect_match(.select_of(output$tpl_card_lf$html, "tpl_listing__by_break"),
-                 '<option value="(none)" selected>(none)</option>', fixed = TRUE)
+                 '<option value="(none)" selected>(none: not passed)</option>', fixed = TRUE)
     # a text (by_heading: no default)
     session$setInputs(tpl_listing__by_heading = "(none)")
     expect_s3_class(.tpl_of(rv$p, "L-TPL")$args$by_heading, "tfl_unset")
@@ -158,9 +158,9 @@ test_that("the dialog: an optional argument offers (none), a required one does n
     # a required field has no (none), as the wrapper's own test shows)
     # the others: the item and the button
     more <- as.character(output$tpl_modal_more$html)
-    expect_match(.select_of(more, "mtpl_listing__by_break"), '<option value="(none)" selected>(none)</option>', fixed = TRUE)
-    expect_match(more, "tplNone(&#39;mtpl_listing__txtx&#39;)", fixed = TRUE)
-    expect_match(more, "tplNone(&#39;mtpl_listing__flagx&#39;)", fixed = TRUE)
+    expect_match(.select_of(more, "mtpl_listing__by_break"), '<option value="(none)" selected>(none: not passed)</option>', fixed = TRUE)
+    expect_match(more, "tplNone(&#39;mtpl_listing__txtx&#39;, this)", fixed = TRUE)
+    expect_match(more, "tplNone(&#39;mtpl_listing__flagx&#39;, this)", fixed = TRUE)
     expect_false(grepl("mtpl_listing__data", more, fixed = TRUE))
     expect_false(grepl("mtpl_listing__columns", more, fixed = TRUE))
     # chosen in the dialog: written as !unset where the start was a value; a start that is unset is no change
@@ -221,7 +221,7 @@ test_that("fields without an unset render as before; a required one has no (none
     } else if (identical(ty, "flag")) {
       expect_identical(sub(" tpl-flag-field", "", as.character(r[[1L]]), fixed = TRUE), base)
     } else {
-      expect_identical(sub('<option value="(none)">(none)</option>\n', "", h, fixed = TRUE), base, info = ty)
+      expect_identical(sub('<option value="(none)">(none: not passed)</option>\n', "", h, fixed = TRUE), base, info = ty)
     }
   }
   # (the columns field has its own table: none)
@@ -294,4 +294,76 @@ test_that("a code SPEC card's required argument has no (none); one kind after an
   sch <- list(args = list(x = list(type = "string")), formals = "x")
   expect_s3_class(builder_card_read(list(c__x__none = TRUE, c__x = "a"), "c", sch)$x, "tfl_unset")
   expect_identical(builder_card_read(list(c__x__none = FALSE, c__x = "a"), "c", sch)$x, "a")
+})
+
+test_that("a special card's other arguments: the (none) toggle is written as !unset", {
+  skip_on_cran()
+  # read back: the toggle alone (its field not there) is seen, and is an unset, not "the default"
+  r <- .special_read(list(c__show_keys__none = TRUE), "c", "table_plan")
+  expect_s3_class(r$set$show_keys, "tfl_unset")
+  expect_false("show_keys" %in% r$unset)
+  r2 <- .special_read(list(c__show_keys__none = TRUE, c__show_keys = "AGE"), "c", "table_plan")
+  expect_s3_class(r2$set$show_keys, "tfl_unset")
+  # toggled off and emptied: taken out again
+  r3 <- .special_read(list(c__show_keys__none = FALSE, c__show_keys = NULL), "c", "table_plan")
+  expect_identical(r3$unset, "show_keys")
+  home <- local_home()
+  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  id <- "T-14-1-2"
+  it0 <- Filter(function(i) i$fn == "table_plan", builder_items(s$planner, id))[[1L]]
+  args <- .special_args_put(it0$args, r)
+  expect_s3_class(args$show_keys, "tfl_unset")
+  s$planner <- .builder_item_write(s$planner, id, "table_plan", args, 1L)
+  it1 <- Filter(function(i) i$fn == "table_plan", builder_items(s$planner, id))[[1L]]
+  expect_s3_class(it1$args$show_keys, "tfl_unset")
+  # the card shows it, and the SPEC YAML keeps it
+  expect_match(as.character(.special_more("c1", "table_plan", it1)),
+               'class="rp-field rp-field-list rp-field-none', fixed = TRUE)
+  s <- suppressMessages(save_study(s, home = home))
+  y <- readLines(file.path(s$path, "spec", "outputs", paste0(id, ".yml")), warn = FALSE)
+  expect_true(any(grepl("show_keys: !unset", y, fixed = TRUE)))
+  # (the program: tflspec drops an unset where it merges the item with the
+  # study standard's; an item the standard does not have -- table_plan here
+  # -- keeps it, and tflspec stops.  tflspec's follow-up, not checked here)
+})
+
+test_that("(none) is shown in the screen's language and read back in either", {
+  ja <- function(x) tr(x, "ja")
+  w <- tr("(none)", "ja")
+  expect_false(identical(w, "(none)"))
+  expect_true(all(c("(none)", w) %in% .none_texts()))
+  opt <- list(name = "x", default = "a", required = FALSE)
+  # read: either word, alone or among items; not on a required argument
+  for (v in c("(none)", w, paste0(" ", w, " "))) {
+    expect_s3_class(.tpl_value(v, "text", opt), "tfl_unset")
+    expect_s3_class(.tpl_value(v, "number", opt), "tfl_unset")
+    expect_true(.is_none_text(v))
+  }
+  expect_identical(.tpl_value(c(w, "AGE"), "vars", opt), "AGE")
+  expect_identical(.tpl_value(w, "text", list(name = "x", required = TRUE)), w)
+  expect_s3_class(.pgs_value(w, "text"), "tfl_unset")
+  # shown: the field's value, the button, the flag's note; a select's item says it is not passed
+  h <- as.character(.tpl_none_wrap(shiny::textInput("w", "W"), "w", "text", opt, TRUE, ja))
+  expect_match(h, sprintf('value="%s"', w), fixed = TRUE)
+  expect_match(h, sprintf('this)">%s</button>', w), fixed = TRUE)
+  expect_false(grepl(">(none)<", h, fixed = TRUE))
+  f <- as.character(.tpl_none_wrap(bslib::input_switch("w", "W"), "w", "flag", opt, TRUE, ja))
+  expect_match(f, sprintf('<span class="none-note none-on">%s</span>', w), fixed = TRUE)
+  s <- as.character(.tpl_none_wrap(shiny::selectInput("w", "W", c("set", "none")), "w", "choice", opt, TRUE, ja))
+  expect_match(s, sprintf('<option value="(none)" selected>%s</option>', tr("(none: not passed)", "ja")), fixed = TRUE)
+  expect_match(s, '<option value="none">none</option>', fixed = TRUE)
+  # the code SPEC card's toggle says the same word
+  expect_match(as.character(arg_field("c", "x", "string", value = U(), lang = "ja")),
+               sprintf("<span>%s</span>", w), fixed = TRUE)
+  # (the button is hidden while a flag's note says (none))
+  expect_match(.none_css, ".none-row:has(.none-note.none-on) > .none-btn { display: none; }", fixed = TRUE)
+})
+
+test_that("a whole number typed into a count's field is an integer", {
+  cnt <- list(name = "max_rows", default = U(), required = FALSE)
+  expect_identical(.tpl_value("25", "number", cnt), 25L)
+  expect_identical(.tpl_value("2.5", "number", cnt), 2.5)
+  expect_identical(.tpl_value("2", "number", list(name = "legend_median_digits", default = 1L)), 2L)
+  expect_identical(.tpl_value("25", "number", list(name = "per", default = 100)), 25)
+  expect_identical(.tpl_value(3, "number", list(name = "conf_level", default = 0.95)), 3)
 })
