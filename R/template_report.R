@@ -417,7 +417,7 @@
   if (is.null(v)) return(NULL)
   # ("(none)" on an argument that may be left out: `!unset`; among other
   # items of a many-valued field it is just not one of them)
-  # (in any language: "(none)", "（なし）")
+  # (in any language: "(none)", "\uff08\u306a\u3057\uff09")
   nn <- is.character(v) && !isTRUE(prm$required) && any(trimws(v) %in% .none_texts())
   if (nn) {
     if (length(v) == 1L) return(tflspec::tfl_unset())

@@ -7,7 +7,7 @@
 .none_word <- "(none)"
 
 # what "(none)" is said as in any of the app's languages ("(none)",
-# "（なし）"): the screen shows t(.none_word), and a field gives either back
+# "\uff08\u306a\u3057\uff09"): the screen shows t(.none_word), and a field gives either back
 .none_texts <- function() {
   s <- .strings()
   w <- unlist(s[s$en == .none_word, setdiff(names(s), "en")], use.names = FALSE)
