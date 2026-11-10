@@ -840,8 +840,10 @@ $(document).on('shiny:connected', function() {
 # text).  The report's own value first (tfl_tpl_args() has no report
 # arguments); then the layer tflspec names: "study: <key>" the study
 # standard, "report" the report's analysis set (output.population, kept as
-# "study" with no key), "fallback" the value for when the study standard
-# has none, the rest (template, default, variant:<name>) the template's own.
+# "study" with no key), "fallback" the default for when the study standard
+# is undefined, "default" with a study key a study reference with no value
+# (kind "none": no badge, the field says "(none)"), the rest (template,
+# default with no key, variant:<name>) the template's own.
 .tpl_badge_of <- function(a, args, rows) {
   if (is.null(rows)) return(NULL)
   r <- rows[rows$param == a, , drop = FALSE]
@@ -856,18 +858,38 @@ $(document).on('shiny:connected', function() {
   if (startsWith(ly, "study:")) return(list(kind = "study", key = as.character(r$study_key[1L])))
   if (identical(ly, "report")) return(list(kind = "report", key = NA_character_))
   if (identical(ly, "fallback")) return(list(kind = "fallback", key = as.character(r$study_key[1L])))
+  if (identical(ly, "default")) {
+    sk <- if ("study_key" %in% names(r)) as.character(r$study_key[1L]) else NA_character_
+    if (length(sk) && !is.na(sk) && nzchar(sk)) return(list(kind = "none", key = sk))
+  }
   list(kind = "default", key = NA_character_)
+}
+
+# The study key of a field that is a study reference with no value (kind
+# "none"), else NULL: its placeholder says "(none)" and its (i) names the key
+.tpl_none_key <- function(a, args, rows) {
+  b <- .tpl_badge_of(a, args, rows)
+  if (!is.null(b) && identical(b$kind, "none")) b$key
+}
+
+# The (i) text of a field: the doc, and for a study reference with no value
+# (`key`) the sentence that says where it would come from
+.tpl_info_text <- function(doc, key, t) {
+  if (is.null(key) || is.na(key) || !nzchar(key)) return(doc)
+  paste(c(if (nzchar(doc)) t(doc), sprintf(t("Uses the study standard's %s when it is defined."), key)),
+        collapse = " ")
 }
 
 # The badge itself, a small pill after the label; `t` the translator,
 # `kind` the report's kind ("table": "This table", else "This report")
 .tpl_badge_tag <- function(b, t, kind = "table") {
+  if (identical(b$kind, "none")) return(NULL)
   txt <- switch(b$kind,
     own = t(if (identical(kind, "table")) "This table" else "This report"),
     study = sprintf(t("Study standard (%s)"), b$key),
     report = t("This report's analysis set"),
-    fallback = if (!length(b$key) || is.na(b$key[1L])) t("When the study standard has none") else
-      sprintf(t("When the study standard (%s) has none"), b$key),
+    fallback = if (!length(b$key) || is.na(b$key[1L])) t("Default when the study standard is undefined") else
+      sprintf(t("Default when the study standard (%s) is undefined"), b$key),
     t("Template default"))
   cls <- c(own = "own", study = "study", report = "study", fallback = "fallback")[b$kind]
   shiny::span(class = paste0("badge rounded-pill rp-tpl-badge rp-tpl-badge-",

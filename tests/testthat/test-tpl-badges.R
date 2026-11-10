@@ -28,8 +28,10 @@ test_that("demog: each of the four badges is on the right argument", {
   expect_identical(.tpl_badge_of("blanks", args, rows)$key, "plan_blanks.where")
   # the value for when the study standard has none
   expect_identical(kind("max_rows"), "fallback")
-  # the template's own default (a study key it does not set, no value of its own; no key at all)
-  expect_identical(kind("blanks_first"), "default")
+  # a study reference the study does not set, no fallback: no badge ("none")
+  expect_identical(kind("blanks_first"), "none")
+  expect_null(.tpl_badge_tag(.tpl_badge_of("blanks_first", args, rows), function(x) x))
+  # the template's own default (no study key at all)
   expect_identical(kind("total_label"), "default")
   # the report's value over the study's: still the report's
   expect_identical(.tpl_badge_of("rounding", list(rounding = "r"), rows)$kind, "own")
@@ -62,12 +64,12 @@ test_that("the badge is a small pill with the kind's class and text", {
   expect_match(h(list(kind = "report")), "This report's analysis set", fixed = TRUE)
   expect_match(h(list(kind = "fallback")), "rp-tpl-badge-fallback")
   expect_match(h(list(kind = "fallback", key = "plan_blanks.max_rows")),
-               "When the study standard (plan_blanks.max_rows) has none", fixed = TRUE)
-  expect_match(h(list(kind = "fallback", key = "a.b"), tr_ja), "試験標準（a.b）に無い時の値")
+               "Default when the study standard (plan_blanks.max_rows) is undefined", fixed = TRUE)
+  expect_match(h(list(kind = "fallback", key = "a.b"), tr_ja), "試験標準（a.b）未定義の時の既定値")
+  expect_match(h(list(kind = "fallback"), tr_en), "Default when the study standard is undefined", fixed = TRUE)
   expect_match(h(list(kind = "default")), "rp-tpl-badge-default")
   expect_match(h(list(kind = "default")), "Template default")
   expect_match(h(list(kind = "default"), tr_ja), "\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8\u306e\u65e2\u5b9a\u5024")
-  expect_match(h(list(kind = "fallback"), tr_ja), "\u8a66\u9a13\u6a19\u6e96\u306b\u7121\u3044\u6642\u306e\u5024")
   expect_match(h(list(kind = "report"), tr_ja), "\u3053\u306e\u5e33\u7968\u306e\u89e3\u6790\u5bfe\u8c61\u96c6\u56e3")
 })
 
@@ -80,4 +82,33 @@ test_that("tflspec cannot say: no rows, no badge (the card keeps its old text)",
 test_that("no fading of a field at a default; only the empty placeholder is light", {
   expect_false(grepl("rp-tpl-default", .tpl_css, fixed = TRUE))
   expect_true(grepl(".selectize-input .item[data-value=''] { color: #8a8f98; }", .tpl_css, fixed = TRUE))
+})
+
+test_that("a study reference with no value: kind none, no badge, a (none) placeholder and the key in the (i)", {
+  tr_en <- function(x) tr(x, "en")
+  tr_ja <- function(x) tr(x, "ja")
+  rows <- data.frame(param = c("a", "b", "c", "d"),
+                     layer = c("default", "default", "template", "variant:x"),
+                     study_key = c("plan_style.border_header", NA, NA, NA),
+                     stringsAsFactors = FALSE)
+  b <- .tpl_badge_of("a", list(), rows)
+  expect_identical(b$kind, "none")
+  expect_identical(b$key, "plan_style.border_header")
+  expect_null(.tpl_badge_tag(b, tr_en))
+  expect_identical(.tpl_none_key("a", list(), rows), "plan_style.border_header")
+  # a default with no study key, a template's and a variant's: the template's own
+  expect_identical(.tpl_badge_of("b", list(), rows)$kind, "default")
+  expect_identical(.tpl_badge_of("c", list(), rows)$kind, "default")
+  expect_identical(.tpl_badge_of("d", list(), rows)$kind, "default")
+  expect_null(.tpl_none_key("b", list(), rows))
+  # given in the report: its own
+  expect_identical(.tpl_badge_of("a", list(a = 1), rows)$kind, "own")
+  expect_null(.tpl_none_key("a", list(a = 1), rows))
+  # the (i) sentence, en and ja; none without a key
+  expect_identical(.tpl_info_text("the doc", NULL, tr_en), "the doc")
+  expect_match(.tpl_info_text("", "plan_style.border_header", tr_en),
+               "Uses the study standard's plan_style.border_header when it is defined.", fixed = TRUE)
+  expect_match(.tpl_info_text("", "plan_style.border_header", tr_ja),
+               "試験標準の plan_style.border_header が定義されていればそれを使います。", fixed = TRUE)
+  expect_identical(tr("(none)", "ja"), "（なし）")
 })
