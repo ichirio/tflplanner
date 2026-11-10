@@ -49,37 +49,36 @@ test_that("a flag's (none) stays when the card is drawn again, its default TRUE 
   expect_false(.tpl_flag_off_drawn("flag", TRUE, U(), NULL))
   expect_false(.tpl_flag_off_drawn("flag", FALSE, TRUE, NULL))
   expect_false(.tpl_flag_off_drawn("text", FALSE, U(), NULL))
-  # demog's stub_before and blanks_last: the study standard's TRUE
+  # ae_soc_pt's any_row (default TRUE) and total (default FALSE)
   home <- local_home()
   s <- suppressMessages(create_sample_study(run = FALSE, home = home))
-  o <- tflspec::tfl_output("T-TPL", "table", label = "Demographics", population = "SAF",
-                           template = list(name = "demog", args = list(by = "TRT01A", continuous = "AGE",
-                                                                       categorical = c("SEX", "RACE"))))
-  s$planner <- .spec_add_output(s$planner, o, label = "Demographics", population = "SAF")
+  o <- tflspec::tfl_output("T-TPL", "table", label = "AEs", population = "SAF",
+                           template = list(name = "ae_soc_pt", args = list(population = "SAF")))
+  s$planner <- .spec_add_output(s$planner, o, label = "AEs", population = "SAF")
   s <- suppressWarnings(suppressMessages(save_study(s, home = home)))
   # (each write says the template's flags override the study standard's)
   suppressMessages(shiny::testServer(function(input, output, session) app_server(input, output, session, s), {
     rv <- session$userData$rv
     args <- function() .tpl_of(rv$p, "T-TPL")$args
     session$setInputs(target = "T-TPL", nav = "make", step = "content", content_nav = "content")
-    expect_match(output$tpl_card$html, "tpl_demog__blanks_last", fixed = TRUE)
-    session$setInputs(tpl_demog__blanks_last = TRUE, tpl_demog__stub_before = TRUE)
-    expect_null(args()$blanks_last)
-    # blanks_last's (none), then the card drawn again says the switch off
-    session$setInputs(tpl_demog__blanks_last__none = TRUE)
-    expect_s3_class(args()$blanks_last, "tfl_unset")
-    session$setInputs(tpl_demog__blanks_last = FALSE)
-    expect_s3_class(args()$blanks_last, "tfl_unset")
-    # stub_before's (none): blanks_last, drawn again, is still (none)
-    session$setInputs(tpl_demog__stub_before__none = TRUE)
-    session$setInputs(tpl_demog__stub_before = FALSE, tpl_demog__blanks_last = FALSE)
-    expect_s3_class(args()$blanks_last, "tfl_unset")
-    expect_s3_class(args()$stub_before, "tfl_unset")
+    expect_match(output$tpl_card$html, "tpl_ae_soc_pt__any_row", fixed = TRUE)
+    session$setInputs(tpl_ae_soc_pt__any_row = TRUE, tpl_ae_soc_pt__total = FALSE)
+    expect_null(args()$any_row)
+    # any_row's (none), then the card drawn again says the switch off
+    session$setInputs(tpl_ae_soc_pt__any_row__none = TRUE)
+    expect_s3_class(args()$any_row, "tfl_unset")
+    session$setInputs(tpl_ae_soc_pt__any_row = FALSE)
+    expect_s3_class(args()$any_row, "tfl_unset")
+    # total's (none): any_row, drawn again, is still (none)
+    session$setInputs(tpl_ae_soc_pt__total__none = TRUE)
+    session$setInputs(tpl_ae_soc_pt__total = FALSE, tpl_ae_soc_pt__any_row = FALSE)
+    expect_s3_class(args()$any_row, "tfl_unset")
+    expect_s3_class(args()$total, "tfl_unset")
     # moved by hand: on, then off, are values
-    session$setInputs(tpl_demog__blanks_last__none = FALSE, tpl_demog__blanks_last = TRUE)
-    expect_true(isTRUE(args()$blanks_last %||% TRUE))
-    session$setInputs(tpl_demog__blanks_last = FALSE)
-    expect_identical(args()$blanks_last, FALSE)
+    session$setInputs(tpl_ae_soc_pt__any_row__none = FALSE, tpl_ae_soc_pt__any_row = TRUE)
+    expect_true(isTRUE(args()$any_row %||% TRUE))
+    session$setInputs(tpl_ae_soc_pt__any_row = FALSE)
+    expect_identical(args()$any_row, FALSE)
   }))
 })
 
