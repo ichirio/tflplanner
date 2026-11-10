@@ -907,17 +907,26 @@
     # where a value comes from: this report / the study standard / the
     # function's default (and the report's over the study's, said)
     filled <- .tpl_filled(p, id)
+    rows <- .tpl_args_rows(tp$name, study, p$spec$outputs[[id]]$population)
     from_of <- function(a) {
+      b <- .tpl_badge_of(a, args, rows)
       og <- .tpl_arg_origin(study, prm[[a]], args, filled)
       sv <- og$study
+      if (!is.null(b)) {
+        # (the report's value over the study's: said small, not a second badge)
+        return(shiny::tagList(
+          .tpl_badge_tag(b, t, kind),
+          if (identical(b$kind, "own") && !is.null(sv))
+            shiny::span(class = "rp-tpl-arg-from",
+                        paste0(" ", sprintf(t("over the study standard (%s)"), .tpl_show(sv))))))
+      }
+      # (tflspec cannot say: the text it was)
       if (identical(og$from, "own")) {
         return(shiny::span(class = "rp-tpl-arg-from",
                            t(if (identical(kind, "table")) "This table" else "This report"),
-                           if (!is.null(sv)) paste0(" \u2014 ", sprintf(t("over the study standard (%s)"),
+                           if (!is.null(sv)) paste0(" — ", sprintf(t("over the study standard (%s)"),
                                                                        .tpl_show(sv)))))
       }
-      # (the study standard, and where in it: "Study standard
-      # (settings.treatment)")
       std <- if (!is.na(og$source)) sprintf(t("Study standard (%s)"), og$source) else t("Study standard")
       shiny::span(class = "rp-tpl-arg-from",
                   if (identical(og$from, "study")) paste0(std, ": ", .tpl_show(sv)) else
@@ -928,7 +937,7 @@
       og <- .tpl_arg_origin(study, x, args, filled)
       sv <- if (identical(og$from, "study")) og$study
       shiny::div(
-        class = paste("d-flex gap-2 align-items-start", if (!upper) "rp-tpl-default"),
+        class = "d-flex gap-2 align-items-start",
         shiny::div(style = "flex: 1 1 auto; min-width: 0",
                    tpl_widget(tpl_iid(tp$name, a), x, args[[a]] %||% sv, dataset, params = prm,
                               args = args,

@@ -62,3 +62,6 @@
 "Suggested: %s","提案値：%s"
 "Add all suggested (%s)","提案値をすべて追加（%s）"
 "Suggested","提案値"
+"This report's analysis set","この帳票の解析対象集団"
+"When the study standard has none","試験標準に無い時の値"
+"Template default","テンプレートの既定値"

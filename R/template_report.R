@@ -628,11 +628,13 @@ body.rp-adding::before { content: attr(data-loading); position: fixed; inset: 0;
 body.rp-switching .rp-report-loading { display: block; }
 body.rp-switching #step ~ .tab-content, body.rp-switching #report_head, #report_head.rp-stale {
   visibility: hidden; }
-.rp-tpl-default .form-control, .rp-tpl-default .selectize-input,
-.rp-tpl-default .form-select, .rp-tpl-default .selectize-input .item {
-  color: #8a8f98 !important; background-color: #f4f5f7; }
-.rp-tpl-default .form-label { color: #6c757d; }
+.selectize-input .item[data-value=''] { color: #8a8f98; }
 .rp-tpl-arg-from { font-size: .75rem; color: #6b7280; }
+.rp-tpl-badge { font-size: .7rem; font-weight: 500; vertical-align: middle; }
+.rp-tpl-badge-own { background-color: #0d6efd; color: #fff; }
+.rp-tpl-badge-study { background-color: #198754; color: #fff; }
+.rp-tpl-badge-fallback { background-color: #ffc107; color: #000; }
+.rp-tpl-badge-default { background-color: transparent; color: #495057; border: 1px solid #adb5bd; }
 .rp-code pre.rp-flow { max-height: none !important; overflow-y: visible; min-height: 0; }
 @keyframes rp-card-flash { 0%, 60% { outline-color: rgba(13,110,253,.85); }
   100% { outline-color: rgba(13,110,253,0); } }
@@ -817,6 +819,53 @@ $(document).on('shiny:connected', function() {
   }
   sv <- .tpl_study_value(study, prm)
   list(from = if (!is.null(sv)) "study" else "default", study = sv, source = src)
+}
+
+# One row per shown argument of a template, in its order, from tflspec's
+# own account of where each value comes from (tfl_tpl_args(): type, layer,
+# study_key, effective, fallback ...).  `study` the study's spec,
+# `population` the report's.  NULL when tflspec cannot say (an older
+# tflspec, a study spec it cannot read): the card then says it as before
+# (.tpl_arg_origin()).
+.tpl_args_rows <- function(name, study, population = NULL) {
+  pop <- as.character(population %||% "")[1L]
+  if (is.na(pop) || !nzchar(pop)) pop <- NULL
+  r <- tryCatch(tflspec::tfl_tpl_args(name, study = study, population = pop),
+                error = function(e) NULL)
+  if (is.data.frame(r) && nrow(r) && all(c("param", "layer") %in% names(r))) r
+}
+
+# The badge of one argument: list(kind = "own" | "study" | "fallback" |
+# "default", key = the study's key, for "study"), or NULL (no row: the old
+# text).  The report's own value first (tfl_tpl_args() has no report
+# arguments); then the layer tflspec names: "study: <key>" the study
+# standard, "report" the report's analysis set (output.population, kept as
+# "study" with no key), "fallback" the value for when the study standard
+# has none, the rest (template, default, variant:<name>) the template's own.
+.tpl_badge_of <- function(a, args, rows) {
+  if (is.null(rows)) return(NULL)
+  r <- rows[rows$param == a, , drop = FALSE]
+  if (!nrow(r)) return(NULL)
+  if (a %in% names(args)) return(list(kind = "own", key = NA_character_))
+  ly <- as.character(r$layer[1L])
+  if (startsWith(ly, "study:")) return(list(kind = "study", key = as.character(r$study_key[1L])))
+  if (identical(ly, "report")) return(list(kind = "report", key = NA_character_))
+  if (identical(ly, "fallback")) return(list(kind = "fallback", key = NA_character_))
+  list(kind = "default", key = NA_character_)
+}
+
+# The badge itself, a small pill after the label; `t` the translator,
+# `kind` the report's kind ("table": "This table", else "This report")
+.tpl_badge_tag <- function(b, t, kind = "table") {
+  txt <- switch(b$kind,
+    own = t(if (identical(kind, "table")) "This table" else "This report"),
+    study = sprintf(t("Study standard (%s)"), b$key),
+    report = t("This report's analysis set"),
+    fallback = t("When the study standard has none"),
+    t("Template default"))
+  cls <- c(own = "own", study = "study", report = "study", fallback = "fallback")[b$kind]
+  shiny::span(class = paste0("badge rounded-pill rp-tpl-badge rp-tpl-badge-",
+                             if (is.na(cls)) "default" else cls), txt)
 }
 
 # What tflspec filled in from the study for a template report: the
