@@ -469,6 +469,42 @@ test_that("the page form's pattern choice rewrites the page step of a report's p
   expect_identical(t2$spec$outputs[[id]]$extends$content, "none")
 })
 
+test_that("a step the report's extends does not name is its template's own, else the defaults", {
+  skip_on_cran()
+  skip_if_not(.pgs_has_extends_accessor(), "tflspec's extends per step (#778)")
+  # a template whose set holds an extends with a page step
+  reg <- get(".tpl_registry", envir = asNamespace("tflspec"))
+  assign("pp_page_tpl", list(name = "pp_page_tpl", kind = "table", layout = "summary", params = list(),
+                             body = function(args, ctx) list(), label = NULL, call = "tfl_tpl",
+                             package = "tflspec", example = NULL, ai = FALSE, parts = NULL,
+                             extends = list(content = "none", page = c("patterns/Third", "defaults")),
+                             extends_fixed = character()), envir = reg)
+  pp_cleanup <- function() rm("pp_page_tpl", envir = reg)
+  on.exit(pp_cleanup(), add = TRUE)
+  p0 <- ext_sample()
+  o <- tflspec::tfl_output("T-PP", "table", population = "SAF",
+                           template = list(name = "pp_page_tpl", args = list()))
+  p0 <- suppressWarnings(.spec_add_output(p0, o, label = "pp", population = "SAF"))
+  id <- "T-PP"
+  expect_identical(.pgs_page_chain(.pgs_spec(p0)$outputs[[id]]), c("patterns/Third", "defaults"))
+  expect_identical(.pgs_pattern_of(.pgs_spec(p0), id), "Third")
+  # (the spec side: Wide over the template's Third; the template's chain back)
+  q <- suppressWarnings(.pgs_set_pattern(p0, id, "Wide"))
+  expect_identical(q$spec$outputs[[id]]$extends, list(page = c("patterns/Wide", "defaults")))
+  q <- suppressWarnings(.pgs_set_pattern(q, id, "Third"))
+  expect_null(q$spec$outputs[[id]]$extends)
+  # (the sheet side: a cell with no page step reads the template's page chain)
+  expect_identical(.extends_cell_inherited(p0, id), c("patterns/Third", "defaults"))
+  p <- ext_cells(p0, id, NA_character_, "content=none")
+  r <- set_report_pattern(p, id, "Wide")$sheets$report
+  expect_identical(r$extends[r$output_id %in% id], "content=none; page=patterns/Wide | defaults")
+  r <- set_report_pattern(p, id, "Third")$sheets$report
+  expect_identical(r$extends[r$output_id %in% id], "content=none")
+  # a report of no template: the defaults
+  id2 <- "T-14-1-1"
+  expect_identical(.extends_cell_inherited(p0, id2), "defaults")
+})
+
 test_that("the page form's pattern choice keeps the order of the report's chain", {
   skip_on_cran()
   p0 <- ext_sample()

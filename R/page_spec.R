@@ -557,7 +557,8 @@
   if (identical(as.character(was %||% ch), new)) return(p)
   if (by_step) {
     m <- as.list(raw)
-    m[["page"]] <- if (length(new)) new
+    # (the page step goes when it says what the report would have without it)
+    m[["page"]] <- if (length(new) && !identical(new, .pgs_inherited_page(o))) new
     o["extends"] <- list(if (length(m)) m)
   } else {
     o["extends"] <- list(if (length(new)) new)
@@ -572,6 +573,21 @@
   if (is.null(x)) return("-")
   if (!is.list(x)) return(paste(x, collapse = ", "))
   paste(sprintf("%s: %s", names(x), vapply(x, paste, "", collapse = ", ")), collapse = "; ")
+}
+
+# The page chain a report has when its `extends` names no `page` step: its
+# template's own for that step, else the defaults (a report that is no
+# template's: the defaults; a tflspec without the accessor: the defaults)
+.pgs_inherited_page <- function(o) {
+  if (!is.list(o) || !.pgs_has_extends_accessor()) return("defaults")
+  if (is.list(o$extends)) {
+    o$extends[["page"]] <- NULL
+    if (!length(o$extends)) o["extends"] <- list(NULL)
+  } else if (!is.null(o$extends)) {
+    return(.pgs_page_chain(o))
+  }
+  ch <- .pgs_page_chain(o)
+  if (is.null(o$template)) "defaults" else ch
 }
 
 .pgs_has_extends_accessor <- function() {

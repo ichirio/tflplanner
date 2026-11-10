@@ -80,7 +80,8 @@ set_report_pattern <- function(x, output_id, pattern) {
 #    is a blank cell (tflspec writes it blank).
 # A cell by step (`content=none; page=a | b`) is a chain only in its `page`
 # step: that step is rewritten and the others stay as they are (no `page`
-# step: the defaults'); `page` is left out once it is the defaults alone.
+# step: its template's own, else the defaults'); `page` is left out once it is
+# what the report has without it.
 .extends_cell_for <- function(x, output_id, pattern) {
   d <- x$sheets$report
   if (is.null(d$extends)) return(NULL)
@@ -88,7 +89,8 @@ set_report_pattern <- function(x, output_id, pattern) {
   v <- v[!is.na(v) & nzchar(trimws(v))]
   if (!length(v)) return(NULL)
   steps <- .extends_cell_steps(v[1L])
-  chain <- if (is.null(steps)) .extends_cell_chain(v[1L]) else steps$page %||% "defaults"
+  inherited <- if (!is.null(steps)) .extends_cell_inherited(x, output_id)
+  chain <- if (is.null(steps)) .extends_cell_chain(v[1L]) else steps[["page"]] %||% inherited
   tok <- if (!is.na(pattern)) paste0("patterns/", pattern)
   at <- grep("^patterns/", chain)[1L]
   if (!is.na(at)) {
@@ -99,13 +101,21 @@ set_report_pattern <- function(x, output_id, pattern) {
   first <- grep("^patterns/", chain, value = TRUE)[1L]
   pat <- if (is.na(first)) NA_character_ else substring(first, 10L)
   if (!is.null(steps)) {
-    steps[["page"]] <- if (length(chain) && !identical(chain, "defaults")) chain
+    steps[["page"]] <- if (length(chain) && !identical(chain, inherited)) chain
     if (!length(steps)) return(list(value = NA_character_, pattern = pat))
     return(list(value = .extends_cell_text(steps), pattern = pat))
   }
   alone <- c(tok, "defaults")
   if (!length(chain) || identical(chain, alone)) return(list(value = NA_character_, pattern = pat))
   list(value = paste(chain, collapse = " | "), pattern = pat)
+}
+
+# The page chain of a report whose cell names no `page` step: its template's
+# own (tflspec's tfl_output_extends() reads it from the report in the spec),
+# else the defaults
+.extends_cell_inherited <- function(x, output_id) {
+  o <- x$spec$outputs[[output_id]]
+  if (is.null(o)) "defaults" else .pgs_inherited_page(o)
 }
 
 # An `extends` cell's chain (`a | b`, `none`)
