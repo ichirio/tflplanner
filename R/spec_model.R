@@ -64,13 +64,28 @@
        where = where, base = NULL, meta = NULL)
 }
 
+# tflspec::tfl_sheets_from_spec() with the template reports expanded first
+# (tflspec::tfl_template_to_spec()): the sheets then hold each one's items
+# -- its ARD, preview and program -- whichever tflspec is installed (one
+# that writes a template report to its own `templates` sheet, by name and
+# args, leaves the expanding to the caller).  One that cannot be expanded
+# (a KM type with no `data:` steps) is passed as it is, for tflspec to say.
+.sheets_from_spec <- function(study, outputs) {
+  outputs <- lapply(outputs, function(o) {
+    t <- o$template
+    if (!is.list(t) || is.null(t$name)) return(o)
+    tryCatch(tflspec::tfl_template_to_spec(o, study), error = function(e) o)
+  })
+  tflspec::tfl_sheets_from_spec(study, outputs)
+}
+
 # The planner (the sheets' view) made from a spec in memory: the sheets,
 # the report list and setup, the ARD definition, the listing and figure
 # sheets and the figure designs, as read_planner() and the ARD and listing
 # readers give them.  What the spec holds that the sheets cannot is the
 # attribute `not_converted`.
 .planner_from_spec <- function(study, outputs) {
-  back <- tflspec::tfl_sheets_from_spec(study, outputs)
+  back <- .sheets_from_spec(study, outputs)
   p <- .planner_from_sheets(back$table, back$planner)
   # study.yml's settings no sheet holds (the treatment variable, the missing SD)
   st <- study$study$settings %||% list()
@@ -706,7 +721,7 @@
   if (content_only && !is.null(sp$outputs[[output_id]])) {
     o <- sp$outputs[[output_id]]
     o[c("ard", "data", "page")] <- list(NULL)
-    back <- tflspec::tfl_sheets_from_spec(.spec_study_lean(sp$study), stats::setNames(list(o), output_id))
+    back <- .sheets_from_spec(.spec_study_lean(sp$study), stats::setNames(list(o), output_id))
     for (s in intersect(table_sheets(), names(p$sheets))) {
       d <- .normalize_sheet(back$table[[s]], s)
       new <- d[!is.na(d$output_id) & d$output_id == output_id, , drop = FALSE]
