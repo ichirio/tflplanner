@@ -576,7 +576,10 @@ body.rp-adding::before { content: attr(data-loading); position: fixed; inset: 0;
 body.rp-switching .rp-report-loading { display: block; }
 body.rp-switching #step ~ .tab-content, body.rp-switching #report_head, #report_head.rp-stale {
   visibility: hidden; }
-/* an argument at its default reads like any other: its tag says so, no fading */
+/* an argument at its default reads like any other: its tag says so, no fading;
+   only a choice left empty ("(default)", "(not chosen)": no value) stays light */
+.selectize-input .item[data-value=""] {
+  color: #8a8f98; }
 .rp-tpl-arg-from { font-size: .75rem; color: #6b7280; }
 .rp-code pre.rp-flow { max-height: none !important; overflow-y: visible; min-height: 0; }
 @keyframes rp-card-flash { 0%, 60% { outline-color: rgba(13,110,253,.85); }
