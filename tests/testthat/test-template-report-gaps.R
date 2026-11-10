@@ -164,9 +164,9 @@ test_that("the lines read back: numbers, flags, blank cells and no lines at all"
 test_that("a value shown on one line", {
   expect_identical(.tpl_show(NULL), "NULL")
   expect_identical(.tpl_show("n (%)"), "n (%)")
-  expect_identical(.tpl_show(c("a", "b")), "c(\"a\", \"b\")")
-  expect_identical(.tpl_show(c(x = "a")), "c(x = \"a\")")
-  expect_identical(.tpl_show(1:3), "1:3")
+  expect_identical(.tpl_show(c("a", "b")), "[a, b]")
+  expect_identical(.tpl_show(c(x = "a")), "{x: a}")
+  expect_identical(.tpl_show(1:3), "[1, 2, 3]")
 })
 
 test_that("an input's value as the argument: flags, numbers, vectors, texts", {
