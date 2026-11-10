@@ -580,3 +580,36 @@ test_that("a template listing with no columns left says so in Report result, not
     expect_false(grepl("pages", html, fixed = TRUE))
   })
 })
+
+test_that("demog's study items (inside tfl_tpl(study =), tflspec #780) still map to their cards", {
+  skip_on_cran()
+  skip_if_not("study" %in% names(formals(tflspec::tfl_tpl)), "tflspec without tfl_tpl(study =)")
+  p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
+  o <- tflspec::tfl_output("T-99", "table", population = "SAF",
+                           template = list(name = "demog",
+                                         args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
+  p <- .spec_add_output(p, o, population = "SAF")
+  sp <- .code_spec(p)
+  code <- tflspec::tfl_content_code(tflspec::tfl_resolve_output(sp$outputs[["T-99"]], sp$study),
+                                    pipe = "|>")
+  code <- unlist(strsplit(paste(code, collapse = "
+"), "
+", fixed = TRUE))
+  # the study's plan_stub (and others) are in the call's `study = list(`, not after it
+  expect_true(any(grepl("study = list(", code, fixed = TRUE)))
+  expect_true(any(grepl("^\\s+plan_stub = list\\(", code)))
+  expect_false(any(grepl("^\\s*plan_stub\\(", code)))
+  fns <- .tpl_code_fns(p, "T-99")
+  expect_true(all(c("plan_stub", "plan_cells") %in% fns))
+  # the cards: one each, the study's mark and not the report's own
+  items <- builder_items(p, "T-99")
+  cards <- .builder_items_cards(items, template = TRUE, code_fns = fns)
+  cf <- stats::setNames(vapply(cards, function(x) x$from, ""), vapply(cards, function(x) x$fn, ""))
+  expect_true(all(c("plan_stub", "plan_cells") %in% names(cf)))
+  expect_false(any(cf[c("plan_stub", "plan_cells")] == "own"))
+  # the Code tab: the study's lines are those items' lines
+  m <- builder_code_map(code, items)
+  expect_true(all(c("plan_stub", "plan_cells") %in% m$path))
+  at <- grep("^\\s+plan_stub = list\\(", code)
+  expect_identical(m$path[m$line == at], "plan_stub")
+})

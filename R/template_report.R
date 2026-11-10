@@ -908,21 +908,32 @@ $(document).on('shiny:connected', function() {
   message(sprintf("[tpl] %6.2f s  %s", as.numeric(difftime(Sys.time(), t0, units = "secs")), step))
 }
 
-# The verbs of the lines after a template report's call, as its program
-# has them (tflspec::tfl_content_code(): the study standard's items, and any
-# the template adds after its call), in their order -- the cards shown
-# with the report's own (one card a line, #440)
+# The verbs of the study standard's items a template report has, and of any
+# the template adds after its call, as its program has them, in their order
+# -- the cards shown with the report's own (one card an item, #440).  A
+# template with `extends` (demog) has the study's items inside its call
+# (`study = list(plan_x = ...)`, tflspec #780), the others as lines after it:
+# the resolved output's template record (`$rest`, items not the report's own)
+# says the first, the program's lines after the call the second.
 .tpl_code_fns <- function(p, output_id) {
   sp <- tryCatch(.code_spec(p), error = function(e) NULL)
   o <- sp$outputs[[output_id]]
   if (is.null(o) || is.null(.tpl_spec_name(o))) return(character())
-  code <- tryCatch(tflspec::tfl_content_code(tflspec::tfl_resolve_output(o, sp$study)),
-                   error = function(e) character())
+  res <- tryCatch(tflspec::tfl_resolve_output(o, sp$study), error = function(e) NULL)
+  code <- tryCatch(tflspec::tfl_content_code(res), error = function(e) character())
+  in_call <- vapply(attr(res, "template")$rest %||% list(), function(it) {
+    if (is.list(it) && !identical(it$from, "own") && is.character(it$fn) && length(it$fn) == 1L) it$fn else NA_character_
+  }, "")
   at <- grep("(tpl_[A-Za-z0-9_]+|tfl_tpl)\\(", code)
-  if (!length(at)) return(character())
-  rest <- code[seq_along(code) > at[1L]]
-  m <- regmatches(rest, regexpr("^\\s*(plan_[A-Za-z0-9_]+)\\(", rest))
-  sub("\\($", "", trimws(m))
+  after <- character()
+  if (length(at)) {
+    rest <- code[seq_along(code) > at[1L]]
+    m <- regmatches(rest, regexpr("^\\s*(plan_[A-Za-z0-9_]+)\\(", rest))
+    after <- sub("\\($", "", trimws(m))
+  }
+  fns <- unique(c(in_call[!is.na(in_call)], after))
+  # (the study's items inside the call: only the plan verbs, as the lines are)
+  fns[grepl("^plan_", fns)]
 }
 .tpl_spec_name <- function(o) {
   t <- o$template
