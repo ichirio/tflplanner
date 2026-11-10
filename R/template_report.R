@@ -452,7 +452,7 @@
 # Whether the report says the template's data in its own `data:` steps
 # (the template hides its data stage: km_survival, km_cumulative)
 .tpl_own_data <- function(prm) {
-  any(vapply(prm, function(x) isTRUE(x$hidden) && identical(x$stage, "data"), NA))
+  any(vapply(prm, function(x) isTRUE(x$hidden) && identical(x$step, "data"), NA))
 }
 
 # A report's `data:` steps as the card's fields say them: the dataset
