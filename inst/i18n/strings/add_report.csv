@@ -65,3 +65,5 @@
 "This report's analysis set","この帳票の解析対象集団"
 "When the study standard has none","試験標準に無い時の値"
 "Template default","テンプレートの既定値"
+"over the study standard (%s: %s)","試験標準（%s: %s）より優先"
+"When the study standard (%s) has none","試験標準（%s）に無い時の値"

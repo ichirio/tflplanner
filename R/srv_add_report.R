@@ -96,7 +96,7 @@
           multiple = several, width = "100%",
           options = c(if (several) rm_btn, list(create = TRUE)))
       },
-      flag = bslib::input_switch(input_id, lab, value = isTRUE(shown)),
+      flag = bslib::input_switch(input_id, lab, value = isTRUE(shown), width = "100%"),
       number = shiny::numericInput(input_id, lab, value = .num_or_null(shown), width = "100%", updateOn = "blur"),
       vars = if (length(sugg)) .tpl_suggest_select(
         input_id, lab, cols, sugg, TRUE,
@@ -917,13 +917,21 @@
       b <- .tpl_badge_of(a, args, rows)
       og <- .tpl_arg_origin(study, prm[[a]], args, filled)
       sv <- og$study
+      sk <- NULL
+      if (!is.null(b) && !is.null(b$study)) {
+        # (tfl_tpl_args() names the study's key and value, also for keys the
+        # old lookup misses: plan_cells.default ...)
+        sv <- b$study
+        sk <- b$key
+      }
       if (!is.null(b)) {
         # (the report's value over the study's: said small, not a second badge)
         return(shiny::tagList(
           .tpl_badge_tag(b, t, kind),
           if (identical(b$kind, "own") && !is.null(sv))
             shiny::span(class = "rp-tpl-arg-from",
-                        paste0(" ", sprintf(t("over the study standard (%s)"), .tpl_show(sv))))))
+                        paste0(" ", if (is.null(sk)) sprintf(t("over the study standard (%s)"), .tpl_show(sv)) else
+                          sprintf(t("over the study standard (%s: %s)"), sk, .tpl_show(sv))))))
       }
       # (tflspec cannot say: the text it was)
       if (identical(og$from, "own")) {

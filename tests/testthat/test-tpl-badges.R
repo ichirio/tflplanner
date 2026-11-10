@@ -33,6 +33,20 @@ test_that("demog: each of the four badges is on the right argument", {
   expect_identical(kind("total_label"), "default")
   # the report's value over the study's: still the report's
   expect_identical(.tpl_badge_of("rounding", list(rounding = "r"), rows)$kind, "own")
+  # ... and it carries the study's key and value, for the note under it
+  b <- .tpl_badge_of("rounding", list(rounding = "r"), rows)
+  expect_identical(b$key, "settings.rounding")
+  expect_identical(as.character(b$study), "sas")
+  # a key the old lookup misses: given in the report, the study has plan_cells.default
+  d <- tempfile("badge-cells")
+  dir.create(file.path(d, "spec"), recursive = TRUE)
+  writeLines(c("study_id: X", "spec_version: 1"), file.path(d, "study.yml"))
+  writeLines(c("content:", "  - plan_cells:", "      default: \"{n} ({pct}%)\""), file.path(d, "spec", "defaults.yml"))
+  rows2 <- .tpl_args_rows("demog", tflspec::tfl_read_study_spec(d), "SAF")
+  b2 <- .tpl_badge_of("count_cell", list(count_cell = "{n}"), rows2)
+  expect_identical(b2$kind, "own")
+  expect_identical(b2$key, "plan_cells.default")
+  expect_false(is.null(b2$study))
 })
 
 test_that("the badge is a small pill with the kind's class and text", {
@@ -47,6 +61,9 @@ test_that("the badge is a small pill with the kind's class and text", {
   expect_match(h(list(kind = "report")), "rp-tpl-badge-study")
   expect_match(h(list(kind = "report")), "This report's analysis set", fixed = TRUE)
   expect_match(h(list(kind = "fallback")), "rp-tpl-badge-fallback")
+  expect_match(h(list(kind = "fallback", key = "plan_blanks.max_rows")),
+               "When the study standard (plan_blanks.max_rows) has none", fixed = TRUE)
+  expect_match(h(list(kind = "fallback", key = "a.b"), tr_ja), "試験標準（a.b）に無い時の値")
   expect_match(h(list(kind = "default")), "rp-tpl-badge-default")
   expect_match(h(list(kind = "default")), "Template default")
   expect_match(h(list(kind = "default"), tr_ja), "\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8\u306e\u65e2\u5b9a\u5024")

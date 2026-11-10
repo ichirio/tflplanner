@@ -846,11 +846,16 @@ $(document).on('shiny:connected', function() {
   if (is.null(rows)) return(NULL)
   r <- rows[rows$param == a, , drop = FALSE]
   if (!nrow(r)) return(NULL)
-  if (a %in% names(args)) return(list(kind = "own", key = NA_character_))
   ly <- as.character(r$layer[1L])
+  if (a %in% names(args)) {
+    # (the report's value over a study's: the study's key and value kept for the note)
+    if (startsWith(ly, "study:"))
+      return(list(kind = "own", key = as.character(r$study_key[1L]), study = r$effective[[1L]]))
+    return(list(kind = "own", key = NA_character_))
+  }
   if (startsWith(ly, "study:")) return(list(kind = "study", key = as.character(r$study_key[1L])))
   if (identical(ly, "report")) return(list(kind = "report", key = NA_character_))
-  if (identical(ly, "fallback")) return(list(kind = "fallback", key = NA_character_))
+  if (identical(ly, "fallback")) return(list(kind = "fallback", key = as.character(r$study_key[1L])))
   list(kind = "default", key = NA_character_)
 }
 
@@ -861,7 +866,8 @@ $(document).on('shiny:connected', function() {
     own = t(if (identical(kind, "table")) "This table" else "This report"),
     study = sprintf(t("Study standard (%s)"), b$key),
     report = t("This report's analysis set"),
-    fallback = t("When the study standard has none"),
+    fallback = if (!length(b$key) || is.na(b$key[1L])) t("When the study standard has none") else
+      sprintf(t("When the study standard (%s) has none"), b$key),
     t("Template default"))
   cls <- c(own = "own", study = "study", report = "study", fallback = "fallback")[b$kind]
   shiny::span(class = paste0("badge rounded-pill rp-tpl-badge rp-tpl-badge-",
