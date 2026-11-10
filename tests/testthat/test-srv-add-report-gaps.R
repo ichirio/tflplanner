@@ -268,6 +268,30 @@ test_that("a template card: an edit is written, a value just replaced is not an 
   })
 })
 
+# ---- a template report writes no `extends` (tflspec: the template's own) -----------------------
+
+test_that("a template report made in the dialog writes no extends", {
+  skip_if_not(.pgs_has_extends_accessor(), "tflspec's extends per step (#778)")
+  id <- sample_for_add()
+  watch_add()
+  shiny::testServer(server_for(id), {
+    rv <- session$userData$rv
+    session$setInputs(add = 1, modal_type = "listing", modal_how = "template", modal_tpl_listing = "listing",
+                      modal_id = "ZZ-8", modal_desc = "", modal_section = "",
+                      mtpl_listing__data = "ADAE", mtpl_listing__columns = "USUBJID | Subject")
+    session$setInputs(add_ok = 1)
+    expect_identical(.tpl_of(rv$p, "L-ZZ-8")$name, "listing")
+    expect_null(rv$p$spec$outputs[["L-ZZ-8"]]$extends)
+    txt <- paste(rv$p$spec$text[["spec/outputs/L-ZZ-8.yml"]], collapse = "
+")
+    expect_false(grepl("extends", txt, fixed = TRUE))
+    # (and the page's pattern chosen on it writes the page step alone)
+    q <- .pgs_add_pattern(rv$p, "Wide")
+    q <- .pgs_set_pattern(q, "L-ZZ-8", "Wide")
+    expect_identical(q$spec$outputs[["L-ZZ-8"]]$extends, list(page = c("patterns/Wide", "defaults")))
+  })
+})
+
 # ---- a template listing: its data, its conversion to code --------------------------------------
 
 test_that("a template listing: its data card writes the dataset's steps, keeps a join of its own and takes the steps away; Convert to code asks first", {

@@ -142,8 +142,7 @@
   if (is.character(sn) && length(sn) == 1L && !is.null(st$styles[[sn]])) {
     out[[paste0("style:", sn)]] <- st$styles[[sn]]$page %||% list()
   }
-  chain <- o$extends
-  if (identical(chain, "none")) chain <- character()
+  chain <- .pgs_page_chain(o)
   for (nm in chain) {
     if (identical(nm, "defaults")) {
       out$defaults <- st$defaults$page %||% list()
@@ -341,9 +340,21 @@
 # the patterns of the study (its spec/patterns/ files)
 .pgs_patterns <- function(sp) sort(names(sp$study$patterns %||% list()))
 
+# The files a report lays under its page, nearest first: its `extends`
+# (a plain chain, or the `page` step of one by step, `{content: none}`) or,
+# when it writes none for the page, its template's (tflspec's
+# tfl_output_extends(); a tflspec without it: the report's own chain)
+.pgs_page_chain <- function(o) {
+  f <- tryCatch(getExportedValue("tflspec", "tfl_output_extends"), error = function(e) NULL)
+  ch <- if (!is.null(f)) tryCatch(f(o, "page"), error = function(e) NULL)
+  if (is.null(ch)) ch <- if (is.list(o$extends)) o$extends$page else o$extends
+  ch <- as.character(unlist(ch))
+  if (identical(ch, "none")) character() else ch
+}
+
 # a report's pattern: the first patterns/<name> it extends (NA: Standard)
 .pgs_pattern_of <- function(sp, id) {
-  ch <- sp$outputs[[id]]$extends
+  ch <- .pgs_page_chain(sp$outputs[[id]])
   pat <- grep("^patterns/", ch, value = TRUE)
   if (length(pat)) substring(pat[1L], 10L) else NA_character_
 }
@@ -525,8 +536,14 @@
   if (!is.na(pattern) && !pattern %in% .pgs_patterns(sp)) {
     stop("No page pattern ", pattern, ".", call. = FALSE)
   }
-  ch <- o$extends
-  if (identical(ch, "none")) ch <- character()
+  # (a report that writes its `extends` by step has only its `page` step
+  # rewritten; one that writes none -- a template report takes its
+  # template's -- gets a map with that step alone, so its other steps stay
+  # the template's)
+  raw <- o$extends
+  by_step <- is.list(raw) || (is.null(raw) && .pgs_has_extends_accessor())
+  was <- if (is.list(raw)) raw$page else raw
+  ch <- .pgs_page_chain(o)
   had <- grep("^patterns/", ch)
   # (the chain's pattern is replaced where it stands, so the order of the
   # layers stays: [defaults, patterns/a] with b is [defaults, patterns/b])
@@ -536,18 +553,37 @@
     c(if (!is.na(pattern)) paste0("patterns/", pattern),
       if (length(had)) ch[-had[1L]] else ch)
   }
-  if (!length(new)) new <- if (identical(o$extends, "none")) "none" else character()
-  if (identical(as.character(o$extends %||% character()), new)) return(p)
-  o["extends"] <- list(if (length(new)) new)
+  if (!length(new)) new <- if (identical(was, "none")) "none" else character()
+  if (identical(as.character(was %||% ch), new)) return(p)
+  if (by_step) {
+    m <- as.list(raw)
+    m[["page"]] <- if (length(new)) new
+    o["extends"] <- list(if (length(m)) m)
+  } else {
+    o["extends"] <- list(if (length(new)) new)
+  }
   p <- .spec_ensure(p)
   p <- .spec_sync(p, p$spec$meta)
   .spec_set_output(p, id, o, page_only = TRUE)
 }
 
-# The reports whose extends names a pattern
+# A report's `extends` as one line (a map by step: content: none; page: a, b)
+.pgs_extends_label <- function(x) {
+  if (is.null(x)) return("-")
+  if (!is.list(x)) return(paste(x, collapse = ", "))
+  paste(sprintf("%s: %s", names(x), vapply(x, paste, "", collapse = ", ")), collapse = "; ")
+}
+
+.pgs_has_extends_accessor <- function() {
+  !is.null(tryCatch(getExportedValue("tflspec", "tfl_output_extends"), error = function(e) NULL))
+}
+
+# The reports whose extends names a pattern (in any of its steps)
 .pgs_pattern_reports <- function(sp, name) {
   ids <- names(sp$outputs)
-  ids[vapply(sp$outputs, function(o) paste0("patterns/", name) %in% o$extends, NA)]
+  ids[vapply(sp$outputs, function(o) {
+    paste0("patterns/", name) %in% c(unlist(o$extends), .pgs_page_chain(o))
+  }, NA)]
 }
 
 # A new pattern: Standard's page, no difference (an empty file)
@@ -598,7 +634,11 @@
   p <- .spec_set_study_part(p, "patterns", new)
   for (id in used) {
     o <- p$spec$outputs[[id]]
-    o$extends[o$extends == paste0("patterns/", name)] <- paste0("patterns/", new)
+    swap <- function(ch) {
+      ch[ch == paste0("patterns/", name)] <- paste0("patterns/", new)
+      ch
+    }
+    o$extends <- if (is.list(o$extends)) lapply(o$extends, swap) else swap(o$extends)
     p <- .spec_set_output(p, id, o, page_only = TRUE)
   }
   # (the view: its rows of every sheet under the new name)
