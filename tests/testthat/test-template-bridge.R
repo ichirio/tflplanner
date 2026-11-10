@@ -41,3 +41,28 @@ test_that("a cells-sheet edit of a template report writes one item after the tem
   expect_identical(vapply(q2$spec$outputs[["T-99"]]$content, function(x) x$fn, ""), "plan_cells")
   expect_match(paste(q2$spec$text[[q2$spec$where[["T-99"]]]], collapse = "\n"), "{median:.3f}", fixed = TRUE)
 })
+
+test_that("a template report is expanded before tflspec makes its sheets", {
+  # a tflspec that writes a template report to its `templates` sheet leaves
+  # the expanding to tflplanner: the sheets still hold the report's items
+  skip_on_cran()
+  p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
+  o <- tflspec::tfl_output("T-99", "table", population = "SAF",
+                           template = list(name = "demog", args = list(population = "SAF")))
+  p <- .spec_add_output(p, o, population = "SAF")
+  seen <- NULL
+  real <- tflspec::tfl_sheets_from_spec
+  local_mocked_bindings(tfl_sheets_from_spec = function(study, outputs, ...) {
+    seen <<- outputs
+    real(study, outputs)
+  }, .package = "tflspec")
+  back <- .sheets_from_spec(p$spec$study, p$spec$outputs["T-99"])
+  expect_false(is.list(seen[["T-99"]]$template))
+  expect_true(length(seen[["T-99"]]$content) > 0L)
+  ce <- back$table$cells
+  expect_true(any(!is.na(ce$output_id) & ce$output_id == "T-99"))
+  # a report with no template is passed as it is
+  plain <- tflspec::tfl_output("T-98", "table", content = list())
+  .sheets_from_spec(p$spec$study, list(`T-98` = plain))
+  expect_identical(seen[["T-98"]], plain)
+})
