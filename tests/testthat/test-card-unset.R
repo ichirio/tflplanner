@@ -40,6 +40,49 @@ U <- function() tflspec::tfl_unset()
   regmatches(html, regexpr(sprintf('(?s)<select[^>]*id="%s".*?</select>', id), html, perl = TRUE))
 }
 
+test_that("a flag's (none) stays when the card is drawn again, its default TRUE or unset", {
+  skip_on_cran()
+  # the switch drawn off for a "(none)" says FALSE: no edit, unless moved by hand
+  expect_true(.tpl_flag_off_drawn("flag", FALSE, U(), NULL))
+  expect_true(.tpl_flag_off_drawn("flag", FALSE, U(), TRUE))
+  expect_false(.tpl_flag_off_drawn("flag", FALSE, U(), FALSE))
+  expect_false(.tpl_flag_off_drawn("flag", TRUE, U(), NULL))
+  expect_false(.tpl_flag_off_drawn("flag", FALSE, TRUE, NULL))
+  expect_false(.tpl_flag_off_drawn("text", FALSE, U(), NULL))
+  # demog's stub_before and blanks_last: the study standard's TRUE
+  home <- local_home()
+  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  o <- tflspec::tfl_output("T-TPL", "table", label = "Demographics", population = "SAF",
+                           template = list(name = "demog", args = list(by = "TRT01A", continuous = "AGE",
+                                                                       categorical = c("SEX", "RACE"))))
+  s$planner <- .spec_add_output(s$planner, o, label = "Demographics", population = "SAF")
+  s <- suppressWarnings(suppressMessages(save_study(s, home = home)))
+  # (each write says the template's flags override the study standard's)
+  suppressMessages(shiny::testServer(function(input, output, session) app_server(input, output, session, s), {
+    rv <- session$userData$rv
+    args <- function() .tpl_of(rv$p, "T-TPL")$args
+    session$setInputs(target = "T-TPL", nav = "make", step = "content", content_nav = "content")
+    expect_match(output$tpl_card$html, "tpl_demog__blanks_last", fixed = TRUE)
+    session$setInputs(tpl_demog__blanks_last = TRUE, tpl_demog__stub_before = TRUE)
+    expect_null(args()$blanks_last)
+    # blanks_last's (none), then the card drawn again says the switch off
+    session$setInputs(tpl_demog__blanks_last__none = TRUE)
+    expect_s3_class(args()$blanks_last, "tfl_unset")
+    session$setInputs(tpl_demog__blanks_last = FALSE)
+    expect_s3_class(args()$blanks_last, "tfl_unset")
+    # stub_before's (none): blanks_last, drawn again, is still (none)
+    session$setInputs(tpl_demog__stub_before__none = TRUE)
+    session$setInputs(tpl_demog__stub_before = FALSE, tpl_demog__blanks_last = FALSE)
+    expect_s3_class(args()$blanks_last, "tfl_unset")
+    expect_s3_class(args()$stub_before, "tfl_unset")
+    # moved by hand: on, then off, are values
+    session$setInputs(tpl_demog__blanks_last__none = FALSE, tpl_demog__blanks_last = TRUE)
+    expect_true(isTRUE(args()$blanks_last %||% TRUE))
+    session$setInputs(tpl_demog__blanks_last = FALSE)
+    expect_identical(args()$blanks_last, FALSE)
+  }))
+})
+
 test_that("a template param whose default is unset shows (none), one per widget type", {
   skip_on_cran()
   orig <- .tpl_params
@@ -325,6 +368,31 @@ test_that("a special card's other arguments: the (none) toggle is written as !un
   # (the program: tflspec drops an unset where it merges the item with the
   # study standard's; an item the standard does not have -- table_plan here
   # -- keeps it, and tflspec stops.  tflspec's follow-up, not checked here)
+  # on the screen: the toggle goes through the form's observer, which tells
+  # the item changed although its R text is the same (an unset is no argument)
+  expect_identical(args_to_r("table_plan", args), args_to_r("table_plan", it0$args))
+  expect_false(.args_same_r("table_plan", args, it0$args))
+  expect_true(.args_same_r("table_plan", args, args))
+  local_home()
+  suppressMessages(create_sample_study(run = FALSE))
+  shiny::testServer(server_for("SAMPLE-01"), {
+    session$setInputs(target = id, nav = "make", step = "content", content_nav = "content",
+                      table_nav = "builder")
+    # (the ARD the builder reads: made by the preview, as in test-builder-cards.R)
+    session$setInputs(b_preview = 1)
+    session$elapse(2000)
+    # (the form drawn: its fields are read from then on)
+    expect_match(output$builder_form$html, "show_keys__none", fixed = TRUE)
+    session$elapse(2000)
+    rv <- session$userData$rv
+    n <- session$userData$bform$n
+    expect_false(session$userData$dirty())
+    do.call(session$setInputs, stats::setNames(list(TRUE), paste0("b", n, "_card_table_plan__show_keys__none")))
+    session$elapse(2000)
+    it <- Filter(function(i) i$fn == "table_plan", builder_items(rv$p, id))[[1L]]
+    expect_s3_class(it$args$show_keys, "tfl_unset")
+    expect_true(session$userData$dirty())
+  })
 })
 
 test_that("(none) is shown in the screen's language and read back in either", {
@@ -366,4 +434,32 @@ test_that("a whole number typed into a count's field is an integer", {
   expect_identical(.tpl_value("2", "number", list(name = "legend_median_digits", default = 1L)), 2L)
   expect_identical(.tpl_value("25", "number", list(name = "per", default = 100)), 25)
   expect_identical(.tpl_value(3, "number", list(name = "conf_level", default = 0.95)), 3)
+})
+
+test_that("the review reads a page value's (none), in either language, as no value", {
+  skip_on_cran()
+  home <- local_home()
+  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  p <- .pgs_set_arg(s$planner, "T-14-3-1", "rtf_page", "margin_top_in", U())
+  pg <- p$sheets$page
+  expect_identical(pg$margin_top_in[pg$output_id %in% "T-14-3-1"], "(none)")
+  bad <- function(r) r$message[grepl("must be a number", r$message, fixed = TRUE)]
+  expect_length(bad(review_problems(p)), 0L)
+  # (the word as typed on a Japanese screen)
+  p$sheets$page$margin_top_in[p$sheets$page$output_id %in% "T-14-3-1"] <- tr("(none)", "ja")
+  expect_length(bad(review_problems(p)), 0L)
+  # a value that is no number is still said
+  p$sheets$page$margin_top_in[p$sheets$page$output_id %in% "T-14-3-1"] <- "wide"
+  expect_length(bad(review_problems(p)), 1L)
+})
+
+test_that("a token's text typed as (none), in either language, is the token left out", {
+  expect_s3_class(.pgs_token_value("(none)"), "tfl_unset")
+  expect_s3_class(.pgs_token_value(paste0(" ", tr("(none)", "ja"), " ")), "tfl_unset")
+  expect_identical(.pgs_token_value(" Data cut-off 2026 "), "Data cut-off 2026")
+  expect_identical(.pgs_token_value(NULL), "")
+  home <- local_home()
+  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  p <- .pgs_set_token(s$planner, "T-14-3-1", "CUTOFF", .pgs_token_value(tr("(none)", "ja")))
+  expect_s3_class(p$spec$outputs[["T-14-3-1"]]$page$tokens$CUTOFF, "tfl_unset")
 })

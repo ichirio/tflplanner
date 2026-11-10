@@ -267,8 +267,10 @@
         raw <- input[[tpl_arg_id(nm, x$name)]]
         if (is.null(raw)) next
         # (a switch the "(none)" button turned off: its own input, <id>__none)
-        if (identical(.tpl_type(x), "flag") && isTRUE(input[[paste0(tpl_arg_id(nm, x$name), "__none")]])) raw <- .none_word
+        none_in <- input[[paste0(tpl_arg_id(nm, x$name), "__none")]]
+        if (identical(.tpl_type(x), "flag") && isTRUE(none_in)) raw <- .none_word
         v <- .tpl_value(raw, .tpl_type(x), x)
+        if (.tpl_flag_off_drawn(.tpl_type(x), v, tpl_opt_start(x), none_in)) next
         same <- .same_unset(v, tpl_opt_start(x))
         if (is.null(v) || isTRUE(same) ||
             (is.na(same) && identical(as.character(unlist(v)), as.character(unlist(tpl_opt_start(x)))))) next
@@ -493,6 +495,9 @@
     # (a field drawn again says its value back: what it shows already --
     # the report's, the study's or the default -- is no edit)
     shown <- tp$args[[a]] %||% .tpl_study_value(rv$p$spec$study, prm) %||% prm$default
+    # (a switch drawn off for its "(none)" says FALSE when drawn: not an edit
+    # unless the switch was moved by hand, .tpl_flag_off_drawn())
+    if (.tpl_flag_off_drawn(type, val, shown, input[[paste0(tpl_iid(name, a), "__none")]])) return()
     same <- if (!is.na(su <- .same_unset(val, shown))) su else if (type %in% c("list", "columns")) {
       identical(.tpl_list_text(val, prm), .tpl_list_text(shown, prm))
     } else !is.null(val) && identical(as.character(unlist(val)), as.character(unlist(shown)))

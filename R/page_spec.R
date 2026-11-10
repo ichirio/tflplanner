@@ -506,6 +506,13 @@
   .pgs_write(p, target, own)
 }
 
+# A token's text as typed: "(none)" in either language is the token left out
+# here (!unset), as a band's cells read it
+.pgs_token_value <- function(v) {
+  v <- trimws(v %||% "")
+  if (.is_none_text(v)) tflspec::tfl_unset() else v
+}
+
 # A target's own token (NULL: back to the layers'; !unset: left out)
 .pgs_set_token <- function(p, target, name, value) {
   sp <- .pgs_spec(p)

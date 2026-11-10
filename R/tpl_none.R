@@ -53,3 +53,11 @@
     if (identical(type, "flag")) shiny::span(class = paste("none-note", if (none) "none-on"), t(.none_word)))
   htmltools::tagList(q$allTags(), row)
 }
+
+# A switch drawn for a "(none)" is off, and says FALSE as it is drawn (and
+# drawn again, after any other field's write): that is no edit.  Only a switch
+# moved by hand says off -- its <id>__none input then FALSE (.none_js) -- and
+# is written as FALSE.  `none_in` the <id>__none input (NULL: never moved).
+.tpl_flag_off_drawn <- function(type, val, shown, none_in) {
+  identical(type, "flag") && .is_unset(shown) && isFALSE(val) && !isFALSE(none_in)
+}
