@@ -931,7 +931,9 @@ $(document).on('shiny:connected', function() {
     m <- regmatches(rest, regexpr("^\\s*(plan_[A-Za-z0-9_]+)\\(", rest))
     after <- sub("\\($", "", trimws(m))
   }
-  fns <- unique(c(in_call[!is.na(in_call)], after))
+  # (an item said both ways counts once; a verb the lines repeat stays twice)
+  in_call <- in_call[!is.na(in_call)]
+  fns <- c(in_call[!in_call %in% after], after)
   # (the study's items inside the call: only the plan verbs, as the lines are)
   fns[grepl("^plan_", fns)]
 }
