@@ -955,7 +955,7 @@
       if (identical(og$from, "own")) {
         return(shiny::span(class = "rp-tpl-arg-from",
                            t(if (identical(kind, "table")) "This table" else "This report"),
-                           if (!is.null(sv)) paste0(" — ", sprintf(t("over the study standard (%s)"),
+                           if (!is.null(sv)) paste0(" \u2014 ", sprintf(t("over the study standard (%s)"),
                                                                        .tpl_show(sv)))))
       }
       std <- if (!is.na(og$source)) sprintf(t("Study standard (%s)"), og$source) else t("Study standard")
