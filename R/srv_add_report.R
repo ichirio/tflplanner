@@ -130,12 +130,14 @@
       list = {
         txt <- .tpl_list_text(shown, prm)
         if (is.null(txt)) {
-          shiny::div(
-            class = "mb-3",
-            shiny::tags$label(class = "form-label", lab),
-            shiny::div(class = "font-monospace small border rounded p-1", style = "word-break: break-all",
-                       .tpl_show(shown)),
-            shiny::div(class = "small text-muted", t("Edit in R (the report's YAML file)")))
+          # (a value the rows cannot show -- a map of per-row formats, `!r` guards:
+          # its YAML, edited in the box)
+          ytxt <- .tpl_yaml_block(shown)
+          ta <- shiny::textAreaInput(
+            input_id, with_tip(lab, t("YAML: a `name: value` line each; `!r code` is raw R")),
+            value = ytxt, width = "100%", updateOn = "blur",
+            rows = max(3L, min(15L, length(strsplit(ytxt, "\n")[[1L]]) + 1L)))
+          htmltools::tagQuery(ta)$find("textarea")$addClass("font-monospace")$allTags()
         } else {
           shiny::div(
             shiny::textAreaInput(
@@ -537,7 +539,19 @@
     if (is.null(tp) || !identical(tp$name, name)) return()
     prm <- .tpl_params(name)[[a]]
     type <- .tpl_type(prm, tpl_all_cols())
-    if (type %in% c("list", "columns") && is.null(.tpl_list_text(tp$args[[a]] %||% prm$default, prm))) return()
+    shown <- tp$args[[a]] %||% .tpl_study_value(rv$p$spec$study, prm) %||% prm$default
+    if (identical(type, "columns") && is.null(.tpl_list_text(shown, prm))) return()
+    # (a list the rows cannot show: its YAML text; not YAML, said and the value stays)
+    yaml_box <- identical(type, "list") && is.null(.tpl_list_text(shown, prm))
+    if (yaml_box) {
+      ed <- .tpl_yaml_edit(v, shown)
+      if (identical(ed$kind, "same")) return()
+      if (identical(ed$kind, "bad")) {
+        notify(sprintf(t("%s is not valid YAML, so it is not changed: %s"), a, ed$msg), "error")
+        tpl_ver(tpl_ver() + 1L)
+        return()
+      }
+    }
     if (identical(type, "text") && is.character(v) && length(v) == 1L) {
       # (the text as it was shown: no edit; YAML that does not parse: said, and the value stays)
       sh <- tp$args[[a]] %||% .tpl_study_value(rv$p$spec$study, prm) %||% prm$default
@@ -549,15 +563,15 @@
         return()
       }
     }
-    val <- .tpl_value(v, type, prm)
+    val <- if (yaml_box) ed$value else .tpl_value(v, type, prm)
     # (a field drawn again says its value back: what it shows already --
     # the report's, the study's or the default -- is no edit)
-    shown <- tp$args[[a]] %||% .tpl_study_value(rv$p$spec$study, prm) %||% prm$default
     # (a switch drawn off for its "(none)" says FALSE when drawn: not an edit
     # unless the switch was moved by hand, .tpl_flag_off_drawn())
     if (.tpl_flag_off_drawn(type, val, shown, input[[paste0(tpl_iid(name, a), "__none")]])) return()
+    list_key <- function(z) .tpl_list_text(z, prm) %||% .tpl_yaml_block(z)
     same <- if (!is.na(su <- .same_unset(val, shown))) su else if (type %in% c("list", "columns")) {
-      identical(.tpl_list_text(val, prm), .tpl_list_text(shown, prm))
+      identical(list_key(val), list_key(shown))
     } else !is.null(val) && identical(as.character(unlist(val)), as.character(unlist(shown)))
     if (same) return()
     # (a field drawn from a card older than its last write says the value it
@@ -566,7 +580,7 @@
     # go back and types it once more)
     key <- paste(id, name, a)
     now <- as.numeric(Sys.time())
-    as_key <- function(z) if (.is_unset(z)) .none_word else if (type %in% c("list", "columns")) .tpl_list_text(z, prm) %||% "" else
+    as_key <- function(z) if (.is_unset(z)) .none_word else if (type %in% c("list", "columns")) list_key(z) else
       paste(as.character(unlist(z)), collapse = "\n")
     if (.tpl_stale_say(as_key(val), tpl_past[[key]], now)) {
       tpl_ver(tpl_ver() + 1L)
