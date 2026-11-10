@@ -214,8 +214,13 @@
   # the dialog's required arguments of a template, for the dataset `ds` (NULL:
   # the template's default); the study's value first: its treatment for `by`
   tpl_req_widgets <- function(nm, ds = NULL) {
-    prm <- .tpl_shown(.tpl_params(nm))
-    lapply(Filter(function(x) isTRUE(x$required), prm), function(x) {
+    prm_all <- .tpl_params(nm)
+    prm <- .tpl_shown(prm_all)
+    req_p <- Filter(function(x) isTRUE(x$required), prm)
+    # (a hidden `population` param is the report's analysis set: still chosen
+    # in the dialog, asked first, as in the static list above)
+    if (.tpl_pop_of_report(prm_all)) req_p <- c(prm_all["population"], req_p)
+    lapply(req_p, function(x) {
       tpl_widget(tpl_arg_id(nm, x$name), x, .tpl_study_value(rv$p$spec$study, x),
                  dataset = ds %||% prm$data$default, params = prm, say_first = TRUE, tpl = nm)
     })
