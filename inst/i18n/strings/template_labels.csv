@@ -196,7 +196,7 @@
 "per categorical variable, its values in display order, each shown even when 0 (RACE: [ASIAN, WHITE]); NULL: the code list's order, else the data's","カテゴリ変数ごとに、出す値を表示の順に指定（0 件でも出します。RACE: [ASIAN, WHITE]）。NULL: コードリストの順、それが無ければデータの順"
 "the categorical variables, in order (required: this or `continuous`)","カテゴリ変数を順に指定（これか `continuous` のどちらかが必須）"
 "the rows of each continuous variable: where each statistic goes (placement only, {mean})","連続変数ごとの行。各統計量を置く場所（置き場所だけ。{mean}）"
-"the arm heading: a text ({col} and {n}, a line a line), or the lines of plan_col_header(lines = ); NULL: none","群の見出し。文字（{col} と {n}。1 行ずつ）か、plan_col_header(lines = ) の行。NULL: なし"
+"the arm heading: a text ({col} and {n}, a line a line), the lines of plan_col_header(lines = ), or its cells (header = ); NULL: none","群の見出し。文字（{col} と {n}。1 行ずつ）、plan_col_header(lines = ) の行、またはそのセル（header = ）。NULL: なし"
 "the continuous variables, in order (required: this or `categorical`)","連続変数を順に指定（これか `categorical` のどちらかが必須）"
 "a categorical value's cell, n (%); NULL: the study standard's","カテゴリの値のセル（n (%)）。NULL: 試験標準のもの"
 "the analysis data's id when `data` is not ADSL; NULL: <data>_<population>","`data` が ADSL でないときの解析データの id。NULL: <data>_<population>"
