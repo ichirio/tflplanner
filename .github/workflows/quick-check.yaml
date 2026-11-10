@@ -44,6 +44,8 @@ jobs:
         run: R CMD INSTALL --no-docs --no-multiarch .
 
       - name: Tests
+        env:
+          TESTTHAT_CPUS: 4
         shell: Rscript {0}
         run: |
           pkg <- read.dcf("DESCRIPTION", fields = "Package")[1L, 1L]
