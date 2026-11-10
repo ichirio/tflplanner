@@ -94,6 +94,16 @@ test_that("a param with a default: the same field as before, no suggestion", {
   skip_on_cran()
   local_home()
   ui_study("U4")
+  # (variable sets are no template defaults any more (canon 1.12): given one here)
+  orig <- .tpl_params
+  testthat::local_mocked_bindings(.tpl_params = function(name) {
+    p <- orig(name)
+    if (identical(name, "demog")) {
+      p$continuous$default <- "AGE"
+      p$categorical$default <- "SEX"
+    }
+    p
+  })
   shiny::testServer(server_for("U4"), {
     open_demog(session)
     h <- as.character(output$tpl_modal_more$html)
