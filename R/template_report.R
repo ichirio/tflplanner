@@ -335,6 +335,57 @@
   go(x)
 }
 
+# A list value in YAML block form (several lines), for a list the rows box
+# cannot show: a map's key on a line, its value after it, or indented below;
+# a sequence's entry a `- ` line.  A leaf is written as .tpl_yaml_flow() does
+# (`!r code` for raw R; numbers as typed digits), so .tpl_yaml_read() reads it back.
+.tpl_yaml_block <- function(x) {
+  leaf <- function(v) inherits(v, "tfl_r") || is.null(v) || (!is.list(v) && length(v) <= 1L) ||
+    (is.list(v) && !length(v))
+  # (raw R plain, as a person writes it in a block, when that reads back as itself)
+  one <- function(e) {
+    if (inherits(e, "tfl_r")) {
+      s <- as.character(unclass(e))[1L]
+      plain <- paste0("!r ", s)
+      ok <- !grepl("[\r\n]", s) && identical(tryCatch(yaml::yaml.load(paste0("- ", plain), handlers = .tpl_yaml_handlers())[[1L]],
+                                                       error = function(err) NULL), e)
+      if (ok) return(plain)
+    }
+    .tpl_yaml_flow(e)
+  }
+  go <- function(v, pad) {
+    if (is.list(v) || (is.atomic(v) && length(v) > 1L && is.null(names(v)))) {
+      items <- as.list(v)
+      nm <- names(items)
+      if (!is.null(nm) && all(nzchar(nm))) {
+        return(unlist(lapply(seq_along(items), function(i) {
+          k <- .tpl_yaml_flow(nm[[i]])
+          if (leaf(items[[i]]) || !is.null(names(items[[i]])) && is.atomic(items[[i]])) {
+            paste0(pad, k, ": ", one(items[[i]]))
+          } else c(paste0(pad, k, ":"), go(items[[i]], paste0(pad, "  ")))
+        }), use.names = FALSE))
+      }
+      return(unlist(lapply(items, function(e) paste0(pad, "- ", one(e))), use.names = FALSE))
+    }
+    paste0(pad, one(v))
+  }
+  if (is.null(x) || (is.list(x) && !length(x))) return("")
+  paste(go(x, ""), collapse = "\n")
+}
+
+# ... and the YAML text of a list read back (NULL: empty).  An error (not YAML,
+# or not a map / sequence) is raised for the caller to say.
+.tpl_yaml_read <- function(text) {
+  text <- paste(as.character(text %||% ""), collapse = "\n")
+  if (!nzchar(trimws(text))) return(NULL)
+  r <- yaml::yaml.load(text, handlers = .tpl_yaml_handlers())
+  if (is.null(r) || (is.list(r) && !length(r))) return(NULL)
+  if (!is.list(r) && is.null(names(r)) && length(r) == 1L) {
+    stop("a map (`name: value` lines) or a list (`- value` lines) is expected", call. = FALSE)
+  }
+  r
+}
+
 # Text in the card's box read as a value.  One starting with `[` or `!r ` is
 # YAML (`!r` raw R, as .tpl_show() writes it): an error (not YAML) is raised
 # for the caller to say.  One starting with `{` is a map only when it parses
@@ -347,6 +398,18 @@
   r <- tryCatch(yaml::yaml.load(v, handlers = .tpl_yaml_handlers()), error = function(e) NULL)
   if (is.list(r) && length(r) && !is.null(names(r)) && all(nzchar(names(r))) &&
         !any(vapply(r, is.null, NA))) r else v
+}
+
+# An edit of a list shown as YAML text: `same` (the text it was drawn with, no
+# edit), `bad` (not YAML, or not a map / list: the value stays; `msg` says why)
+# or `edit` (`value`, the list read back).  `shown`: the value drawn.
+.tpl_yaml_edit <- function(text, shown) {
+  if (identical(trimws(paste(as.character(text), collapse = "\n")), trimws(.tpl_yaml_block(shown)))) {
+    return(list(kind = "same"))
+  }
+  r <- tryCatch(list(value = .tpl_yaml_read(text)), error = function(e) conditionMessage(e))
+  if (is.character(r)) return(list(kind = "bad", msg = r))
+  list(kind = "edit", value = r$value)
 }
 
 # What an input gives, as the argument's value (NULL: none -- the default)
@@ -628,7 +691,10 @@ body.rp-adding::before { content: attr(data-loading); position: fixed; inset: 0;
 body.rp-switching .rp-report-loading { display: block; }
 body.rp-switching #step ~ .tab-content, body.rp-switching #report_head, #report_head.rp-stale {
   visibility: hidden; }
-.selectize-input .item[data-value=''] { color: #8a8f98; }
+/* an argument at its default reads like any other: its tag says so, no fading;
+   only a choice left empty ('(default)', '(not chosen)': no value) stays light */
+.selectize-input .item[data-value=''] {
+  color: #8a8f98; }
 .rp-tpl-arg-from { font-size: .75rem; color: #6b7280; }
 .rp-tpl-badge { font-size: .7rem; font-weight: 500; vertical-align: middle; }
 .rp-tpl-badge-own { background-color: #0d6efd; color: #fff; }
