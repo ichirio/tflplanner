@@ -115,16 +115,18 @@ test_that("a template report: one card a line after its call -- the study standa
 
 test_that("a study standard's card edited in a template report: the report's own, in its YAML", {
   skip_on_cran()
+  # (summary: its stub is the study standard's card; demog takes it as arguments now)
   p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
   o <- tflspec::tfl_output("T-99", "table", population = "SAF",
-                           template = list(name = "demog", args = list(population = "SAF")))
+                           template = list(name = "summary",
+                                         args = list(population = "SAF", continuous = "AGE", categorical = "SEX")))
   p <- .spec_add_output(p, o, population = "SAF")
   it <- Filter(function(x) identical(x$fn, "plan_stub"), builder_items(p, "T-99"))[[1L]]
   expect_identical(it$from, "defaults")
   q <- .builder_item_write(p, "T-99", "plan_stub", utils::modifyList(it$args, list(indent = 3L)))
   own <- q$spec$outputs[["T-99"]]$content
   expect_true("plan_stub" %in% vapply(own, function(x) x$fn, ""))
-  expect_identical(q$spec$outputs[["T-99"]]$template$name, "demog")
+  expect_identical(q$spec$outputs[["T-99"]]$template$name, "summary")
   it2 <- Filter(function(x) identical(x$fn, "plan_stub"), builder_items(q, "T-99"))[[1L]]
   expect_identical(it2$from, "own")
   expect_true(any(grepl("indent: 3", unlist(q$spec$text), fixed = TRUE)))
@@ -146,9 +148,11 @@ test_that("an argument tflspec filled from the study is the study standard's, wi
 
 test_that("plan_digits in a template report: a variable's decimals the report's own, the rounding every report's", {
   skip_on_cran()
+  # (summary: its plan_digits is the study standard's card; demog's rounding is an argument)
   p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
   o <- tflspec::tfl_output("T-99", "table", population = "SAF",
-                           template = list(name = "demog", args = list(population = "SAF")))
+                           template = list(name = "summary",
+                                         args = list(population = "SAF", continuous = "AGE", categorical = "SEX")))
   p <- .spec_add_output(p, o, population = "SAF")
   it <- Filter(function(x) identical(x$fn, "plan_digits"), builder_items(p, "T-99"))[[1L]]
   expect_identical(it$from, "defaults")
@@ -173,7 +177,8 @@ test_that("a template report converted to code: its items on the usual cards, it
   home <- local_home()
   s <- suppressMessages(create_sample_study(run = FALSE, home = home))
   o <- tflspec::tfl_output("T-TPL", "table", label = "Demographics", population = "SAF",
-                           template = list(name = "demog", args = list(population = "SAF")))
+                           template = list(name = "demog",
+                                         args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   s$planner <- .spec_add_output(s$planner, o, label = "Demographics", population = "SAF")
   expect_false(is.null(.tpl_of(s$planner, "T-TPL")))
   p <- .tpl_to_code(s$planner, "T-TPL")

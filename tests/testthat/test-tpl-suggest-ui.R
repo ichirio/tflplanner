@@ -64,7 +64,8 @@ test_that("'Add all' picked: the field's values are the suggested ones, in order
   mock_no_default(c("continuous", "categorical"))
   shiny::testServer(server_for("U2"), {
     open_demog(session)
-    session$setInputs(mtpl_demog__population = "SAF", mtpl_demog__continuous = .tpl_suggest_all, mtpl_demog__categorical = "SEX")
+    session$setInputs(mtpl_demog__population = "SAF", mtpl_demog__continuous = .tpl_suggest_all, mtpl_demog__categorical = "SEX",
+                      mtpl_demog__by = "TRT01A")
     session$setInputs(add_ok = 1)
     tp <- .tpl_of(session$userData$rv$p, "T-D")
     expect_identical(tp$args$continuous, c("AGE", "WEIGHTBL"))
@@ -82,7 +83,7 @@ test_that("nothing picked: nothing written (the placeholder is not a value)", {
   mock_no_default(c("continuous"))
   shiny::testServer(server_for("U3"), {
     open_demog(session)
-    session$setInputs(mtpl_demog__population = "SAF", mtpl_demog__continuous = character(0))
+    session$setInputs(mtpl_demog__population = "SAF", mtpl_demog__by = "TRT01A", mtpl_demog__continuous = character(0))
     session$setInputs(add_ok = 1)
     tp <- .tpl_of(session$userData$rv$p, "T-D")
     expect_null(tp$args$continuous)
@@ -93,6 +94,16 @@ test_that("a param with a default: the same field as before, no suggestion", {
   skip_on_cran()
   local_home()
   ui_study("U4")
+  # (variable sets are no template defaults any more (canon 1.12): given one here)
+  orig <- .tpl_params
+  testthat::local_mocked_bindings(.tpl_params = function(name) {
+    p <- orig(name)
+    if (identical(name, "demog")) {
+      p$continuous$default <- "AGE"
+      p$categorical$default <- "SEX"
+    }
+    p
+  })
   shiny::testServer(server_for("U4"), {
     open_demog(session)
     h <- as.character(output$tpl_modal_more$html)

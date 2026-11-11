@@ -6,11 +6,12 @@ test_that("a cells-sheet edit of a template report writes one item after the tem
   skip_on_cran()
   p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
   o <- tflspec::tfl_output("T-99", "table", population = "SAF",
-                           template = list(name = "demog", args = list(population = "SAF")))
+                           template = list(name = "demog",
+                                         args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   p <- .spec_add_output(p, o, population = "SAF")
   ce <- sheet_rows(p, "cells", "T-99")
   i <- which(ce$row == "Median")[1L]
-  expect_identical(ce$template[i], "{median:.1f}")
+  expect_identical(ce$template[i], "{median}")
   ce$template[i] <- "{median:.2f}"
   q <- .spec_sync(set_sheet_rows(p, "cells", "T-99", ce), p$spec$meta)
   out <- q$spec$outputs[["T-99"]]
@@ -48,7 +49,8 @@ test_that("a template report is expanded before tflspec makes its sheets", {
   skip_on_cran()
   p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
   o <- tflspec::tfl_output("T-99", "table", population = "SAF",
-                           template = list(name = "demog", args = list(population = "SAF")))
+                           template = list(name = "demog",
+                                         args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   p <- .spec_add_output(p, o, population = "SAF")
   seen <- NULL
   real <- tflspec::tfl_sheets_from_spec
@@ -59,8 +61,9 @@ test_that("a template report is expanded before tflspec makes its sheets", {
   back <- .sheets_from_spec(p$spec$study, p$spec$outputs["T-99"])
   expect_false(is.list(seen[["T-99"]]$template))
   expect_true(length(seen[["T-99"]]$content) > 0L)
-  ce <- back$table$cells
-  expect_true(any(!is.na(ce$output_id) & ce$output_id == "T-99"))
+  # the sheets hold the expanded items: its ARD (demog sets no cell rules of its own)
+  an <- back$ard$analyses
+  expect_true(any(!is.na(an$output_id) & an$output_id == "T-99"))
   # a report with no template is passed as it is
   plain <- tflspec::tfl_output("T-98", "table", content = list())
   .sheets_from_spec(p$spec$study, list(`T-98` = plain))
