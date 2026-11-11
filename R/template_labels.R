@@ -11,7 +11,7 @@
   by = "Variable that splits the columns",
   any_row = "Any-record row",
   any_row_label = "Any-record row label",
-  heading = "Label column heading",
+  heading = "Row-title column heading",
   sort = "Row order",
   min_pct = "Minimum percentage to keep",
   min_pct_in = "Where minimum applies",
@@ -135,10 +135,10 @@
   worst = "Worst post-baseline category",
   worst_by = "Worst order by parameter",
   percent_of = "Percent of",
-  missing_label = "Missing-baseline row label",
+  missing_label = "Missing row label",
   total_label = "All-subjects row label",
   param_page = "One page per parameter",
-  header_n = "Subjects in the arm headings (N=)",
+  header_n = "N= in the arm headings",
   param_heading = "Parameter page name",
   time_order = "Time point order variable",
   times = "Time points, in order",
@@ -160,7 +160,23 @@
   by_break = "How the listing is divided",
   by_heading = "Page heading",
   by_na_label = "Text for a blank value",
-  adjust = "Multiplicity adjustment"
+  adjust = "Multiplicity adjustment",
+  formats = "Decimals per statistic",
+  missing_row = "Missing row",
+  categorical_levels = "Values shown per categorical variable",
+  col_header = "Column heading",
+  stub_name = "Row-title column name",
+  stub_before = "Row-title column before the row keys",
+  widths = "Column widths",
+  max_rows = "Rows per page",
+  rounding = "Rounding rule",
+  blanks = "Blank rows",
+  blanks_first = "Blank row before the first block",
+  blanks_last = "Blank row after the last block",
+  blanks_counted = "Blank rows counted in a page's rows",
+  border_header = "Rule round the column heading",
+  border_group = "Rule under each block",
+  style = "Style set"
 )
 
 .tpl_doc_labels <- c(
@@ -169,5 +185,6 @@
     "Page name in the titles",
   "the groups: a page each (an analyte, an arm), the summary's too" = "Variable that splits the pages",
   "the variables that divide the listing (`by_break`); the records are ordered by them first, then by `sort`" =
-    "Variables that divide the listing"
+    "Variables that divide the listing",
+  "the Total column's heading" = "Total column heading"
 )

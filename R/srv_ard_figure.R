@@ -515,6 +515,15 @@
       return(notify(sprintf(t("%s has no analyses in the ARD definition."), id),
                     "warning"))
     }
+    # (a template report with a required value empty -- demog with no
+    # population: its card's alert says it; no ARD run that can only fail
+    # with an error note that stays)
+    miss <- if (is_report) .tpl_missing_report(rv$p, id) else character()
+    if (length(miss)) {
+      notify(sprintf(t("Required arguments are empty: %s. The preview waits for them."),
+                     paste(miss, collapse = ", ")), "warning")
+      return(invisible(FALSE))
+    }
     if (has_an && !is.null(ard_valid())) {
       notify(t("Correct the ARD definition first."), "warning")
       return(invisible(FALSE))

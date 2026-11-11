@@ -249,6 +249,15 @@
   vals <- vapply(cells, function(cs) if (length(cs) > 1L) paste(cs[-1L], collapse = " | ") else "", "")
   keep <- nzchar(keys)
   if (!any(keep)) return(NULL)
+  # (a map whose value is several, fields `values`: a line's comma-separated
+  # values as a vector -- RACE | ASIAN, WHITE)
+  if (identical(.tpl_list_fields(prm)[2L], "values")) {
+    return(stats::setNames(lapply(vals[keep], function(v) trimws(strsplit(v, ",", fixed = TRUE)[[1L]])), keys[keep]))
+  }
+  # (a rule a side, fields `edge`, `line`: TRUE / FALSE as a flag, a width as a number)
+  if (identical(.tpl_list_fields(prm)[2L], "line")) {
+    return(stats::setNames(lapply(vals[keep], val), keys[keep]))
+  }
   stats::setNames(vals[keep], keys[keep])
 }
 
@@ -436,11 +445,29 @@
     },
     list = , columns = .tpl_list_parse(v, prm),
     {
-      v <- trimws(paste(as.character(v), collapse = ""))
+      v <- trimws(paste(as.character(v), collapse = "\n"))
       # (YAML flow or `!r`: what .tpl_show() writes; a text that does not parse is kept as typed --
       # the card checks it first with .tpl_text_parse())
       if (nzchar(v)) tryCatch(.tpl_text_parse(v), error = function(e) v) else NULL
     })
+}
+
+# What a field drawn with `shown` (tpl_widget()) sends before anyone touches
+# it, read back as .tpl_value() reads it: the value an untouched field
+# gives -- not always `shown` itself (a FALSE text says "false", a list's
+# vectors come back as its lines say them, NULL a flag is FALSE)
+.tpl_untouched <- function(shown, type, prm = NULL) {
+  raw <- tryCatch(switch(type,
+    flag = isTRUE(shown),
+    number = .num_or_null(shown),
+    text = if (is.null(shown)) "" else .tpl_show(shown),
+    list = , columns = .tpl_list_text(shown, prm),
+    vars = , chips = , choices = as.character(shown %||% character()),
+    levels = if (isTRUE(prm$multiple)) as.character(shown %||% character()) else
+      as.character(shown %||% "")[1L],
+    as.character(shown %||% "")[1L]), error = function(e) NULL)
+  if (is.null(raw)) return(NULL)
+  tryCatch(.tpl_value(raw, type, prm), error = function(e) NULL)
 }
 
 # The args with one argument set (NULL, or the default itself: taken away)
@@ -480,9 +507,10 @@
   NULL
 }
 
-# The required arguments still empty
+# The required arguments still empty: those the card shows (a hidden one is
+# not the report's argument: demog's `population` is its `population:` field)
 .tpl_missing <- function(name, args, study = NULL) {
-  prm <- .tpl_params(name)
+  prm <- .tpl_shown(.tpl_params(name))
   req <- names(prm)[vapply(prm, function(x) isTRUE(x$required), NA)]
   # (a required argument the study gives -- its treatment for `by` -- is
   # not empty: tflspec fills it)
@@ -491,6 +519,21 @@
     length(v) > 0L && any(nzchar(as.character(v)))
   }
   req[!vapply(req, given, NA)]
+}
+
+# A template report's required values still empty, as its card says them:
+# .tpl_missing()'s, and "population" first when the template takes the
+# report's population (demog) and the report has none (character(): none,
+# or not a template report)
+.tpl_missing_report <- function(p, output_id) {
+  tp <- .tpl_of(p, output_id)
+  if (is.null(tp)) return(character())
+  miss <- .tpl_missing(tp$name, tp$args, p$spec$study)
+  if (.tpl_pop_of_report(.tpl_params(tp$name))) {
+    pid <- as.character(p$spec$outputs[[output_id]]$population %||% "")[1L]
+    if (is.na(pid) || !nzchar(pid)) miss <- c("population", miss)
+  }
+  miss
 }
 
 # The editor step a template's argument is drawn in (#514): "data" (the
@@ -532,7 +575,16 @@
 # Whether the report says the template's data in its own `data:` steps
 # (the template hides its data stage: km_survival, km_cumulative)
 .tpl_own_data <- function(prm) {
-  any(vapply(prm, function(x) isTRUE(x$hidden) && identical(x$stage, "data"), NA))
+  any(vapply(prm, function(x) isTRUE(x$hidden) && identical(x$step, "data"), NA))
+}
+
+# Whether the template's analysis set is the report's `population:` field
+# alone: its `population` hidden, required, and not part of the report's own
+# data steps (demog, stf_t02_demog).  The add-report dialog asks for it, and
+# writes it as the report's population, not as an argument.
+.tpl_pop_of_report <- function(prm) {
+  p <- prm[["population"]]
+  !is.null(p) && isTRUE(p$hidden) && isTRUE(p$required) && !.tpl_own_data(prm)
 }
 
 # A report's `data:` steps as the card's fields say them: the dataset
