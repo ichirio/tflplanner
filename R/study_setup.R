@@ -147,8 +147,9 @@ setup_code <- function(study_id = NA, standards = company_standards()) {
   invisible(code)
 }
 
-# part 2: the study's folders and what the study is, as R variables
-.study_setup_part2 <- function(meta) {
+# part 2: the study's folders and what the study is, as R variables, and
+# the study's rounding (tflspec writes it: tflspec#791)
+.study_setup_part2 <- function(meta, study = NULL) {
   lay <- study_layout()
   val <- function(v) {
     v <- as.character(v %||% NA_character_)
@@ -167,12 +168,30 @@ setup_code <- function(study_id = NA, standards = company_standards()) {
     "",
     paste(nm(ids), "<-", vapply(.study_fields, function(k) val(meta[[k]]), "")),
     "",
+    if (length(rnd <- .study_rounding_lines(study))) c(rnd, ""),
     "# the functions the programs call (tflplanner writes them)",
     sprintf("source(%s)", encodeString(.study_helpers_path(), quote = "\"")),
     "")
   c(.setup_marker_study,
     paste("#  Checksum   :", .body_hash(code)),
     code)
+}
+
+# The study's rounding as part 2 sets it: tflspec's lines, from the study's
+# spec or the sheets' (none: NULL, or a study that says no rounding).  The
+# ARD and report setups then leave it out (option tflspec.study_setup).
+.study_rounding_lines <- function(study) {
+  if (is.null(study)) return(character())
+  tflspec::tfl_study_setup_code(study)
+}
+
+# What a planner's rounding is read from: the study's spec, or (a planner
+# written from its sheets) the sheets' spec, as the setups read it
+.study_rounding_source <- function(x) {
+  if (inherits(x$spec$study, "tfl_study_spec")) return(x$spec$study)
+  tryCatch(.spec_object_last(x, c(table_sheets(), report_sheets()),
+                             unique(c(.study_keys$table, .study_keys$report))),
+           error = function(e) NULL)
 }
 
 # a study_setup.R split into its parts (each a string, the line ends
@@ -239,8 +258,10 @@ setup_code <- function(study_id = NA, standards = company_standards()) {
 #'    not change it after.
 #' 2. the study: its folders ([study_layout()]: `path_adam`, `path_sdtm`
 #'    ...) and what it is (`study_id`, `study_title`, `study_short_title`, `study_compound`,
-#'    `study_phase`, `study_description` from `study.yml`).  tflplanner
-#'    writes it again on every save.
+#'    `study_phase`, `study_description` from `study.yml`), and the study's
+#'    rounding (`options(rtfreporter.rounding = , cards.round_type = )`,
+#'    [tflspec::tfl_study_setup_code()]), which the ARD and report setups
+#'    then do not repeat.  tflplanner writes it again on every save.
 #' 3. the study's own code: tflplanner never touches it.
 #'
 #' Saving a study rewrites part 2 only, and parts 1 and 3 stay byte for
@@ -251,6 +272,9 @@ setup_code <- function(study_id = NA, standards = company_standards()) {
 #'   `rtfstudy`'s `meta`.
 #' @param date The date the marker of part 1 says it was copied.
 #' @param standards The standards to copy part 1 from.
+#' @param study The study's spec ([tflspec::tfl_read_study_spec()]), or a
+#'   table / report spec of the sheets, whose rounding part 2 sets; `NULL`
+#'   (the default): none.
 #' @return The program, one element per line.
 #' @examples
 #' # a home in the temporary folder: used in this R session only, nothing
@@ -262,11 +286,11 @@ setup_code <- function(study_id = NA, standards = company_standards()) {
 #' options(old)
 #' @export
 study_setup_code <- function(meta, date = Sys.Date(),
-                             standards = company_standards()) {
+                             standards = company_standards(), study = NULL) {
   c(.setup_marker_standard(date, standards$about),
     setup_code(meta[["study_id"]] %||% NA, standards),
     "",
-    .study_setup_part2(meta),
+    .study_setup_part2(meta, study),
     .setup_marker_user)
 }
 
@@ -274,7 +298,7 @@ study_setup_code <- function(meta, date = Sys.Date(),
 # from the standards in use, part 3 empty); otherwise part 2 only, when it
 # has changed.  A file whose markers are gone, or whose part 2 was edited,
 # goes to programs/.edited/ first.  The file's row of what the save did.
-.save_study_setup <- function(meta, root) {
+.save_study_setup <- function(meta, root, study = NULL) {
   f <- file.path(root, .study_setup_path())
   dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
   row <- function(status) data.frame(file = f, status = status,
@@ -283,10 +307,10 @@ study_setup_code <- function(meta, date = Sys.Date(),
   if (is.null(parts)) {
     edited <- file.exists(f)
     if (edited) .back_up_edited(f, root)
-    .write_bytes(.lines_text(study_setup_code(meta)), f)
+    .write_bytes(.lines_text(study_setup_code(meta, study = study)), f)
     return(row(if (edited) "rewritten" else "written"))
   }
-  new <- .lines_text(.study_setup_part2(meta))
+  new <- .lines_text(.study_setup_part2(meta, study))
   same <- identical(charToRaw(gsub("\r", "", parts$study, fixed = TRUE)),
                     charToRaw(new))
   if (same) {
