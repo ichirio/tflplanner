@@ -33,7 +33,7 @@
 "An official run makes a run folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs), the R and package versions (session_info.txt) and, if kept, the programs and definition workbooks it ran and the data they read.","正式実行は runs/<日付>_<時刻>_<内容>/ の実行フォルダを作り、各プログラムのログ（logrx）、作成物（試験 ARD、RTF）、R とパッケージの版（session_info.txt）、指定すれば実行したプログラムと定義ブック、読んだデータを格納します。"
 "Start the official run","正式実行を開始"
 "Updating ...","更新しています…"
-"Content","内容 (content)"
+"Content","内容（content）"
 "The page of the report chosen on the left: its titles, footnotes, its own header or footer, and tokens of your own ({STUDY} ...). Study defaults = every report's.","左で選んだ帳票のページ: タイトル、脚注、その帳票だけのヘッダー・フッター、自分のトークン（{STUDY} など）。試験標準 = すべての帳票のもの。"
 "Full size","原寸で見る"
 "Report (output_id)","帳票 (output_id)"
