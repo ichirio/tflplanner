@@ -64,13 +64,28 @@
        where = where, base = NULL, meta = NULL)
 }
 
+# tflspec::tfl_sheets_from_spec() with the template reports expanded first
+# (tflspec::tfl_template_to_spec()): the sheets then hold each one's items
+# -- its ARD, preview and program -- whichever tflspec is installed (one
+# that writes a template report to its own `templates` sheet, by name and
+# args, leaves the expanding to the caller).  One that cannot be expanded
+# (a KM type with no `data:` steps) is passed as it is, for tflspec to say.
+.sheets_from_spec <- function(study, outputs) {
+  outputs <- lapply(outputs, function(o) {
+    t <- o$template
+    if (!is.list(t) || is.null(t$name)) return(o)
+    tryCatch(tflspec::tfl_template_to_spec(o, study), error = function(e) o)
+  })
+  tflspec::tfl_sheets_from_spec(study, outputs)
+}
+
 # The planner (the sheets' view) made from a spec in memory: the sheets,
 # the report list and setup, the ARD definition, the listing and figure
 # sheets and the figure designs, as read_planner() and the ARD and listing
 # readers give them.  What the spec holds that the sheets cannot is the
 # attribute `not_converted`.
 .planner_from_spec <- function(study, outputs) {
-  back <- tflspec::tfl_sheets_from_spec(study, outputs)
+  back <- .sheets_from_spec(study, outputs)
   p <- .planner_from_sheets(back$table, back$planner)
   # study.yml's settings no sheet holds (the treatment variable, the missing SD)
   st <- study$study$settings %||% list()
@@ -692,7 +707,7 @@
     o <- sp$outputs[[output_id]]
     o["ard"] <- list(NULL)
     if (!inherits(o$content, "tfl_r")) o["content"] <- list(NULL)
-    v <- .planner_from_spec(.spec_study_lean(sp$study), stats::setNames(list(o), output_id))
+    v <- .planner_from_spec(.spec_study_lean(sp$study, list(o)), stats::setNames(list(o), output_id))
     no_id <- function(d) { d$output_id <- NULL; rownames(d) <- NULL; d }
     for (s in intersect(report_sheets(), names(p$sheets))) {
       new <- no_id(sheet_rows(v, s, output_id))
@@ -706,7 +721,7 @@
   if (content_only && !is.null(sp$outputs[[output_id]])) {
     o <- sp$outputs[[output_id]]
     o[c("ard", "data", "page")] <- list(NULL)
-    back <- tflspec::tfl_sheets_from_spec(.spec_study_lean(sp$study), stats::setNames(list(o), output_id))
+    back <- .sheets_from_spec(.spec_study_lean(sp$study, list(o)), stats::setNames(list(o), output_id))
     for (s in intersect(table_sheets(), names(p$sheets))) {
       d <- .normalize_sheet(back$table[[s]], s)
       new <- d[!is.na(d$output_id) & d$output_id == output_id, , drop = FALSE]
@@ -718,7 +733,8 @@
     if (!is.null(p$spec$base)) p$spec$base <- .planner_body(p)
     return(p)
   }
-  v <- .planner_from_spec(.spec_study_lean(sp$study), sp$outputs[intersect(output_id, names(sp$outputs))])
+  outs <- sp$outputs[intersect(output_id, names(sp$outputs))]
+  v <- .planner_from_spec(.spec_study_lean(sp$study, outs), outs)
   nc <- attr(p, "not_converted")
   no_id <- function(d) { d$output_id <- NULL; d }
   same_rows <- function(a, b) identical(no_id(a), no_id(b))
@@ -757,10 +773,14 @@
 }
 
 # The study's spec with no rows of its own for the bridge to make: its
-# defaults' and patterns' content and page (a report's rows are its own)
-.spec_study_lean <- function(study) {
+# defaults' and patterns' content and page (a report's rows are its own).
+# A template report among `outputs` keeps the defaults: its template
+# extends them (tflspec#779), so they give rows of the report's own -- left
+# out, its rows would differ from the ones the files give.
+.spec_study_lean <- function(study, outputs = list()) {
   if (is.null(study)) return(study)
-  if (!is.null(study$defaults)) study$defaults[c("content", "page")] <- list(NULL)
+  tpl <- any(vapply(outputs, function(o) !is.null(o$template), logical(1L)))
+  if (!tpl && !is.null(study$defaults)) study$defaults[c("content", "page")] <- list(NULL)
   study$patterns <- list()
   study
 }
