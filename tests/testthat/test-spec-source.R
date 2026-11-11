@@ -283,7 +283,7 @@ edit_data_yml <- function(s) {
   f <- file.path(s$path, "spec", "data.yml")
   writeLines(sub("label: Screened Set", "label: Enrolled Set", readLines(f), fixed = TRUE), f)
 }
-template_report <- function(id = "T-TPL", args = list(population = "SAF")) {
+template_report <- function(id = "T-TPL", args = list(by = "TRT01A", categorical = "SEX")) {
   tflspec::tfl_output(id, "table", label = "Demographics", population = "SAF",
                       template = list(name = "demog", args = args))
 }
@@ -310,7 +310,7 @@ test_that("a new template report kept over an outside change to the files", {
   expect_length(r$m$conflicts, 0L)
   o <- tflspec::tfl_read_output(report_file(base, "T-TPL"))
   expect_identical(o$template$name, "demog")
-  expect_identical(o$template$args$population, "SAF")
+  expect_identical(o$template$args$by, "TRT01A")
   expect_length(o$content, 0L)
   expect_false(any(grepl("^content:\\s*$", readLines(report_file(base, "T-TPL")))))
   # the outside change is in too, and the view still has the report
@@ -327,14 +327,14 @@ test_that("an existing template report's unsaved argument is kept over an outsid
   base <- suppressMessages(save_study(s, home = home))
   mine <- base
   mine$planner <- .spec_set_output(base$planner, "T-TPL", .tpl_output(
-    base$planner, "T-TPL", list(population = "SAF", continuous = "AGE")))
+    base$planner, "T-TPL", list(by = "TRT01A", continuous = "AGE")))
   edit_data_yml(base)
   r <- merge_and_save(base, mine, home)
   expect_length(r$m$conflicts, 0L)
   o <- tflspec::tfl_read_output(report_file(base, "T-TPL"))
   expect_identical(o$template$name, "demog")
   expect_identical(o$template$args$continuous, "AGE")
-  expect_identical(o$template$args$population, "SAF")
+  expect_identical(o$template$args$by, "TRT01A")
   expect_length(data_label(base), 1L)
 })
 
@@ -432,7 +432,7 @@ conflict_setup <- function(home, id = "T-TPL") {
   base <- suppressMessages(save_study(s, home = home))
   mine <- base
   mine$planner <- .spec_set_output(base$planner, id, .tpl_output(
-    base$planner, id, list(population = "SAF", continuous = "AGE")))
+    base$planner, id, list(by = "TRT01A", continuous = "AGE")))
   mine$planner <- set_sheet_rows(mine$planner, "titles", id,
                                  data.frame(line = "1", center = "Mine title"))
   f <- report_file(base, id)
@@ -462,7 +462,7 @@ test_that("keeping my changes in a conflict keeps the template report's template
   o <- tflspec::tfl_read_output(report_file(x$base, "T-TPL"))
   expect_identical(o$template$name, "demog")
   expect_identical(o$template$args$continuous, "AGE")
-  expect_identical(o$template$args$population, "SAF")
+  expect_identical(o$template$args$by, "TRT01A")
   expect_length(o$content, 0L)
 })
 
@@ -502,7 +502,7 @@ test_that("a report outside the conflict keeps what the merge gave it", {
   base <- suppressMessages(save_study(s, home = home))
   mine <- base
   mine$planner <- .spec_set_output(base$planner, "T-TP2", .tpl_output(
-    base$planner, "T-TP2", list(population = "SAF", continuous = "HEIGHT")))
+    base$planner, "T-TP2", list(by = "TRT01A", continuous = "HEIGHT")))
   mine$planner <- set_sheet_rows(mine$planner, "titles", "T-TPL",
                                  data.frame(line = "1", center = "Mine title"))
   f <- report_file(base, "T-TPL")
