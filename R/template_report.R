@@ -558,7 +558,16 @@
 # Whether the report says the template's data in its own `data:` steps
 # (the template hides its data stage: km_survival, km_cumulative)
 .tpl_own_data <- function(prm) {
-  any(vapply(prm, function(x) isTRUE(x$hidden) && identical(x$stage, "data"), NA))
+  any(vapply(prm, function(x) isTRUE(x$hidden) && identical(x$step, "data"), NA))
+}
+
+# Whether the template's analysis set is the report's `population:` field
+# alone: its `population` hidden, required, and not part of the report's own
+# data steps (demog, stf_t02_demog).  The add-report dialog asks for it, and
+# writes it as the report's population, not as an argument.
+.tpl_pop_of_report <- function(prm) {
+  p <- prm[["population"]]
+  !is.null(p) && isTRUE(p$hidden) && isTRUE(p$required) && !.tpl_own_data(prm)
 }
 
 # Whether the template's analysis set is the report's `population:` field
