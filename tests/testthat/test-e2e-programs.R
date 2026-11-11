@@ -105,13 +105,14 @@ test_that("the sample study's official run makes every report", {
 })
 
 # a report from a template, converted to code as the template card's
-# button does it (tflspec::tfl_template_to_spec())
-e2e_tpl_code <- function(p, id, name, args, kind = "table") {
-  o <- tflspec::tfl_output(id, kind, label = name, population = args$population %||% NA_character_,
+# button does it (tflspec::tfl_template_to_spec()); `population` the
+# report's (the argument's, for a template that still takes it)
+e2e_tpl_code <- function(p, id, name, args, kind = "table", population = args$population %||% NA_character_) {
+  o <- tflspec::tfl_output(id, kind, label = name, population = population,
                            template = list(name = name, args = args))
   b <- tflspec::tfl_template_to_spec(o, .code_spec(p)$study)
   expect_null(b$template)
-  .spec_add_output(p, b, label = name, population = args$population %||% NA_character_)
+  .spec_add_output(p, b, label = name, population = population)
 }
 
 test_that("tables from templates converted to code and a listing started from the data run; a report set's run makes its own", {
@@ -121,7 +122,8 @@ test_that("tables from templates converted to code and a listing started from th
   st <- e2e_study("CODE-1", c("adsl", "adae"), home)
   s <- suppressMessages(open_study("CODE-1", home = home))
   p <- s$planner
-  p <- e2e_tpl_code(p, "C-DM", "demog", list(population = "SAF"))
+  p <- e2e_tpl_code(p, "C-DM", "demog", list(by = "TRT01A", continuous = "AGE", categorical = "SEX"),
+                    population = "SAF")
   p <- e2e_tpl_code(p, "C-AE", "hierarchical", list(population = "SAF", hierarchy = c("AEBODSYS", "AEDECOD")))
   p <- e2e_tpl_code(p, "C-AEGR", "ae_max_grade", list(population = "SAF"))
   p <- first_listing(p, "F-LAE", "adam/adae.rds", st$data$adae, columns = c("USUBJID", "AEDECOD", "AESEV"),
@@ -208,10 +210,14 @@ test_that("every template of tflspec makes its report in an official run", {
       v <- switch(x$name, param = param_of[[n]], data = data_of[[n]], typed[[x$name]])
       args[[x$name]] <- .tpl_value(v, .tpl_type(x), x)
     }
-    if (identical(n, "summary")) args <- c(args, list(continuous = "AGE", categorical = "SEX"))
+    if (n %in% c("summary", "demog", "stf_t02_demog")) {
+      args <- c(args, list(continuous = "AGE", categorical = "SEX"))
+    }
     # (km's param is not required, but ADTTE has several: tflspec#727 stops then)
     if (identical(n, "km")) args$param <- first(dat$adtte$PARAMCD)
-    pop <- if (!is.null(args$population)) "SAF" else NA_character_
+    # (the analysis set: an argument, or the report's `population:` when the
+    # template hides it -- demog, stf_t02_demog)
+    pop <- if ("population" %in% names(prm)) "SAF" else NA_character_
     steps <- NULL
     if (.tpl_own_data(prm)) {
       steps <- .tpl_steps_from("ADTTE", saf, first(dat$adtte$PARAMCD))
