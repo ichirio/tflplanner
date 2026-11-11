@@ -707,7 +707,7 @@
     o <- sp$outputs[[output_id]]
     o["ard"] <- list(NULL)
     if (!inherits(o$content, "tfl_r")) o["content"] <- list(NULL)
-    v <- .planner_from_spec(.spec_study_lean(sp$study), stats::setNames(list(o), output_id))
+    v <- .planner_from_spec(.spec_study_lean(sp$study, list(o)), stats::setNames(list(o), output_id))
     no_id <- function(d) { d$output_id <- NULL; rownames(d) <- NULL; d }
     for (s in intersect(report_sheets(), names(p$sheets))) {
       new <- no_id(sheet_rows(v, s, output_id))
@@ -721,7 +721,7 @@
   if (content_only && !is.null(sp$outputs[[output_id]])) {
     o <- sp$outputs[[output_id]]
     o[c("ard", "data", "page")] <- list(NULL)
-    back <- .sheets_from_spec(.spec_study_lean(sp$study), stats::setNames(list(o), output_id))
+    back <- .sheets_from_spec(.spec_study_lean(sp$study, list(o)), stats::setNames(list(o), output_id))
     for (s in intersect(table_sheets(), names(p$sheets))) {
       d <- .normalize_sheet(back$table[[s]], s)
       new <- d[!is.na(d$output_id) & d$output_id == output_id, , drop = FALSE]
@@ -733,7 +733,8 @@
     if (!is.null(p$spec$base)) p$spec$base <- .planner_body(p)
     return(p)
   }
-  v <- .planner_from_spec(.spec_study_lean(sp$study), sp$outputs[intersect(output_id, names(sp$outputs))])
+  outs <- sp$outputs[intersect(output_id, names(sp$outputs))]
+  v <- .planner_from_spec(.spec_study_lean(sp$study, outs), outs)
   nc <- attr(p, "not_converted")
   no_id <- function(d) { d$output_id <- NULL; d }
   same_rows <- function(a, b) identical(no_id(a), no_id(b))
@@ -772,10 +773,14 @@
 }
 
 # The study's spec with no rows of its own for the bridge to make: its
-# defaults' and patterns' content and page (a report's rows are its own)
-.spec_study_lean <- function(study) {
+# defaults' and patterns' content and page (a report's rows are its own).
+# A template report among `outputs` keeps the defaults: its template
+# extends them (tflspec#779), so they give rows of the report's own -- left
+# out, its rows would differ from the ones the files give.
+.spec_study_lean <- function(study, outputs = list()) {
   if (is.null(study)) return(study)
-  if (!is.null(study$defaults)) study$defaults[c("content", "page")] <- list(NULL)
+  tpl <- any(vapply(outputs, function(o) !is.null(o$template), logical(1L)))
+  if (!tpl && !is.null(study$defaults)) study$defaults[c("content", "page")] <- list(NULL)
   study$patterns <- list()
   study
 }
