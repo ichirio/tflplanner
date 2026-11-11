@@ -81,7 +81,8 @@ test_that("tflspec cannot say: no rows, no badge (the card keeps its old text)",
 
 test_that("no fading of a field at a default; only the empty placeholder is light", {
   expect_false(grepl("rp-tpl-default", .tpl_css, fixed = TRUE))
-  expect_true(grepl(".selectize-input .item[data-value=''] { color: #8a8f98; }", .tpl_css, fixed = TRUE))
+  css1 <- gsub("\s+", " ", .tpl_css)  # the rule may be on one line or several
+  expect_true(grepl(".selectize-input .item[data-value=''] { color: #8a8f98; }", css1, fixed = TRUE))
 })
 
 test_that("a study reference with no value: kind none, no badge, a (none) placeholder and the key in the (i)", {
