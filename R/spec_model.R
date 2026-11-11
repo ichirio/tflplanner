@@ -60,7 +60,6 @@
       where[[o$id]] <- rel
     }
   }
-  .warn_deparsed_args(.deparsed_args(outputs))
   list(study = tflspec::tfl_read_study_spec(root), outputs = outputs, text = text,
        where = where, base = NULL, meta = NULL)
 }

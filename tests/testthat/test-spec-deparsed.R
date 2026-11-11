@@ -1,5 +1,5 @@
 # A report's argument saved as the text of R code (rtfreporter#958) is found
-# and warned about on open.
+# and warned about on open (open_study(); the app says it in set_study()).
 
 bad_text <- "list(structure(\"n == 0 ~ \\\"0\\\"\", class = \"tfl_r\", tag = \"!r\"), \"{n} ({p:.1f%}%)\")"
 
@@ -37,5 +37,7 @@ test_that("opening a study with such a value warns with the report id", {
     "T-BAD", "table", label = "x", population = "SAF",
     template = list(name = "demog", args = list(
       by = "TRT01A", categorical = "SEX", count_cell = bad_text))), f)
-  expect_warning(.spec_load(s$path), "T-BAD")
+  # (taken in from the files, then again from the state: each open says it)
+  expect_warning(suppressMessages(open_study(s$meta$study_id, home = home)), "T-BAD")
+  expect_warning(suppressMessages(open_study(s$meta$study_id, home = home)), "T-BAD")
 })
