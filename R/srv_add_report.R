@@ -160,7 +160,7 @@
               input_id, with_tip(lab, sprintf(t("A line a row: %s"), paste(.tpl_list_fields(prm), collapse = " | "))),
               value = txt, width = "100%", updateOn = "blur",
               rows = max(2L, min(8L, length(strsplit(txt, "\n")[[1L]]) + 1L)),
-              placeholder = paste(.tpl_list_fields(prm), collapse = " | ")))
+              placeholder = if (none) t("(none)") else paste(.tpl_list_fields(prm), collapse = " | ")))
         }
       })
   }
