@@ -409,7 +409,7 @@
         choices = c(stats::setNames("Standard", t("Standard (study default)")), stats::setNames(pats, pats)),
         selected = if (is.na(now)) "Standard" else now), id)),
       shiny::span(class = "small text-muted", "extends: ",
-                  shiny::code(paste(sp$outputs[[id]]$extends %||% "-", collapse = ", "))),
+                  shiny::code(.pgs_extends_label(sp$outputs[[id]]$extends))),
       .btn("pat_edit", t("Edit the patterns..."), class = "btn-sm btn-outline-secondary"),
       if (!length(pats)) shiny::span(class = "small text-muted",
         t("(no other pattern yet: Edit the patterns... makes one)")))

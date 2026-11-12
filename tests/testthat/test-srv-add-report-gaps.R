@@ -219,6 +219,9 @@ test_that("Add from a template writes the report with its template, the argument
 })
 
 test_that("a template card: an edit is written, a value just replaced is not an edit, a report's own value can be reverted, a header is warned about, and another template asks first", {
+  # On a slow machine a write and its say-back are far apart: the 15 s
+  # window of .tpl_stale_say() is widened so the test does not depend on it.
+  withr::local_options(tflplanner.tpl_stale_window = 3600)
   id <- sample_for_add()
   shown <- watch_add()
   shiny::testServer(server_for(id), {
@@ -278,6 +281,30 @@ test_that("a template card: an edit is written, a value just replaced is not an 
     expect_identical(.tpl_of(rv$p, "T-ZZ-6")$name, to)
     expect_identical(add_args(rv$p, "T-ZZ-6")$population, "SAF")
     expect_null(add_args(rv$p, "T-ZZ-6")$analysis_id)
+  })
+})
+
+# ---- a template report writes no `extends` (tflspec: the template's own) -----------------------
+
+test_that("a template report made in the dialog writes no extends", {
+  skip_if_not(.pgs_has_extends_accessor(), "tflspec's extends per step (#778)")
+  id <- sample_for_add()
+  watch_add()
+  shiny::testServer(server_for(id), {
+    rv <- session$userData$rv
+    session$setInputs(add = 1, modal_type = "listing", modal_how = "template", modal_tpl_listing = "listing",
+                      modal_id = "ZZ-8", modal_desc = "", modal_section = "",
+                      mtpl_listing__data = "ADAE", mtpl_listing__columns = "USUBJID | Subject")
+    session$setInputs(add_ok = 1)
+    expect_identical(.tpl_of(rv$p, "L-ZZ-8")$name, "listing")
+    expect_null(rv$p$spec$outputs[["L-ZZ-8"]]$extends)
+    txt <- paste(rv$p$spec$text[["spec/outputs/L-ZZ-8.yml"]], collapse = "
+")
+    expect_false(grepl("extends", txt, fixed = TRUE))
+    # (and the page's pattern chosen on it writes the page step alone)
+    q <- .pgs_add_pattern(rv$p, "Wide")
+    q <- .pgs_set_pattern(q, "L-ZZ-8", "Wide")
+    expect_identical(q$spec$outputs[["L-ZZ-8"]]$extends, list(page = c("patterns/Wide", "defaults")))
   })
 })
 
