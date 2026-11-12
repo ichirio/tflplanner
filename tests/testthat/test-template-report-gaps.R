@@ -278,7 +278,7 @@ test_that("the verbs after a template's call in the program tflspec writes now",
   # as its arguments, tflspec#764, and its program has none after it)
   o <- tflspec::tfl_output("T-99", "table", population = "SAF",
                            template = list(name = "summary",
-                                         args = list(population = "SAF", continuous = "AGE", categorical = "SEX")))
+                                         args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   p <- .spec_add_output(tpl_sample_planner(), o, population = "SAF")
   fns <- .tpl_code_fns(p, "T-99")
   expect_true(all(c("plan_digits", "plan_stub") %in% fns))
