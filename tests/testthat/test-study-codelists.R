@@ -333,24 +333,18 @@ test_that("the sheets path takes no inherited list a variable the ARD does not r
   expect_true(any(grepl("Young", program_code(p, "DM"), fixed = TRUE)))
 })
 
-test_that("the ARS reads a report's inherited lists: a condition on a label is the data's value", {
+test_that("the ARS reads a report's inherited lists: a condition on a label stops", {
   skip_if_not_installed("cards")
-  # tflspec #796: a `where` written with a label stops in the ARD program
-  # (.check_where_labels(): write "F" for "Female"), but tfl_ars() passes
-  # the label through into the ARS as it is.  Until tflspec checks it there
-  # too there is nothing to assert here.
-  skip("tfl_ars() does not stop a `where` written with a label (tflspec gap)")
+  # tflspec #796: the data hold the codes, so a `where` written with a label
+  # stops in the ARS as in the ARD program, and says the code to write
   cl_home()
   s <- cl_study("CL13")
   p <- s$planner
   i <- which(p$ard$analyses$output_id == "DM2" & p$ard$analyses$analysis_id == "AGE")
   p$ard$analyses$where[i] <- "SEX == \"PatF\""
   s$planner <- p
-  txt <- paste(utils::capture.output(utils::str(.ars_build(s)$ars, max.level = 99)),
-               collapse = "\n")
   # (PatF is the pattern's label of F, a list DM2 has from its layer only)
-  expect_true(grepl("SEX == \\\"F\\\"", txt, fixed = TRUE))
-  expect_false(grepl("PatF", txt, fixed = TRUE))
+  expect_error(.ars_build(s), "SEX: write \"F\" for \"PatF\"", fixed = TRUE)
 })
 
 test_that("the study is saved after an edit, and spec/codelists.yml is left as it is", {
