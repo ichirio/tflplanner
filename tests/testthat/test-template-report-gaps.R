@@ -274,14 +274,13 @@ test_that("the verbs after a template's call: the ones its program has", {
 
 test_that("the verbs after a template's call in the program tflspec writes now", {
   skip_on_cran()
-  # (summary: the study standard's verbs follow its call; demog takes them
-  # as its arguments, tflspec#764, and its program has none after it)
+  # (demog and summary take the study standard's verbs as their arguments,
+  # tflspec#764 / #785, and their programs have none after the call)
   o <- tflspec::tfl_output("T-99", "table", population = "SAF",
                            template = list(name = "summary",
                                          args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   p <- .spec_add_output(tpl_sample_planner(), o, population = "SAF")
-  fns <- .tpl_code_fns(p, "T-99")
-  expect_true(all(c("plan_digits", "plan_stub") %in% fns))
+  expect_identical(.tpl_code_fns(p, "T-99"), character())
   q <- .spec_add_output(tpl_sample_planner(), tpl_demog_output(), population = "SAF")
   expect_identical(.tpl_code_fns(q, "T-99"), character())
 })
