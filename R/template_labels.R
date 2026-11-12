@@ -4,7 +4,7 @@
 # things (by: a table's columns, a KM figure's curves).
 .tpl_arg_labels <- c(
   population = "Analysis set",
-  subset = "Subjects kept",
+  subset = "Subject selection",
   hierarchy = "Levels, outer first",
   data = "Source dataset",
   where = "Subset",

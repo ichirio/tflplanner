@@ -5,7 +5,7 @@
 "Base font size","基本フォントサイズ"
 "Figure title","Figure のタイトル"
 "the curves' variable (survfit2(~ by), the colours)","曲線を分ける変数。投与群など（例: TRT01P）。survfit2(~ by)・色"
-"Subjects kept","対象とする被験者"
+"Subject selection","被験者の抽出条件"
 "Levels, outer first","階層の水準（外側から）"
 "Source dataset","データセット"
 "Variable that splits the columns","列を分ける変数"
