@@ -148,7 +148,7 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
             "(the rest is saved):\n", ard_problem)
   }
   files <- rbind(files, ard_files)
-  files <- rbind(files, .save_study_setup(study$meta, root),
+  files <- rbind(files, .save_study_setup(study$meta, root, .study_rounding_source(p)),
                  .save_study_helpers(root),
                  .save_batch_programs(p, root))
   study$meta <- .read_meta(root)[.study_fields]

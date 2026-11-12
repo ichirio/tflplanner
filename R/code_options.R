@@ -2,7 +2,9 @@
 # through the variables programs/study_setup.R defines (path_adam,
 # path_ard, ...), and no `pkg::` for the packages it attaches.  tflspec
 # writes its part so with its options tflspec.paths and tflspec.attached;
-# tflplanner's own lines read the same options.
+# tflplanner's own lines read the same options.  tflspec.study_setup: the
+# study's rounding is in programs/study_setup.R's part 2, so the ARD and
+# report setups leave it out (tflspec#791).
 #
 # They are set only while a program is written or compared with its file
 # (.with_study_code()): a study's programs run its setup first.  The app's
@@ -16,7 +18,8 @@
 .use_study <- function(root) {
   .code_context$opts <- if (is.null(root)) NULL else list(
     tflspec.paths = .study_path_vars(),
-    tflspec.attached = .study_setup_packages(root))
+    tflspec.attached = .study_setup_packages(root),
+    tflspec.study_setup = TRUE)
   invisible(root)
 }
 

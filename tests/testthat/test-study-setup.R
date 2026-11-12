@@ -385,3 +385,32 @@ test_that("a change to report_setup.R (the rounding) marks the reports outdated,
   expect_false(.report_setup_changed(.study_setup_hash(s$path), s$path))
   expect_true(.report_setup_changed(paste0(.study_setup_hash(s$path), "|x"), s$path))
 })
+
+test_that("the study's rounding is set once, in study_setup.R's part 2 (tflspec#791)", {
+  skip_on_cran()
+  local_home()
+  s <- suppressMessages(create_sample_study(run = FALSE))
+  s$planner <- .spec_set_rounding(s$planner, "sas")
+  s <- suppressMessages(save_study(s))
+  setup <- readLines(file.path(s$path, .study_setup_path()), encoding = "UTF-8")
+  part2 <- setup[seq(grep(.setup_marker_study, setup, fixed = TRUE),
+                     grep(.setup_marker_user, setup, fixed = TRUE) - 1L)]
+  rnd <- "options(rtfreporter.rounding = \"sas\", cards.round_type = \"round-half-up\")"
+  expect_true(rnd %in% trimws(part2))
+  # the ARD and report setups source it and do not set the rounding again
+  ard <- readLines(file.path(s$path, study_layout()[["programs_ard"]], .ard_setup_file))
+  expect_false(any(grepl("cards.round_type", ard, fixed = TRUE)))
+  rep <- file.path(s$path, .report_setup_path())
+  if (file.exists(rep)) {
+    expect_false(any(grepl("rtfreporter.rounding", readLines(rep), fixed = TRUE)))
+  }
+  # the program as study_setup_code() gives it: with the study's spec, or none
+  expect_true(rnd %in% trimws(study_setup_code(s$meta, study = s$planner$spec$study)))
+  expect_false(any(grepl("rounding", study_setup_code(s$meta), fixed = TRUE)))
+  # the study's rounding changed: part 2 says the new one, once
+  s$planner <- .spec_set_rounding(s$planner, "r")
+  s <- suppressMessages(save_study(s))
+  setup <- readLines(file.path(s$path, .study_setup_path()), encoding = "UTF-8")
+  expect_identical(sum(grepl("rtfreporter.rounding = \"r\"", setup, fixed = TRUE)), 1L)
+  expect_false(any(grepl("rtfreporter.rounding = \"sas\"", setup, fixed = TRUE)))
+})
