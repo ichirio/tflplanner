@@ -151,7 +151,8 @@
                   subset = list(value = NULL),
                   denominator = list(value = "adsl_sub", fixed = TRUE)),
       ard = list(),
-      content = list(split = list(value = "group_safe", fixed = TRUE),
+      content = list(total_label = list(value = "Total"),
+                     split = list(value = "group_safe", fixed = TRUE),
                      max_rows = list(config = TRUE),
                      page_by = list(value = NULL), page_heading = list(value = NULL)),
       page = list(titles = NULL, header = NULL, footer = NULL,
@@ -165,7 +166,8 @@
                   denominator = list(value = "adsl_sub")),
       ard = list(hierarchy = list(value = c("AEBODSYS", "AEDECOD")),
                  total = list(value = FALSE)),
-      content = list(split = list(value = "group_force"),
+      content = list(sort = list(value = "descending incidence"),
+                     split = list(value = "group_force"),
                      max_rows = list(config = TRUE),
                      page_by = list(value = NULL), page_heading = list(value = NULL)),
       page = list(titles = NULL, header = NULL, footer = NULL,
@@ -180,15 +182,44 @@
   where = "Record selection (where)", denominator = "Denominator dataset (denominator)",
   hierarchy = "Hierarchy (hierarchy)", continuous = "Continuous variables (continuous)",
   categorical = "Categorical variables (categorical)", total = "Total column (total)",
-  min_pct = "Smallest percent shown (min_pct)",
+  min_pct = "Minimum incidence % shown (min_pct)",
+  from = "Source dataset (from)", subjects = "Subjects used (subjects)",
+  extends = "Extends (extends)", total_label = "Total column label (total_label)",
+  sort = "Row order (sort)",
   split = "Page breaks (split)", max_rows = "Rows per page (max_rows)",
   page_by = "Variable that starts a page (page_by)",
   page_heading = "Heading of each page (page_heading)",
   labels = "Row labels (labels)")
 
 .fs_pagebreak <- c("split", "max_rows", "page_by", "page_heading")
-.fs_bands <- c("titles", "header", "footer", "footnotes")
+# the bands in print order
+.fs_bands <- c("header", "titles", "footnotes", "footer")
 .fs_band_labels <- c(titles = "Titles", header = "Header", footer = "Footer", footnotes = "Footnotes")
+
+# The arguments of rtf_page() and rtf_style() the page configuration sets, in
+# argument order (the formals of rtfreporter 0.8.2.9100), each with its meaning
+# (and unit).  Provisional: the meanings are chosen here.
+.fs_rtf_args <- list(
+  rtf_page = c(paper_size = "Paper size", orientation = "Orientation",
+               width_in = "Page width (inch)", height_in = "Page height (inch)",
+               margin_top_in = "Top margin (inch)", margin_bottom_in = "Bottom margin (inch)",
+               margin_left_in = "Left margin (inch)", margin_right_in = "Right margin (inch)",
+               header_dist_in = "Header distance (inch)", footer_dist_in = "Footer distance (inch)"),
+  rtf_style = c(font = "Font", font_size_half_points = "Font size (half-points)",
+                row_height_twips = "Row height (twips)",
+                cell_padding_left_twips = "Cell padding, left (twips)",
+                cell_padding_right_twips = "Cell padding, right (twips)",
+                cell_padding_top_twips = "Cell padding, top (twips)",
+                cell_padding_bottom_twips = "Cell padding, bottom (twips)",
+                markup = "Markup", color = "Color", title_format = "Title format",
+                footnote_format = "Footnote format", title_width = "Title width",
+                footnote_width = "Footnote width"))
+
+# the label of one rtf argument: "meaning (unit) (function(argument))"
+.fs_rtf_label <- function(fn, arg) {
+  m <- .fs_rtf_args[[fn]][arg]
+  if (is.null(m) || is.na(m)) paste0(fn, "(", arg, ")") else paste0(m, " (", fn, "(", arg, "))")
+}
 
 # --------------------------------------------------------- the page bands
 
@@ -223,7 +254,22 @@
 # template's default lines changed by the report's, ordered by number), the
 # configuration's last lines.  Each item: src (config / template / own),
 # num (body lines), text.
+.fs_split_rep <- function(rep) {
+  rm <- list(first = integer(), last = integer())
+  if (is.list(rep) && !is.null(names(rep)) && any(names(rep) %in% c("first", "last"))) {
+    for (b in c("first", "last")) {
+      x <- rep[[b]]
+      if (is.list(x) && length(x)) rm[[b]] <- as.integer(names(x)[vapply(x, .fs_is_unset, NA)])
+    }
+    rep <- rep[setdiff(names(rep), c("first", "last"))]
+    if (!length(rep)) rep <- NULL
+  }
+  list(body = rep, rm = rm)
+}
+
 .fs_resolve_band <- function(cfg_band, tdefault, rep) {
+  sp <- .fs_split_rep(rep)
+  rep <- sp$body
   bd <- .fs_body(rep)
   if (identical(bd$kind, "off")) return(list(off = TRUE, items = list()))
   body <- list()
@@ -238,10 +284,12 @@
     } else body[[k]] <- list(src = "own", num = l$num, line = l$line)
   }
   body <- body[order(vapply(body, function(b) b$num, 0L))]
-  cf <- function(ls) lapply(ls, function(l) list(src = "config", num = NA_integer_, line = l))
-  items <- c(cf(cfg_band$first), unname(body), cf(cfg_band$last))
+  cf <- function(ls, block) lapply(seq_along(ls), function(i) list(
+    src = "config", block = block, num = i, line = ls[[i]], removed = i %in% sp$rm[[block]]))
+  items <- c(cf(cfg_band$first, "first"), unname(body), cf(cfg_band$last, "last"))
   items <- lapply(items, function(i) { i$text <- .fs_line_text(i$line); i })
-  list(off = FALSE, items = items, own = any(vapply(body, function(b) b$src %in% c("own", "removed"), NA)))
+  own <- any(vapply(body, function(b) b$src %in% c("own", "removed"), NA)) || length(unlist(sp$rm)) > 0L
+  list(off = FALSE, items = items, own = own)
 }
 
 # ----------------------------------------------------------- the model
@@ -311,7 +359,13 @@
   for (d in defs) {
     id <- as.character(d$id %||% "")
     role <- if (grepl("_den$", id)) "denominator" else if (is.null(d$subjects)) "analysis set" else "records"
-    out[[length(out) + 1L]] <- list(id = id, role = role, implicit = FALSE, text = "",
+    wh <- .fs_show(d$where)
+    pop <- .fs_population(study, common$population)
+    txt <- if (!is.null(d$subjects)) paste0(.fs_show(d$from), " of the subjects of ", .fs_show(d$subjects)) else
+      if (identical(role, "analysis set")) paste0(common$population %||% "",
+        if (!is.null(pop$label)) paste0(" (", pop$label, ")") else "") else .fs_show(d$from)
+    out[[length(out) + 1L]] <- list(id = id, role = role, implicit = FALSE,
+                                    text = paste0(txt, if (nzchar(wh)) paste0("; ", wh) else ""),
                                     fields = d[setdiff(names(d), "id")])
   }
   out
@@ -357,6 +411,8 @@
     m$steps$ard <- list(rows = .fs_template_rows(tpl, "ard", tp$ard, cfg))
     crows <- .fs_template_rows(tpl, "content", tp$content, cfg)
     m$steps$content <- list(
+      extends = if (is.null(y$extends)) .fs_row("extends", "defaults", "default") else
+        .fs_row("extends", .fs_show(y$extends), "own"),
       pagebreak = Filter(function(r) r$name %in% .fs_pagebreak, crows),
       rows = Filter(function(r) !r$name %in% .fs_pagebreak, crows))
   } else {
@@ -382,14 +438,30 @@
     for (a in union(names(cfg$settings[[k]]), names(rep_page[[k]]))) {
       own <- !is.null(rep_page[[k]][[a]])
       settings[[length(settings) + 1L]] <- list(
-        name = paste0(k, ": ", a), value = .fs_show(if (own) rep_page[[k]][[a]] else cfg$settings[[k]][[a]]),
+        fn = k, arg = a, value = .fs_show(if (own) rep_page[[k]][[a]] else cfg$settings[[k]][[a]]),
         origin = if (own) "own" else "config", config = cfg$name)
     }
   }
-  tokens <- lapply(names(rep_page$tokens), function(n)
-    list(name = n, value = .fs_show(rep_page$tokens[[n]]), origin = "own"))
-  stok <- lapply(setdiff(names(study$tokens), names(rep_page$tokens)), function(n)
-    list(name = n, value = .fs_show(study$tokens[[n]]), origin = "study"))
-  m$steps$page <- list(bands = bands, settings = settings, tokens = c(tokens, stok), config = cfg$name)
+  set_keys <- vapply(settings, function(r) paste0(r$fn, "/", r$arg), "")
+  unset <- list()
+  for (fn in names(.fs_rtf_args)) for (a in names(.fs_rtf_args[[fn]])) {
+    if (!paste0(fn, "/", a) %in% set_keys) unset[[length(unset) + 1L]] <- list(fn = fn, arg = a)
+  }
+  # tokens: derived from the report, the ones the report writes, the study's
+  derived <- list(
+    OUTPUT_LABEL = list(value = m$id, text = "Report ID"),
+    OUTPUT_TITLE = list(value = m$label, text = "Report label"),
+    OUTPUT_POPULATION = list(value = m$common$population_label$value, text = "Common: population_label"))
+  tokens <- list()
+  for (n in names(derived)) {
+    if (!is.null(rep_page$tokens[[n]])) next
+    if (nzchar(derived[[n]]$value)) tokens[[length(tokens) + 1L]] <- list(
+      name = n, value = derived[[n]]$value, origin = "derived", text = derived[[n]]$text)
+  }
+  for (n in names(rep_page$tokens)) tokens[[length(tokens) + 1L]] <- list(
+    name = n, value = .fs_show(rep_page$tokens[[n]]), origin = "own")
+  for (n in setdiff(names(study$tokens), names(rep_page$tokens))) tokens[[length(tokens) + 1L]] <- list(
+    name = n, value = .fs_show(study$tokens[[n]]), origin = "study")
+  m$steps$page <- list(bands = bands, settings = settings, unset = unset, tokens = tokens, config = cfg$name)
   m
 }

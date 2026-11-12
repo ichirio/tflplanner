@@ -16,7 +16,3 @@ template:
   page:
     footnotes:
       2: Age is in years at screening.
-page:
-  tokens:
-    OUTPUT_TITLE: Demographics and Baseline Characteristics
-    OUTPUT_POPULATION: Safety Analysis Set

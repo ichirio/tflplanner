@@ -52,13 +52,29 @@ test_that("a band lists the resolved lines in print order with their sources", {
   hd <- m$steps$page$bands$header$items
   expect_length(hd, 5L)
   expect_true(all(vapply(hd, function(i) i$src, "") == "config"))
+  # the report took the first configuration line out: it stays, marked
+  expect_identical(vapply(hd, function(i) isTRUE(i$removed), NA), c(TRUE, FALSE, FALSE, FALSE, FALSE))
+  expect_true(m$steps$page$bands$header$own)
+  expect_false(fs_model_of("T-14-1-1")$steps$page$bands$header$own)
   # the titles are the report's own list
   expect_identical(vapply(m$steps$page$bands$titles$items, function(i) i$src, ""), c("own", "own"))
   # a setting the report overrides says so; the rest is the configuration's
-  s <- stats::setNames(m$steps$page$settings, vapply(m$steps$page$settings, function(r) r$name, ""))
-  expect_identical(s[["rtf_page: orientation"]]$origin, "own")
-  expect_identical(s[["rtf_page: margin_left_in"]]$origin, "config")
-  expect_identical(s[["rtf_page: margin_left_in"]]$config, "tfl_small")
+  s <- stats::setNames(m$steps$page$settings, vapply(m$steps$page$settings, function(r) paste0(r$fn, "/", r$arg), ""))
+  expect_identical(s[["rtf_page/orientation"]]$origin, "own")
+  expect_identical(s[["rtf_page/margin_left_in"]]$origin, "config")
+  expect_identical(s[["rtf_page/margin_left_in"]]$config, "tfl_small")
+  # the arguments nothing sets are listed, in argument order
+  un <- vapply(m$steps$page$unset, function(r) paste0(r$fn, "/", r$arg), "")
+  expect_true("rtf_page/paper_size" %in% un)
+  expect_false("rtf_page/orientation" %in% un)
+  expect_identical(.fs_rtf_label("rtf_page", "orientation"), "Orientation (rtf_page(orientation))")
+  # a token derived from the report says where it comes from; one the report writes is its own
+  tk <- stats::setNames(m$steps$page$tokens, vapply(m$steps$page$tokens, function(r) r$name, ""))
+  expect_identical(tk$OUTPUT_TITLE$text, "Report label")
+  expect_identical(tk$OUTPUT_POPULATION$text, "Common: population_label")
+  expect_identical(tk$MEDDRA_VERSION$origin, "own")
+  # the bands are in print order
+  expect_identical(.fs_bands, c("header", "titles", "footnotes", "footer"))
 })
 
 test_that("a code SPEC report: its dataset definitions, analyses and verbs; the same bands", {
@@ -73,6 +89,7 @@ test_that("a code SPEC report: its dataset definitions, analyses and verbs; the 
   hd <- m$steps$page$bands$header$items
   expect_length(hd, 2L)
   expect_length(m$steps$content$verbs, 2L)
+  expect_match(m$steps$data$defs[[2L]]$text, "ADAE of the subjects of adsl_sub; AESER", fixed = TRUE)
 })
 
 test_that("the screen draws the common block and the four steps", {
@@ -86,8 +103,8 @@ test_that("the screen draws the common block and the four steps", {
   h <- fs_html(fs_model_of("T-14-3-1"))
   expect_match(h, "Page configuration tfl_small", fixed = TRUE)
   expect_match(h, "Page breaks", fixed = TRUE)
-  expect_match(h, "Back to the template", fixed = TRUE)
-  expect_false(grepl("Back to the template", fs_html(fs_model_of("T-14-3-2")), fixed = TRUE))
+  expect_match(h, "Reset band to the template", fixed = TRUE)
+  expect_false(grepl("Reset band to the template", fs_html(fs_model_of("T-14-3-2")), fixed = TRUE))
 })
 
 test_that("the screen speaks Japanese", {

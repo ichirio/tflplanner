@@ -17,13 +17,14 @@ template:
     titles:
       - Adverse Events by System Organ Class and Preferred Term
       - Females
+    header:
+      first:
+        1: !unset
     footnotes:
       2: !unset
       3: Table-specific note.
 page:
   tokens:
     MEDDRA_VERSION: '27.0'
-    OUTPUT_TITLE: Adverse Events by SOC and PT
-    OUTPUT_POPULATION: Safety Analysis Set
   rtf_page:
     orientation: portrait
