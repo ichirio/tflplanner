@@ -33,8 +33,17 @@ test_that("a study's programs read its folders by their variables; previews as t
   local_home()
   s <- create_study("CO-1", planner = code_planner())
   ard <- readLines(file.path(s$path, "programs", "ard", "DM.R"))
-  expect_true(any(grepl("readRDS(file.path(path_adam, \"adsl.rds\"))", ard,
-                        fixed = TRUE)))
+  # the data is read once, in the setup's part 2 (tflspec#794), through the
+  # folder variable; where tflspec does not write it, the program reads it
+  setup_txt <- readLines(file.path(s$path, "programs", "study_setup.R"))
+  adsl <- "readRDS(file.path(path_adam, \"adsl.rds\"))"
+  if (any(grepl("readRDS", tflspec::tfl_study_setup_code(s$planner$spec$study)))) {
+    expect_true(any(grepl(adsl, setup_txt, fixed = TRUE)))
+    expect_false(any(grepl("readRDS(", ard, fixed = TRUE)))
+  } else {
+    expect_true(any(grepl(adsl, ard, fixed = TRUE)))
+  }
+  expect_false(any(grepl("readRDS(\"data/", c(setup_txt, ard), fixed = TRUE)))
   # the setup attaches cards and dplyr: no pkg::, no library() again
   expect_false(any(grepl("cards::|dplyr::|tflspec::", ard[!startsWith(ard, "#")])))
   setup <- readLines(file.path(s$path, "programs", "ard", "ard_setup.R"))

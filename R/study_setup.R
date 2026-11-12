@@ -182,6 +182,10 @@ setup_code <- function(study_id = NA, standards = company_standards()) {
 # ARD and report setups then leave it out (option tflspec.study_setup).
 .study_rounding_lines <- function(study) {
   if (is.null(study)) return(character())
+  # part 2 is written outside .with_study_code(): the data lines name the
+  # folders through the variables part 2 defines above them
+  old <- options(tflspec.paths = .study_path_vars())
+  on.exit(options(old), add = TRUE)
   tflspec::tfl_study_setup_code(study)
 }
 
