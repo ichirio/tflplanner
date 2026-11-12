@@ -217,3 +217,4 @@
 "each parameter's text by its PARAMCD {GLUC: ""Glucose (mg/dL)""}; given by name, merged; NULL: the study's PARAMCD code list's labels, else the codes print","パラメータごとの表示名（PARAMCD で指定）{GLUC: ""Glucose (mg/dL)""}。名前で指定し、重ねます; NULL: 試験の PARAMCD のコードリストのラベル、なければコードをそのまま表示"
 "which records (R) of a `data` other than ADSL: ANL01FL == ""Y""; unset: all; for which subjects, `subset`","残すレコード（R）。ADSL 以外の `data` の場合: ANL01FL == ""Y""; 未指定: すべて; 被験者の絞り込みは `subset`"
 "the parameters' order variable; NULL: by their PARAMCD","パラメータの順序変数; NULL: PARAMCD 順"
+"the rows kept: this % of subjects or more (a step of the ARD); NULL: all","残す行: 被験者のこの % 以上（ARD の 1 ステップ）。NULL: すべて"
