@@ -234,7 +234,7 @@ test_that("the form: a card a function, the arguments with a value first, labels
   expect_false(grepl("pg-lower\" open", h, fixed = TRUE))
   expect_match(h, "rtfreporter's default", fixed = TRUE)
   expect_match(h, "(margin_top_in)", fixed = TRUE)
-  expect_match(h, "style compact", fixed = TRUE)
+  expect_match(h, "Page configuration: compact", fixed = TRUE)
   # the paper card's two rows above (paper, orientation, font, size; the
   # margins), whether written or not; the rest folded
   expect_lt(regexpr("data-arg=\"paper_size\"", h, fixed = TRUE), regexpr("margin_top_in", h, fixed = TRUE))

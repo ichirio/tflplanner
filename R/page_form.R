@@ -13,7 +13,7 @@
 # pattern's (a page configuration, in the pattern dialog), Standard's (the
 # study's default configuration)
 .pg_own_word <- function(id, t, kind = NULL) {
-  if (is.na(id)) t("Standard") else if (.is_pattern_id(id)) t("this pattern") else
+  if (is.na(id)) t("Standard") else if (.is_pattern_id(id)) t("this page configuration") else
     if (is.null(kind) || identical(kind, "table")) t("This table") else t("This report")
 }
 # what Revert goes back to, its tooltip (a configuration is complete: nothing
@@ -34,8 +34,8 @@
   switch(kind,
          own = .pg_own_word(id, t),
          defaults = t("Study default"),
-         pattern = sprintf(t("pattern %s"), name),
-         style = sprintf(t("style %s"), name),
+         pattern = sprintf(t("Page configuration: %s"), name),
+         style = sprintf(t("Page configuration: %s"), name),
          "")
 }
 
@@ -337,7 +337,7 @@ $(document).on('shiny:value', function(e) {
     shiny::tags$button(type = "button", class = "pg-act btn btn-sm btn-outline-secondary py-0",
                        `data-act` = "addline", `data-band` = band,
                        if (is.na(id)) t("Add a line") else if (.is_pattern_id(id))
-                         t("Add a line to this pattern") else t("Add a line for this report")))
+                         t("Add a line to this page configuration") else t("Add a line for this report")))
 }
 
 # The tokens a page says but does not set: the report list's (its ID and

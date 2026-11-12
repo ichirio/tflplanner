@@ -91,7 +91,7 @@ test_that("step 3: the pattern chosen, a value written, a line left out, from th
     session$setInputs(page_pattern_by = list(report = "T2", value = "Standard"))
     expect_identical(rv$p$spec$outputs[["T1"]]$style, "Compact")
     h <- output$page_form$html
-    expect_match(h, "style Compact", fixed = TRUE)
+    expect_match(h, "Page configuration: Compact", fixed = TRUE)
     expect_match(h, "{STUDY} (PK)", fixed = TRUE)
     session$setInputs(pg_edit = list(kind = "arg", fn = "rtf_page", arg = "margin_top_in",
                                      line = "", part = "", name = "", value = "0.5", n = 1))
@@ -203,9 +203,9 @@ test_that("the form edits a pattern (its own over Standard) or Standard itself",
   # the form's words
   h <- as.character(.page_form_ui(p, "@Compact", identity))
   expect_match(h, 'data-pg-target="@Compact"', fixed = TRUE)
-  expect_match(h, "this pattern", fixed = TRUE)
+  expect_match(h, "this page configuration", fixed = TRUE)
   expect_match(as.character(.page_form_ui(p, NA, identity)), 'data-pg-target=""', fixed = TRUE)
-  expect_match(h, "Add a line to this pattern", fixed = TRUE)
+  expect_match(h, "Add a line to this page configuration", fixed = TRUE)
   expect_false(grepl("Heading", h, fixed = TRUE))
 })
 
@@ -224,7 +224,7 @@ test_that("the pattern dialog: a new pattern, edited by its target, renamed", {
     expect_identical(.pgs_arg(.pgs_spec(rv$p), "@Wide", "rtf_page", "orientation")$value, "portrait")
     # the dialog stays on the pattern edited, and counts its reports
     expect_match(output$pat_form$html, 'data-pg-target="@Wide"', fixed = TRUE)
-    expect_match(output$pat_count$html, "Reports using it: 0", fixed = TRUE)
+    expect_match(output$pat_count$html, "Reports using this page configuration: 0", fixed = TRUE)
     # Standard, from the dialog
     session$setInputs(pat_pick = "Standard")
     session$setInputs(pg_edit = list(target = "", kind = "arg", fn = "rtf_page",
