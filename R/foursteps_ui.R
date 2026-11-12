@@ -49,6 +49,10 @@
 
 .fs_value_el <- function(r, m, t) {
   if (identical(r$name, "denominator")) return(.fs_den_select(r$value, m, t))
+  if (identical(r$name, "dataset") && !identical(r$origin, "fixed")) {
+    return(shiny::tags$input(type = "text", class = "form-control form-control-sm", disabled = "disabled",
+                             style = "max-width: 22rem", value = r$value))
+  }
   hint <- r$origin %in% c("default", "none")
   empty <- !nzchar(r$value)
   shiny::span(class = paste0("rp-fs-val", if (hint || empty) " rp-fs-hint" else ""),
