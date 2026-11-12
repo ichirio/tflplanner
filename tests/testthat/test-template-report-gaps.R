@@ -302,7 +302,10 @@ test_that("a program with no template call, or that tflspec cannot make, has no 
   testthat::local_mocked_bindings(
     tfl_content_code = function(...) c("tpl_demog(x)", "  plan_cells(x)", "not a verb", "plan_labels(y)"),
     .package = "tflspec")
-  expect_identical(.tpl_code_fns(p, "T-99"), unique(c(.demog_study_fns, "plan_cells", "plan_labels")))
+  # (the call's own items first, those the lines after it say again counted
+  # there: the lines' verbs last, in their order)
+  expect_identical(.tpl_code_fns(p, "T-99"),
+                   c(setdiff(.demog_study_fns, c("plan_cells", "plan_labels")), "plan_cells", "plan_labels"))
   testthat::local_mocked_bindings(tfl_content_code = function(...) stop("cannot"),
                                   .package = "tflspec")
   expect_identical(.tpl_code_fns(p, "T-99"), .demog_study_fns)
