@@ -216,7 +216,7 @@ test_that("the step an argument is drawn in: the table, the name's default, else
   for (a in c("labels", "heading", "order", "sort", "formats", "total_label", "visit_order")) {
     expect_identical(.tpl_arg_section("company_tpl", a), "content")
   }
-  for (a in c("title", "param_page", "param_heading")) {
+  for (a in c("title", "page_by", "page_heading")) {
     expect_identical(.tpl_arg_section("company_tpl", a), "page")
   }
   # anything else: the ARD
