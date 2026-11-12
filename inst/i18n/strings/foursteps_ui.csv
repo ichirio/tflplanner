@@ -15,7 +15,6 @@
 "Always made first, even when the report does not write it.","レポートに書かなくても、必ず最初に作られます。"
 "No ARD values of its own.","このレポート固有の ARD の値はありません。"
 "No content values of its own.","このレポート固有の内容の値はありません。"
-"Page breaks","改ページの方法"
 "Where a page ends: how, how many rows, and what starts a page.","ページの切れ目: 方法、1 ページの行数、ページを分ける変数。"
 "analysis set","解析対象集団"
 "records","レコード"
