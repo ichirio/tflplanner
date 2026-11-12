@@ -414,6 +414,7 @@
 "param_change","by","ard"
 "param_change","layout","content"
 "param_change","param_order","content"
+"param_change","param_labels","content"
 "param_change","visit_order","content"
 "param_change","baseline","ard"
 "param_change","baseline_label","content"
