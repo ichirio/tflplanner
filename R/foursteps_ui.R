@@ -218,7 +218,7 @@
   picker <- shiny::div(
     class = "rp-fs-card",
     shiny::div(class = "rp-fs-head", t("Page configuration"),
-               shiny::span(class = "rp-fs-note ms-2", sprintf(t("chosen by: %s"), by))),
+               shiny::span(class = "rp-fs-note ms-2", sprintf(t("set by: %s"), by))),
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-center",
       shiny::tags$select(
@@ -229,7 +229,7 @@
       .fs_btn(t("Copy this configuration as..."))))
   bands <- lapply(.fs_bands, .fs_band_ui, m = m, t = t)
   settings <- .fs_card(
-    t("Page settings"),
+    t("RTF arguments (rtf_*)"),
     if (length(pg$settings)) lapply(pg$settings, function(r) shiny::div(
       class = "rp-fs-row", shiny::span(class = "rp-fs-name", r$name),
       shiny::span(class = "rp-fs-val", r$value),

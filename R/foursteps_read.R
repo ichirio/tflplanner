@@ -176,12 +176,12 @@
 # the English label of a parameter, "meaning (name)"; a name with no label
 # stands as it is
 .fs_labels <- c(
-  dataset = "Dataset (dataset)", subset = "Subjects kept (subset)",
-  where = "Records kept (where)", denominator = "Denominator dataset (denominator)",
+  dataset = "Dataset (dataset)", subset = "Subject selection (subset)",
+  where = "Record selection (where)", denominator = "Denominator dataset (denominator)",
   hierarchy = "Hierarchy (hierarchy)", continuous = "Continuous variables (continuous)",
   categorical = "Categorical variables (categorical)", total = "Total column (total)",
   min_pct = "Smallest percent shown (min_pct)",
-  split = "Page breaks (split)", max_rows = "Rows a page (max_rows)",
+  split = "Page breaks (split)", max_rows = "Rows per page (max_rows)",
   page_by = "Variable that starts a page (page_by)",
   page_heading = "Heading of each page (page_heading)",
   labels = "Row labels (labels)")
