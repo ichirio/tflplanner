@@ -572,7 +572,7 @@
   i <- which(tab$template == template & tab$argument == argument)
   if (length(i)) return(tab$section[i[1L]])
   if (argument %in% c("population", "subset", "where", "data", "param", "paramcd")) return("data")
-  if (argument %in% c("title", "param_page", "param_heading")) return("page")
+  if (argument %in% c("title", "page_by", "page_heading")) return("page")
   if (argument %in% c("labels", "heading", "order", "sort", "formats") ||
         grepl("_(label|order)$", argument)) return("content")
   "ard"
