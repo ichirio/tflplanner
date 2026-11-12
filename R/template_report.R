@@ -58,6 +58,33 @@
   p
 }
 
+# A parameter marked "key" (tflspec's tier: a default that stays on top of
+# the card); a tflspec with no such tier, or a parameter with no tier: no
+.tpl_is_key <- function(x) identical(x$tier, "key")
+
+# The small "key" marker beside a key argument's label (tip: why it is on top);
+# `t` the translator
+.tpl_key_tag <- function(x, t) if (.tpl_is_key(x)) shiny::span(
+  class = "badge rounded-pill rp-tpl-badge rp-tpl-badge-key",
+  title = t("A setting often changed in this report; shown on top even at its default."),
+  t("Main"))
+
+# A required parameter (tier "required" or required = TRUE) that has no default
+.tpl_required_empty <- function(x) {
+  (isTRUE(x$required) || identical(x$tier, "required")) && is.null(x$default)
+}
+
+# The card's arguments of a section in two groups: `up`, kept on top -- the
+# required, the report's own (in `args`) and the key ones, whatever their
+# value -- and `low`, the others, folded away (their order kept).  `prm`: the
+# section's parameters, named.
+.tpl_card_groups <- function(prm, args) {
+  nm <- names(prm)
+  on_top <- vapply(nm, function(a) isTRUE(prm[[a]]$required) || a %in% names(args) ||
+                     .tpl_is_key(prm[[a]]), NA)
+  list(up = nm[on_top], low = nm[!on_top])
+}
+
 # A report's template, as its file says it (NULL: none; a figure
 # designer's `template: km_simple`, a name, is no template SPEC)
 .tpl_of <- function(p, output_id) {
@@ -710,6 +737,7 @@ body.rp-switching #step ~ .tab-content, body.rp-switching #report_head, #report_
 .rp-tpl-badge-study { background-color: #198754; color: #fff; }
 .rp-tpl-badge-fallback { background-color: #ffc107; color: #000; }
 .rp-tpl-badge-default { background-color: transparent; color: #495057; border: 1px solid #adb5bd; }
+.rp-tpl-badge-key { background-color: #e9ecef; color: #495057; border: none; }
 .rp-code pre.rp-flow { max-height: none !important; overflow-y: visible; min-height: 0; }
 @keyframes rp-card-flash { 0%, 60% { outline-color: rgba(13,110,253,.85); }
   100% { outline-color: rgba(13,110,253,0); } }
@@ -1105,8 +1133,11 @@ $(document).on('shiny:connected', function() {
 # replaced within `window` seconds: a field drawn from an older card saying
 # its old value back, not an edit.  `past`: data frame of v (the values) and
 # t (their times, seconds); `val`, `now` likewise.  (A write's say-back came
-# 2-6 s after it when measured; 15 s is the margin.)
-.tpl_stale_say <- function(val, past, now, window = 15) {
+# 2-6 s after it when measured; 15 s is the margin; the tests, which run on
+# machines that take longer, widen it with option tflplanner.tpl_stale_window.)
+.tpl_stale_say <- function(val, past, now,
+                           window = getOption("tflplanner.tpl_stale_window",
+                                              15)) {
   if (is.null(past) || !nrow(past)) return(FALSE)
   any(past$v == val & now - past$t <= window)
 }
