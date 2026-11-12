@@ -115,25 +115,25 @@ test_that("a template report: one card a line after its call -- the study standa
 
 test_that("a study standard's card edited in a template report: the report's own, in its YAML", {
   skip_on_cran()
-  # (summary: its stub is the study standard's card; demog takes it as arguments now)
+  # (summary: its plan_style is the study standard's card; its stub and the rest are the template's arguments now)
   p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
   o <- tflspec::tfl_output("T-99", "table", population = "SAF",
                            template = list(name = "summary",
                                          args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   p <- .spec_add_output(p, o, population = "SAF")
-  it <- Filter(function(x) identical(x$fn, "plan_stub"), builder_items(p, "T-99"))[[1L]]
+  it <- Filter(function(x) identical(x$fn, "plan_style"), builder_items(p, "T-99"))[[1L]]
   expect_identical(it$from, "defaults")
-  q <- .builder_item_write(p, "T-99", "plan_stub", utils::modifyList(it$args, list(indent = 3L)))
+  q <- .builder_item_write(p, "T-99", "plan_style", utils::modifyList(it$args, list(align_count_pct = FALSE)))
   own <- q$spec$outputs[["T-99"]]$content
-  expect_true("plan_stub" %in% vapply(own, function(x) x$fn, ""))
+  expect_true("plan_style" %in% vapply(own, function(x) x$fn, ""))
   expect_identical(q$spec$outputs[["T-99"]]$template$name, "summary")
-  it2 <- Filter(function(x) identical(x$fn, "plan_stub"), builder_items(q, "T-99"))[[1L]]
+  it2 <- Filter(function(x) identical(x$fn, "plan_style"), builder_items(q, "T-99"))[[1L]]
   expect_identical(it2$from, "own")
-  expect_true(any(grepl("indent: 3", unlist(q$spec$text), fixed = TRUE)))
+  expect_true(any(grepl("align_count_pct: false", unlist(q$spec$text), fixed = TRUE)))
   # the file written for it: the template, its arguments and the card
   txt <- paste(q$spec$text[[q$spec$where[["T-99"]]]], collapse = "\n")
   expect_match(txt, "template:", fixed = TRUE)
-  expect_match(txt, "plan_stub", fixed = TRUE)
+  expect_match(txt, "plan_style", fixed = TRUE)
 })
 
 test_that("an argument tflspec filled from the study is the study standard's, with its source", {
