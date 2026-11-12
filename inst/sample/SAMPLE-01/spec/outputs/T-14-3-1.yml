@@ -2,8 +2,8 @@ id: T-14-3-1
 kind: table
 label: TEAEs by SOC / PT
 population: SAF
+style: compact
 extends:
-  - patterns/Compact
   - defaults
 ard:
   analysis_data:

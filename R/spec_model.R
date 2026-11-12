@@ -301,11 +301,18 @@
         },
         {
           mine <- new$study[[part$kind]]
+          styles_kept <- FALSE
           if (identical(part$kind, "defaults")) {
             mine <- .keep_layer_keys(sp$study$defaults, was_study()$defaults, mine)
+            # (the page configurations: the sheets' blank rows are the
+            # study's default one, the bridge's `standard`; the others and the
+            # content halves are the spec's)
+            sty <- .keep_style_sets(sp$study$styles, was_study()$styles, new$study$styles)
+            styles_kept <- !identical(sty, new$study$styles)
+            sp$study$styles <- sty
           }
           sp$study[part$kind] <- list(mine)
-          if (!identical(mine, new$study[[part$kind]])) {
+          if (!identical(mine, new$study[[part$kind]]) || styles_kept) {
             sp$text[[r]] <- .study_part_lines(sp$study, part$kind)
           }
         })
@@ -345,6 +352,26 @@
     if (same) now[k] <- list(spec[[k]])
   }
   now
+}
+
+# The page configurations (defaults.yml styles:) after the sheets' edits: the
+# bridge gives the configurations the sheets' rows name (the blank rows' is
+# `standard`, a pattern's its own name), their page only.  `spec`: the spec's,
+# `was` the bridge's before the edits, `now` as it is.  A configuration the
+# bridge gives takes its page from it and keeps the spec's content half; one it
+# gave and no longer gives (its rows all taken away) has no page; the others
+# stay as the spec has them.
+.keep_style_sets <- function(spec, was, now) {
+  out <- spec %||% list()
+  for (nm in union(names(was), names(now))) {
+    cur <- out[[nm]] %||% list()
+    page <- if (nm %in% names(now)) now[[nm]]$page else list()
+    if (is.null(out[[nm]]) && !nm %in% names(now)) next
+    cur["page"] <- list(page %||% list())
+    if (is.null(cur$content)) cur$content <- now[[nm]]$content %||% list()
+    out[[nm]] <- cur
+  }
+  out
 }
 
 # A report file the edits change, part by part (#415): the bridge's value

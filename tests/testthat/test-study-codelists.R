@@ -51,11 +51,9 @@ cl_study <- function(id, file = TRUE) {
   cat("codelists:\n  SEX: [{value: F, label: DefF}, {value: M, label: DefM}]\n",
       file = file.path(sp, "defaults.yml"), append = TRUE)
   dir.create(file.path(sp, "patterns"))
-  # (a pattern with a page: tflspec's sheets name a pattern by its page
-  # rows, and a pattern with none is refused by the report sheet)
+  # (a pattern holds no page: that is a page configuration's, tflspec PP-1b)
   writeLines(c("codelists:", paste0("  ", cl_trt),
-               "  SEX: [{value: F, label: PatF}, {value: M, label: PatM}]",
-               "page:", "  titles:", "    1: {center: Pattern title}"),
+               "  SEX: [{value: F, label: PatF}, {value: M, label: PatM}]"),
              file.path(sp, "patterns", "pp.yml"))
   f <- file.path(sp, "outputs", "DM2.yml")
   writeLines(sub("^  - defaults$", "  - patterns/pp", readLines(f)), f)

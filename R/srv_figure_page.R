@@ -395,15 +395,16 @@
     id <- page_report_now()
     if (is.null(id)) {
       return(shiny::p(class = "small text-muted",
-                      t("Standard (every report's page) and the page patterns are the sheets' blank and @<name> rows: Details, below.")))
+                      t("Standard (the study's default page configuration) and the page patterns (its other page configurations, defaults.yml styles:): Details, below.")))
     }
     sp <- .pgs_spec(shiny::isolate(rv$p))
-    pats <- .pgs_patterns(sp)
     now <- .pgs_pattern_of(sp, id)
+    # (a built-in set the report names is a choice too)
+    pats <- union(.pgs_patterns(sp), if (!is.na(now)) now)
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-center mb-2 pg-bar",
       shiny::tags$label(`for` = "page_pattern", class = "small mb-0",
-                        with_tip(t("Page pattern"), t("The set of page defaults this report starts from: Standard (every report's) or a pattern of the study (Compact for the PK tables ...), which changes only what differs from Standard. What this report changes goes over it."))),
+                        with_tip(t("Page pattern"), t("The page configuration this report prints with (its style:): Standard (the study's default one) or another of the study's (Compact for the PK tables ...). A configuration is the whole page. What this report changes goes over it."))),
       shiny::div(style = "width: 14rem", .for_report(shiny::selectInput(
         "page_pattern", NULL, width = "100%", selectize = FALSE,
         choices = c(stats::setNames("Standard", t("Standard (study default)")), stats::setNames(pats, pats)),
@@ -443,8 +444,8 @@
         .btn("pat_remove", t("Remove"), class = "btn-sm btn-outline-danger mb-3")),
       shiny::uiOutput("pat_count", inline = TRUE),
       shiny::p(class = "small text-muted w-100 mb-0",
-               if (identical(now, "Standard")) t("Standard: every report's page, unless its pattern or the report changes it.")
-               else sprintf(t("%s: only what differs from Standard; each value says where it comes from."), now),
+               if (identical(now, "Standard")) t("Standard: the study's default page configuration, every report's page unless it chooses another or changes a value.")
+               else sprintf(t("%s: a page configuration of the study, the whole page; a report that chooses it prints this page."), now),
                " ", t("The paper is the page's first property: a pattern that changes it says so in its name (A4_Compact).")))
   })
   output$pat_count <- shiny::renderUI({

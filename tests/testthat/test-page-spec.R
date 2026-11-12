@@ -1,6 +1,7 @@
 # Step 3 on the YAML spec (#438, B4): a page's values read layer by layer
-# with where they come from, written into the one layer's file, the key
-# changed only
+# (the report's own over its page configuration, a style set of
+# defaults.yml; the study's tokens) with where they come from, written into
+# the one layer's file, the key changed only
 
 page_sample <- function(env = parent.frame()) {
   home <- withr_tempdir(env)
@@ -16,23 +17,32 @@ texts_changed <- function(a, b) {
 }
 lines_new <- function(a, b, rel) setdiff(b$spec$text[[rel]], a$spec$text[[rel]])
 
-test_that("a value comes from the report, its pattern or the defaults", {
+test_that("a value comes from the report or its page configuration; a line by its block", {
   skip_on_cran()
   p <- page_sample()
   sp <- .pgs_spec(p)
   a <- .pgs_arg(sp, "T-14-3-1", "rtf_page", "margin_top_in")
-  expect_identical(a$from, "pattern:Compact")
+  expect_identical(a$from, "style:compact")
   expect_identical(a$value, 0.5)
   expect_identical(.pgs_arg(sp, "L-16-2-7", "rtf_page", "orientation")$from, "own")
+  # (the report's body line, then the configuration's last lines)
   d <- .pgs_lines(sp, "T-14-3-1", "footer")
-  expect_identical(d$line, c("1", "98", "99"))
-  expect_identical(d$from, c("own", "defaults", "defaults"))
-  expect_identical(.pgs_patterns(sp), "Compact")
-  expect_identical(.pgs_pattern_of(sp, "T-14-3-1"), "Compact")
+  expect_identical(d$line, c("1", "last:98", "last:99"))
+  expect_identical(d$from, c("own", "style:compact", "style:compact"))
+  # (a report with no style: of its own: the study's default configuration)
+  expect_identical(.pgs_lines(sp, "T-14-1-1", "footer")$from[2:3], rep("style:standard", 2))
+  expect_identical(.pgs_default_style(sp$study), "standard")
+  expect_identical(.pgs_patterns(sp), "compact")
+  expect_identical(.pgs_pattern_of(sp, "T-14-3-1"), "compact")
   expect_true(is.na(.pgs_pattern_of(sp, "T-14-1-1")))
-  # a pattern's form: its own over Standard (the defaults)
-  expect_identical(.pgs_arg(sp, "@Compact", "rtf_page", "margin_top_in")$from, "own")
-  expect_identical(.pgs_lines(sp, "@Compact", "footer")$from, c("defaults", "defaults"))
+  # a configuration's form: complete, its own values and lines in their blocks
+  expect_identical(.pgs_arg(sp, "@compact", "rtf_page", "margin_top_in")$from, "own")
+  expect_identical(.pgs_lines(sp, "@compact", "footer")$line, c("last:98", "last:99"))
+  expect_identical(.pgs_lines(sp, "@compact", "footer")$from, c("own", "own"))
+  expect_identical(.pgs_lines(sp, NA, "header")$line, paste0("first:", 1:6))
+  # a configuration's own: no layer lies under it
+  expect_identical(names(.pgs_layers(sp, "@compact")), "own")
+  expect_identical(names(.pgs_layers(sp, "T-14-3-1")), c("own", "style:compact"))
 })
 
 test_that("an argument written into the report's file only, and back; the same as below is nothing", {
@@ -77,20 +87,20 @@ test_that("an old rtf_default_format reads as rtf_style's shared level, and is w
   # a study saved with the old key: the form shows its values, a change writes rtf_style
   p <- page_sample()
   p <- .spec_ensure(p)
-  p$spec$study$patterns$Compact$page$rtf_style <- NULL
-  p$spec$study$patterns$Compact$page$rtf_default_format <-
+  p$spec$study$styles$compact$page$rtf_style <- NULL
+  p$spec$study$styles$compact$page$rtf_default_format <-
     list(font_size_half_points = 16L, markup = "all")
-  p$spec$study$patterns$Compact$page$rtf_style <- list(table = list(cell_valign = "center"))
+  p$spec$study$styles$compact$page$rtf_style <- list(table = list(cell_valign = "center"))
   sp <- .pgs_spec(p)
-  expect_identical(.pgs_arg(sp, "T-14-3-1", "rtf_style", "font_size_half_points")$from, "pattern:Compact")
-  expect_identical(.pgs_arg(sp, "@Compact", "rtf_style", "markup")$value, "all")
-  q <- .pgs_set_arg(p, "@Compact", "rtf_style", "row_height_twips", 300L)
-  pg <- q$spec$study$patterns$Compact$page
+  expect_identical(.pgs_arg(sp, "T-14-3-1", "rtf_style", "font_size_half_points")$from, "style:compact")
+  expect_identical(.pgs_arg(sp, "@compact", "rtf_style", "markup")$value, "all")
+  q <- .pgs_set_arg(p, "@compact", "rtf_style", "row_height_twips", 300L)
+  pg <- q$spec$study$styles$compact$page
   expect_null(pg$rtf_default_format)
   expect_identical(pg$rtf_style[c("table", "font_size_half_points", "markup", "row_height_twips")],
                    list(table = list(cell_valign = "center"), font_size_half_points = 16L,
                         markup = "all", row_height_twips = 300L))
-  y <- q$spec$text[["spec/patterns/Compact.yml"]]
+  y <- q$spec$text[["spec/defaults.yml"]]
   expect_false(any(grepl("rtf_default_format", y, fixed = TRUE)))
   expect_true(any(grepl("rtf_style:", y, fixed = TRUE)))
 })
@@ -98,16 +108,19 @@ test_that("an old rtf_default_format reads as rtf_style's shared level, and is w
 test_that("!unset: a line, a token, a value left out; Revert takes it back", {
   skip_on_cran()
   p <- page_sample()
-  q <- .pgs_set_line(p, "T-14-1-1", "footer", "99", omit = TRUE)
-  expect_identical(lines_new(p, q, "spec/outputs/T-14-1-1.yml"), "    '99': !unset ''")
+  # (a configuration's line is left out by its block and number)
+  q <- .pgs_set_line(p, "T-14-1-1", "footer", "last:99", omit = TRUE)
+  expect_identical(lines_new(p, q, "spec/outputs/T-14-1-1.yml"),
+                   c("    last:", "      '99': !unset ''"))
   d <- .pgs_lines(.pgs_spec(q), "T-14-1-1", "footer")
-  expect_true(d$omitted[d$line == "99"])
+  expect_true(d$omitted[d$line == "last:99"])
   expect_false(any(grepl("Generated on", program_code(q, "T-14-1-1"), fixed = TRUE)))
-  r <- .pgs_set_line(q, "T-14-1-1", "footer", "99", drop = TRUE)
+  r <- .pgs_set_line(q, "T-14-1-1", "footer", "last:99", drop = TRUE)
   expect_identical(texts_changed(p, r), character())
   # a value of the defaults' taken away in one report
   q <- .pgs_set_arg(p, NA, "rtf_document", "watermark", "DRAFT")
   expect_identical(texts_changed(p, q), "spec/defaults.yml")
+  expect_identical(q$spec$study$styles$standard$page$rtf_document$watermark, "DRAFT")
   expect_identical(sheet_rows(q, "report", NA)$watermark, "DRAFT")
   r <- .pgs_set_arg(q, "T-14-1-1", "rtf_document", "watermark", tflspec::tfl_unset())
   expect_identical(lines_new(q, r, "spec/outputs/T-14-1-1.yml"),
@@ -119,40 +132,95 @@ test_that("!unset: a line, a token, a value left out; Revert takes it back", {
   # a token
   q <- .pgs_set_token(p, "T-14-1-1", "OUTPUT_TITLE", tflspec::tfl_unset())
   expect_true(.pgs_tokens(.pgs_spec(q), "T-14-1-1")$omitted[1L])
-  # a line of the defaults' changed here: its own; a cell left blank over one below: !unset
-  q <- .pgs_set_line(p, "T-14-1-1", "header", "2", left = "Protocol X")
+  # a line of the configuration's changed here: its own, in its block; a cell
+  # left blank over one below: !unset
+  q <- .pgs_set_line(p, "T-14-1-1", "header", "first:2", left = "Protocol X")
   expect_identical(lines_new(p, q, "spec/outputs/T-14-1-1.yml"),
-                   c("  header:", "    '2':", "      left: Protocol X", "      right: !unset ''"))
+                   c("  header:", "    first:", "      '2':", "        left: Protocol X", "        right: !unset ''"))
 })
 
-test_that("extends: the pattern chosen; a pattern made, renamed, removed", {
+test_that("style: the page configuration chosen; one made, renamed, removed", {
   skip_on_cran()
   p <- page_sample()
-  q <- .pgs_set_pattern(p, "T-14-1-1", "Compact")
+  q <- .pgs_set_pattern(p, "T-14-1-1", "compact")
   expect_identical(texts_changed(p, q), "spec/outputs/T-14-1-1.yml")
-  expect_identical(q$spec$outputs[["T-14-1-1"]]$extends, c("patterns/Compact", "defaults"))
-  expect_identical(report_pattern(q, "T-14-1-1"), "Compact")
+  expect_identical(q$spec$outputs[["T-14-1-1"]]$style, "compact")
+  # (the page step has no files: extends is as it was)
+  expect_identical(q$spec$outputs[["T-14-1-1"]]$extends, p$spec$outputs[["T-14-1-1"]]$extends)
+  expect_identical(.pgs_pattern_of(.pgs_spec(q), "T-14-1-1"), "compact")
+  expect_identical(.pgs_arg(.pgs_spec(q), "T-14-1-1", "rtf_page", "margin_top_in")$from, "style:compact")
   r <- .pgs_set_pattern(q, "T-14-1-1", "Standard")
   expect_identical(texts_changed(p, r), character())
   expect_identical(.planner_body(r), .planner_body(p))
-  expect_error(.pgs_set_pattern(p, "T-14-1-1", "Wide"), "No page pattern")
+  # the study's default one is no choice: `style:` goes
+  expect_identical(texts_changed(p, .pgs_set_pattern(q, "T-14-1-1", "standard")), character())
+  # a built-in configuration is a choice
+  s <- .pgs_set_pattern(p, "T-14-1-1", "tfl_small")
+  expect_identical(s$spec$outputs[["T-14-1-1"]]$style, "tfl_small")
+  expect_identical(.pgs_pattern_of(.pgs_spec(s), "T-14-1-1"), "tfl_small")
+  expect_error(.pgs_set_pattern(p, "T-14-1-1", "Wide"), "No page configuration")
   q <- .pgs_add_pattern(p, "Wide")
-  expect_identical(texts_changed(p, q), "spec/patterns/Wide.yml")
-  expect_true("Wide" %in% page_patterns(q))
+  expect_identical(texts_changed(p, q), "spec/defaults.yml")
+  expect_true("Wide" %in% .pgs_patterns(.pgs_spec(q)))
+  # (a new configuration is a copy of the study's default one)
+  expect_identical(q$spec$study$styles$Wide$page, q$spec$study$styles$standard$page)
   expect_error(.pgs_add_pattern(q, "Wide"), "already")
-  expect_error(.pgs_add_pattern(q, "standard"), "Standard is")
+  expect_error(.pgs_add_pattern(q, "Standard"), "Standard is")
+  expect_error(.pgs_add_pattern(q, "tfl_small"), "built-in")
+  expect_error(.pgs_add_pattern(q, "tfl_standard"), "built-in")
   q <- .pgs_set_arg(q, "@Wide", "rtf_page", "orientation", "portrait")
-  expect_identical(sheet_rows(q, "page", "@Wide")$orientation, "portrait")
-  r <- .pgs_rename_pattern(p, "Compact", "Small")
-  expect_setequal(texts_changed(p, r), c("spec/patterns/Compact.yml", "spec/patterns/Small.yml",
-                                         "spec/outputs/T-14-3-1.yml"))
-  expect_identical(report_pattern(r, "T-14-3-1"), "Small")
-  expect_identical(.pgs_arg(.pgs_spec(r), "T-14-3-1", "rtf_page", "margin_top_in")$from, "pattern:Small")
-  expect_identical(program_code(r, "T-14-3-1"), program_code(p, "T-14-3-1"))
-  expect_error(.pgs_remove_pattern(p, "Compact"), "used by T-14-3-1")
+  expect_identical(.pgs_arg(.pgs_spec(q), "@Wide", "rtf_page", "orientation")$value, "portrait")
+  expect_identical(q$spec$study$styles$Wide$page$rtf_page$orientation, "portrait")
+  # (and the default one: not changed)
+  expect_null(q$spec$study$styles$standard$page$rtf_page$orientation)
+  r <- .pgs_rename_pattern(p, "compact", "Small")
+  expect_setequal(texts_changed(p, r), c("spec/defaults.yml", "spec/outputs/T-14-3-1.yml"))
+  expect_identical(r$spec$outputs[["T-14-3-1"]]$style, "Small")
+  expect_identical(.pgs_arg(.pgs_spec(r), "T-14-3-1", "rtf_page", "margin_top_in")$from, "style:Small")
+  # (the setup's objects are named by the configuration: header_Small)
+  expect_identical(gsub("_Small", "_compact", program_code(r, "T-14-3-1"), fixed = TRUE),
+                   program_code(p, "T-14-3-1"))
+  expect_error(.pgs_remove_pattern(p, "compact"), "used by T-14-3-1")
+  expect_error(.pgs_remove_pattern(p, "standard"), "No page configuration")
   r <- .pgs_remove_pattern(q, "Wide")
-  expect_identical(texts_changed(p, r), character())
-  expect_false("Wide" %in% page_patterns(r))
+  expect_identical(r$spec$study$styles, p$spec$study$styles)
+  expect_false("Wide" %in% .pgs_patterns(.pgs_spec(r)))
+})
+
+test_that("the names: standard is free, tfl_standard and tfl_small are tflspec's", {
+  none <- list(styles = list())
+  expect_identical(.pgs_check_name(none, "standard"), "standard")
+  expect_identical(.pgs_check_name(none, "@Compact"), "Compact")
+  expect_error(.pgs_check_name(none, "tfl_standard"), "built-in")
+  expect_error(.pgs_check_name(none, "tfl_small"), "built-in")
+  expect_error(.pgs_check_name(none, "Standard"), "Standard is")
+  expect_error(.pgs_check_name(none, "1x"), "letter, then letters")
+  # (the sheets' own check of a pattern's name)
+  x <- new_planner()
+  expect_identical(.check_pattern_name(x, "standard"), "standard")
+  expect_error(.check_pattern_name(x, "tfl_small"), "built-in")
+})
+
+test_that("the study's token goes to study.yml tokens:, edited on the default configuration's form", {
+  skip_on_cran()
+  p <- page_sample()
+  q <- .pgs_set_token(p, NA, "COMPANY", "Sample Pharma")
+  expect_identical(texts_changed(p, q), "study.yml")
+  expect_identical(q$spec$study$study$tokens, list(COMPANY = "Sample Pharma"))
+  expect_true(any(grepl("^tokens:", q$spec$text[["study.yml"]])))
+  d <- .pgs_tokens(.pgs_spec(q), "T-14-1-1")
+  expect_identical(d$from[d$name == "COMPANY"], "defaults")
+  # (a report's own value goes over it, in its file)
+  r <- .pgs_set_token(q, "T-14-1-1", "COMPANY", "Other")
+  expect_identical(texts_changed(q, r), "spec/outputs/T-14-1-1.yml")
+  # (back: no block)
+  s <- .pgs_set_token(q, NA, "COMPANY", NULL)
+  expect_false(any(grepl("^tokens:", s$spec$text[["study.yml"]])))
+  expect_identical(texts_changed(p, s), character())
+  # a built-in default configuration cannot be edited here
+  b <- .spec_ensure(p)
+  b$spec$study$study$settings$style <- "tfl_standard"
+  expect_error(.pgs_write(b, NA, list(rtf_page = list(orientation = "portrait"))), "built-in")
 })
 
 test_that("the form: a card a function, the arguments with a value first, labels with the argument", {
@@ -166,7 +234,7 @@ test_that("the form: a card a function, the arguments with a value first, labels
   expect_false(grepl("pg-lower\" open", h, fixed = TRUE))
   expect_match(h, "rtfreporter's default", fixed = TRUE)
   expect_match(h, "(margin_top_in)", fixed = TRUE)
-  expect_match(h, "pattern Compact", fixed = TRUE)
+  expect_match(h, "style compact", fixed = TRUE)
   # the paper card's two rows above (paper, orientation, font, size; the
   # margins), whether written or not; the rest folded
   expect_lt(regexpr("data-arg=\"paper_size\"", h, fixed = TRUE), regexpr("margin_top_in", h, fixed = TRUE))
@@ -198,19 +266,23 @@ test_that("step 3's form in the app: an argument, a line, the pattern, the study
                                      value = "portrait", n = 1))
     expect_identical(rv$p$spec$outputs[["T-14-1-1"]]$page$rtf_page$orientation, "portrait")
     expect_match(output$page_form$html, "pg-badge-own", fixed = TRUE)
-    session$setInputs(pg_act = list(act = "omit", band = "footer", line = "98", n = 2))
-    expect_s3_class(rv$p$spec$outputs[["T-14-1-1"]]$page$footer[["98"]], "tfl_unset")
-    session$setInputs(pg_act = list(act = "drop", band = "footer", line = "98", n = 3))
+    session$setInputs(pg_act = list(act = "omit", band = "footer", line = "last:98", n = 2))
+    expect_s3_class(rv$p$spec$outputs[["T-14-1-1"]]$page$footer$last[["98"]], "tfl_unset")
+    session$setInputs(pg_act = list(act = "drop", band = "footer", line = "last:98", n = 3))
     # the first page's sample follows an edit
     expect_false(grepl("Protocol X", output$page_sample$html, fixed = TRUE))
-    session$setInputs(pg_act = list(act = "own", band = "header", line = "2", n = 4))
-    session$setInputs(pg_edit = list(kind = "line", band = "header", line = "2", part = "left",
+    session$setInputs(pg_act = list(act = "own", band = "header", line = "first:2", n = 4))
+    session$setInputs(pg_edit = list(kind = "line", band = "header", line = "first:2", part = "left",
                                      value = "Protocol X", n = 5))
     session$elapse(3000)
-    expect_match(output$page_sample$html, "Protocol X", fixed = TRUE)
-    session$setInputs(pg_act = list(act = "drop", band = "header", line = "2", n = 6))
-    session$setInputs(page_pattern_by = list(report = "T-14-1-1", value = "Compact"))
-    expect_identical(rv$p$spec$outputs[["T-14-1-1"]]$extends, c("patterns/Compact", "defaults"))
+    # (the report's YAML says it, and the form shows it.  The first page's
+    # sample reads the sheets' view, where tflspec's spec-to-sheets step does
+    # not yet carry a report's first / last line overrides: not asserted)
+    expect_identical(rv$p$spec$outputs[["T-14-1-1"]]$page$header$first[["2"]]$left, "Protocol X")
+    expect_match(output$page_form$html, 'value="Protocol X"', fixed = TRUE)
+    session$setInputs(pg_act = list(act = "drop", band = "header", line = "first:2", n = 6))
+    session$setInputs(page_pattern_by = list(report = "T-14-1-1", value = "compact"))
+    expect_identical(rv$p$spec$outputs[["T-14-1-1"]]$style, "compact")
     session$setInputs(page_pattern_by = list(report = "T-14-1-1", value = "Standard"))
     session$setInputs(save = 1)
   })
