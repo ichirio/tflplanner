@@ -207,6 +207,15 @@
                                    basename(dl$changed$to)), collapse = ", ")),
                               type = "warning", duration = NULL)
     }
+    # a report's argument saved as R code text by the card before 2026-11-10
+    # (rtfreporter#958): said on open, until closed
+    dp <- tryCatch(.deparsed_args(s$planner$spec$outputs %||% list()),
+                   error = function(e) NULL)
+    if (!is.null(dp) && nrow(dp)) {
+      shiny::showNotification(sprintf(t("These arguments hold R code saved as text (list(structure(...), so their cells print that text: %s. They were written by the template card of a tflplanner before 2026-11-10. Run the AI step for these reports again, or put the values back from the YAML files the AI wrote (spec/outputs/<id>.yml)."),
+                                      paste(paste0(dp$output_id, ": ", dp$where), collapse = ", ")),
+                              type = "warning", duration = NULL)
+    }
     rv$meta <- rv$saved_meta <- s$meta[.study_fields]
     rv$want <- output_ids(s$planner)[1L]
     bump()
