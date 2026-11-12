@@ -287,9 +287,11 @@ test_that("a data written as R: the code the program has as a start; saved, the 
   p <- set_analysis_data(p, "DM", "adae_teae", from = "ADAE", subjects = "adsl_saf",
                          where = "TRTEMFL == \"Y\"")
   v <- .adata_code_start(p, "DM", "adae_teae")
-  # (tflspec's pipe: the subjects by semi_join(), the condition after it)
-  expect_match(v, paste0("^adae_teae <- adae \\|>\n  semi_join\\(select\\(adsl_saf, USUBJID\\), ",
-                         "by = \"USUBJID\"\\) \\|>\n  filter\\(TRTEMFL == \"Y\"\\)\nadae_teae$"))
+  # (tflspec's pipe: the subjects by inner_join() on the id, one row per subject
+  # asserted, the condition after it)
+  expect_match(v, paste0("^adae_teae <- adae \\|>\n  inner_join\\(\n    select\\(adsl_saf, USUBJID\\),\n",
+                         "    by = \"USUBJID\",\n    relationship = \"many-to-one\"\n  \\) \\|>\n",
+                         "  filter\\(TRTEMFL == \"Y\"\\)\nadae_teae$"))
   q <- set_analysis_data(p, "DM", "adae_teae", from = "ADAE", code = v, old = "adae_teae")
   ad <- .adata_rows(q, "DM")
   expect_identical(ad$code[2L], v)
