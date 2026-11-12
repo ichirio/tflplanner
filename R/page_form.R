@@ -353,6 +353,19 @@ $(document).on('shiny:value', function(e) {
     name)
 }
 
+.page_study_tokens_ui <- function(sp, t) {
+  tk <- .pgs_study_tokens(sp$study)
+  rows <- lapply(names(tk), function(k) shiny::tags$tr(
+    shiny::tags$td(shiny::code(paste0("{", k, "}"))),
+    shiny::tags$td(class = "pg-val", .pgs_text(tk[[k]]))))
+  shiny::tagList(
+    if (length(rows)) shiny::tags$table(class = "table table-sm pg-lines pg-tokens mb-1",
+                                        shiny::tags$tbody(rows))
+    else shiny::p(class = "small text-muted mb-1", t("(no tokens)")),
+    shiny::p(class = "small text-muted mb-1",
+             t("Edited for the whole study (study.yml tokens:), not for each page configuration.")))
+}
+
 .page_tokens_ui <- function(sp, id, t, kind = NULL) {
   d <- .pgs_tokens(sp, id)
   d <- d[!d$name %in% c(.pg_report_tokens, .pg_builtin_names()), , drop = FALSE]
@@ -589,7 +602,7 @@ $(document).on('shiny:value', function(e) {
       shiny::div(class = "small fw-semibold mt-2", t("This report's own tokens")),
       .page_tokens_ui(sp, id, t, kind),
       .page_builtins_ui(t))
-    else card(t("Tokens"), "(rtf_document(tokens =))", .page_tokens_ui(sp, id, t, kind), .page_builtins_ui(t)),
+    else card(t("Tokens"), "(rtf_document(tokens =))", .page_study_tokens_ui(sp, t), .page_builtins_ui(t)),
     .page_paper_ui(sp, id, t, kind),
     .page_fn_ui(sp, id, "rtf_style", t, kind,
                 fields = Filter(function(f) !f$arg %in% .page_paper_moved$rtf_style,

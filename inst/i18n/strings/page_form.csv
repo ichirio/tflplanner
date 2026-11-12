@@ -44,3 +44,4 @@
 "Blank: the figure's own size (the company's figure style for its kind; a figure of your own code, 6.5 x 4.5 in), as rtfreporter places an image. A number: that size in inches. fit: the page's body (its width; its height less the titles and footnotes). The figure is drawn at this size, its text as its theme says; the dpi (step 2) changes only its pixels.","空欄: Figure そのものの大きさ（会社の Figure のスタイルの、その種類の大きさ。自分のコードの Figure は 6.5 x 4.5 インチ）。rtfreporter が画像を置くときと同じです。数字: その大きさ（インチ）。fit: ページの本文の大きさ（幅はそのまま、高さはタイトルと脚注を除いた分）。Figure はこの大きさで描かれ、文字の大きさはテーマのとおりです。dpi（手順 2）が変えるのは画素数だけです。"
 "Its own size","Figure そのものの大きさ"
 "Study default","試験標準"
+"Edited for the whole study (study.yml tokens:), not for each page configuration.","試験全体で編集します（study.yml の tokens:）。ページの設定ごとではありません。"
