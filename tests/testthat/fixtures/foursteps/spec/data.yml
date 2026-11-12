@@ -1,0 +1,16 @@
+datasets:
+  - dataset: ADSL
+    level: ADaM
+    path: data/adam/adsl.rds
+  - dataset: ADAE
+    level: ADaM
+    path: data/adam/adae.rds
+populations:
+  - id: SAF
+    dataset: ADSL
+    where: !r SAFFL == "Y"
+    label: Safety Analysis Set
+  - id: ITT
+    dataset: ADSL
+    where: !r ITTFL == "Y"
+    label: Intent-to-Treat Analysis Set

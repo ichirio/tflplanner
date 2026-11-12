@@ -1,0 +1,16 @@
+content:
+  - plan_cells:
+      categorical: '{n:.0f} ({p:.1f%})'
+styles:
+  acme_wide:
+    page:
+      rtf_page: {orientation: landscape, margin_left_in: 0.75, margin_right_in: 0.75}
+      rtf_style: {font_size_half_points: 16}
+      header:
+        - {left: '{COMPANY}', right: DRAFT}
+        - {center: '{OUTPUT_TITLE}'}
+      footer:
+        last:
+          - {left: '{PROGRAM}', right: '{DATETIME}'}
+    content:
+      - plan_paginate_rows: {max_rows: 36}

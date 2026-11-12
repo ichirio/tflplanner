@@ -953,6 +953,10 @@ app_ui <- function(lang = "en") {
           bslib::nav_panel(step_title("content"), value = "content", step_content),
           bslib::nav_panel(step_title("page"), value = "page", step_page)))),
 
+    # the four-steps report screen (provisional; off unless
+    # options(tflplanner.foursteps = TRUE), R/foursteps_ui.R)
+    if (.fs_on()) .fs_panel_ui(t),
+
     # the review of the whole definition (#288): what cannot be used, what
     # is probably wrong, what to set by hand -- a click goes to it
     bslib::nav_panel(

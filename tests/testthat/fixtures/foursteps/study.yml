@@ -1,0 +1,7 @@
+study_id: FS-DEMO
+title: Four-steps screen test study (hand-written YAML in the target shape)
+settings:
+  style: tfl_standard
+tokens:
+  COMPANY: Example Pharma
+  STUDY_ID: EX-001

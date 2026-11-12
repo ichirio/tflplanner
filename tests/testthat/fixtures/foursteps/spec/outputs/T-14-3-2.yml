@@ -1,0 +1,38 @@
+id: T-14-3-2
+kind: table
+label: Serious Adverse Events, Females
+common:
+  population: SAF
+  treatment: TRT01A
+style: acme_wide
+data:
+  - id: adsl_sub
+    from: ADSL
+    where: !r SEX == "F"
+  - id: adae_sub
+    from: ADAE
+    subjects: adsl_sub
+    where: !r AESER == "Y"
+ard:
+  analyses:
+    - id: AE
+      method: hierarchical
+      data: adae_sub
+      variables: [AEBODSYS, AEDECOD]
+      denominator: adsl_sub
+content:
+  - plan_cells:
+      categorical: '{n:.0f} ({p:.1f%})'
+  - plan_paginate_rows:
+      split: group_force
+      max_rows: 40
+page:
+  titles:
+    - Serious Adverse Events, Females
+  footnotes:
+    1: Subjects are counted once within each SOC and PT.
+  footer:
+    1: 'Source: ADAE'
+  tokens:
+    OUTPUT_TITLE: Serious Adverse Events, Females
+    OUTPUT_POPULATION: Safety Analysis Set

@@ -1,0 +1,29 @@
+id: T-14-3-1
+kind: table
+label: Adverse Events by System Organ Class and Preferred Term
+common:
+  population: SAF
+  treatment: TRT01A
+style: tfl_small
+template:
+  name: ae_soc_pt
+  data:
+    subset: !r SEX == "F"
+  ard:
+    min_pct: 2
+  content:
+    max_rows: 40
+  page:
+    titles:
+      - Adverse Events by System Organ Class and Preferred Term
+      - Females
+    footnotes:
+      2: !unset
+      3: Table-specific note.
+page:
+  tokens:
+    MEDDRA_VERSION: '27.0'
+    OUTPUT_TITLE: Adverse Events by SOC and PT
+    OUTPUT_POPULATION: Safety Analysis Set
+  rtf_page:
+    orientation: portrait

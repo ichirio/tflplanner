@@ -1,0 +1,22 @@
+id: T-14-1-1
+kind: table
+label: Demographics and Baseline Characteristics
+common:
+  population: SAF
+  treatment: TRT01A
+template:
+  name: demog
+  data:
+    subset: !r AGE >= 18
+  ard:
+    continuous: AGE
+    categorical: [AGEGR1, SEX, RACE]
+  content:
+    max_rows: 40
+  page:
+    footnotes:
+      2: Age is in years at screening.
+page:
+  tokens:
+    OUTPUT_TITLE: Demographics and Baseline Characteristics
+    OUTPUT_POPULATION: Safety Analysis Set
