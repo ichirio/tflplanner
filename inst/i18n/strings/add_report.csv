@@ -68,4 +68,5 @@
 "Default when the study standard (%s) is undefined","試験標準（%s）未定義の時の既定値"
 "Uses the study standard's %s when it is defined.","試験標準の %s が定義されていればそれを使います。"
 "YAML: a `name: value` line each; `!r code` is raw R","YAML：「名前: 値」の行を並べます。`!r コード` は R のコードそのままです"
-"key","主要"
+"Main","主要"
+"A setting often changed in this report; shown on top even at its default.","この帳票でよく変える引数。既定値のままでも上に出します"

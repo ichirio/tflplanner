@@ -161,10 +161,11 @@ test_that("the dialog's Create waits for an ID and the required arguments, and t
     session$setInputs(mtpl_demog__by = "TRT01A")
     expect_match(add_html(output$modal_ok_js$html), "prop('disabled', false)", fixed = TRUE)
     # the template's other arguments: each its own input, counted in the heading
-    opt <- Filter(function(x) !isTRUE(x$required), .tpl_shown(.tpl_params("demog")))
+    opt0 <- Filter(function(x) !isTRUE(x$required), .tpl_shown(.tpl_params("demog")))
+    opt <- Filter(function(x) !.tpl_is_key(x), opt0)
     more <- add_html(output$tpl_modal_more$html)
     expect_match(more, sprintf("More arguments (%d)", length(opt)), fixed = TRUE)
-    for (nm in names(opt)) expect_match(more, sprintf('id="mtpl_demog__%s"', nm), fixed = TRUE)
+    for (nm in names(opt0)) expect_match(more, sprintf('id="mtpl_demog__%s"', nm), fixed = TRUE)
   })
 })
 
@@ -502,4 +503,25 @@ test_that("demog's preview reads the study standard the report resolves with: it
   # (the categorical rows' values, indented: hard spaces taken away)
   txt <- trimws(gsub(" ", " ", unlist(lapply(pages[[1L]]$data, as.character)), fixed = TRUE))
   expect_true(all(c("F", "M") %in% txt))
+})
+
+test_that("the dialog shows a key argument open under the required ones, marked, and counts only the rest in the fold", {
+  id <- sample_for_add()
+  shown <- watch_add()
+  shiny::testServer(server_for(id), {
+    session$setInputs(add = 1, modal_type = "table", modal_how = "template",
+                      modal_tpl_table = "ae_soc_pt", modal_id = "")
+    prm <- .tpl_shown(.tpl_params("ae_soc_pt"))
+    top <- names(Filter(function(x) !isTRUE(x$required) && .tpl_is_key(x), prm))
+    skip_if(!length(top), "this tflspec has no key tier")
+    rest <- setdiff(names(Filter(function(x) !isTRUE(x$required), prm)), top)
+    more <- add_html(output$tpl_modal_more$html)
+    expect_match(more, "rp-tpl-badge-key", fixed = TRUE)
+    expect_match(more, sprintf("More arguments (%d)", length(rest)), fixed = TRUE)
+    fold <- sub("^.*<details", "<details", more)
+    for (nm in top) {
+      expect_match(more, sprintf('id="mtpl_ae_soc_pt__%s"', nm), fixed = TRUE)
+      expect_false(grepl(sprintf('id="mtpl_ae_soc_pt__%s"', nm), fold, fixed = TRUE))
+    }
+  })
 })

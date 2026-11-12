@@ -113,3 +113,13 @@ test_that("a study reference with no value: kind none, no badge, a (none) placeh
                "試験標準の plan_style.border_header が定義されていればそれを使います。", fixed = TRUE)
   expect_identical(tr("(none)", "ja"), "（なし）")
 })
+
+test_that("the key badge has its own class and tip; a required empty argument has no origin badge", {
+  expect_true(grepl(".rp-tpl-badge-key {", .tpl_css, fixed = TRUE))
+  expect_identical(tr("Main", "en"), "Main")
+  expect_true(nzchar(tr("A setting often changed in this report; shown on top even at its default.", "ja")))
+  expect_true(.tpl_required_empty(list(name = "hierarchy", required = TRUE, tier = "required")))
+  expect_true(.tpl_required_empty(list(name = "h", tier = "required")))
+  expect_false(.tpl_required_empty(list(name = "by", required = TRUE, tier = "required", default = "TRT01A")))
+  expect_false(.tpl_required_empty(list(name = "x", required = FALSE, tier = "usual")))
+})

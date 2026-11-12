@@ -62,6 +62,18 @@
 # the card); a tflspec with no such tier, or a parameter with no tier: no
 .tpl_is_key <- function(x) identical(x$tier, "key")
 
+# The small "key" marker beside a key argument's label (tip: why it is on top);
+# `t` the translator
+.tpl_key_tag <- function(x, t) if (.tpl_is_key(x)) shiny::span(
+  class = "badge rounded-pill rp-tpl-badge rp-tpl-badge-key",
+  title = t("A setting often changed in this report; shown on top even at its default."),
+  t("Main"))
+
+# A required parameter (tier "required" or required = TRUE) that has no default
+.tpl_required_empty <- function(x) {
+  (isTRUE(x$required) || identical(x$tier, "required")) && is.null(x$default)
+}
+
 # The card's arguments of a section in two groups: `up`, kept on top -- the
 # required, the report's own (in `args`) and the key ones, whatever their
 # value -- and `low`, the others, folded away (their order kept).  `prm`: the
@@ -725,6 +737,7 @@ body.rp-switching #step ~ .tab-content, body.rp-switching #report_head, #report_
 .rp-tpl-badge-study { background-color: #198754; color: #fff; }
 .rp-tpl-badge-fallback { background-color: #ffc107; color: #000; }
 .rp-tpl-badge-default { background-color: transparent; color: #495057; border: 1px solid #adb5bd; }
+.rp-tpl-badge-key { background-color: #e9ecef; color: #495057; border: none; }
 .rp-code pre.rp-flow { max-height: none !important; overflow-y: visible; min-height: 0; }
 @keyframes rp-card-flash { 0%, 60% { outline-color: rgba(13,110,253,.85); }
   100% { outline-color: rgba(13,110,253,0); } }

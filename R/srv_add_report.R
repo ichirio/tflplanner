@@ -255,14 +255,21 @@
     prm <- .tpl_shown(.tpl_params(nm))
     opt <- Filter(function(x) !isTRUE(x$required), prm)
     if (!length(opt)) return(NULL)
-    shiny::tags$details(
+    # (the key arguments right under the required ones, open, with their marker;
+    # the folded group holds the rest)
+    top <- Filter(.tpl_is_key, opt)
+    opt <- opt[setdiff(names(opt), names(top))]
+    draw <- function(x, label = tpl_label(x)) tpl_widget(
+      tpl_arg_id(nm, x$name), x, tpl_opt_start(x), dataset = prm$data$default, params = prm,
+      label = label, say_first = TRUE, tpl = nm)
+    key_ui <- lapply(top, function(x) draw(x, shiny::span(tpl_label(x), " ", .tpl_key_tag(x, t))))
+    if (!length(opt)) return(shiny::tagList(key_ui))
+    shiny::tagList(key_ui, shiny::tags$details(
       class = "border rounded p-2 mb-2",
       shiny::tags$summary(class = "small fw-semibold",
                           with_tip(sprintf(t("More arguments (%d): filters, variables, columns ..."), length(opt)),
                                    t("Each starts at its default; only a value you change is written into the report."))),
-      lapply(opt, function(x) tpl_widget(tpl_arg_id(nm, x$name), x, tpl_opt_start(x),
-                                         dataset = prm$data$default, params = prm,
-                                         say_first = TRUE, tpl = nm)))
+      lapply(opt, draw)))
   })
   # (bound while the dialog fades in, it counts as hidden: drawn anyway)
   shiny::outputOptions(output, "tpl_modal_more", suspendWhenHidden = FALSE)
@@ -933,6 +940,9 @@
     rows <- .tpl_args_rows(tp$name, study, p$spec$outputs[[id]]$population)
     from_of <- function(a) {
       b <- .tpl_badge_of(a, args, rows)
+      # (a required argument with no value and no default: nothing to say the origin of)
+      if (!(a %in% names(args)) && .tpl_required_empty(prm[[a]]) &&
+          (is.null(b) || b$kind %in% c("default", "none"))) return(NULL)
       og <- .tpl_arg_origin(study, prm[[a]], args, filled)
       sv <- og$study
       sk <- NULL
@@ -964,8 +974,7 @@
                     t("The function's default"))
     }
     # (a key argument's marker, small, beside its label)
-    key_tag <- function(x) if (.tpl_is_key(x)) shiny::span(
-      class = "badge rounded-pill rp-tpl-badge rp-tpl-badge-default", t("key"))
+    key_tag <- function(x) .tpl_key_tag(x, t)
     row <- function(a, upper) {
       x <- prm[[a]]
       og <- .tpl_arg_origin(study, x, args, filled)

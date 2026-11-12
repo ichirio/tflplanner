@@ -35,5 +35,5 @@ test_that("the card's top group: a key argument stays up at its default, another
   expect_true(.tpl_is_key(.tpl_params("ae_pt_freq")$term))
   expect_true(.tpl_is_key(.tpl_params("ae_max_grade")$grade))
   expect_false(.tpl_is_key(.tpl_params("hierarchical")$hierarchy))
-  expect_identical(tr("key", "ja"), "\u4e3b\u8981")
+  expect_identical(tr("Main", "ja"), "\u4e3b\u8981")
 })
