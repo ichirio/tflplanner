@@ -587,6 +587,15 @@
   !is.null(p) && isTRUE(p$hidden) && isTRUE(p$required) && !.tpl_own_data(prm)
 }
 
+# Whether the template's analysis set is the report's `population:` field
+# alone: its `population` hidden, required, and not part of the report's own
+# data steps (demog, stf_t02_demog).  The add-report dialog asks for it, and
+# writes it as the report's population, not as an argument.
+.tpl_pop_of_report <- function(prm) {
+  p <- prm[["population"]]
+  !is.null(p) && isTRUE(p$hidden) && isTRUE(p$required) && !.tpl_own_data(prm)
+}
+
 # A report's `data:` steps as the card's fields say them: the dataset
 # read, the analysis set's join (a semi join, as the report's population
 # says it), the parameter, a filter.  Steps of another shape (a derive, a
@@ -713,6 +722,11 @@ body.rp-switching #step ~ .tab-content, body.rp-switching #report_head, #report_
 .selectize-input .item[data-value=''] {
   color: #8a8f98; }
 .rp-tpl-arg-from { font-size: .75rem; color: #6b7280; }
+.rp-tpl-badge { font-size: .7rem; font-weight: 500; vertical-align: middle; }
+.rp-tpl-badge-own { background-color: #0d6efd; color: #fff; }
+.rp-tpl-badge-study { background-color: #198754; color: #fff; }
+.rp-tpl-badge-fallback { background-color: #ffc107; color: #000; }
+.rp-tpl-badge-default { background-color: transparent; color: #495057; border: 1px solid #adb5bd; }
 .rp-code pre.rp-flow { max-height: none !important; overflow-y: visible; min-height: 0; }
 @keyframes rp-card-flash { 0%, 60% { outline-color: rgba(13,110,253,.85); }
   100% { outline-color: rgba(13,110,253,0); } }
@@ -897,6 +911,81 @@ $(document).on('shiny:connected', function() {
   }
   sv <- .tpl_study_value(study, prm)
   list(from = if (!is.null(sv)) "study" else "default", study = sv, source = src)
+}
+
+# One row per shown argument of a template, in its order, from tflspec's
+# own account of where each value comes from (tfl_tpl_args(): type, layer,
+# study_key, effective, fallback ...).  `study` the study's spec,
+# `population` the report's.  NULL when tflspec cannot say (an older
+# tflspec, a study spec it cannot read): the card then says it as before
+# (.tpl_arg_origin()).
+.tpl_args_rows <- function(name, study, population = NULL) {
+  pop <- as.character(population %||% "")[1L]
+  if (is.na(pop) || !nzchar(pop)) pop <- NULL
+  r <- tryCatch(tflspec::tfl_tpl_args(name, study = study, population = pop),
+                error = function(e) NULL)
+  if (is.data.frame(r) && nrow(r) && all(c("param", "layer") %in% names(r))) r
+}
+
+# The badge of one argument: list(kind = "own" | "study" | "fallback" |
+# "default", key = the study's key, for "study"), or NULL (no row: the old
+# text).  The report's own value first (tfl_tpl_args() has no report
+# arguments); then the layer tflspec names: "study: <key>" the study
+# standard, "report" the report's analysis set (output.population, kept as
+# "study" with no key), "fallback" the default for when the study standard
+# is undefined, "default" with a study key a study reference with no value
+# (kind "none": no badge, the field says "(none)"), the rest (template,
+# default with no key, variant:<name>) the template's own.
+.tpl_badge_of <- function(a, args, rows) {
+  if (is.null(rows)) return(NULL)
+  r <- rows[rows$param == a, , drop = FALSE]
+  if (!nrow(r)) return(NULL)
+  ly <- as.character(r$layer[1L])
+  if (a %in% names(args)) {
+    # (the report's value over a study's: the study's key and value kept for the note)
+    if (startsWith(ly, "study:"))
+      return(list(kind = "own", key = as.character(r$study_key[1L]), study = r$effective[[1L]]))
+    return(list(kind = "own", key = NA_character_))
+  }
+  if (startsWith(ly, "study:")) return(list(kind = "study", key = as.character(r$study_key[1L])))
+  if (identical(ly, "report")) return(list(kind = "report", key = NA_character_))
+  if (identical(ly, "fallback")) return(list(kind = "fallback", key = as.character(r$study_key[1L])))
+  if (identical(ly, "default")) {
+    sk <- if ("study_key" %in% names(r)) as.character(r$study_key[1L]) else NA_character_
+    if (length(sk) && !is.na(sk) && nzchar(sk)) return(list(kind = "none", key = sk))
+  }
+  list(kind = "default", key = NA_character_)
+}
+
+# The study key of a field that is a study reference with no value (kind
+# "none"), else NULL: its placeholder says "(none)" and its (i) names the key
+.tpl_none_key <- function(a, args, rows) {
+  b <- .tpl_badge_of(a, args, rows)
+  if (!is.null(b) && identical(b$kind, "none")) b$key
+}
+
+# The (i) text of a field: the doc, and for a study reference with no value
+# (`key`) the sentence that says where it would come from
+.tpl_info_text <- function(doc, key, t) {
+  if (is.null(key) || is.na(key) || !nzchar(key)) return(doc)
+  paste(c(if (nzchar(doc)) t(doc), sprintf(t("Uses the study standard's %s when it is defined."), key)),
+        collapse = " ")
+}
+
+# The badge itself, a small pill after the label; `t` the translator,
+# `kind` the report's kind ("table": "This table", else "This report")
+.tpl_badge_tag <- function(b, t, kind = "table") {
+  if (identical(b$kind, "none")) return(NULL)
+  txt <- switch(b$kind,
+    own = t(if (identical(kind, "table")) "This table" else "This report"),
+    study = sprintf(t("Study standard (%s)"), b$key),
+    report = t("This report's analysis set"),
+    fallback = if (!length(b$key) || is.na(b$key[1L])) t("Default when the study standard is undefined") else
+      sprintf(t("Default when the study standard (%s) is undefined"), b$key),
+    t("Template default"))
+  cls <- c(own = "own", study = "study", report = "study", fallback = "fallback")[b$kind]
+  shiny::span(class = paste0("badge rounded-pill rp-tpl-badge rp-tpl-badge-",
+                             if (is.na(cls)) "default" else cls), txt)
 }
 
 # What tflspec filled in from the study for a template report: the

@@ -119,7 +119,7 @@ test_that("a study standard's card edited in a template report: the report's own
   p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
   o <- tflspec::tfl_output("T-99", "table", population = "SAF",
                            template = list(name = "summary",
-                                         args = list(population = "SAF", continuous = "AGE", categorical = "SEX")))
+                                         args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   p <- .spec_add_output(p, o, population = "SAF")
   it <- Filter(function(x) identical(x$fn, "plan_stub"), builder_items(p, "T-99"))[[1L]]
   expect_identical(it$from, "defaults")
@@ -148,11 +148,11 @@ test_that("an argument tflspec filled from the study is the study standard's, wi
 
 test_that("plan_digits in a template report: a variable's decimals the report's own, the rounding every report's", {
   skip_on_cran()
-  # (summary: its plan_digits is the study standard's card; demog's rounding is an argument)
+  # (summary: its plan_digits is the study standard's card; demog has no rounding argument now)
   p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
   o <- tflspec::tfl_output("T-99", "table", population = "SAF",
                            template = list(name = "summary",
-                                         args = list(population = "SAF", continuous = "AGE", categorical = "SEX")))
+                                         args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   p <- .spec_add_output(p, o, population = "SAF")
   it <- Filter(function(x) identical(x$fn, "plan_digits"), builder_items(p, "T-99"))[[1L]]
   expect_identical(it$from, "defaults")

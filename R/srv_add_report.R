@@ -28,7 +28,7 @@
   tpl_all_cols <- function() unique(unlist(lapply(tpl_data(), names)))
   # an argument's heading: "meaning (name)", its doc in the (i)
   # (.tpl_arg_labels; the doc itself when it has none)
-  tpl_label <- function(prm) {
+  tpl_label <- function(prm, key = NULL) {
     doc <- prm$doc %||% ""
     # (the report's population a template hides (demog): the tip the other
     # templates' population has, not tflspec's note that it is no parameter)
@@ -37,7 +37,8 @@
     head <- if (!is.na(short)) t(short) else if (nzchar(doc)) t(doc) else ""
     lab <- if (nzchar(head)) sprintf(t("%s (%s)"), head, prm$name) else prm$name
     shiny::span(lab, if (isTRUE(prm$required)) shiny::span(class = "text-danger", " *"),
-                if (!is.na(short) && nzchar(doc)) help_tip(t(doc)))
+                if (!is.null(key)) help_tip(.tpl_info_text(if (nzchar(doc)) doc else "", key, t)) else
+                  if (!is.na(short) && nzchar(doc)) help_tip(t(doc)))
   }
   # the input of an argument, by its type (.tpl_type(): tflspec's
   # tfl_param(type = ), guessed only when it declares none).  `params`,
@@ -58,14 +59,20 @@
     if (is.character(v) && length(v) == 1L && nzchar(v)) v
   }
   tpl_widget <- function(input_id, prm, value, dataset = NULL, params = list(), args = list(),
-                         label = tpl_label(prm), say_first = FALSE, tpl = NULL) {
+                         label = tpl_label(prm), say_first = FALSE, tpl = NULL,
+                         none = FALSE) {
     data <- tpl_data()
     type <- .tpl_type(prm, tpl_all_cols())
     cols <- .tpl_columns(data, dataset)
     shown <- if (is.null(value)) prm$default else value
-    none <- .is_unset(shown)
-    if (none) shown <- NULL
+    # (`!unset`: the "(none)" switch on; `none`, a study reference with no
+    # value, or the unset: the placeholder says "(none)")
+    unset <- .is_unset(shown)
+    if (unset) shown <- NULL
+    none <- isTRUE(none) || unset
     lab <- label
+    # (a study reference with no value: its light placeholder says "(none)")
+    ph <- function(x) if (none) t("(none)") else t(x)
     # (a value taken away with x: the list closed again)
     shut <- I("function() { this.close(); this.blur(); }")
     rm_btn <- list(plugins = list("remove_button"), onItemRemove = shut)
@@ -78,7 +85,7 @@
                                       selected = as.character(shown %||% ""), width = "100%"),
       data = shiny::selectInput(
         input_id, lab,
-        c(if (is.null(shown)) stats::setNames("", t("(default)")),
+        c(if (is.null(shown)) stats::setNames("", ph("(default)")),
           union(as.character(shown %||% character()), names(data))),
         selected = as.character(shown %||% "")[1L], width = "100%"),
       levels = {
@@ -86,17 +93,17 @@
         lv <- .tpl_levels(data, vr, dataset)
         several <- isTRUE(prm$multiple)
         if (length(sugg)) .tpl_suggest_select(
-          input_id, lab, c(if (!several) stats::setNames("", t("(not chosen)")), lv), sugg, several,
+          input_id, lab, c(if (!several) stats::setNames("", ph("(not chosen)")), lv), sugg, several,
           c(if (several) rm_btn, list(create = TRUE)), t) else
         shiny::selectizeInput(
           input_id, lab,
-          c(if (!several) stats::setNames("", t("(not chosen)")),
+          c(if (!several) stats::setNames("", ph("(not chosen)")),
             union(as.character(shown %||% character()), lv)),
           selected = as.character(shown %||% if (several) character() else ""),
           multiple = several, width = "100%",
           options = c(if (several) rm_btn, list(create = TRUE)))
       },
-      flag = bslib::input_switch(input_id, lab, value = isTRUE(shown)),
+      flag = bslib::input_switch(input_id, lab, value = isTRUE(shown), width = "100%"),
       number = shiny::numericInput(input_id, lab, value = .num_or_null(shown), width = "100%", updateOn = "blur"),
       vars = if (length(sugg)) .tpl_suggest_select(
         input_id, lab, cols, sugg, TRUE,
@@ -115,7 +122,7 @@
         input_id, lab, as.character(shown), selected = as.character(shown), multiple = TRUE,
         width = "100%", options = c(rm_btn, list(create = TRUE))),
       choice = shiny::selectInput(
-        input_id, lab, c(if (is.null(shown)) stats::setNames("", t("(default)")),
+        input_id, lab, c(if (is.null(shown)) stats::setNames("", ph("(default)")),
                          union(as.character(shown %||% character()), as.character(prm$choices))),
         selected = as.character(shown %||% "")[1L], width = "100%"),
       choices = shiny::selectizeInput(
@@ -136,7 +143,7 @@
                                rows = min(6L, length(strsplit(txt, "\n", fixed = TRUE)[[1L]]) + 1L))
         } else {
           shiny::textInput(input_id, lab, value = txt, width = "100%", updateOn = "blur",
-                           placeholder = if (is.null(prm$default)) t("(default)"))
+                           placeholder = if (none) t("(none)") else if (is.null(prm$default)) t("(default)"))
         }
       },
       list = {
@@ -156,10 +163,10 @@
               input_id, with_tip(lab, sprintf(t("A line a row: %s"), paste(.tpl_list_fields(prm), collapse = " | "))),
               value = txt, width = "100%", updateOn = "blur",
               rows = max(2L, min(8L, length(strsplit(txt, "\n")[[1L]]) + 1L)),
-              placeholder = paste(.tpl_list_fields(prm), collapse = " | ")))
+              placeholder = if (none) t("(none)") else paste(.tpl_list_fields(prm), collapse = " | ")))
         }
       })
-    .tpl_none_wrap(w, input_id, type, prm, none, t)
+    .tpl_none_wrap(w, input_id, type, prm, unset, t)
   }
   # The new report's dialog: the templates of each kind, a searchable list
   # with a line on each; the required arguments of each template, below it
@@ -941,17 +948,34 @@
     # where a value comes from: this report / the study standard / the
     # function's default (and the report's over the study's, said)
     filled <- .tpl_filled(p, id)
+    rows <- .tpl_args_rows(tp$name, study, p$spec$outputs[[id]]$population)
     from_of <- function(a) {
+      b <- .tpl_badge_of(a, args, rows)
       og <- .tpl_arg_origin(study, prm[[a]], args, filled)
       sv <- og$study
+      sk <- NULL
+      if (!is.null(b) && !is.null(b$study)) {
+        # (tfl_tpl_args() names the study's key and value, also for keys the
+        # old lookup misses: plan_cells.default ...)
+        sv <- b$study
+        sk <- b$key
+      }
+      if (!is.null(b)) {
+        # (the report's value over the study's: said small, not a second badge)
+        return(shiny::tagList(
+          .tpl_badge_tag(b, t, kind),
+          if (identical(b$kind, "own") && !is.null(sv))
+            shiny::span(class = "rp-tpl-arg-from",
+                        paste0(" ", if (is.null(sk)) sprintf(t("over the study standard (%s)"), .tpl_show(sv)) else
+                          sprintf(t("over the study standard (%s: %s)"), sk, .tpl_show(sv))))))
+      }
+      # (tflspec cannot say: the text it was)
       if (identical(og$from, "own")) {
         return(shiny::span(class = "rp-tpl-arg-from",
                            t(if (identical(kind, "table")) "This table" else "This report"),
                            if (!is.null(sv)) paste0(" \u2014 ", sprintf(t("over the study standard (%s)"),
                                                                        .tpl_show(sv)))))
       }
-      # (the study standard, and where in it: "Study standard
-      # (settings.treatment)")
       std <- if (!is.na(og$source)) sprintf(t("Study standard (%s)"), og$source) else t("Study standard")
       shiny::span(class = "rp-tpl-arg-from",
                   if (identical(og$from, "study")) paste0(std, ": ", .tpl_show(sv)) else
@@ -961,12 +985,14 @@
       x <- prm[[a]]
       og <- .tpl_arg_origin(study, x, args, filled)
       sv <- if (identical(og$from, "study")) og$study
+      nk <- .tpl_none_key(a, args, rows)
       shiny::div(
-        class = paste("d-flex gap-2 align-items-start", if (!upper) "rp-tpl-default"),
+        class = "d-flex gap-2 align-items-start",
         shiny::div(style = "flex: 1 1 auto; min-width: 0",
                    tpl_widget(tpl_iid(tp$name, a), x, args[[a]] %||% sv, dataset, params = prm,
                               args = args,
-                              label = shiny::span(tpl_label(x), " ", from_of(a)))),
+                              none = !is.null(nk),
+                              label = shiny::span(tpl_label(x, nk), " ", from_of(a)))),
         if (upper && !isTRUE(x$required)) shiny::tags$button(
           type = "button", class = "btn btn-sm btn-outline-secondary mt-4",
           title = t("Back to the default (the line is taken out of args)"),

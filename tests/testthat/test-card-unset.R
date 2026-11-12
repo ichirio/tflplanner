@@ -149,7 +149,9 @@ test_that("a template argument that is unset is passed as !unset, and the templa
   home <- local_home()
   s <- suppressMessages(create_sample_study(run = FALSE, home = home))
   o <- tflspec::tfl_output("T-TPL", "table", label = "Demographics", population = "SAF",
-                           template = list(name = "demog", args = list(population = "SAF", sd_missing = U())))
+                           template = list(name = "demog",
+                                         args = list(by = "TRT01A", continuous = "AGE",
+                                                     categorical = "SEX", sd_missing = U())))
   s$planner <- .spec_add_output(s$planner, o, label = "Demographics", population = "SAF")
   expect_s3_class(.tpl_of(s$planner, "T-TPL")$args$sd_missing, "tfl_unset")
   # the SPEC YAML keeps it
