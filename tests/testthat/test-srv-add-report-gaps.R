@@ -218,6 +218,9 @@ test_that("Add from a template writes the report with its template, the argument
 })
 
 test_that("a template card: an edit is written, a value just replaced is not an edit, a report's own value can be reverted, a header is warned about, and another template asks first", {
+  # On a slow machine a write and its say-back are far apart: the 15 s
+  # window of .tpl_stale_say() is widened so the test does not depend on it.
+  withr::local_options(tflplanner.tpl_stale_window = 3600)
   id <- sample_for_add()
   shown <- watch_add()
   shiny::testServer(server_for(id), {
