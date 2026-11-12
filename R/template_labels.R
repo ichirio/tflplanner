@@ -45,12 +45,6 @@
   labels = "Variable headings",
   order = "Variable order",
   cells = "Row statistics",
-  continuous_statistics = "Continuous statistics",
-  categorical_statistics = "Categorical statistics",
-  stack = "Build ARD in one call",
-  cat_id = "Category analysis ID",
-  cat_label = "Category analysis label",
-  groupn_label = "Group size label",
   group = "Treatment group compared",
   subgroups = "Subgroup variables",
   comparison = "Group compared with reference",
@@ -124,7 +118,6 @@
   baseline_label = "Baseline heading",
   value_label = "Value heading",
   change_label = "Change heading",
-  statistics = "Statistics",
   post = "Post-baseline category",
   cell = "Cell template",
   variable = "Analysis variable",
@@ -169,7 +162,6 @@
   stub_before = "Row-title column before the row keys",
   widths = "Column widths",
   max_rows = "Rows per page",
-  rounding = "Rounding rule",
   blanks = "Blank rows",
   blanks_first = "Blank row before the first block",
   blanks_last = "Blank row after the last block",
@@ -181,7 +173,7 @@
 
 .tpl_doc_labels <- c(
   "the curves' variable (survfit2(~ by), the colours)" = "Variable that splits the curves",
-  "a page's name in the titles ({<group>}: its value); NULL: the groups' values, a line each" =
+  "a page's name in the titles ({<group>}: its value); NULL: the groups' values, a line each; the last title line, or where the title line `{PAGE_HEADING}` is" =
     "Page name in the titles",
   "the groups: a page each (an analyte, an arm), the summary's too" = "Variable that splits the pages",
   "the variables that divide the listing (`by_break`); the records are ordered by them first, then by `sort`" =
