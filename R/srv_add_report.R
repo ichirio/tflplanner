@@ -963,6 +963,9 @@
                   if (identical(og$from, "study")) paste0(std, ": ", .tpl_show(sv)) else
                     t("The function's default"))
     }
+    # (a key argument's marker, small, beside its label)
+    key_tag <- function(x) if (.tpl_is_key(x)) shiny::span(
+      class = "badge rounded-pill rp-tpl-badge rp-tpl-badge-default", t("key"))
     row <- function(a, upper) {
       x <- prm[[a]]
       og <- .tpl_arg_origin(study, x, args, filled)
@@ -974,19 +977,20 @@
                    tpl_widget(tpl_iid(tp$name, a), x, args[[a]] %||% sv, dataset, params = prm,
                               args = args,
                               none = !is.null(nk),
-                              label = shiny::span(tpl_label(x, nk), " ", from_of(a)))),
-        if (upper && !isTRUE(x$required)) shiny::tags$button(
+                              label = shiny::span(tpl_label(x, nk), " ", key_tag(x), from_of(a)))),
+        if (upper && !isTRUE(x$required) && a %in% names(args)) shiny::tags$button(
           type = "button", class = "btn btn-sm btn-outline-secondary mt-4",
           title = t("Back to the default (the line is taken out of args)"),
           onclick = sprintf("Shiny.setInputValue('tpl_revert', '%s', {priority: 'event'})", a),
           t("Revert")))
     }
-    # a section's arguments: those required or given, then the others folded
+    # a section's arguments: those required, given or key, then the others folded
     block <- function(secs, head = NULL) {
       nm <- names(prm)[sec_of %in% secs]
       if (!length(nm)) return(NULL)
-      up <- nm[vapply(nm, function(a) isTRUE(prm[[a]]$required) || a %in% names(args), NA)]
-      low <- setdiff(nm, up)
+      g <- .tpl_card_groups(prm[nm], args)
+      up <- g$up
+      low <- g$low
       key <- paste0("tpl_open_", secs[1L])
       shiny::tagList(
         if (!is.null(head)) shiny::h6(class = "mt-2 mb-1", head),

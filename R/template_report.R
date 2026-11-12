@@ -58,6 +58,21 @@
   p
 }
 
+# A parameter marked "key" (tflspec's tier: a default that stays on top of
+# the card); a tflspec with no such tier, or a parameter with no tier: no
+.tpl_is_key <- function(x) identical(x$tier, "key")
+
+# The card's arguments of a section in two groups: `up`, kept on top -- the
+# required, the report's own (in `args`) and the key ones, whatever their
+# value -- and `low`, the others, folded away (their order kept).  `prm`: the
+# section's parameters, named.
+.tpl_card_groups <- function(prm, args) {
+  nm <- names(prm)
+  on_top <- vapply(nm, function(a) isTRUE(prm[[a]]$required) || a %in% names(args) ||
+                     .tpl_is_key(prm[[a]]), NA)
+  list(up = nm[on_top], low = nm[!on_top])
+}
+
 # A report's template, as its file says it (NULL: none; a figure
 # designer's `template: km_simple`, a name, is no template SPEC)
 .tpl_of <- function(p, output_id) {
