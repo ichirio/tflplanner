@@ -198,21 +198,22 @@
 
 # The arguments of rtf_page() and rtf_style() the page configuration sets, in
 # argument order (the formals of rtfreporter 0.8.2.9100), each with its meaning
-# (and unit).  Provisional: the meanings are chosen here.
+# (and unit), as the coordinator decided them (2026-11-13).
 .fs_rtf_args <- list(
   rtf_page = c(paper_size = "Paper size", orientation = "Orientation",
                width_in = "Page width (inch)", height_in = "Page height (inch)",
                margin_top_in = "Top margin (inch)", margin_bottom_in = "Bottom margin (inch)",
                margin_left_in = "Left margin (inch)", margin_right_in = "Right margin (inch)",
-               header_dist_in = "Header distance (inch)", footer_dist_in = "Footer distance (inch)"),
+               header_dist_in = "Header distance from page edge (inch)",
+               footer_dist_in = "Footer distance from page edge (inch)"),
   rtf_style = c(font = "Font", font_size_half_points = "Font size (half-points)",
                 row_height_twips = "Row height (twips)",
                 cell_padding_left_twips = "Cell padding, left (twips)",
                 cell_padding_right_twips = "Cell padding, right (twips)",
                 cell_padding_top_twips = "Cell padding, top (twips)",
                 cell_padding_bottom_twips = "Cell padding, bottom (twips)",
-                markup = "Markup", color = "Color", title_format = "Title format",
-                footnote_format = "Footnote format", title_width = "Title width",
+                markup = "Markup", color = "Color", title_format = "Title layout",
+                footnote_format = "Footnote layout", title_width = "Title width",
                 footnote_width = "Footnote width"))
 
 # the label of one rtf argument: "meaning (unit) (function(argument))"
