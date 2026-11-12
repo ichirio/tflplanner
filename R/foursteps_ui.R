@@ -16,6 +16,7 @@
 .rp-fs-num { flex: 0 0 2rem; text-align: right; color: #6c757d; font-size: .8rem; }
 .rp-fs-src { flex: 0 0 auto; }
 .rp-fs-line-cfg .rp-fs-val { color: #495057; }
+.rp-fs-removed .rp-fs-val { text-decoration: line-through; opacity: .5; }
 .rp-fs-note { font-size: .78rem; color: #6c757d; }
 .rp-fs-tools { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .4rem; }
 .rp-fs-common { background: #f8f9fa; }
@@ -176,6 +177,8 @@
   switch(i$src,
          config = .fs_badge("config", t, config),
          template = .fs_badge("default", t),
+         removed = shiny::span(class = "badge rounded-pill rp-tpl-badge rp-tpl-badge-fallback",
+                               t("Removed in this table")),
          own = .fs_badge("own", t, kind = m$kind))
 }
 
@@ -187,11 +190,13 @@
     return(.fs_card(head, shiny::div(class = "rp-fs-note", t("(none): this band is not printed."))))
   }
   items <- lapply(bd$items, function(i) shiny::div(
-    class = paste0("rp-fs-row", if (identical(i$src, "config")) " rp-fs-line-cfg" else ""),
+    class = paste0("rp-fs-row", if (identical(i$src, "config")) " rp-fs-line-cfg" else "",
+                   if (identical(i$src, "removed")) " rp-fs-removed" else ""),
     shiny::span(class = "rp-fs-num", if (is.na(i$num)) "" else i$num),
     shiny::span(class = "rp-fs-val", i$text),
     shiny::span(class = "rp-fs-src", .fs_line_src(i, cfg, m, t)),
-    if (!identical(i$src, "config")) shiny::span(.fs_btn(t("Edit")), " ", .fs_btn(t("Remove")))))
+    if (identical(i$src, "removed")) shiny::span(.fs_btn(t("Restore"))) else
+      if (!identical(i$src, "config")) shiny::span(.fs_btn(t("Edit")), " ", .fs_btn(t("Remove")))))
   none <- if (!length(items)) shiny::div(class = "rp-fs-note", t("(no lines)"))
   note <- if (identical(b, "titles")) t("Title lines are the report's own; the configuration prints the table number, title and set in its Header, with tokens.")
   tools <- shiny::div(

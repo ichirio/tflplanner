@@ -147,7 +147,7 @@
     demog = list(
       label = "Demographics",
       style = NULL,
-      data = list(dataset = list(value = "ADSL", fixed = TRUE),
+      data = list(dataset = list(value = "ADSL"),
                   subset = list(value = NULL),
                   denominator = list(value = "adsl_sub", fixed = TRUE)),
       ard = list(),
@@ -231,13 +231,17 @@
   if (identical(bd$kind, "list")) body <- list()
   for (l in bd$lines) {
     k <- as.character(l$num)
-    if (.fs_is_unset(l$line)) body[[k]] <- NULL else body[[k]] <- list(src = "own", num = l$num, line = l$line)
+    if (.fs_is_unset(l$line)) {
+      # a template line taken out: kept in its place, marked removed
+      body[[k]] <- if (is.null(body[[k]])) NULL else
+        list(src = "removed", num = l$num, line = body[[k]]$line)
+    } else body[[k]] <- list(src = "own", num = l$num, line = l$line)
   }
   body <- body[order(vapply(body, function(b) b$num, 0L))]
   cf <- function(ls) lapply(ls, function(l) list(src = "config", num = NA_integer_, line = l))
   items <- c(cf(cfg_band$first), unname(body), cf(cfg_band$last))
   items <- lapply(items, function(i) { i$text <- .fs_line_text(i$line); i })
-  list(off = FALSE, items = items, own = any(vapply(body, function(b) b$src == "own", NA)))
+  list(off = FALSE, items = items, own = any(vapply(body, function(b) b$src %in% c("own", "removed"), NA)))
 }
 
 # ----------------------------------------------------------- the model

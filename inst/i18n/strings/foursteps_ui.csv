@@ -46,3 +46,5 @@
 "Page settings","ページの項目"
 "Report (four steps)","レポート (4 ステップ)"
 "Provisional screen: it reads the report's YAML directly and only shows it; editing comes with the tflspec readers.","試作の画面です。レポートの YAML を直接読んで表示するだけで、編集は tflspec の読み取りができてからです。"
+"Removed in this table","この Table で削除"
+"Restore","戻す"

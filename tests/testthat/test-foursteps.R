@@ -26,6 +26,8 @@ test_that("a template report: common, the four steps' values with their origins"
   expect_identical(d$subset$origin, "own")
   expect_identical(d$subset$value, "SEX == \"F\"")
   expect_identical(d$dataset$origin, "default")
+  d1 <- fs_model_of("T-14-1-1")$steps$data$rows
+  expect_identical(Filter(function(r) r$name == "dataset", d1)[[1L]]$origin, "default")
   expect_identical(vapply(m$steps$data$datasets, function(x) x$id, ""), c("adsl_sub", "adae_sub"))
   pb <- stats::setNames(m$steps$content$pagebreak, vapply(m$steps$content$pagebreak, function(r) r$name, ""))
   expect_identical(pb$max_rows$value, "40")
@@ -43,8 +45,8 @@ test_that("a band lists the resolved lines in print order with their sources", {
   m <- fs_model_of("T-14-3-1")
   fn <- m$steps$page$bands$footnotes$items
   # the template's line 1 stays, its line 2 is taken out, the report adds 3
-  expect_identical(vapply(fn, function(i) i$src, ""), c("template", "own"))
-  expect_identical(vapply(fn, function(i) i$num, 0L), c(1L, 3L))
+  expect_identical(vapply(fn, function(i) i$src, ""), c("template", "removed", "own"))
+  expect_identical(vapply(fn, function(i) i$num, 0L), 1:3)
   ft <- m$steps$page$bands$footer$items
   expect_identical(vapply(ft, function(i) i$src, ""), "config")
   hd <- m$steps$page$bands$header$items
