@@ -28,7 +28,7 @@ test_that("a template report: common, the four steps' values with their origins"
   expect_identical(d$dataset$origin, "default")
   d1 <- fs_model_of("T-14-1-1")$steps$data$rows
   expect_identical(Filter(function(r) r$name == "dataset", d1)[[1L]]$origin, "default")
-  expect_identical(vapply(m$steps$data$datasets, function(x) x$id, ""), c("adsl_sub", "adae_sub"))
+  expect_identical(vapply(m$steps$data$table, function(x) x$id, ""), c("adsl_sub", "adae_sub"))
   pb <- stats::setNames(m$steps$content$pagebreak, vapply(m$steps$content$pagebreak, function(r) r$name, ""))
   expect_identical(pb$max_rows$value, "40")
   expect_identical(pb$max_rows$origin, "own")

@@ -15,12 +15,6 @@
   isTRUE(getOption("tflplanner.foursteps")) || nzchar(Sys.getenv("TFLPLANNER_FOURSTEPS"))
 }
 
-# the study folder the screen starts on: the option, then the variable
-.fs_study_default <- function() {
-  x <- getOption("tflplanner.foursteps.study") %||% Sys.getenv("TFLPLANNER_FOURSTEPS_STUDY")
-  if (length(x) == 1L && !is.na(x) && nzchar(x)) x else ""
-}
-
 # a report file's YAML: `!r` code and `!unset` kept as classed values
 .fs_yaml <- function(path) {
   yaml::read_yaml(path, handlers = list(
@@ -66,7 +60,7 @@
   list(root = root,
        settings = rd("study.yml")$settings %||% list(),
        tokens = rd("study.yml")$tokens %||% list(),
-       populations = pops,
+       populations = pops, datasets = d$datasets %||% list(),
        defaults = rd(file.path("spec", "defaults.yml")))
 }
 
@@ -148,8 +142,7 @@
       label = "Demographics",
       style = NULL,
       data = list(dataset = list(value = "ADSL"),
-                  subset = list(value = NULL),
-                  denominator = list(value = "adsl_sub", fixed = TRUE)),
+                  subset = list(value = NULL)),
       ard = list(),
       content = list(total_label = list(value = "Total"),
                      split = list(value = "group_safe", fixed = TRUE),
@@ -321,53 +314,76 @@
   unname(rows)
 }
 
-# the datasets a template report builds, from its data-step values
-.fs_template_datasets <- function(rows, common, study) {
-  v <- function(n, d = "") {
-    for (r in rows) if (identical(r$name, n)) return(r$value)
-    d
-  }
+# ---- step 1: the analysis data the report defines, one row each, in build order
+# A cell: its text, the param it is (NULL when it is not one), where it comes from.
+.fs_cell <- function(value = "", param = NULL, origin = "none") {
+  list(value = as.character(value), param = param, origin = origin)
+}
+
+# the analysis set of the report (Common: population) with its label and condition
+.fs_pop_set <- function(common, study) {
   pop <- .fs_population(study, common$population)
-  out <- list(list(id = "adsl_sub", role = "analysis set",
-                   text = paste0(common$population %||% "", if (!is.null(pop$label)) paste0(" (", pop$label, ")") else ""),
-                   subset = v("subset")))
-  ds <- v("dataset")
-  if (nzchar(ds) && !identical(toupper(ds), "ADSL")) {
-    out[[2L]] <- list(id = paste0(tolower(ds), "_sub"), role = "records",
-                      text = paste0(ds, " of the subjects of adsl_sub"), subset = v("where"))
+  list(type = "common", id = as.character(common$population %||% ""),
+       label = as.character(pop$label %||% ""),
+       cond = if (is.null(pop$where)) "" else .fs_show(pop$where))
+}
+
+.fs_derived_set <- function(of, pset) list(type = "derived", of = of, id = pset$id)
+
+.fs_trow <- function(id, role, input, set, filter, source, note = NULL, optional = FALSE,
+                     implicit = FALSE) {
+  list(id = id, role = role, input = input, set = set, filter = filter, source = source,
+       note = note, optional = optional, implicit = implicit)
+}
+
+# a template report's rows.  adsl_sub first; then the records of the template's
+# dataset when it is not ADSL; then the template's optional denominator data
+# (tpl$optional_den: list(id, from)), built only when chosen as a denominator.
+.fs_template_table <- function(tpl, rows, common, study) {
+  cell <- function(n) {
+    for (r in rows) if (identical(r$name, n)) return(.fs_cell(r$value, n, r$origin))
+    .fs_cell("")
   }
-  den <- v("denominator", "adsl_sub")
-  if (grepl("_den$", den)) {
-    out[[length(out) + 1L]] <- list(id = den, role = "denominator",
-                                    text = paste0("the subjects tested: one row a subject of ", sub("_den$", "_sub", den)), subset = "")
+  pset <- .fs_pop_set(common, study)
+  ds <- cell("dataset")
+  own_adsl <- !nzchar(ds$value) || identical(toupper(ds$value), "ADSL")
+  out <- list(.fs_trow(
+    "adsl_sub", "analysis set",
+    if (own_adsl) { if (nzchar(ds$value)) ds else .fs_cell("ADSL") } else .fs_cell("ADSL"),
+    pset, cell("subset"), "template", note = "Made first. The other analysis data keep only its subjects"))
+  if (!own_adsl) {
+    out[[2L]] <- .fs_trow(paste0(tolower(ds$value), "_sub"), "records", ds,
+                          .fs_derived_set("adsl_sub", pset), cell("where"), "template")
+  }
+  od <- tpl$optional_den
+  if (!is.null(od)) {
+    out[[length(out) + 1L]] <- .fs_trow(
+      od$id, "denominator", .fs_cell(od$from), .fs_derived_set("adsl_sub", pset), .fs_cell(""),
+      "template", note = "Made only when chosen as a denominator in step 2", optional = TRUE)
   }
   out
 }
 
-# the definitions of a code SPEC report's data:, with the implicit adsl_sub
-# first when the report does not write it
-.fs_code_datasets <- function(data, common, study) {
+# a code SPEC report's data: list, with the implicit adsl_sub first when the
+# report does not write it
+.fs_code_table <- function(data, common, study) {
   defs <- if (is.list(data) && is.null(names(data))) data else list()
   ids <- vapply(defs, function(d) as.character(d$id %||% ""), "")
+  pset <- .fs_pop_set(common, study)
   out <- list()
   if (!"adsl_sub" %in% ids) {
-    pop <- .fs_population(study, common$population)
-    out[[1L]] <- list(id = "adsl_sub", role = "analysis set", implicit = TRUE,
-                      text = paste0("made from the common block: ", common$population %||% "",
-                                    if (!is.null(pop$label)) paste0(" (", pop$label, ")") else ""),
-                      fields = list())
+    out[[1L]] <- .fs_trow("adsl_sub", "analysis set", .fs_cell("ADSL"), pset, .fs_cell(""),
+                          "study", note = "Made first. The other analysis data keep only its subjects",
+                          implicit = TRUE)
   }
   for (d in defs) {
     id <- as.character(d$id %||% "")
     role <- if (grepl("_den$", id)) "denominator" else if (is.null(d$subjects)) "analysis set" else "records"
-    wh <- .fs_show(d$where)
-    pop <- .fs_population(study, common$population)
-    txt <- if (!is.null(d$subjects)) paste0(.fs_show(d$from), " of the subjects of ", .fs_show(d$subjects)) else
-      if (identical(role, "analysis set")) paste0(common$population %||% "",
-        if (!is.null(pop$label)) paste0(" (", pop$label, ")") else "") else .fs_show(d$from)
-    out[[length(out) + 1L]] <- list(id = id, role = role, implicit = FALSE,
-                                    text = paste0(txt, if (nzchar(wh)) paste0("; ", wh) else ""),
-                                    fields = d[setdiff(names(d), "id")])
+    set <- if (is.null(d$subjects)) pset else .fs_derived_set(.fs_show(d$subjects), pset)
+    out[[length(out) + 1L]] <- .fs_trow(
+      id, role, .fs_cell(.fs_show(d$from), "from", "own"), set,
+      .fs_cell(.fs_show(d$where), "where", "own"), "own",
+      note = if (identical(id, "adsl_sub")) "Made first. The other analysis data keep only its subjects")
   }
   out
 }
@@ -408,7 +424,7 @@
   tp <- y$template %||% list()
   if (is_tpl) {
     drows <- .fs_template_rows(tpl, "data", tp$data, cfg)
-    m$steps$data <- list(rows = drows, datasets = .fs_template_datasets(drows, common, study))
+    m$steps$data <- list(rows = drows, table = .fs_template_table(tpl, drows, common, study))
     m$steps$ard <- list(rows = .fs_template_rows(tpl, "ard", tp$ard, cfg))
     crows <- .fs_template_rows(tpl, "content", tp$content, cfg)
     m$steps$content <- list(
@@ -417,14 +433,14 @@
       pagebreak = Filter(function(r) r$name %in% .fs_pagebreak, crows),
       rows = Filter(function(r) !r$name %in% .fs_pagebreak, crows))
   } else {
-    m$steps$data <- list(defs = .fs_code_datasets(y$data, common, study))
+    m$steps$data <- list(table = .fs_code_table(y$data, common, study))
     m$steps$ard <- list(analyses = unname(y$ard$analyses %||% list()))
     m$steps$content <- list(verbs = unname(y$content %||% list()))
   }
-  m$steps$data$ids <- vapply(
-    if (is_tpl) m$steps$data$datasets else m$steps$data$defs, function(d) d$id, "")
-  m$steps$data$id_roles <- vapply(
-    if (is_tpl) m$steps$data$datasets else m$steps$data$defs, function(d) d$role, "")
+  m$steps$data$ids <- vapply(m$steps$data$table, function(d) d$id, "")
+  m$steps$data$id_roles <- vapply(m$steps$data$table, function(d) d$role, "")
+  m$study_root <- study$root
+  m$study_datasets <- study$datasets
   # step 4: the bands, the settings, the tokens
   rep_page <- y$page %||% list()
   tpage <- tp$page %||% list()

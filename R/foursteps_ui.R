@@ -13,6 +13,24 @@
 .rp-fs-row { display: flex; gap: .5rem; align-items: baseline; padding: .2rem 0; border-bottom: 1px solid #f1f3f5; }
 .rp-fs-row:last-child { border-bottom: none; }
 .rp-fs-name { flex: 0 0 38%; font-size: .85rem; }
+.rp-fs-kv { display: grid; grid-template-columns: 12rem minmax(0, 24rem) auto; column-gap: .6rem;
+  align-items: baseline; justify-content: start; }
+.rp-fs-kv > .rp-fs-name { flex: none; }
+.rp-fs-row:not(.rp-fs-kv) > .rp-fs-val { flex: 0 1 auto; max-width: 30rem; }
+.rp-fs-dtable { font-size: .8rem; margin-bottom: .3rem; }
+.rp-fs-dtable th { font-weight: 600; color: #495057; white-space: nowrap; }
+.rp-fs-dtable td { vertical-align: top; }
+.rp-fs-code { font-size: .8rem; overflow-wrap: anywhere; }
+.rp-fs-param { font-size: .68rem; color: #6c757d; font-family: var(--bs-font-monospace, monospace); }
+.rp-fs-locked { font-family: var(--bs-font-monospace, monospace); font-size: .8rem; }
+.rp-fs-grey { opacity: .5; }
+.rp-fs-srcline { display: flex; flex-wrap: wrap; gap: .25rem; align-items: baseline; margin-bottom: .15rem; }
+.rp-fs-pre { font-size: .78rem; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: .25rem;
+  padding: .5rem .7rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.rp-fs-sticky { position: sticky; top: .5rem; }
+.rp-fs-mini { font-size: .72rem; margin-bottom: .2rem; }
+.rp-fs-mini th, .rp-fs-mini td { white-space: nowrap; padding: .1rem .35rem; }
+.rp-fs-minibox { overflow-x: auto; }
 .rp-fs-val { flex: 1 1 auto; min-width: 0; font-family: var(--bs-font-monospace, monospace); font-size: .82rem;
   overflow-wrap: anywhere; }
 .rp-fs-val.rp-fs-hint { color: #8a8f98; }
@@ -50,10 +68,20 @@
   shiny::span(class = paste0("badge rounded-pill rp-tpl-badge rp-tpl-badge-", cls), txt)
 }
 
-# a choice among the report's datasets: "adsl_sub (analysis set)"
+# the role of a step-1 name in words, for the denominator choice
+.fs_den_label <- function(r, m, t) {
+  phrase <- switch(r$role,
+    "analysis set" = sprintf(t("Subjects of the analysis set (%s)"), m$common$population$value),
+    denominator = t("Subjects tested"),
+    sprintf(t("Records of %s"), r$input$value))
+  paste0(r$id, " \u2014 ", phrase)
+}
+
+# a choice among the analysis data of step 1: "adsl_sub -- subjects of the analysis set (SAF)"
 .fs_den_select <- function(value, m, t) {
-  ids <- m$steps$data$ids
-  lab <- paste0(ids, " (", vapply(m$steps$data$id_roles, t, ""), ")")
+  tab <- m$steps$data$table
+  ids <- vapply(tab, function(r) r$id, "")
+  lab <- vapply(tab, .fs_den_label, "", m = m, t = t)
   shiny::tags$select(
     class = "form-select form-select-sm", disabled = "disabled", style = "max-width: 22rem",
     lapply(seq_along(ids), function(i) shiny::tags$option(
@@ -63,8 +91,7 @@
 .fs_value_el <- function(r, m, t) {
   # a fixed value: plain locked text
   if (identical(r$origin, "fixed")) {
-    lab <- if (identical(r$name, "denominator")) paste0(r$value, " (", t("analysis set"), ")") else r$value
-    return(shiny::span(class = "rp-fs-val", lab))
+    return(shiny::span(class = "rp-fs-val", r$value))
   }
   if (identical(r$name, "denominator")) return(.fs_den_select(r$value, m, t))
   if (identical(r$name, "dataset")) {
@@ -84,7 +111,7 @@
 # one row of a step: the label ("meaning (name)"), the value, where it comes from
 .fs_row_ui <- function(r, m, t) {
   shiny::div(
-    class = "rp-fs-row",
+    class = "rp-fs-row rp-fs-kv",
     shiny::span(class = "rp-fs-name", .fs_name(r$name, t)),
     .fs_value_el(r, m, t),
     shiny::span(class = "rp-fs-src", .fs_badge(r$origin, t, r$config, m$kind)))
@@ -108,7 +135,7 @@
   opt <- paste0(cm$population$options,
                 ifelse(nzchar(cm$population$labels), paste0(" (", cm$population$labels, ")"), ""))
   line <- function(label, el, origin) shiny::div(
-    class = "rp-fs-row",
+    class = "rp-fs-row rp-fs-kv",
     shiny::span(class = "rp-fs-name", t(label)), shiny::span(class = "rp-fs-val", el),
     shiny::span(class = "rp-fs-src", .fs_badge(origin, t, kind = m$kind)))
   sel <- shiny::tags$select(
@@ -128,28 +155,71 @@
 
 # ------------------------------------------------------------------- step 1
 
+# a value cell of the table: the text (locked when the template fixes it), the
+# param it is written under
+.fs_dcell <- function(c, t) {
+  shiny::tagList(
+    if (!nzchar(c$value)) shiny::span(class = "rp-fs-hint", t("None")) else
+      if (identical(c$origin, "fixed")) shiny::span(class = "rp-fs-locked", c$value) else
+        shiny::tags$code(class = "rp-fs-code", c$value),
+    if (!is.null(c$param)) shiny::div(class = "rp-fs-param", c$param))
+}
+
+# the analysis set cell: "SAF: Safety Analysis Set (SAFFL == "Y")" for the
+# first data, "its subjects" for the others (read-only: only adsl_sub reads
+# the set)
+.fs_set_cell <- function(set, t) {
+  if (identical(set$type, "derived")) {
+    return(shiny::span(class = "small", sprintf(t("Subjects of %s (%s)"), set$of, set$id)))
+  }
+  txt <- paste0(set$id, if (nzchar(set$label)) paste0(": ", set$label) else "",
+                if (nzchar(set$cond)) paste0(" (", set$cond, ")") else "")
+  shiny::tagList(shiny::span(class = "small", txt), shiny::div(class = "rp-fs-param", "population"))
+}
+
+# the Set by cell: one line (param, badge) for each value the report or the
+# template sets; the analysis set is the Common block's
+.fs_src_cell <- function(r, m, t) {
+  ln <- function(param, badge) shiny::div(class = "rp-fs-srcline",
+                                          if (!is.null(param)) shiny::span(class = "rp-fs-param", param), badge)
+  lines <- list()
+  if (identical(r$set$type, "common")) lines[[1L]] <- ln("population", .fs_badge("derived", t, text = "Common"))
+  for (c in list(r$input, r$filter)) {
+    if (!is.null(c$param)) lines[[length(lines) + 1L]] <- ln(c$param, .fs_badge(c$origin, t, kind = m$kind))
+  }
+  if (!length(lines)) lines[[1L]] <- ln(NULL, .fs_badge(if (identical(r$source, "own")) "own" else "study", t, kind = m$kind))
+  lines
+}
+
+.fs_data_row <- function(r, m, t) {
+  shiny::tags$tr(
+    class = if (isTRUE(r$optional)) "rp-fs-grey",
+    shiny::tags$td(
+      shiny::tags$code(r$id),
+      if (isTRUE(r$implicit)) .fs_help(t("Always made first, even when the report does not write it.")),
+      if (!is.null(r$note)) shiny::div(class = "rp-fs-note", t(r$note))),
+    shiny::tags$td(.fs_dcell(r$input, t)),
+    shiny::tags$td(.fs_set_cell(r$set, t)),
+    shiny::tags$td(.fs_dcell(r$filter, t)),
+    shiny::tags$td(.fs_src_cell(r, m, t)))
+}
+
+# step 1: the analysis data of the report in one table, in build order
 .fs_data_ui <- function(m, t) {
   d <- m$steps$data
-  if (!is.null(m$template)) {
-    ds <- lapply(d$datasets, function(x) shiny::div(
-      class = "rp-fs-row",
-      shiny::span(class = "rp-fs-name", paste0(x$id, " (", t(x$role), ")")),
-      shiny::span(class = "rp-fs-val", paste0(x$text, if (nzchar(x$subset)) paste0("; ", x$subset) else ""))))
-    return(shiny::tagList(
-      .fs_card(sprintf(t("Template %s: analysis data"), m$template),
-               lapply(d$rows, .fs_row_ui, m = m, t = t)),
-      .fs_card(t("Datasets this report builds"), ds,
-               help = t("The report's data: part is made from these values; the ARD step picks the denominator from them."))))
-  }
-  shiny::tagList(lapply(d$defs, function(x) {
-    title <- paste0(x$id, " (", t(x$role), ")")
-    summary <- shiny::div(class = "rp-fs-row", shiny::span(class = "rp-fs-val", x$text),
-                          if (isTRUE(x$implicit)) shiny::span(class = "rp-fs-src", .fs_badge("study", t, kind = m$kind)))
-    rows <- lapply(names(x$fields), function(n) .fs_row_ui(
-      .fs_row(n, .fs_show(x$fields[[n]]), "own"), m, t))
-    .fs_card(title, summary, rows,
-             help = if (isTRUE(x$implicit)) t("Always made first, even when the report does not write it."))
-  }))
+  head <- shiny::tags$tr(lapply(c("Name", "Input data", "Analysis set", "Filter", "Set by"),
+                                function(h) shiny::tags$th(t(h))))
+  tbl <- shiny::div(class = "table-responsive", shiny::tags$table(
+    class = "table table-sm rp-fs-dtable",
+    shiny::tags$thead(head),
+    shiny::tags$tbody(lapply(d$table, .fs_data_row, m = m, t = t))))
+  .fs_card(
+    if (is.null(m$template)) t("Analysis data") else sprintf(t("Template %s: analysis data"), m$template),
+    tbl,
+    if (is.null(m$template)) shiny::div(class = "rp-fs-tools", .fs_btn(t("+ Add analysis data"))),
+    # the template's denominator param (ae_soc_pt; demog fixes it, so has no row)
+    lapply(Filter(function(r) identical(r$name, "denominator"), d$rows), .fs_row_ui, m = m, t = t),
+    help = t("The report's data: part is made from these values; the ARD step picks the denominator from them."))
 }
 
 # ------------------------------------------------------------------- step 2
@@ -258,7 +328,7 @@
       .fs_btn(t("Copy this configuration as..."))))
   bands <- lapply(.fs_bands, .fs_band_ui, m = m, t = t)
   rtf_row <- function(r, value, badge) shiny::div(
-    class = "rp-fs-row", shiny::span(class = "rp-fs-name", t(.fs_rtf_label(r$fn, r$arg))),
+    class = "rp-fs-row rp-fs-kv", shiny::span(class = "rp-fs-name", t(.fs_rtf_label(r$fn, r$arg))),
     value, shiny::span(class = "rp-fs-src", badge))
   settings <- .fs_card(
     t("RTF arguments (rtf_*)"),
@@ -272,7 +342,7 @@
   tokens <- .fs_card(
     t("Tokens"),
     if (length(pg$tokens)) lapply(pg$tokens, function(r) shiny::div(
-      class = "rp-fs-row", shiny::span(class = "rp-fs-name", paste0("{", r$name, "}")),
+      class = "rp-fs-row rp-fs-kv", shiny::span(class = "rp-fs-name", paste0("{", r$name, "}")),
       shiny::span(class = "rp-fs-val", r$value),
       shiny::span(class = "rp-fs-src", .fs_badge(r$origin, t, kind = m$kind, text = r$text)))) else
         shiny::div(class = "rp-fs-note", t("(none)")))
@@ -281,6 +351,47 @@
 
 # ------------------------------------------------------------ the screen
 
+# the step names as this screen shows them ("3 Content" without the app's
+# longer gloss; the trailing no-break space only makes the string its own
+# key in inst/i18n)
+.fs_step_labels <- c(data = "1 Analysis data", ard = "2 ARD", content = "3 Content\u00a0",
+                     page = "4 Page and output")
+
+# the Preview card: follows the chosen step; Code for every step, Data for step 1
+.fs_preview_ui <- function(m, step, t) {
+  badge <- shiny::span(class = "badge text-bg-warning rp-fs-sample", t("Sample"))
+  code <- if (identical(step, "data")) shiny::tags$pre(class = "rp-fs-pre", .fs_code_data(m)) else
+    shiny::div(class = "rp-fs-note", t("The code of this step (it comes when the step is connected)"))
+  panels <- list(bslib::nav_panel(t("Code"), value = "code", shiny::div(class = "mt-2", badge, code)))
+  if (identical(step, "data")) {
+    got <- .fs_data_read(m)
+    body <- if (!length(got)) shiny::div(class = "rp-fs-note", t("No data (sample)")) else
+      lapply(got, function(g) shiny::div(
+        shiny::div(shiny::tags$code(g$id), shiny::span(
+          class = "rp-fs-note ms-2",
+          sprintf(t("%s rows, %s subjects"), format(g$n_rows), format(g$n_subj)))),
+        shiny::div(class = "rp-fs-minibox", shiny::tags$table(
+          class = "table table-sm table-striped rp-fs-mini",
+          shiny::tags$thead(shiny::tags$tr(lapply(utils::head(names(g$head), 8L), shiny::tags$th))),
+          shiny::tags$tbody(lapply(seq_len(nrow(g$head)), function(i) shiny::tags$tr(
+            lapply(utils::head(names(g$head), 8L), function(n) shiny::tags$td(as.character(g$head[[n]][i]))))))))))
+    panels[[2L]] <- bslib::nav_panel(t("Data"), value = "data", shiny::div(class = "mt-2", badge, body))
+  }
+  do.call(bslib::navset_tab, c(list(id = "fs_prev"), panels))
+}
+
+# the Preview card itself: drawn once; its body is made only when "Update" is
+# pressed (never on an input change)
+.fs_preview_card <- function(t) {
+  bslib::card(
+    class = "rp-fs-sticky", fill = FALSE,
+    bslib::card_header(shiny::div(
+      class = "d-flex justify-content-between align-items-center",
+      t("Preview"),
+      shiny::actionButton("fs_update", t("Update"), class = "btn btn-sm btn-primary"))),
+    bslib::card_body(fill = FALSE, shiny::uiOutput("fs_preview_body")))
+}
+
 .fs_screen_ui <- function(m, t = identity) {
   head <- shiny::div(
     class = "d-flex flex-wrap gap-2 align-items-baseline mb-2",
@@ -288,26 +399,30 @@
     shiny::span(class = "badge text-bg-light border", t(.type_labels[[m$kind]] %||% m$kind)),
     shiny::span(class = "badge text-bg-secondary",
                 if (is.null(m$template)) t("Code SPEC") else sprintf(t("Template %s"), m$template)))
-  pane <- function(step, body) bslib::nav_panel(t(.step_labels[[step]]), value = step, shiny::div(class = "mt-2", body))
+  pane <- function(step, body) bslib::nav_panel(t(.fs_step_labels[[step]]), value = step, shiny::div(class = "mt-2", body))
   shiny::tagList(
     shiny::tags$style(shiny::HTML(.fs_css)),
-    head, .fs_common_ui(m, t),
-    bslib::navset_pill(
-      id = "fs_step",
-      pane("data", .fs_data_ui(m, t)), pane("ard", .fs_ard_ui(m, t)),
-      pane("content", .fs_content_ui(m, t)), pane("page", .fs_page_ui(m, t))))
+    bslib::layout_columns(
+      col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)), fill = FALSE,
+      shiny::div(
+        head, .fs_common_ui(m, t),
+        bslib::navset_pill(
+          id = "fs_step",
+          pane("data", .fs_data_ui(m, t)), pane("ard", .fs_ard_ui(m, t)),
+          pane("content", .fs_content_ui(m, t)), pane("page", .fs_page_ui(m, t)))),
+      .fs_preview_card(t)))
 }
 
-# the tab: the study folder, the report, the screen
+# the tab: the study folder, the report, the screen.  ("Report" with a
+# trailing no-break space is its own key, as the tab's word.)
 .fs_panel_ui <- function(t) {
   bslib::nav_panel(
-    t("Report (four steps)"), value = "foursteps",
+    t("Report\u00a0"), value = "foursteps",
     shiny::div(
       class = "alert alert-warning py-1 small",
       t("Provisional screen: it reads the report's YAML directly and only shows it; editing comes with the tflspec readers.")),
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-end mb-2",
-      shiny::textInput("fs_study", t("Study folder"), value = .fs_study_default(), width = "26rem"),
       shiny::selectInput("fs_report", t("Report"), choices = character(), width = "16rem")),
     shiny::uiOutput("fs_screen"))
 }
