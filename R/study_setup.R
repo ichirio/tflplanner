@@ -192,10 +192,46 @@ setup_code <- function(study_id = NA, standards = company_standards()) {
 # What a planner's rounding is read from: the study's spec, or (a planner
 # written from its sheets) the sheets' spec, as the setups read it
 .study_rounding_source <- function(x) {
-  if (inherits(x$spec$study, "tfl_study_spec")) return(x$spec$study)
-  tryCatch(.spec_object_last(x, c(table_sheets(), report_sheets()),
-                             unique(c(.study_keys$table, .study_keys$report))),
-           error = function(e) NULL)
+  s <- if (inherits(x$spec$study, "tfl_study_spec")) x$spec$study else
+    tryCatch(.spec_object_last(x, c(table_sheets(), report_sheets()),
+                               unique(c(.study_keys$table, .study_keys$report))),
+             error = function(e) NULL)
+  .setup_catalog_used(s, x)
+}
+
+# The datasets the study's reports use (their analyses, populations,
+# listings' data, figures' reads and code steps' registers), upper case.
+.reports_datasets <- function(x) {
+  po <- x$ard$populations
+  ad <- .adata_rows(x)
+  l <- x$lf$listings
+  pops <- unique(c(x$ard$analyses$population_id, l$population_id))
+  ids <- unique(c(x$ard$analyses$data, x$ard$analyses$denominator, l$data))
+  ds <- c(unlist(lapply(x$outputs$output_id, function(id)
+            tryCatch(.report_datasets(x, id), error = function(e) character()))),
+          po$dataset[match(pops[!is.na(pops)], po$population_id)],
+          unlist(lapply(ids[!is.na(ids) & ids %in% ad$data_id], .adata_datasets,
+                        ad = ad, po = po)))
+  toupper(unique(ds[!is.na(ds) & nzchar(ds)]))
+}
+
+# The study's spec with its data catalog cut to the datasets a report uses:
+# the setup reads what the study's reports need, not every file the catalog
+# lists (a dataset no report uses may not be on disk).  The order is the
+# catalog's.
+.setup_catalog_used <- function(study, x) {
+  if (is.null(study)) return(study)
+  used <- .reports_datasets(x)
+  if (inherits(study, "tfl_study_spec")) {
+    d <- study$data$datasets
+    if (length(d)) {
+      keep <- vapply(d, function(z) toupper(as.character(z$dataset %||% NA)[1L]) %in% used, NA)
+      study$data$datasets <- d[keep]
+    }
+  } else if (is.data.frame(study$datasets)) {
+    study$datasets <- study$datasets[toupper(study$datasets$dataset) %in% used, , drop = FALSE]
+  }
+  study
 }
 
 # a study_setup.R split into its parts (each a string, the line ends
