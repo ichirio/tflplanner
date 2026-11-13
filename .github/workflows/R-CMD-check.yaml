@@ -158,9 +158,22 @@ jobs:
                                                  error = function(e) "not installed"), "")
           print(data.frame(depends = s, installed = ver), row.names = FALSE)
 
+      # R_CRAN_WEB: `R CMD check` asks CRAN's web pages which suggested packages
+      # are on CRAN, and the dated repository has none (the check stopped there
+      # and rcmdcheck still reported success; the next step makes sure it did not)
       - uses: r-lib/actions/check-r-package@v2
         env:
+          R_CRAN_WEB: https://cloud.r-project.org
           _R_CHECK_FORCE_SUGGESTS_: 'false'
         with:
           upload-snapshots: true
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+
+      - name: The check ran to its end
+        shell: Rscript {0}
+        run: |
+          log <- list.files("check", pattern = "^00check[.]log$", recursive = TRUE, full.names = TRUE)
+          stopifnot(length(log) == 1L)
+          x <- readLines(log, warn = FALSE)
+          print(tail(x, 8))
+          stopifnot(any(grepl("^Status:", x)))
