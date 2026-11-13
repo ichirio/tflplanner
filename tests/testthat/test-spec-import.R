@@ -122,7 +122,6 @@ test_that("the workbooks of an earlier tflplanner are converted on import", {
 
 test_that("a filter that is not R stops the import at its report", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   home <- local_home()
   suppressMessages(create_sample_study(run = FALSE))
   out <- file.path(home, "copy")

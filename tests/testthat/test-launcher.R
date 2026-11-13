@@ -398,7 +398,9 @@ test_that("tflplanner_packages() lists the required and suggested packages", {
   expect_identical(names(pk), c("package", "role", "installed", "latest", "status"))
   expect_identical(pk$package[pk$role == "required"],
                    c("rtfreporter", "tflspec", "tflplanner"))
-  expect_true(all(c("cards", "cardx", "dplyr") %in% pk$package[pk$role == "suggested"]))
+  expect_true("dplyr" %in% pk$package[pk$role == "suggested"])
+  # cards and cardx are imported (required) now, so the wizard does not offer them
+  expect_false(any(c("cards", "cardx") %in% pk$package))
   expect_false("testthat" %in% pk$package)
   expect_false(is.na(pk$installed[pk$package == "tflplanner"]))
   expect_true(all(pk$status[!is.na(pk$installed)] %in% NA))

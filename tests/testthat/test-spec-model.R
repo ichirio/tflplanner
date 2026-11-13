@@ -604,7 +604,6 @@ test_that("a save merges what another session saved since; nothing saved since, 
 
 test_that("the rounding on plan_digits()' card: the study's defaults.yml, back and forth, no error (#417)", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   s <- model_sample()
   ard <- cards::ard_stack(cards::ADSL, .by = TRT01A, cards::ard_continuous(variables = AGE),
                           cards::ard_categorical(variables = SEX))
