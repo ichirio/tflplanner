@@ -186,7 +186,7 @@
 "the arm heading: a text ({col} and {n}, a line a line), the lines of plan_col_header(lines = ), or its cells (header = ); NULL: none","群の見出し。文字（{col} と {n}。1 行ずつ）、plan_col_header(lines = ) の行、またはそのセル（header = ）。NULL: なし"
 "the continuous variables, in order (required: this or `categorical`)","連続変数を順に指定（これか `categorical` のどちらかが必須）"
 "a categorical value's cell, n (%); NULL: the study standard's","カテゴリの値のセル（n (%)）。NULL: 試験標準のもの"
-"the analysis data's id when `data` is not ADSL; NULL: <data>_<population>","`data` が ADSL でないときの解析データの id。NULL: <data>_<population>"
+"the analysis data's id when `data` is not ADSL; NULL: <data>_sub","`data` が ADSL でないときの解析データの id。NULL: <data>_sub"
 "a subject-level dataset","被験者単位のデータセット"
 "the row-title (stub) column's heading, a line a line.  Given, it is the stub's (plan_stub(heading = ), the stub being row_label, first)","行見出し（スタブ）の列の見出し。1 行ずつ書きます。指定するとスタブの見出しになります（plan_stub(heading = )。スタブは row_label で、先頭の列）"
 "each variable's heading; given by name, merged (RACE: ~ drops one); a variable it does not name has none; unset: no headings","変数ごとの見出し。名前で指定したものだけを置き換えます（RACE: ~ で 1 つを消します）。名前のない変数には見出しが付きません。unset: 見出しなし"
