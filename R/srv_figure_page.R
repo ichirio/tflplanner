@@ -544,7 +544,7 @@
       if (.pg_token_taken(e$name)) {
         return(notify(.pg_token_taken_msg(e$name, t), "warning"))
       }
-      page_write(guarded(.pgs_set_token(p, id, e$name, trimws(e$value %||% ""))))
+      page_write(guarded(.pgs_set_token(p, id, e$name, .pgs_token_value(e$value))))
     } else if (identical(e$kind, "info") && !is.na(id) && !.is_pattern_id(id)) {
       v <- trimws(e$value %||% "")
       page_write(guarded(.set_report_info_spec(p, id, e$name, if (nzchar(v)) v else NA_character_)))

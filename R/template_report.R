@@ -216,7 +216,7 @@
 .tpl_list_records <- function(prm) isTRUE(prm$multiple) && length(prm$fields) > 0L
 
 .tpl_list_text <- function(x, prm) {
-  if (is.null(x) || !length(x)) return("")
+  if (is.null(x) || !length(x) || .is_unset(x)) return("")
   cell <- function(v) {
     if (is.null(v)) return("")
     if (!is.atomic(v) || !is.null(names(v))) return(NULL)
@@ -293,6 +293,7 @@
 # raw R) -- what .tpl_text_parse() reads back
 .tpl_show <- function(x) {
   if (is.null(x)) return("NULL")
+  if (.is_unset(x)) return(.none_word)
   if (is.character(x) && length(x) == 1L && is.null(names(x)) && !inherits(x, "tfl_r")) return(x)
   .tpl_yaml_flow(x)
 }
@@ -427,6 +428,14 @@
         !any(vapply(r, is.null, NA))) r else v
 }
 
+# A number as typed: a whole one an integer where the argument is a count
+# -- its default an integer, or its name says so (max_rows, n_*, *_digits)
+# -- so the SPEC YAML says 25, not 25.0
+.tpl_whole <- function(v, prm) {
+  count <- is.integer(prm$default) || grepl("(^n_|_n$|rows$|lines$|digits$)", prm$name %||% "")
+  if (count && all(is.finite(v)) && all(v == round(v)) && all(abs(v) < .Machine$integer.max)) as.integer(v) else v
+}
+
 # An edit of a list shown as YAML text: `same` (the text it was drawn with, no
 # edit), `bad` (not YAML, or not a map / list: the value stays; `msg` says why)
 # or `edit` (`value`, the list read back).  `shown`: the value drawn.
@@ -442,11 +451,19 @@
 # What an input gives, as the argument's value (NULL: none -- the default)
 .tpl_value <- function(v, type, prm = NULL) {
   if (is.null(v)) return(NULL)
+  # ("(none)" on an argument that may be left out: `!unset`; among other
+  # items of a many-valued field it is just not one of them)
+  # (in any language: "(none)", "\uff08\u306a\u3057\uff09")
+  nn <- is.character(v) && !isTRUE(prm$required) && any(trimws(v) %in% .none_texts())
+  if (nn) {
+    if (length(v) == 1L) return(tflspec::tfl_unset())
+    v <- v[!trimws(v) %in% .none_texts()]
+  }
   switch(type,
     flag = isTRUE(v),
     number = {
       v <- suppressWarnings(as.numeric(v))
-      if (!length(v) || is.na(v)) NULL else v
+      if (!length(v) || is.na(v)) NULL else .tpl_whole(v, prm)
     },
     vars = , chips = , choices = , levels = {
       v <- as.character(v)
@@ -484,7 +501,7 @@
 .tpl_set_arg <- function(args, prm, value) {
   args <- args %||% list()
   if (is.null(value) || (!isTRUE(prm$required) && identical(value, prm$default)) ||
-      (!isTRUE(prm$required) && !is.null(prm$default) &&
+      (!isTRUE(prm$required) && !is.null(prm$default) && !.is_unset(value) && !.is_unset(prm$default) &&
        identical(unname(as.vector(value)), unname(as.vector(prm$default))))) {
     args[[prm$name]] <- NULL
   } else {

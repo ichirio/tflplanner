@@ -172,28 +172,30 @@ $(document).on('shiny:value', function(e) {
   own <- identical(a$from, "own")
   below <- a$below
   inh <- if (!is.null(below$value)) .pgs_show(below$value, f$kind) else
-    if (isTRUE(below$unset)) "(none)" else ""
+    if (isTRUE(below$unset)) t(.none_word) else ""
   # (nothing in the spec: rtfreporter's own default)
   dflt <- if (is.null(a$value) && !own) .pg_fn_default(fn, f$arg, f$kind) else ""
   if (!nzchar(inh) && nzchar(dflt)) inh <- dflt
-  val <- if (own && a$unset) "(none)" else if (own) .pgs_show(a$value, f$kind) else ""
+  # ("(none)": the value of a choice's item, the screen's word in a text field)
+  val <- if (own && a$unset) .none_word else if (own) .pgs_show(a$value, f$kind) else ""
   key <- paste(fn, f$arg, sep = ":")
   attrs <- list(class = "pg-in form-control form-control-sm", `data-kind` = "arg",
                 `data-fn` = fn, `data-arg` = f$arg, `data-key` = key)
   input <- if (f$kind %in% c("choice", "logical")) {
     ch <- if (identical(f$kind, "logical")) c("TRUE", "FALSE") else f$choices
-    if (own && a$unset) ch <- c(ch, "(none)")
+    if (own && a$unset) ch <- c(ch, .none_word)
     opts <- c(list(shiny::tags$option(value = "", if (nzchar(inh))
       sprintf(t("(%s: %s)"), if (!is.na(below$from)) .page_from_label(below$from, id, t) else
         t("rtfreporter's default"), inh) else "")),
       lapply(ch, function(x) shiny::tags$option(
-        value = x, selected = if (own && identical(tolower(val), tolower(x))) NA, x)))
+        value = x, selected = if (own && identical(tolower(val), tolower(x))) NA,
+        if (identical(x, .none_word)) t(x) else x)))
     do.call(shiny::tags$select, c(attrs, list(class = "pg-in form-select form-select-sm"), opts))
   } else {
     list_id <- if (!is.null(f$choices)) paste0("pg-list-", fn, "-", f$arg)
     shiny::tagList(
       do.call(shiny::tags$input, c(attrs, list(
-        type = "text", value = val, list = list_id,
+        type = "text", value = if (identical(val, .none_word)) t(val) else val, list = list_id,
         placeholder = if (nzchar(inh)) inh else ""))),
       if (!is.null(list_id)) shiny::tags$datalist(
         id = list_id, lapply(f$choices, function(x) shiny::tags$option(value = x))))
@@ -210,7 +212,7 @@ $(document).on('shiny:value', function(e) {
                        `data-arg` = f$arg),
       # (a value the layers below say: none here)
       if (!is.null(below$value) && !(own && a$unset))
-        .pg_btn("none", "(none)", t("None here (!unset)"), `data-fn` = fn, `data-arg` = f$arg)))
+        .pg_btn("none", t(.none_word), t("None here (!unset)"), `data-fn` = fn, `data-arg` = f$arg)))
 }
 
 # A function's card: the arguments with a value (written in its call)
@@ -360,7 +362,7 @@ $(document).on('shiny:value', function(e) {
     r <- d[i, , drop = FALSE]
     own <- identical(r$from, "own")
     below <- if (own) .pgs_find(.pgs_layers(sp, id)[-1L], c("tokens", r$name)) else NULL
-    v <- if (r$omitted) "(none)" else if (is.na(r$value)) "" else r$value
+    v <- if (r$omitted) t(.none_word) else if (is.na(r$value)) "" else r$value
     shiny::tags$tr(
       class = if (!own) "pg-inh",
       shiny::tags$td(shiny::code(paste0("{", r$name, "}"))),

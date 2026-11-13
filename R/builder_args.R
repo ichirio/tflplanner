@@ -20,6 +20,16 @@ args_to_r <- function(fn, args) {
   .args_to_r_own(fn, args)
 }
 
+# Two sets of an item's arguments as the same call: the same R text, and the
+# same arguments set to "(none)" (a tfl_unset() is no argument in the R text,
+# so the text alone does not tell `show_keys: !unset` from nothing)
+.args_same_r <- function(fn, a, b) {
+  unset_names <- function(args) {
+    sort(as.character(names(args)[vapply(args, inherits, NA, "tfl_unset")]))
+  }
+  identical(args_to_r(fn, a), args_to_r(fn, b)) && identical(unset_names(a), unset_names(b))
+}
+
 # A string in an argument that takes only R (plan_filter's where) is that R's
 # text, not a string: `where: AGE >= 18` in the file is the condition, and one
 # tflspec's check refuses (between(AGE, 1, 2)) is shown as written, to be fixed

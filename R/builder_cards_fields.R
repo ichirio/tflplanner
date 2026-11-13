@@ -79,7 +79,7 @@
 arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default = NULL,
                       choices = NULL, from = "own", help = NULL, required = FALSE,
                       lang = "en", fn = NULL, aes = NULL, nav = NULL, help_link = NULL,
-                      own = NULL) {
+                      own = NULL, nested = FALSE) {
   t <- function(x) tr(x, lang)
   kind <- .arg_kind(type)
   fid <- paste0(id, "__", arg)
@@ -89,7 +89,9 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
   is_r <- inherits(value, "tfl_r") && !r_only
   r_text <- if (is_r) as.character(unclass(value)) else ""
   if (is_r) value <- NULL
-  if (inherits(value, "tfl_unset")) value <- NULL
+  # (`!unset`: the field says "(none)", and the control is hidden behind it)
+  none <- .is_unset(value)
+  if (none) value <- NULL
   # (a string in an argument that takes only R is that R's text)
   if (.type_only_r(type) && !is.null(value)) value <- .only_r_value(value)
   control <- switch(
@@ -118,8 +120,18 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
     shiny::tags$input(type = "checkbox", id = paste0(fid, "__isr"), class = "rp-isr",
                       checked = if (is_r) NA else NULL),
     shiny::tags$span("R"))
+  # (the "(none)" toggle, as the R switch: not on a required argument, nor
+  # on a field inside a call's small form -- `nested`)
+  none_ok <- !required && !nested
+  none <- none && none_ok
+  none_switch <- if (none_ok) shiny::tags$label(
+    class = "rp-none-toggle", title = t("None here (!unset)"),
+    shiny::tags$input(type = "checkbox", id = paste0(fid, "__none"), class = "rp-isnone",
+                      `data-init` = if (none) "1", checked = if (none) NA else NULL),
+    shiny::tags$span(t(.none_word)))
   cls <- c("rp-field", paste0("rp-field-", kind), if (required) "rp-field-required",
-           if (is_r) "rp-field-r", if (nzchar(r_text) || .has_value(value)) "rp-has-value")
+           if (is_r) "rp-field-r", if (none) "rp-field-none",
+           if (none || nzchar(r_text) || .has_value(value)) "rp-has-value")
   shiny::div(
     class = paste(cls, collapse = " "), `data-arg` = arg, `data-field` = fid,
     shiny::tags$label(class = "rp-field-label", `for` = fid,
@@ -129,7 +141,7 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
                       help_tip(help), help_link),
     shiny::div(class = "rp-field-row",
                shiny::div(class = "rp-form-input", control),
-               if (!r_only) r_input, r_switch),
+               if (!r_only) r_input, if (none_ok) shiny::div(class = "rp-none-show", t(.none_word)), none_switch, r_switch),
     if (!is.null(nav)) nav_hint(nav, "field", lang))
 }
 
@@ -269,7 +281,7 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
              lapply(vis, function(a) {
                arg_field(fid, a, ent$args[[a]]$type, label = ent$args[[a]]$label,
                          value = args[[a]], default = ent$args[[a]]$default,
-                         help = .schema_help(fn, a), lang = lang)
+                         help = .schema_help(fn, a), lang = lang, nested = TRUE)
              }),
              shiny::tags$code(class = "rp-name", ")"))
 }

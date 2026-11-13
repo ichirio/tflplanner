@@ -198,17 +198,24 @@
     arg_more(cid, fn, schema = sch, lang = lang, rest = lo,
              fields = lapply(lo, function(k) field(k, NULL)), label = "Arguments not in the code"))
 }
-# ... read back: those fields' values (`set`) and the fields emptied, or a
-# check as the function's default (`unset`); NULL while they are not there
+# ... read back: those fields' values (`set`; "(none)" its toggle on: `!unset`,
+# tflspec::tfl_unset()) and the fields emptied, or a check as the function's
+# default (`unset`: taken out of the arguments); NULL while they are not there
 .special_read <- function(input, cid, fn) {
   ex <- .special_args(fn)
-  seen <- ex[vapply(ex, function(k) !is.null(.input_value(input, paste0(cid, "__", k))), NA)]
+  seen <- ex[vapply(ex, function(k) {
+    !is.null(.input_value(input, paste0(cid, "__", k))) || !is.null(.input_value(input, paste0(cid, "__", k, "__none")))
+  }, NA)]
   if (!length(seen)) return(NULL)
   sch <- .plan_form_schema(fn)
   r <- builder_card_read(input, cid, sch, args = seen, logical_false = TRUE)
   out <- list(set = list(), unset = character())
   for (k in seen) {
     v <- r[[k]]
+    if (.is_unset(v)) {
+      out$set[[k]] <- v
+      next
+    }
     d <- sch$args[[k]]$default
     empty <- is.null(v) || !length(v) || (length(v) == 1L && (is.na(v) || identical(v, ""))) ||
       (is.logical(v) && (if (is.null(d)) isFALSE(as.logical(v)) else
