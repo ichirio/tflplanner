@@ -573,6 +573,13 @@ $", "", yaml::as.yaml(list(tokens = tokens))), "
     old <- sheet_rows(p, s, NA_character_)
     if (!identical(no_id(old), no_id(new))) p <- set_sheet_rows(p, s, NA_character_, no_id(new))
   }
+  # (a page configuration is a name on the sheets too: a configuration with
+  # nothing that differs from the default rows has one empty row of the report
+  # sheet, so a report's pattern cell is known)
+  keep <- setdiff(names(st$styles), .pgs_default_style(st))
+  for (nm in keep) {
+    if (!.pattern_in_view(p, paste0("@", nm))) p <- .pattern_marker(p, paste0("@", nm))
+  }
   if (!is.null(p$spec$base)) p$spec$base <- .planner_body(p)
   p
 }
