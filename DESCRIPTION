@@ -30,7 +30,7 @@ Depends:
 Imports:
     bslib (>= 0.6.0),
     cards (>= 0.8.0),
-    cardx (>= 0.3.1),
+    cardx (>= 0.3.4),
     DT (>= 0.27),
     ggplot2 (>= 3.5.2),
     htmltools (>= 0.5.7),
@@ -64,7 +64,7 @@ Suggests:
     patchwork,
     survival,
     tcltk,
-    testthat (>= 3.1.7),
+    testthat (>= 3.2.1),
     withr (>= 2.5.0),
     xml2
 Remotes:

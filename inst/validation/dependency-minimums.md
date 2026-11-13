@@ -14,11 +14,11 @@ a version).
 `DESCRIPTION` names (`Depends: R (>= 4.2)`) with every direct dependency at
 exactly its minimum (the R-CMD-check job *minimum environment*). The
 suggested packages with no minimum, and every indirect dependency, come
-from CRAN as it was on **2026-05-29**: the Posit Package Manager snapshot of
-that date (`https://packagemanager.posit.co/cran/__linux__/noble/2026-05-29`,
+from CRAN as it was on **2026-07-06**: the Posit Package Manager snapshot of
+that date (`https://packagemanager.posit.co/cran/__linux__/noble/2026-07-06`,
 for Ubuntu 24.04). That date is the first snapshot that has the newest of
-the minimums, cards 0.8.0 (on CRAN on 2026-05-28; the snapshot of
-2026-05-28 still has 0.7.1). rtfreporter and tflspec are installed from
+the minimums, cardx 0.3.4 (on CRAN on 2026-07-06; cards 0.8.0, the
+next newest, is from 2026-05-28). rtfreporter and tflspec are installed from
 their `next`, where their minimums are what `next` has. *The recommended
 environment* is the latest R with the latest packages: the release jobs of
 the same workflow. When a minimum is raised to a version released later,
@@ -60,11 +60,11 @@ version is listed, not called).
 | yaml | 2.3.8 | `verbatim_logical()` (`true` / `false` written unquoted in a study file, `R/study.R`, `R/spec_source.R`) -> 2.3.8; `read_yaml()`, `write_yaml()` -> 2.1.15; `as.yaml(handlers = )` -> 2.2.0. tflspec's minimum (2.3.5: the `quoted` attribute 2.2.3, libyaml 0.2.5 2.2.4, `as.yaml()`'s libyaml changes 2.3.5) is below it. | yaml NEWS 2.3.8 ("Added `verbatim_logical` helper function"); tflspec `dependency-minimums.md` |
 | zip | 2.1.0 | `zip(root = )` (a study folder zipped relative to itself) -> 2.1.0; `zipr()` -> 2.0.0. | zip NEWS 2.1.0 ("zip functions now have a `root` argument") |
 | cards | 0.8.0 | `compare_ard()`, `is_ard_equal()` (`compare_imported_ard()`) -> 0.8.0; `ard_tabulate_rows()` (the catalogue of the ARD functions and the code the templates write) -> 0.8.0; `ard_tabulate()`, `ard_summary()`, `ard_tabulate_value()`, `ard_mvsummary()` and the `ADLB` data -> 0.7.0; the others -> 0.1.0 to 0.6.1. Not counted: `diff_ard_hierarchical()` -> 0.9.0, which the catalogue lists for the user to pick. | cards NEWS 0.7.0, 0.8.0; `NAMESPACE` of each release |
-| cardx | 0.3.1 | `ard_emmeans_emmeans()`, `ard_emmeans_contrast()` (the templates' model rows) -> 0.3.1; `ard_tabulate_max()`, `ard_tabulate_abnormal()` -> 0.3.0; `ard_incidence_rate()` -> 0.2.5; `ard_stats_*()`, `ard_regression()`, `ard_regression_basic()` -> 0.2.0 or earlier. The same minimum as tflspec's. | cardx NEWS 0.3.1; `NAMESPACE` of each release |
+| cardx | 0.3.4 | `ard_stats_mantelhaen_test()` passing its arguments to `stats::mantelhaen.test()` by name -> 0.3.4 (before it the catalogue's `correct = FALSE` setting failed with "'arg' must be NULL or a character vector", test-ard-fn-search.R:417); `ard_emmeans_emmeans()`, `ard_emmeans_contrast()` (the templates' model rows) -> 0.3.1; `ard_tabulate_max()`, `ard_tabulate_abnormal()` -> 0.3.0; `ard_incidence_rate()` -> 0.2.5; `ard_stats_*()`, `ard_regression()`, `ard_regression_basic()` -> 0.2.0 or earlier. Raised from 0.3.1 in the first minimum-environment run; tflspec keeps 0.3.1 (its tests do not run that function). | cardx NEWS 0.3.1; `NAMESPACE` of each release |
 | ggplot2 | 3.5.2 | `coord_radial()` (the sunburst and polar figures tflspec writes) -> 3.5.0; `standardise_aes_names()`, `get_element_tree()` -> 3.3.0; the plain `ggplot()`, `aes()`, `geom_*()` the app writes -> every release. The same minimum as tflspec's `Imports` (3.5.2, the 3.5 release its workflow tests; patchwork at the snapshot does not load with 3.5.0). | ggplot2 NEWS 3.5.0, 3.5.2; tflspec `dependency-minimums.md` |
 | rtfreporter | 0.8.2.9100 | What its `next` has: tflplanner and rtfreporter are released together, so the minimum is the version of rtfreporter's `next` when this table was made. In the minimum environment it is installed from `next` (`Remotes`). | rtfreporter `next`, `DESCRIPTION` |
 | tflspec | 0.0.24.9238 | What its `next` has, in the same way. | tflspec `next`, `DESCRIPTION` |
-| testthat | 3.1.7 | `local_mocked_bindings()` (103 uses in the tests) -> 3.1.7; `expect_no_error()`, `expect_no_warning()`, `expect_no_message()` -> 3.1.5; `expect_no_match()` -> 3.0.3; the third edition and `Config/testthat/parallel` -> 3.0.0. | testthat NEWS 3.1.7, 3.1.5, 3.0.3, 3.0.0 |
+| testthat | 3.2.1 | `local_mocked_bindings()` mocking an object that is not a function (`processx::process`, an R6 generator, in test-update-gaps.R) -> 3.2.1 (3.1.7 stops with "All elements of `...` must be functions"); `local_mocked_bindings()` (103 uses in the tests) -> 3.1.7; `expect_no_error()`, `expect_no_warning()`, `expect_no_message()` -> 3.1.5; `expect_no_match()` -> 3.0.3; the third edition and `Config/testthat/parallel` -> 3.0.0. | testthat NEWS 3.1.7, 3.1.5, 3.0.3, 3.0.0 |
 | withr | 2.5.0 | `local_tempdir()` -> 2.3.0; `local_tempfile()` -> 2.1.0; `local_options()`, `local_envvar()`, `defer()` -> 2.0.0. ggplot2 3.5.2 needs withr (>= 2.5.0). | `NAMESPACE` of each release; ggplot2 3.5.2 `DESCRIPTION` |
 | broom, broom.helpers | 1.0.8, 1.17.0 | `cardx::ard_regression()` (T-14-2-2's hazard ratios) calls them, and the sample study stops without them (`R/sample.R`); cardx asks for broom (>= 1.0.8). Unchanged. | cardx `DESCRIPTION`; `R/sample.R` |
 | dplyr | none | `case_when()`, `if_else()` (in the code the templates write) -> 0.5.0. The minimum cards (0.8.0) needs dplyr (>= 1.1.4), which is what is installed. | cards 0.8.0 `DESCRIPTION` |
