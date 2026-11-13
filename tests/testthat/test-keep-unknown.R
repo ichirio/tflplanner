@@ -18,7 +18,6 @@ test_that("1-2: a data the study has no choice for is a choice, as it is", {
 })
 
 test_that("1-1: an analysis data the form cannot show is saved back unchanged", {
-  skip_if_not_installed("cards")
   local_home()
   p <- add_output(new_planner(), "DM")
   p$ard$datasets <- data.frame(dataset = c("ADSL", "ADAE"),

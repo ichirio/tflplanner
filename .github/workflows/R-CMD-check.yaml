@@ -60,3 +60,102 @@ jobs:
         with:
           upload-snapshots: true
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+
+  # The minimum environment: R at DESCRIPTION's `Depends` and every direct
+  # dependency at the minimum DESCRIPTION names (`pkg@<minimum>`); the
+  # suggested packages with no minimum, and every indirect dependency, come
+  # from CRAN as it was on PPM_DATE (a dated Posit Package Manager snapshot,
+  # the first with the newest minimum: cards 0.8.0, on CRAN on 2026-05-28; the snapshot of 2026-05-28 still has 0.7.1).  rtfreporter and tflspec come
+  # from their `next` (Remotes).  The recommended environment -- the latest R
+  # with the latest packages -- is the matrix's release jobs.  Why each
+  # minimum: inst/validation/dependency-minimums.md.
+  minimum-environment:
+    runs-on: ubuntu-24.04
+
+    name: ubuntu-24.04 (R 4.2, minimum environment)
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      R_MIN: '4.2'
+      PPM_DATE: '2026-05-29'
+      # suggested packages left out (space-separated), if one cannot be
+      # installed on this R
+      LEFT_OUT: ''
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ env.R_MIN }}
+          use-public-rspm: false
+
+      # CRAN as it was on PPM_DATE, as binaries for this Ubuntu (noble); pak
+      # reads the repos option, and the user agent makes PPM serve binaries
+      - name: CRAN as on PPM_DATE
+        shell: bash
+        run: |
+          sudo tee -a "$(R RHOME)/etc/Rprofile.site" > /dev/null <<EOF
+          options(repos = c(CRAN = "https://packagemanager.posit.co/cran/__linux__/noble/${PPM_DATE}"),
+                  HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(),
+                                          paste(getRversion(), R.version["platform"], R.version["arch"], R.version["os"])))
+          EOF
+          Rscript -e 'print(getOption("repos"))'
+
+      # pak refs from DESCRIPTION: `pkg@<minimum>` where it names a minimum,
+      # `any::pkg` where it does not (the suggested packages); R must be
+      # DESCRIPTION's minimum.  The packages that ship with R, and the ones
+      # that come from `next`, are not named.
+      - name: The minimum versions, from DESCRIPTION
+        id: pins
+        shell: Rscript {0}
+        run: |
+          d <- read.dcf("DESCRIPTION", fields = c("Depends", "Imports", "Suggests"))[1, ]
+          r_min <- sub("^.*R [(]>= *([0-9.]+)[)].*$", "\1", d[["Depends"]])
+          if (!identical(r_min, Sys.getenv("R_MIN")) ||
+              !identical(paste(R.version$major, sub("[.].*$", "", R.version$minor), sep = "."), r_min)) {
+            stop("R_MIN (", Sys.getenv("R_MIN"), ") and this R (", getRversion(),
+                 ") must be DESCRIPTION's Depends: R (>= ", r_min, ")")
+          }
+          s <- trimws(strsplit(paste(d[["Imports"]], d[["Suggests"]], sep = ","), ",")[[1L]])
+          s <- s[nzchar(s)]
+          pkg <- sub("\s*[(].*$", "", s)
+          min <- ifelse(grepl("[(]>=", s), sub("^.*[(]>=\s*([^)]+)[)].*$", "\1", s), NA)
+          shipped <- c(rownames(installed.packages(priority = c("base", "recommended"))), "tcltk")
+          left_out <- strsplit(Sys.getenv("LEFT_OUT"), " ")[[1L]]
+          keep <- !(pkg %in% c("rtfreporter", "tflspec", left_out)) & !(pkg %in% shipped & is.na(min))
+          refs <- ifelse(is.na(min), paste0("any::", pkg), paste0(pkg, "@", min))[keep]
+          cat(paste(refs, collapse = "\n"), "\n")
+          cat(sprintf("refs=%s\n", paste(refs, collapse = " ")),
+              file = Sys.getenv("GITHUB_OUTPUT"), append = TRUE)
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          dependencies: '"hard"'
+          extra-packages: any::rcmdcheck ${{ steps.pins.outputs.refs }}
+          needs: check
+
+      - name: The repository and the versions installed
+        shell: Rscript {0}
+        run: |
+          print(getOption("repos"))
+          # what pak resolved from: the lockfile setup-r-dependencies wrote
+          lock <- tryCatch(readLines(".github/pkg.lock", warn = FALSE), error = function(e) character())
+          urls <- regmatches(lock, regexpr("https?://[^\"]+", lock))
+          cat("Where the lockfile's packages come from:\n")
+          print(table(sub("^(https?://[^/]+/[^/]+/[^/]+/[^/]+/[^/]+).*$", "\1", urls)))
+          s <- read.dcf("DESCRIPTION", fields = c("Imports", "Suggests"))[1, ]
+          s <- trimws(strsplit(paste(s, collapse = ","), ",")[[1L]])
+          s <- s[nzchar(s)]
+          pkg <- sub("\s*[(].*$", "", s)
+          ver <- vapply(pkg, function(p) tryCatch(as.character(utils::packageVersion(p)),
+                                                 error = function(e) "not installed"), "")
+          print(data.frame(depends = s, installed = ver), row.names = FALSE)
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          upload-snapshots: true
+          build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'

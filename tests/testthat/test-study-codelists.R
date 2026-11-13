@@ -205,7 +205,6 @@ test_that("the lists are asked of tflspec once for the same spec", {
 })
 
 test_that("the ARD built from the layers' lists is built, not outdated (programs, tflspec's build, the batch's hash)", {
-  skip_if_not_installed("cards")
   cl_home()
   s <- save_study(cl_study("CL6"))
   # the ARD program of the planner
@@ -315,7 +314,6 @@ test_that("the sheets path takes no inherited list a variable the ARD does not r
 })
 
 test_that("the ARS reads a report's inherited lists: a condition on a label is the data's value", {
-  skip_if_not_installed("cards")
   cl_home()
   s <- cl_study("CL13")
   p <- s$planner

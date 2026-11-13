@@ -26,37 +26,37 @@ BugReports: https://github.com/ichirio/tflplanner/issues
 Encoding: UTF-8
 Language: en-GB
 Depends:
-    R (>= 4.1)
+    R (>= 4.2)
 Imports:
-    jsonlite,
-    later,
-    openxlsx,
-    processx,
-    ps,
-    readxl,
-    rhandsontable,
+    bslib (>= 0.6.0),
+    cards (>= 0.8.0),
+    cardx (>= 0.3.1),
+    DT (>= 0.27),
+    ggplot2 (>= 3.5.0),
+    htmltools (>= 0.5.7),
+    jsonlite (>= 1.2),
+    later (>= 1.0.0),
+    openxlsx (>= 4.0.0),
+    processx (>= 3.3.0),
+    ps (>= 1.3.4),
+    readxl (>= 1.2.0),
+    rhandsontable (>= 0.3.4),
     rtfreporter (>= 0.8.2.9100),
     tflspec (>= 0.0.24.9238),
-    shiny (>= 1.8.1),
-    sortable,
-    bslib,
-    DT,
-    htmltools,
+    shiny (>= 1.11.0),
+    sortable (>= 0.5.0),
     stats,
     tools,
     utils,
-    writexl,
-    yaml,
-    zip
+    writexl (>= 0.1),
+    yaml (>= 2.3.8),
+    zip (>= 2.1.0)
 Suggests:
     arrow,
     broom (>= 1.0.8),
     broom.helpers (>= 1.17.0),
-    cards,
-    cardx,
     chromote,
     dplyr,
-    ggplot2,
     ggsurvfit,
     haven,
     httpuv,
@@ -64,8 +64,8 @@ Suggests:
     patchwork,
     survival,
     tcltk,
-    testthat (>= 3.0.0),
-    withr,
+    testthat (>= 3.1.7),
+    withr (>= 2.5.0),
     xml2
 Remotes:
     ichirio/rtfreporter@next,

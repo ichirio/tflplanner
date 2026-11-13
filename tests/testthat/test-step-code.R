@@ -189,8 +189,6 @@ test_that("the review checks a step's code against the rules", {
 
 test_that("a report's own code runs out of the app; the line of an error is said", {
   skip_on_cran()
-  skip_if_not_installed("cards")
-  skip_if_not_installed("ggplot2")
   local_home()
   s <- create_study("UC")
   dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)

@@ -307,7 +307,6 @@ test_that("a change to study_setup.R marks the ARD and the reports outdated", {
 
 test_that("a sample built by its programs records the setup, and goes stale with it", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   local_home()
   s <- create_study("ABC-108", planner = setup_planner())
   saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
