@@ -9,7 +9,6 @@ test_that("a model's formula is written from columns", {
 })
 
 test_that("the data choices say how many subjects (and records) each reads", {
-  skip_if_not_installed("cards")
   local_home()
   s <- create_study("CN")
   dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
@@ -42,8 +41,6 @@ test_that("the data choices say how many subjects (and records) each reads", {
 })
 
 test_that("a regression's form: its fitting function chosen, its formula written from columns", {
-  skip_if_not_installed("cards")
-  skip_if_not_installed("cardx")
   local_home()
   s <- create_study("RG")
   dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)

@@ -19,7 +19,6 @@ test_that("the record lists the reports that use each ARD taken in", {
 
 test_that("ARDs are taken in, used, compared, replaced and removed on the ARD tab", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   local_home()
   s <- create_study("IM")
   dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
