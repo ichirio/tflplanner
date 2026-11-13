@@ -81,7 +81,8 @@ jobs:
       PPM_DATE: '2026-05-29'
       # suggested packages left out (space-separated): the newest one the
       # snapshot has needs a newer package than the minimum of a direct
-      # dependency (ggsurvfit: ggplot2 >= 4.0.0; chromote: later >= 1.1.0), so it
+      # dependency (chromote: later >= 1.1.0; ggsurvfit 1.2.0: ggplot2 >= 4.0.0, so
+      # ggsurvfit 1.1.0 is installed as an extra), so it
       # cannot be installed with them (the check lets a suggested package be missing)
       LEFT_OUT: 'chromote ggsurvfit'
 
@@ -139,7 +140,7 @@ jobs:
           dependencies: '"hard"'
           # no `needs: check`: the pinned packages' own Config/Needs/check
           # (shiny's: shinytest2) would ask for newer packages than the minimums
-          extra-packages: any::rcmdcheck ${{ steps.pins.outputs.refs }}
+          extra-packages: any::rcmdcheck ${{ steps.pins.outputs.refs }} ggsurvfit@1.1.0
 
       - name: The repository and the versions installed
         shell: Rscript {0}
