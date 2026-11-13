@@ -79,9 +79,11 @@ jobs:
       R_KEEP_PKG_SOURCE: yes
       R_MIN: '4.2'
       PPM_DATE: '2026-05-29'
-      # suggested packages left out (space-separated), if one cannot be
-      # installed on this R
-      LEFT_OUT: ''
+      # suggested packages left out (space-separated): the newest one the
+      # snapshot has needs a newer package than the minimum of a direct
+      # dependency (ggsurvfit: ggplot2 >= 4.0.0; chromote: later >= 1.1.0), so it
+      # cannot be installed with them (the check lets a suggested package be missing)
+      LEFT_OUT: 'chromote ggsurvfit'
 
     steps:
       - uses: actions/checkout@v4
@@ -156,6 +158,8 @@ jobs:
           print(data.frame(depends = s, installed = ver), row.names = FALSE)
 
       - uses: r-lib/actions/check-r-package@v2
+        env:
+          _R_CHECK_FORCE_SUGGESTS_: 'false'
         with:
           upload-snapshots: true
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
