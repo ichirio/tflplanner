@@ -77,7 +77,7 @@ test_that("the R-text switch and the source badge are the same slots on both sid
   v <- structure("AGE >= 18", class = "tfl_r")
   h <- as.character(tpl_field("m", prm(type = "number"), value = v, from = "template", lang = "en"))
   expect_match(h, "rp-field-r", fixed = TRUE)
-  expect_match(h, "AGE >= 18", fixed = TRUE)
+  expect_match(h, "AGE &gt;= 18", fixed = TRUE)
   expect_match(h, "rp-badge-template", fixed = TRUE)
   # an R-only argument is its own R field, never hidden by the R state's rule
   h <- as.character(arg_field("m", "where", "r"))

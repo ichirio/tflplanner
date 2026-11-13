@@ -80,7 +80,7 @@ test_that("a field is chosen by its type, with its R switch and its (i)", {
   cols <- c("TRT" = "TRT", "AGE \u2014 Age" = "AGE")
   h <- html(arg_field("c1", "cols", "list<column>", label = "Columns", choices = cols,
                       required = TRUE, help = "The keys across."))
-  expect_match(h, 'class="rp-field rp-field-list rp-field-required"', fixed = TRUE)
+  expect_match(h, 'class="rp-field rp-field-list rp-field-required rp-field-unset"', fixed = TRUE)
   expect_match(h, 'id="c1__cols"', fixed = TRUE)
   expect_match(h, 'id="c1__cols__r"', fixed = TRUE)
   expect_match(h, 'id="c1__cols__isr"', fixed = TRUE)
