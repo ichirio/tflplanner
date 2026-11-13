@@ -134,40 +134,65 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
     .field_r(fid, value, default))
   r_input <- shiny::tags$input(type = "text", id = paste0(fid, "__r"), class = "form-control form-control-sm rp-mono rp-r-input",
                                value = r_text, placeholder = "R", spellcheck = "false")
-  r_switch <- if (r_only) shiny::tags$span(class = "rp-r-toggle rp-r-fixed", title = t("As R"), "R") else
+  # (the R switch is a checkbox the keyboard reaches -- hidden visually, its
+  # label shows the focus; an R-only argument has no switch, only a plain "R")
+  r_switch <- if (r_only) shiny::tags$span(class = "rp-r-label", title = t("As R"), "R") else
     shiny::tags$label(
     class = "rp-r-toggle", title = t("As R"),
     shiny::tags$input(type = "checkbox", id = paste0(fid, "__isr"), class = "rp-isr",
                       checked = if (is_r) NA else NULL),
     shiny::tags$span("R"))
   has_val <- nzchar(r_text) || .has_value(value)
-  # (a value the template fixes: shown, not editable; a required value
-  # nobody has set: marked "Not set")
+  # (a value the template fixes: shown, not editable, one badge; a required
+  # value nobody has set and that has no default: marked "Not set")
   locked <- isTRUE(locked)
-  unset <- required && !has_val && !locked
+  has_default <- !is.null(default) && length(default) > 0L && any(nzchar(as.character(default)))
+  nodefault <- required && !locked && !has_default
+  unset <- nodefault && !has_val
+  # (set: a value of the report's own -- the changed mark and the reset)
+  is_set <- has_val && !locked
   if (locked) {
     control <- .disable_inputs(control)
     r_input <- .disable_inputs(r_input)
     r_switch <- .disable_inputs(r_switch)
   }
   cls <- c("rp-field", paste0("rp-field-", kind), if (required) "rp-field-required",
-           if (locked) "rp-field-locked", if (unset) "rp-field-unset",
+           if (locked) "rp-field-locked", if (unset) "rp-field-unset", if (is_set) "rp-set",
            if (is_r) "rp-field-r", if (r_only) "rp-field-ronly", if (has_val) "rp-has-value")
+  # (what the script needs: the default of a list's chips and of a switch,
+  # whether the switch was set, whether a required field has no default)
+  dflt <- if (has_default && identical(kind, "list")) {
+    as.character(jsonlite::toJSON(as.character(default), auto_unbox = FALSE))
+  } else if (identical(kind, "logical")) tolower(isTRUE(as.logical(default)))
   shiny::div(
     class = paste(cls, collapse = " "), `data-arg` = arg, `data-field` = fid,
+    `data-default` = dflt,
+    `data-flag-set` = if (identical(kind, "logical")) (if (is_set) "1" else "0"),
+    `data-nodefault` = if (nodefault) "1",
     shiny::tags$label(class = "rp-field-label", `for` = fid,
                       builder_label(label, arg, "arg", lang),
-                      if (required) shiny::tags$span(class = "rp-req", title = t("Required"), "*"),
-                      from_badge(from, lang, own = own),
-                      if (locked) shiny::tags$span(class = "rp-badge rp-badge-locked",
-                                                   title = t("Fixed by the template"),
-                                                   "\U0001F512 ", t("Fixed by the template")),
-                      if (unset) shiny::tags$span(class = "rp-badge rp-badge-unset", t("Not set")),
+                      if (required && !locked) shiny::tags$span(class = "rp-req", title = t("Required"), "*"),
+                      if (!locked) from_badge(from, lang, own = own),
+                      if (locked) .lock_badge(lang),
+                      if (nodefault) shiny::tags$span(class = "rp-badge rp-badge-unset", t("Not set")),
                       help_tip(help), help_link),
     shiny::div(class = "rp-field-row",
                shiny::div(class = "rp-form-input", control),
-               if (!r_only) r_input, r_switch),
+               if (!r_only) r_input,
+               if (!locked) shiny::tags$button(type = "button", class = "rp-reset",
+                                               title = t("Reset to the default"), "\u00d7"),
+               r_switch),
     if (!is.null(nav)) nav_hint(nav, "field", lang))
+}
+
+# The one badge of a locked field: a monochrome lock and "Fixed" (the long
+# text is its title)
+.lock_badge <- function(lang = "en") {
+  shiny::tags$span(
+    class = "rp-badge rp-badge-locked", title = tr("Fixed by the template", lang),
+    shiny::HTML(paste0("<svg class=\"rp-lock\" viewBox=\"0 0 16 16\" width=\"10\" height=\"10\" ",
+                       "fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M8 1a3 3 0 0 0-3 3v2H4a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-1V4a3 3 0 0 0-3-3zm-2 3a2 2 0 1 1 4 0v2H6V4z\"/></svg>")),
+    " ", tr("Fixed", lang))
 }
 
 # every input of a field not editable (a value the template fixes)
@@ -191,7 +216,7 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
   choices <- .choices_with(choices, value)
   ph <- if (!is.null(placeholder) && length(placeholder)) {
     paste(as.character(placeholder), collapse = ", ")
-  } else tr("Choose", lang)
+  } else if (isTRUE(create)) tr("Choose or type", lang) else tr("Choose", lang)
   opts <- list(placeholder = ph)
   # (several: in order, dragged to reorder -- a hierarchy's levels, the
   # columns of a stub, the keys of an order)
@@ -212,21 +237,19 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
   choices
 }
 
-# An enum: a select of its entries, the default named so ("(default)") and
-# a blank first (blank: the default, not written); a value outside the
+# An enum: a (selectize) select of its entries, the default as its
+# placeholder (blank: the default, not written); a value outside the
 # entries (an older spec's) is kept as one of them, not lost
 .field_enum <- function(fid, entries, value, default, lang = "en", labels = NULL) {
   v <- if (!is.null(value) && length(value)) as.character(value)[[1L]] else ""
   if (nzchar(v) && !v %in% entries) entries <- c(entries, v)
   # (a value's label where the argument names one: rounding's "sas" SAS)
   map <- labels
-  labels <- entries
-  if (length(map)) labels[entries %in% names(map)] <- unname(map[entries[entries %in% names(map)]])
-  if (!is.null(default) && length(default) == 1L && default %in% entries) {
-    labels[entries == default] <- paste0(labels[entries == default], " ", tr("(default)", lang))
-  }
-  shiny::selectInput(fid, NULL, choices = c(stats::setNames("", ""), stats::setNames(entries, labels)),
-                     selected = v, width = "100%", selectize = FALSE)
+  labs <- entries
+  if (length(map)) labs[entries %in% names(map)] <- unname(map[entries[entries %in% names(map)]])
+  ph <- if (!is.null(default) && length(default) == 1L && default %in% entries) labs[entries == default]
+  .field_select(fid, stats::setNames(entries, labs), if (nzchar(v)) v, multiple = FALSE, lang = lang,
+                placeholder = ph)
 }
 
 # The labels of an argument's choices where the values are words of their

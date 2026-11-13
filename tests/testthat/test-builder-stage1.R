@@ -345,7 +345,7 @@ test_that("the layout cards' forms: their fields, the study's defaults marked, e
   expect_match(html(arg_field("f", "n", "integer", value = 2)), 'step="1" min="0"', fixed = TRUE)
   h <- html(arg_field("f", "e", "enum[a|b]", value = "z", default = "a"))
   expect_match(h, '<option value="z" selected>', fixed = TRUE)
-  expect_match(h, "a (default)", fixed = TRUE)
+  expect_match(h, "\"placeholder\":\"a\"", fixed = TRUE)
   expect_false(grepl("checked", html(arg_field("f", "l", "logical", value = FALSE, default = TRUE))))
 })
 

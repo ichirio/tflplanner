@@ -63,6 +63,9 @@
 tpl_field <- function(id, prm, value = NULL, options = NULL, from = "own", locked = FALSE,
                       label = NULL, help = NULL, lang = "en", own = NULL, columns = character()) {
   ft <- .tpl_field_type(prm, columns)
+  # (every default on the template screen comes from the template: no
+  # source badge for that)
+  if (identical(from, "template")) from <- "own"
   arg_field(id, gsub("[^A-Za-z0-9_]", "_", prm$name), ft$type, label = label %||% prm$name,
             value = value, default = prm$default,
             choices = if (ft$input %in% c("choice", "choices")) NULL else options,

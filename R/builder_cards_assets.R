@@ -63,29 +63,72 @@ button[onclick*='tpl_revert'] { white-space: nowrap; flex-shrink: 0; }
 .rp-field-label .rp-help-link { font-family: Consolas, 'Courier New', monospace; font-size: 11px;
   color: #6b7280; text-decoration: none; }
 .rp-field-row { display: flex; align-items: center; gap: .3rem; }
+.rp-field-row > .rp-reset, .rp-field-row > .rp-r-toggle, .rp-field-row > .rp-r-label { flex: 0 0 auto; }
 .rp-field-row > .rp-form-input { flex: 1 1 auto; min-width: 0; }
 .rp-field-row > .rp-r-input { flex: 1 1 auto; min-width: 0; display: none; }
-.rp-field.rp-field-r > .rp-field-row > .rp-form-input { display: none; }
-.rp-field.rp-field-r > .rp-field-row > .rp-r-input { display: block; }
+.rp-field.rp-field-r:not(.rp-field-ronly) > .rp-field-row > .rp-form-input { display: none; }
+.rp-field.rp-field-r:not(.rp-field-ronly) > .rp-field-row > .rp-r-input { display: block; }
 /* (an argument that is R only: its field is the R field, never hidden) */
 .rp-field.rp-field-ronly > .rp-field-row > .rp-form-input { display: block; }
 .rp-field-locked .selectize-control.multi .selectize-input.disabled > div { color: #4b5563;
   background: #e5e7eb; }
-.rp-r-toggle { margin: 0; cursor: pointer; font-size: 11px; font-family: Consolas, 'Courier New', monospace;
-  color: #9ca3af; border: 1px solid #e5e7eb; border-radius: .25rem; padding: 0 .3rem; line-height: 1.5; }
-.rp-r-toggle input { display: none; }
-.rp-r-toggle.rp-r-fixed { cursor: default; }
-.rp-field.rp-field-r .rp-r-toggle { color: #fff; background: var(--bs-primary, #0d6efd);
+/* the R switch: its checkbox is hidden visually, not removed (the keyboard
+   reaches it; the label shows the focus) */
+.rp-r-toggle { position: relative; margin: 0; cursor: pointer; font-size: 11px;
+  font-family: Consolas, 'Courier New', monospace; color: #6b7280; border: 1px solid #d1d5db;
+  border-radius: .25rem; padding: 0 .35rem; line-height: 1.6; user-select: none; }
+.rp-r-toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0;
+  left: 50%; top: 50%; pointer-events: none; }
+.rp-r-toggle:focus-within { outline: 2px solid var(--bs-primary, #0d6efd); outline-offset: 1px; }
+.rp-r-toggle:hover { border-color: #9ca3af; }
+.rp-field.rp-field-r:not(.rp-field-ronly) .rp-r-toggle { color: #fff; background: var(--bs-primary, #0d6efd);
   border-color: var(--bs-primary, #0d6efd); }
+/* an R-only argument: a plain grey letter, not a switch */
+.rp-r-label { font-size: 11px; font-family: Consolas, 'Courier New', monospace; color: #9ca3af;
+  padding: 0 .35rem; cursor: default; }
 .rp-field .shiny-input-container { width: 100% !important; margin-bottom: 0; }
+/* one height, inset and font size for the select, the text and the number */
 .rp-field .form-control, .rp-field .form-select, .rp-field .selectize-input {
-  padding: 2px 6px; font-size: 13px; min-height: 0; }
+  box-sizing: border-box; height: 30px; min-height: 30px; padding: 3px 8px; font-size: 13px;
+  line-height: 22px; }
+.rp-field .selectize-control { margin: 0; }
+.rp-field .selectize-control.multi .selectize-input { height: auto; padding: 2px 6px; }
+.rp-field .selectize-control.multi .selectize-input > div { font-size: 13px; line-height: 20px;
+  margin: 1px 3px 1px 0; }
+.rp-field .selectize-input > input, .rp-field .selectize-input .item { font-size: 13px !important;
+  line-height: 22px !important; }
+.rp-field .selectize-control.single .selectize-input:after { right: 8px; }
+.rp-field .form-control::placeholder, .rp-field .selectize-input > input::placeholder {
+  color: #9ca3af; font-style: italic; opacity: 1; font-size: 13px; }
+/* set (the report's own value): a bar on the left and the reset */
+.rp-field.rp-set .form-control, .rp-field.rp-set .form-select, .rp-field.rp-set .selectize-input {
+  box-shadow: inset 3px 0 0 var(--bs-primary, #0d6efd); border-color: #93b4f5; }
+.rp-reset { display: none; border: 0; background: none; color: #6b7280; padding: 0 .3rem;
+  font-size: 17px; line-height: 1; cursor: pointer; }
+.rp-reset:hover { color: #dc3545; }
+.rp-field.rp-set .rp-reset { display: inline-block; }
+/* a switch: dimmed while it shows the default, normal and barred once set */
+.rp-field-logical .rp-form-input { padding-left: 3px; border-left: 3px solid transparent; }
+.rp-field-logical:not(.rp-set) .rp-check { opacity: .45; }
+.rp-field-logical.rp-set .rp-form-input { border-left-color: var(--bs-primary, #0d6efd); }
 .rp-mono { font-family: Consolas, 'Courier New', monospace; }
 .rp-badge-locked { background: #f3f4f6; border-color: #d1d5db; color: #4b5563; }
+.rp-badge-locked .rp-lock { vertical-align: -1px; }
 .rp-badge-unset { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
-.rp-field-locked .rp-form-input { opacity: .65; }
+.rp-field:not(.rp-field-unset) .rp-badge-unset, .rp-field-unset .rp-req { display: none; }
+/* locked: a grey fill, the text in full contrast, no fading */
+.rp-field-locked .form-control, .rp-field-locked .form-select, .rp-field-locked .selectize-input,
+.rp-field-locked .selectize-input.disabled { background: #f3f4f6 !important; color: #111827 !important;
+  opacity: 1 !important; box-shadow: none; }
+.rp-field-locked .selectize-input .item, .rp-field-locked .selectize-input.disabled .item {
+  color: #111827 !important; opacity: 1 !important; }
+.rp-field-locked .selectize-control.single .selectize-input:after { opacity: .4; }
 .rp-field-unset .selectize-input, .rp-field-unset .form-control, .rp-field-unset .form-select {
   border-color: #fca5a5; }
+/* (selectize copies the select's classes to its wrapper: the wrapper is no box) */
+.rp-field .selectize-control.form-control, .rp-field .selectize-control.form-select {
+  height: auto !important; min-height: 0 !important; padding: 0 !important; border: 0 !important;
+  box-shadow: none !important; background: transparent !important; }
 .rp-check { margin: 0; padding: 0; min-height: 0; }
 .rp-check .form-check-input { margin: 0; }
 .rp-swatch { display: inline-block; width: .9em; height: .9em; border: 1px solid #9ca3af;
@@ -185,9 +228,6 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
   $(document).on('change', '.rp-card-switch input', function() {
     $(this).closest('.rp-card').toggleClass('rp-card-off', !this.checked);
   });
-  $(document).on('change', '.rp-isr', function() {
-    $(this).closest('.rp-field').toggleClass('rp-field-r', this.checked);
-  });
   $(document).on('change', '.rp-isval', function() {
     $(this).closest('.rp-map-row').toggleClass('rp-map-val', this.checked);
   });
@@ -207,57 +247,118 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
     var has = $(this).is(':checkbox') ? this.checked : (this.value || '').length > 0;
     f.toggleClass('rp-has-value', has);
   });
-  // a plan card's fields in two groups: those its code writes (above) and
-  // those it does not (below, folded).  A value given below moves its
-  // field up when the field is left; a field above emptied moves down --
-  // each in the function's order (the upper group's data-formals), as the
-  // next drawing puts them
-  function fieldHas(f) {
-    var has = false;
-    f.find('input, select, textarea').each(function() {
-      if ($(this).hasClass('rp-isr') || this.type === 'search') return;
-      if (this.type === 'checkbox' || this.type === 'radio') {
-        if (this.checked !== (this.getAttribute('data-init') === '1')) has = true;
-      } else if (($(this).val() || '').toString().length > 0) has = true;
-    });
-    return has;
+  // ---- a field's state: default / set (the changed mark and its reset) -----------
+  // Nothing here reaches the server by itself: the report is read when Update
+  // is pressed.  The marks are drawn from the controls' own values.
+  window.rpQuiet = false;
+  function formCtl(f) {
+    return f.children('.rp-field-row').children('.rp-form-input').find('select, input, textarea')
+      .filter(function() {
+        return !$(this).closest('.selectize-control').length && $(this).closest('.rp-field')[0] === f[0];
+      }).first();
   }
-  function placeField(f, box, wrap, order) {
-    var rank = order.indexOf(String(f.data('arg')));
-    var el = wrap ? $('<div class=\"rp-group-cell\"></div>').append(f) : f;
-    var after = null;
-    box.children().each(function() {
-      var g = $(this).is('.rp-field') ? $(this) : $(this).find('.rp-field').first();
-      var r = order.indexOf(String(g.data('arg')));
-      if (r >= 0 && r < rank) after = $(this);
-    });
-    if (after) after.after(el); else if (wrap) box.prepend(el); else box.children('.rp-more-search').length ? box.children('.rp-more-search').after(el) : box.prepend(el);
+  function isRMode(f) { return f.hasClass('rp-field-r') && !f.hasClass('rp-field-ronly'); }
+  function fieldHasValue(f) {
+    if (isRMode(f)) return (f.children('.rp-field-row').children('.rp-r-input').val() || '').length > 0;
+    if (f.hasClass('rp-field-logical')) return f.attr('data-flag-set') === '1';
+    var c = formCtl(f);
+    if (!c.length) return false;
+    var v = c.val();
+    if (c.is('select')) return Array.isArray(v) ? v.length > 0 : !!v;
+    return (v || '').length > 0;
   }
-  $(document).on('focusout', '.rp-plan-args .rp-field', function() {
+  function refreshField(f) {
+    if (!f.children('.rp-field-row').children('.rp-reset').length) return;
+    var has = fieldHasValue(f);
+    f.toggleClass('rp-set', has);
+    if (f.attr('data-nodefault') === '1') f.toggleClass('rp-field-unset', !has);
+  }
+  // the field's current value written as R: 'a' in double quotes, c() of
+  // several, a number as it is, TRUE / FALSE
+  function valueAsR(f) {
+    var c = formCtl(f);
+    if (f.hasClass('rp-field-logical')) {
+      return f.attr('data-flag-set') === '1' && c.length ? (c.prop('checked') ? 'TRUE' : 'FALSE') : '';
+    }
+    if (!c.length) return '';
+    var v = c.val();
+    if (Array.isArray(v)) {
+      if (!v.length) return '';
+      return v.length === 1 ? JSON.stringify(v[0]) : 'c(' + v.map(function(x) { return JSON.stringify(x); }).join(', ') + ')';
+    }
+    if (!v) return '';
+    return c.is('select') || c.attr('type') !== 'number' ? JSON.stringify(v) : v;
+  }
+  function focusCtl(f) {
+    var c = formCtl(f);
+    if (c.length && c[0].selectize) c[0].selectize.focus(); else c.trigger('focus');
+  }
+  $(document).on('input change', '.rp-field input, .rp-field select, .rp-field textarea', function() {
+    if (window.rpQuiet || $(this).is('.rp-isr')) return;
+    var f = $(this).closest('.rp-field');
+    if ($(this).is(':checkbox') && f.hasClass('rp-field-logical')) f.attr('data-flag-set', '1');
+    var ch = f.data('rpChips');
+    if (ch) ch.touched = true;
+    refreshField(f);
+  });
+  $(document).on('click', '.rp-reset', function() {
+    var f = $(this).closest('.rp-field');
+    var ri = f.children('.rp-field-row').children('.rp-r-input');
+    if (ri.length && ri.val()) ri.val('').trigger('input').trigger('change');
+    if (isRMode(f)) {
+      f.removeClass('rp-field-r');
+      f.find('.rp-isr').first().prop('checked', false);
+    }
+    var c = formCtl(f);
+    if (c.length && c[0].selectize) {
+      c[0].selectize.clear();
+    } else if (f.hasClass('rp-field-logical')) {
+      c.prop('checked', f.attr('data-default') === 'true').trigger('change');
+    } else if (c.length) {
+      c.val('').trigger('input').trigger('change');
+    }
+    f.attr('data-flag-set', '0');
+    f.removeData('rpChips');
+    refreshField(f);
+  });
+  // the R switch: on, the R input takes the value written as R and the focus;
+  // off, the form control takes the focus
+  $(document).on('change', '.rp-isr', function() {
+    var f = $(this).closest('.rp-field');
+    f.toggleClass('rp-field-r', this.checked);
+    var ri = f.children('.rp-field-row').children('.rp-r-input');
+    if (this.checked) {
+      if (ri.length && !ri.val()) {
+        var s = valueAsR(f);
+        if (s) ri.val(s).trigger('input').trigger('change');
+      }
+      ri.trigger('focus');
+    } else {
+      focusCtl(f);
+    }
+    refreshField(f);
+  });
+  // a list: the first focus fills the default as chips, so one can add a
+  // variable without typing the rest; left alone, it goes back to the
+  // default (nothing is written)
+  $(document).on('focusin', '.rp-field-list .selectize-input', function() {
+    var f = $(this).closest('.rp-field');
+    if (f.hasClass('rp-field-locked') || f.data('rpChips')) return;
+    var c = formCtl(f), inst = c.length ? c[0].selectize : null, d = [];
+    try { d = JSON.parse(f.attr('data-default') || '[]'); } catch (e) { d = []; }
+    if (!inst || !d.length || inst.items.length) return;
+    d.forEach(function(v) { if (!inst.options[v]) inst.addOption({value: v, label: v}); });
+    inst.addItems(d, true);
+    f.data('rpChips', {touched: false});
+  });
+  $(document).on('focusout', '.rp-field-list', function() {
     var f = $(this);
     setTimeout(function() {
-      if (f[0].contains(document.activeElement)) return;
-      var card = f.closest('.rp-plan-args');
-      var up = card.find('.rp-args-up .rp-group-row').first();
-      var low = card.find('.rp-more-body').first();
-      if (!up.length || !low.length) return;
-      var order = (card.find('[data-formals]').first().attr('data-formals') || '').split(',');
-      var below = f.closest('.rp-more-body').length > 0;
-      var has = fieldHas(f);
-      if (below && has) {
-        placeField(f, up, true, order);
-      } else if (!below && !has) {
-        var cell = f.parent('.rp-group-cell');
-        placeField(f, low, false, order);
-        if (cell.length && !cell.children().length) cell.remove();
-      }
-    }, 0);
-  });
-  $(document).on('shiny:value', function() {
-    setTimeout(function() {
-      $('.rp-plan-args input[type=checkbox]:not([data-init])').each(function() {
-        this.setAttribute('data-init', this.checked ? '1' : '0');
-      });
+      var ch = f.data('rpChips');
+      if (!ch || ch.touched || f[0].contains(document.activeElement)) return;
+      var c = formCtl(f);
+      if (c.length && c[0].selectize) c[0].selectize.clear(true);
+      f.removeData('rpChips');
     }, 0);
   });
   // Code line <-> card

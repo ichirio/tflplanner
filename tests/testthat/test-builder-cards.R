@@ -93,7 +93,7 @@ test_that("a field is chosen by its type, with its R switch and its (i)", {
   expect_match(h, 'selected', fixed = TRUE)
   h <- html(arg_field("c1", "position", "enum[last|first]", default = "last", value = "first"))
   expect_match(h, "<select", fixed = TRUE)
-  expect_match(h, "last (default)", fixed = TRUE)
+  expect_match(h, "\"placeholder\":\"last\"", fixed = TRUE)
   h <- html(arg_field("c1", "max_rows", "integer", default = 26L))
   expect_match(h, 'type="number"', fixed = TRUE)
   expect_match(h, 'placeholder="26"', fixed = TRUE)
@@ -196,7 +196,7 @@ test_that("a group puts its fields on one row; the folded arguments are the rest
   expect_false(grepl("aria-label=\"&lt;a", h, fixed = TRUE))
   # a value already there keeps its row shown
   h <- html(arg_more("c1", "geom_errorbar", used = "mapping", schema = schema, values = list(na.rm = TRUE)))
-  expect_match(h, "rp-field rp-field-logical rp-has-value", fixed = TRUE)
+  expect_match(h, "rp-field rp-field-logical rp-set rp-has-value", fixed = TRUE)
   # nothing left: nothing
   expect_null(arg_more("c1", "f", used = c("a", "b"), schema = list(formals = c("a", "b"))))
   # without `formals` in the schema: the installed function's

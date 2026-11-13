@@ -41,9 +41,38 @@
 .rp-fs-note { font-size: .78rem; color: #6c757d; }
 .rp-fs-tools { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .4rem; }
 .rp-fs-common { background: #f8f9fa; }
+.rp-fs-sticky.rp-fs-stale .card-body { opacity: .5; }
+#fs_update.rp-fs-stale::after { content: ' \\25cf'; font-size: .7em; vertical-align: .1em; }
 .rp-fs-q { display: inline-block; width: 1.1rem; height: 1.1rem; line-height: 1rem; text-align: center;
   border: 1px solid #adb5bd; border-radius: 50%; font-size: .72rem; font-weight: 600; color: #495057;
   cursor: help; margin-left: .35rem; }
+"
+
+# The report is read only when Update is pressed -- by the button or Ctrl+Enter.
+# A field changed meanwhile only marks the preview as out of date (client side,
+# nothing is sent).  Ctrl+Enter first leaves the focused field (so a value
+# typed is committed) and then presses the button.
+.fs_js <- "
+(function() {
+  if (window.rpFsKeys) return;
+  window.rpFsKeys = true;
+  function stale(on) {
+    $('#fs_update').toggleClass('rp-fs-stale', on);
+    $('.rp-fs-sticky').toggleClass('rp-fs-stale', on);
+  }
+  $(document).on('input change', '#fs_screen .rp-field input, #fs_screen .rp-field select, #fs_screen .rp-field textarea', function() {
+    if (!window.rpQuiet && !$(this).is('.rp-isr')) stale(true);
+  });
+  $(document).on('click', '#fs_screen .rp-field .rp-reset', function() { stale(true); });
+  $(document).on('click', '#fs_update', function() { stale(false); });
+  $(document).on('keydown', function(e) {
+    if (!(e.ctrlKey || e.metaKey) || e.key !== 'Enter') return;
+    if (!$('#fs_update').length) return;
+    e.preventDefault();
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    setTimeout(function() { $('#fs_update').trigger('click'); }, 30);
+  });
+})();
 "
 
 # a standing sentence behind a "?"
@@ -388,7 +417,8 @@
     bslib::card_header(shiny::div(
       class = "d-flex justify-content-between align-items-center",
       t("Preview"),
-      shiny::actionButton("fs_update", t("Update"), class = "btn btn-sm btn-primary"))),
+      shiny::actionButton("fs_update", t("Update"), class = "btn btn-sm btn-primary",
+                          title = t("Press Update (Ctrl+Enter) to apply the changes")))),
     bslib::card_body(fill = FALSE, shiny::uiOutput("fs_preview_body")))
 }
 
@@ -418,6 +448,7 @@
 .fs_panel_ui <- function(t) {
   bslib::nav_panel(
     t("Report\u00a0"), value = "foursteps",
+    shiny::tags$script(shiny::HTML(.fs_js)),
     shiny::div(
       class = "alert alert-warning py-1 small",
       t("Provisional screen: it reads the report's YAML directly and only shows it; editing comes with the tflspec readers.")),
