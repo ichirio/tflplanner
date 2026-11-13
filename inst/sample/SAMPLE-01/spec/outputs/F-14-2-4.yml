@@ -85,7 +85,9 @@ data:
               !is.na(AGEGR1) ~ "AGEGR1",
               TRUE ~ "All subjects"
             ),
-            level = coalesce(SEX, AGEGR1, "All subjects"),
+            # (the ARD holds the codes: the code lists give the labels)
+            level = coalesce(unname(cl_sex[as.character(SEX)]),
+                         unname(cl_agegr1[as.character(AGEGR1)]), "All subjects"),
             ok = is.finite(estimate) & is.finite(conf.low) & is.finite(conf.high) &
               conf.high < 1000,
             txt = ifelse(ok, sprintf("%.2f (%.2f, %.2f)", estimate, conf.low, conf.high),
