@@ -489,9 +489,13 @@
   st <- sp$study
   nm <- if (is.na(target)) .pgs_default_style(st) else substring(target, 2L)
   if (is.null(st$styles[[nm]])) {
-    stop("The page configuration ", nm, " is a built-in one: copy it into the study's own (",
-         "defaults.yml styles:) and make that the study's default (study.yml settings: style) ",
-         "to change it here.", call. = FALSE)
+    if (nm %in% .pgs_builtin_names(st)) {
+      stop("The page configuration ", nm, " is a built-in one: copy it into the study's own (",
+           "defaults.yml styles:) and make that the study's default (study.yml settings: style) ",
+           "to change it here.", call. = FALSE)
+    }
+    stop("The study has no page configuration ", nm, " (defaults.yml styles:); ",
+         "add it first (it is neither one of the study's nor a built-in one).", call. = FALSE)
   }
   old_tk <- old$tokens
   old$tokens <- NULL

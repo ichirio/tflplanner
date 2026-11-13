@@ -167,9 +167,9 @@
 # The files the bridge writes from a view: their text by path (study.yml
 # as tflspec writes it, without the study's own lines), and the folder
 # they are in (the caller removes it)
-.spec_bridge <- function(body, meta) {
+.spec_bridge <- function(body, meta, style = NULL) {
   tmp <- tempfile("tflplanner-yaml")
-  tflspec::tfl_yaml_from_sheets(.planner_sheets(body, meta), tmp, overwrite = TRUE)
+  tflspec::tfl_yaml_from_sheets(.planner_sheets(body, meta, style), tmp, overwrite = TRUE)
   .study_yml_own_settings(file.path(tmp, .study_file), body$study)
   rel <- list.files(tmp, recursive = TRUE)
   rel <- setdiff(rel, file.path(study_layout()[["spec"]], "_not_converted.yml"))
@@ -230,13 +230,15 @@
     attr(p, "changed") <- character()
     return(p)
   }
-  now <- .spec_bridge(body, meta)
+  # (the study's default page configuration travels with the sheets)
+  style <- sp$study$study$settings$style
+  now <- .spec_bridge(body, meta, style)
   on.exit(unlink(now$dir, recursive = TRUE), add = TRUE)
   was <- NULL
   if (is.null(sp) || is.null(sp$base)) {
     changed <- union(names(sp$text), names(now$text))
   } else {
-    was <- .spec_bridge(sp$base, sp$meta)
+    was <- .spec_bridge(sp$base, sp$meta, style)
     on.exit(unlink(was$dir, recursive = TRUE), add = TRUE)
     rels <- union(names(was$text), names(now$text))
     changed <- rels[!vapply(rels, function(r) identical(was$text[[r]], now$text[[r]]), NA)]
@@ -363,6 +365,16 @@
 # stay as the spec has them.
 .keep_style_sets <- function(spec, was, now) {
   out <- spec %||% list()
+  # (a configuration renamed in the view is new here and the old one gone, as
+  # for a pattern: its set, content half and all, goes to the new name)
+  for (nm in setdiff(names(now), names(was))) {
+    from <- .renamed_from(out, was, now, nm)
+    if (is.null(from) || identical(from, nm)) next
+    out[[nm]] <- out[[from]]
+    out[[from]] <- NULL
+    was[[nm]] <- was[[from]]
+    was[[from]] <- NULL
+  }
   for (nm in union(names(was), names(now))) {
     cur <- out[[nm]] %||% list()
     page <- if (nm %in% names(now)) now[[nm]]$page else list()

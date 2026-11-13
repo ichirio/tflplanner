@@ -1,8 +1,9 @@
-# A page pattern's and the defaults' own lists (code lists, content) are kept
-# when an edit of their page rows goes through the sheets, and a pattern
-# with no page rows keeps its `@<name>` row of the report sheet.  The marker
-# tests need the bridge of tflspec #669 (its sheets say a pattern with no
-# page).
+# The study's own lists (code lists, content) are kept when an edit of a page
+# configuration's rows goes through the sheets: a page configuration is a
+# style set of defaults.yml `styles:` (title lines live there, not in a
+# pattern), and the code lists live in defaults.yml and in a legacy pattern
+# that holds them only.  A configuration that differs from the default by no
+# row keeps its `@<name>` row of the report sheet, as it is a known name.
 
 skip_on_cran()
 
@@ -15,14 +16,15 @@ lk_home <- function(env = parent.frame()) {
 }
 
 # A study of two reports of one analysis of SEX: DM (the defaults) and DM2
-# (extends the pattern pp);
-# defaults.yml with a code list and two content items, patterns/pp.yml with
-# a code list and (`page`) a page title; opened as the files say it
-lk_study <- function(id, page = TRUE) {
+# (extends the legacy pattern pp, which holds a code list only, and uses the
+# page configuration Wide); defaults.yml has a code list, two content items and
+# the configurations Std (the study's default) and Wide (a title of its own;
+# with `wide = FALSE` the same page as Std); opened as the files say it
+lk_study <- function(id, wide = TRUE, pattern = TRUE, style = TRUE) {
   p <- add_output(new_planner(), "DM")
   p$ard$datasets <- data.frame(dataset = "ADSL", path = "data/adam/adsl.rds")
   p$ard$populations <- data.frame(population_id = "SAF", dataset = "ADSL",
-                                  where = "SAFFL == \"Y\"")
+                                  where = 'SAFFL == "Y"')
   p$ard$analyses <- data.frame(output_id = "DM", analysis_id = "SEX",
                                method = "categorical", population_id = "SAF",
                                variables = "SEX")
@@ -31,14 +33,24 @@ lk_study <- function(id, page = TRUE) {
   saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
   sp <- file.path(s$path, "spec")
   writeLines(c("content:", "  - normalize_ard: {}", "  - table_plan: {}", "codelists:",
-               "  SEX: [{value: F, label: DefF}, {value: M, label: DefM}]"),
+               "  SEX: [{value: F, label: DefF}, {value: M, label: DefM}]",
+               "styles:",
+               "  Std:", "    page:", "      titles:", "        first:",
+               "          '1': {center: Std title}",
+               "  Wide:", "    page:", "      titles:", "        first:",
+               paste0("          '1': {center: ", if (wide) "Wide title" else "Std title", "}")),
              file.path(sp, "defaults.yml"))
+  f <- file.path(s$path, "study.yml")
+  x <- readLines(f)
+  writeLines(append(x, "  style: Std", after = which(x == "settings:")), f)
   dir.create(file.path(sp, "patterns"), showWarnings = FALSE)
-  writeLines(c("codelists:", "  SEX: [{value: F, label: PatF}, {value: M, label: PatM}]",
-               if (page) c("page:", "  titles:", "    1: {center: Pattern title}")),
+  writeLines(c("codelists:", "  SEX: [{value: F, label: PatF}, {value: M, label: PatM}]"),
              file.path(sp, "patterns", "pp.yml"))
   f <- file.path(sp, "outputs", "DM2.yml")
-  writeLines(sub("^  - defaults$", "  - patterns/pp", readLines(f)), f)
+  x <- readLines(f)
+  if (pattern) x <- sub("^  - defaults$", "  - patterns/pp", x)
+  if (style) x <- append(x, "style: Wide", after = which(x == "kind: table"))
+  writeLines(x, f)
   open_study(id)
 }
 
@@ -62,26 +74,33 @@ lk_title <- function(p, id, text) {
   set_sheet_rows(p, "titles", id, r)
 }
 
-test_that("a pattern's title edited through the sheet keeps its code lists", {
+test_that("a page configuration's title edited through the sheet keeps the code lists", {
   lk_home()
   s <- lk_study("LK1")
   expect_equal(lk_label(s$planner, "DM2"), c("PatF", "PatM"))
-  s$planner <- lk_title(s$planner, "@pp", "Edited title")
+  pat <- lk_file(s, "patterns", "pp.yml")
+  s$planner <- lk_title(s$planner, "@Wide", "Edited title")
   s2 <- save_study(s)
-  x <- lk_file(s, "patterns", "pp.yml")
-  expect_true(any(grepl("^codelists:", x)))
-  expect_true(any(grepl("PatF", x, fixed = TRUE)))
+  x <- lk_file(s, "defaults.yml")
   expect_true(any(grepl("Edited title", x, fixed = TRUE)))
-  # (the spec in memory says what the file says)
+  expect_false(any(grepl("Wide title", x, fixed = TRUE)))
+  # (the study's default configuration, the defaults' code list and content stay)
+  expect_true(any(grepl("Std title", x, fixed = TRUE)))
+  expect_true(any(grepl("^codelists:", x)))
+  expect_true(any(grepl("DefF", x, fixed = TRUE)))
+  expect_true(any(grepl("table_plan", x, fixed = TRUE)))
+  # (the pattern's code list: its file is as it was, and the spec in memory says so)
+  expect_identical(lk_file(s, "patterns", "pp.yml"), pat)
   expect_equal(lk_label(s2$planner, "DM2"), c("PatF", "PatM"))
-  expect_equal(s2$planner$spec$text[["spec/patterns/pp.yml"]], x)
+  expect_equal(lk_label(s2$planner, "DM"), c("DefF", "DefM"))
+  expect_equal(s2$planner$spec$text[["spec/defaults.yml"]], x)
   s3 <- open_study("LK1")
   expect_identical(s3$spec$status, "same")
   expect_equal(lk_label(s3$planner, "DM2"), c("PatF", "PatM"))
-  expect_equal(sheet_rows(s3$planner, "titles", "@pp")$center, "Edited title")
+  expect_equal(sheet_rows(s3$planner, "titles", "@Wide")$center, "Edited title")
 })
 
-test_that("the defaults' title edited through the sheet keeps their code lists and content", {
+test_that("the default configuration's title edited through the sheet keeps the defaults' code lists, content and the other configurations", {
   lk_home()
   s <- lk_study("LK2")
   expect_equal(lk_label(s$planner, "DM"), c("DefF", "DefM"))
@@ -92,62 +111,104 @@ test_that("the defaults' title edited through the sheet keeps their code lists a
   expect_true(any(grepl("DefF", x, fixed = TRUE)))
   expect_true(any(grepl("table_plan", x, fixed = TRUE)))
   expect_true(any(grepl("Default title", x, fixed = TRUE)))
+  expect_false(any(grepl("Std title", x, fixed = TRUE)))
+  expect_true(any(grepl("Wide title", x, fixed = TRUE)))
   expect_equal(lk_label(s2$planner, "DM"), c("DefF", "DefM"))
+  expect_equal(lk_label(s2$planner, "DM2"), c("PatF", "PatM"))
   expect_equal(s2$planner$spec$text[["spec/defaults.yml"]], x)
   s3 <- open_study("LK2")
   expect_identical(s3$spec$status, "same")
   expect_equal(lk_label(s3$planner, "DM"), c("DefF", "DefM"))
 })
 
-test_that("the page screen's writer keeps a pattern's lists", {
+test_that("the page screen's writer keeps the lists, and names a configuration that is not the study's", {
   lk_home()
   s <- lk_study("LK3")
-  p <- .pgs_write(s$planner, "@pp", list(titles = list(`1` = list(center = "Own"))))
+  p <- .pgs_write(s$planner, "@Wide", list(titles = list(`first:1` = list(center = "Own"))))
   s$planner <- p
   save_study(s)
-  x <- lk_file(s, "patterns", "pp.yml")
+  x <- lk_file(s, "defaults.yml")
   expect_true(any(grepl("^codelists:", x)))
+  expect_true(any(grepl("DefF", x, fixed = TRUE)))
   expect_true(any(grepl("Own", x, fixed = TRUE)))
+  expect_true(any(grepl("PatF", lk_file(s, "patterns", "pp.yml"), fixed = TRUE)))
   expect_equal(lk_label(p, "DM2"), c("PatF", "PatM"))
+  # a built-in configuration is read only; a name that is neither the study's nor a
+  # built-in one is said to be unknown, not called a built-in
+  pg <- list(titles = list(`1` = list(center = "X")))
+  expect_error(.pgs_write(p, "@tfl_small", pg), "built-in one")
+  expect_error(.pgs_write(p, "@pp", pg), "no page configuration pp")
+  msg <- tryCatch(.pgs_write(p, "@pp", pg), error = conditionMessage)
+  expect_false(grepl("is a built-in", msg, fixed = TRUE))
 })
 
-test_that("a pattern whose last page content is taken away keeps its marker row", {
+test_that("a legacy pattern that holds code lists only keeps its marker row", {
   lk_home()
-  s <- lk_study("LK4")
-  s$planner <- .pgs_write(s$planner, "@pp", list())
+  s <- lk_study("LK4", style = FALSE)
   d <- s$planner$sheets$report
+  # (a pattern with no page rows: its row of the report sheet is the marker)
   expect_true("@pp" %in% d$output_id)
   expect_identical(d$pattern[d$output_id == "DM2"], "@pp")
-  x <- s$planner$spec$text[["spec/patterns/pp.yml"]]
-  expect_true(any(grepl("^codelists:", x)))
-  expect_false(any(grepl("^page:", x)))
-  save_study(s)
+  expect_true(any(grepl("^codelists:", s$planner$spec$text[["spec/patterns/pp.yml"]])))
+  expect_false(any(grepl("^page:", s$planner$spec$text[["spec/patterns/pp.yml"]])))
+  # an edit of another report's page: the pattern's file and row stay
+  s$planner <- .pgs_write(s$planner, "DM", list(titles = list(`1` = list(center = "Own"))))
+  s2 <- save_study(s)
   expect_false(any(grepl("^page:", lk_file(s, "patterns", "pp.yml"))))
-  s2 <- open_study("LK4")
-  expect_identical(s2$spec$status, "same")
+  expect_true(any(grepl("PatF", lk_file(s, "patterns", "pp.yml"), fixed = TRUE)))
   expect_true("@pp" %in% s2$planner$sheets$report$output_id)
-  # another edit, saved: the sheets still work
-  s2$planner <- .pgs_write(s2$planner, "DM", list(titles = list(`1` = list(center = "Own"))))
-  s3 <- save_study(s2)
+  s3 <- open_study("LK4")
+  expect_identical(s3$spec$status, "same")
   expect_true("@pp" %in% s3$planner$sheets$report$output_id)
   sh <- .planner_sheets(s3$planner, s3$meta)
   expect_s3_class(tflspec::tfl_table_spec(sh$table), "tfl_table_spec")
   expect_false("@pp" %in% output_ids(s3$planner))
   expect_equal(lk_label(s3$planner, "DM2"), c("PatF", "PatM"))
-  # and the pattern can have a page again
-  s3$planner <- .pgs_write(s3$planner, "@pp", list(titles = list(`1` = list(center = "Back"))))
-  s4 <- save_study(s3)
-  x <- lk_file(s4, "patterns", "pp.yml")
-  expect_true(any(grepl("Back", x, fixed = TRUE)))
-  expect_true(any(grepl("^codelists:", x)))
-  s5 <- open_study("LK4")
-  expect_identical(s5$spec$status, "same")
-  expect_equal(sheet_rows(s5$planner, "titles", "@pp")$center, "Back")
 })
 
-test_that("a study saved before the marker rows opens with the pattern's row", {
+test_that("a configuration that differs from the default by no row keeps its marker row", {
+  lk_home()
+  # (Wide has the default's page: the sheets have no row of it but the marker)
+  s <- lk_study("LK7", pattern = FALSE, wide = FALSE)
+  d <- s$planner$sheets$report
+  expect_true("@Wide" %in% d$output_id)
+  expect_identical(d$pattern[d$output_id == "DM2"], "@Wide")
+  expect_false(.pattern_in_view(s$planner, "@Wide", setdiff(.pattern_sheets, "report")))
+  expect_true(any(grepl("^codelists:", s$planner$spec$text[["spec/defaults.yml"]])))
+  sh <- .planner_sheets(s$planner, s$meta)
+  expect_s3_class(tflspec::tfl_table_spec(sh$table), "tfl_table_spec")
+  # the page screen gives it a line of its own, then takes it away again
+  s$planner <- .pgs_write(s$planner, "@Wide", list(titles = list(`first:1` = list(center = "Own"))))
+  s2 <- save_study(s)
+  x <- lk_file(s, "defaults.yml")
+  expect_true(any(grepl("Own", x, fixed = TRUE)))
+  expect_true(any(grepl("DefF", x, fixed = TRUE)))
+  expect_true(any(grepl("table_plan", x, fixed = TRUE)))
+  s2$planner <- .pgs_write(s2$planner, "@Wide",
+                           list(titles = list(`first:1` = list(center = "Std title"))))
+  s3 <- save_study(s2)
+  x <- lk_file(s, "defaults.yml")
+  expect_false(any(grepl("Own", x, fixed = TRUE)))
+  expect_true(any(grepl("^  Wide:", x)))
+  expect_true("@Wide" %in% s3$planner$sheets$report$output_id ||
+                .pattern_in_view(s3$planner, "@Wide"))
+  s4 <- open_study("LK7")
+  expect_identical(s4$spec$status, "same")
+  expect_true(.pattern_in_view(s4$planner, "@Wide"))
+  # another edit, saved: the sheets still work, the lists are kept
+  s4$planner <- .pgs_write(s4$planner, "DM", list(titles = list(`1` = list(center = "Dm"))))
+  s5 <- save_study(s4)
+  expect_true(.pattern_in_view(s5$planner, "@Wide"))
+  sh <- .planner_sheets(s5$planner, s5$meta)
+  expect_s3_class(tflspec::tfl_table_spec(sh$table), "tfl_table_spec")
+  expect_false("@Wide" %in% output_ids(s5$planner))
+  expect_equal(lk_label(s5$planner, "DM"), c("DefF", "DefM"))
+  expect_equal(lk_label(s5$planner, "DM2"), c("PatF", "PatM"))
+})
+
+test_that("a study saved before the marker rows opens with the legacy pattern's row", {
   home <- lk_home()
-  s <- lk_study("LK5", page = FALSE)
+  s <- lk_study("LK5", style = FALSE)
   expect_true("@pp" %in% s$planner$sheets$report$output_id)
   # (the state as an earlier version wrote it: no row for the pattern)
   d <- s$planner$sheets$report
@@ -161,21 +222,26 @@ test_that("a study saved before the marker rows opens with the pattern's row", {
   expect_false("@pp" %in% output_ids(s2$planner))
   s2$planner <- lk_title(s2$planner, "@pp", "Now a page")
   s3 <- save_study(s2)
-  expect_true(any(grepl("^codelists:", lk_file(s3, "patterns", "pp.yml"))))
+  x <- lk_file(s3, "defaults.yml")
+  expect_true(any(grepl("Now a page", x, fixed = TRUE)))
+  expect_true(any(grepl("^codelists:", x)))
+  expect_true(any(grepl("PatF", lk_file(s3, "patterns", "pp.yml"), fixed = TRUE)))
 })
 
-test_that("a pattern renamed with rename_page_pattern() keeps its code lists", {
+test_that("a configuration renamed with rename_page_pattern() keeps the code lists", {
   lk_home()
-  s <- lk_study("LK6")
-  s$planner <- rename_page_pattern(s$planner, "pp", "qq")
+  s <- lk_study("LK6", pattern = FALSE)
+  s$planner <- rename_page_pattern(s$planner, "Wide", "Narrow")
   s2 <- save_study(s)
-  expect_false(file.exists(file.path(s$path, "spec", "patterns", "pp.yml")))
-  x <- lk_file(s, "patterns", "qq.yml")
+  x <- lk_file(s, "defaults.yml")
+  expect_true(any(grepl("^  Narrow:", x)))
+  expect_false(any(grepl("^  Wide:", x)))
+  expect_true(any(grepl("Wide title", x, fixed = TRUE)))
   expect_true(any(grepl("^codelists:", x)))
-  expect_true(any(grepl("PatF", x, fixed = TRUE)))
-  expect_true(any(grepl("Pattern title", x, fixed = TRUE)))
-  expect_identical(names(s2$planner$spec$study$patterns), "qq")
-  expect_true(any(grepl("patterns/qq", lk_file(s, "outputs", "DM2.yml"), fixed = TRUE)))
+  expect_true(any(grepl("DefF", x, fixed = TRUE)))
+  expect_true(any(grepl("PatF", lk_file(s, "patterns", "pp.yml"), fixed = TRUE)))
+  expect_true(any(grepl("style: Narrow", lk_file(s, "outputs", "DM2.yml"), fixed = TRUE)))
+  expect_equal(lk_label(s2$planner, "DM2"), c("PatF", "PatM"))
   s3 <- open_study("LK6")
   expect_identical(s3$spec$status, "same")
 })
