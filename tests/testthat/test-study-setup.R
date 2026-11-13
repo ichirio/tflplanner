@@ -442,3 +442,22 @@ test_that("the study's rounding is set once, in study_setup.R's part 2 (tflspec#
   expect_identical(sum(grepl("rtfreporter.rounding = \"r\"", setup, fixed = TRUE)), 1L)
   expect_false(any(grepl("rtfreporter.rounding = \"sas\"", setup, fixed = TRUE)))
 })
+
+test_that("the setup reads the datasets a report uses, not every dataset of the catalog", {
+  skip_on_cran()
+  local_home()
+  s <- suppressMessages(create_sample_study(run = FALSE))
+  p <- s$planner
+  # a dataset of the catalog no report uses (its file is not on disk)
+  p$spec$study$data$datasets <- c(p$spec$study$data$datasets,
+                                  list(list(dataset = "ADZZ", path = "data/adam/adzz.rds")))
+  read <- function(x) sub(" <- .*$", "", trimws(grep("<- readRDS", x, value = TRUE)))
+  all <- read(tflspec::tfl_study_setup_code(p$spec$study))
+  now <- read(tflspec::tfl_study_setup_code(.study_rounding_source(p)))
+  expect_true("adzz" %in% all)
+  expect_false("adzz" %in% now)
+  # the others as the catalog has them, ADSL first
+  used <- tolower(.reports_datasets(p))
+  expect_identical(now, all[all %in% used])
+  expect_identical(now[1L], "adsl")
+})

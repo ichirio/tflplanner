@@ -23,13 +23,28 @@ test_that("a step's code and the report's datasets are kept where the spec has t
   expect_error(add_output(p, "U-1", type = "user"))
 })
 
+# The program as written with no study opened, and as written for a study
+# whose setup reads the input data (tflspec#794): the study last opened in
+# the R session leaves its options on (.use_study()), so each is set here.
+no_setup <- function() .code_context$opts <- NULL
+with_setup <- function() .code_context$opts <- list(tflspec.study_setup = TRUE)
+
 test_that("a figure whose content is its code: its datasets read, its code, report_content()", {
+  opts <- .code_context$opts
+  on.exit(.code_context$opts <- opts, add = TRUE)
+  no_setup()
   p <- add_output(with_catalog(), "F-1", type = "figure")
   p <- set_report_datasets(p, "F-1", c("ADSL", "ADVS"))
   p <- set_step_code(p, "F-1", "content", "content <- ggplot2::ggplot(advs)")
   code <- program_code(p, "F-1")
   expect_true(any(grepl("^adsl <- ", code)) && any(grepl("^advs <- ", code)))
   expect_true("content <- ggplot2::ggplot(advs)" %in% code)
+  # the study's setup has read them: the program does not
+  with_setup()
+  setup_code <- program_code(p, "F-1")
+  expect_false(any(grepl("^(adsl|advs) <- ", setup_code)))
+  expect_true("content <- ggplot2::ggplot(advs)" %in% setup_code)
+  .code_context$opts <- NULL
   expect_true("content <- report_content(content)" %in% code)
   expect_true(any(grepl("source(\"programs/tfl/fig_setup.R\")", code, fixed = TRUE)))
   expect_true(any(grepl("rtf_figures(content", code, fixed = TRUE)))
@@ -70,6 +85,9 @@ test_that("a table: its data step's code (ard normalized), its content step's co
 })
 
 test_that("a listing: its data step's code, then its columns as defined", {
+  opts <- .code_context$opts
+  on.exit(.code_context$opts <- opts, add = TRUE)
+  no_setup()
   p <- add_output(with_catalog(), "L-1", type = "listing")
   p <- set_lf_rows(p, "listings", "L-1", data.frame(dataset = "ADSL", sort = "USUBJID"))
   p <- set_lf_rows(p, "listing_cols", "L-1", data.frame(vars = c("USUBJID", "AGE")))
@@ -82,6 +100,9 @@ test_that("a listing: its data step's code, then its columns as defined", {
   expect_true(any(grepl("listing_spec(", code, fixed = TRUE)))
   expect_identical(sum(grepl("^adsl <- ", code)), 1L)
   expect_silent(parse(text = code))
+  # the study's setup has read it: the program does not
+  with_setup()
+  expect_identical(sum(grepl("^adsl <- ", program_code(p, "L-1"))), 0L)
 })
 
 test_that("report_content() and report_data() check what the code left", {
@@ -200,7 +221,7 @@ test_that("a report's own code runs out of the app; the line of an error is said
     "content <- list(head(adsl[, c(\"USUBJID\", \"AGE\")], 20),",
     "ggplot2::ggplot(adsl, ggplot2::aes(AGE)) + ggplot2::geom_histogram(bins = 5))"))
   p <- add_output(p, "F-2", type = "figure")
-  p <- set_step_code(p, "F-2", "content", "x <- 1\ny <- 2\ncontent <- adsl")
+  p <- set_step_code(p, "F-2", "content", "x <- 1\ny <- 2\ncontent <- advs")
   s$planner <- p
   save_study(s)
   res <- preview_code(s, "F-1")
@@ -208,9 +229,11 @@ test_that("a report's own code runs out of the app; the line of an error is said
   parts <- .code_preview_parts(res$content)
   expect_length(parts$pages, 1L)
   expect_length(parts$figures, 1L)
-  # no dataset registered: adsl is not there, on line 3 of its code
+  # no dataset registered: advs is not there (the study's setup reads what a
+  # report registers, ADSL for F-1; ADVS is in the catalog, no report uses it,
+  # its file is not on disk), on line 3 of its code
   res <- preview_code(s, "F-2")
-  expect_match(res$error, "adsl")
+  expect_match(res$error, "advs")
   expect_identical(res$code_step, "content")
   expect_identical(res$code_line, 3L)
   shiny::testServer(server_for("UC"), {
@@ -242,8 +265,8 @@ test_that("a report's own code runs out of the app; the line of an error is said
     session$setInputs(cc_run = 1)
     h <- output$cc_result$html
     expect_match(h, "Line 3 of the content step", fixed = TRUE)
-    expect_match(h, "Add ADSL to the data it reads", fixed = TRUE)
-    expect_match(output$cc_check$html, "adsl", fixed = TRUE)
+    expect_match(h, "Add ADVS to the data it reads", fixed = TRUE)
+    expect_match(output$cc_check$html, "advs", fixed = TRUE)
     # back to the definition: asked, then the code goes
     session$setInputs(content_mode = "gui")
     expect_false(is.na(step_code(rv$p, "F-2", "content")))
