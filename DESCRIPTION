@@ -32,7 +32,7 @@ Imports:
     cards (>= 0.8.0),
     cardx (>= 0.3.1),
     DT (>= 0.27),
-    ggplot2 (>= 3.5.0),
+    ggplot2 (>= 3.5.2),
     htmltools (>= 0.5.7),
     jsonlite (>= 1.2),
     later (>= 1.0.0),

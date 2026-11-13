@@ -61,11 +61,11 @@ version is listed, not called).
 | zip | 2.1.0 | `zip(root = )` (a study folder zipped relative to itself) -> 2.1.0; `zipr()` -> 2.0.0. | zip NEWS 2.1.0 ("zip functions now have a `root` argument") |
 | cards | 0.8.0 | `compare_ard()`, `is_ard_equal()` (`compare_imported_ard()`) -> 0.8.0; `ard_tabulate_rows()` (the catalogue of the ARD functions and the code the templates write) -> 0.8.0; `ard_tabulate()`, `ard_summary()`, `ard_tabulate_value()`, `ard_mvsummary()` and the `ADLB` data -> 0.7.0; the others -> 0.1.0 to 0.6.1. Not counted: `diff_ard_hierarchical()` -> 0.9.0, which the catalogue lists for the user to pick. | cards NEWS 0.7.0, 0.8.0; `NAMESPACE` of each release |
 | cardx | 0.3.1 | `ard_emmeans_emmeans()`, `ard_emmeans_contrast()` (the templates' model rows) -> 0.3.1; `ard_tabulate_max()`, `ard_tabulate_abnormal()` -> 0.3.0; `ard_incidence_rate()` -> 0.2.5; `ard_stats_*()`, `ard_regression()`, `ard_regression_basic()` -> 0.2.0 or earlier. The same minimum as tflspec's. | cardx NEWS 0.3.1; `NAMESPACE` of each release |
-| ggplot2 | 3.5.0 | `coord_radial()` (the sunburst and polar figures tflspec writes) -> 3.5.0; `standardise_aes_names()`, `get_element_tree()` -> 3.3.0; the plain `ggplot()`, `aes()`, `geom_*()` the app writes -> every release. The same minimum as tflspec's `Imports`. | ggplot2 NEWS 3.5.0; tflspec `dependency-minimums.md` |
+| ggplot2 | 3.5.2 | `coord_radial()` (the sunburst and polar figures tflspec writes) -> 3.5.0; `standardise_aes_names()`, `get_element_tree()` -> 3.3.0; the plain `ggplot()`, `aes()`, `geom_*()` the app writes -> every release. The same minimum as tflspec's `Imports` (3.5.2, the 3.5 release its workflow tests; patchwork at the snapshot does not load with 3.5.0). | ggplot2 NEWS 3.5.0, 3.5.2; tflspec `dependency-minimums.md` |
 | rtfreporter | 0.8.2.9100 | What its `next` has: tflplanner and rtfreporter are released together, so the minimum is the version of rtfreporter's `next` when this table was made. In the minimum environment it is installed from `next` (`Remotes`). | rtfreporter `next`, `DESCRIPTION` |
 | tflspec | 0.0.24.9238 | What its `next` has, in the same way. | tflspec `next`, `DESCRIPTION` |
 | testthat | 3.1.7 | `local_mocked_bindings()` (103 uses in the tests) -> 3.1.7; `expect_no_error()`, `expect_no_warning()`, `expect_no_message()` -> 3.1.5; `expect_no_match()` -> 3.0.3; the third edition and `Config/testthat/parallel` -> 3.0.0. | testthat NEWS 3.1.7, 3.1.5, 3.0.3, 3.0.0 |
-| withr | 2.5.0 | `local_tempdir()` -> 2.3.0; `local_tempfile()` -> 2.1.0; `local_options()`, `local_envvar()`, `defer()` -> 2.0.0. ggplot2 3.5.0 needs withr (>= 2.5.0). | `NAMESPACE` of each release; ggplot2 3.5.0 `DESCRIPTION` |
+| withr | 2.5.0 | `local_tempdir()` -> 2.3.0; `local_tempfile()` -> 2.1.0; `local_options()`, `local_envvar()`, `defer()` -> 2.0.0. ggplot2 3.5.2 needs withr (>= 2.5.0). | `NAMESPACE` of each release; ggplot2 3.5.2 `DESCRIPTION` |
 | broom, broom.helpers | 1.0.8, 1.17.0 | `cardx::ard_regression()` (T-14-2-2's hazard ratios) calls them, and the sample study stops without them (`R/sample.R`); cardx asks for broom (>= 1.0.8). Unchanged. | cardx `DESCRIPTION`; `R/sample.R` |
 | dplyr | none | `case_when()`, `if_else()` (in the code the templates write) -> 0.5.0. The minimum cards (0.8.0) needs dplyr (>= 1.1.4), which is what is installed. | cards 0.8.0 `DESCRIPTION` |
 | arrow, haven | none | `arrow::read_parquet()` -> 0.14.1; `haven::read_xpt()`, `read_sas()` -> 1.1.0 and 0.1.0. Each reads one kind of input file (the app says "Reading .x files needs the x package" when it is missing); an old arrow cannot be built from source without its system library, so both come from the snapshot. | `NAMESPACE` of each release |
@@ -77,6 +77,6 @@ version is listed, not called).
 The minimums before this table was made, and why each changed: R 4.1 ->
 4.2 (cardx 0.3.1); shiny 1.8.1 -> 1.11.0 (`updateOn`); testthat 3.0.0 ->
 3.1.7 (`local_mocked_bindings()`); cards, cardx and ggplot2 moved from
-`Suggests` to `Imports`, with the minimums above; every other `Imports`
+`Suggests` to `Imports`, with the minimums above (ggplot2 3.5.2, as tflspec's); every other `Imports`
 entry had no minimum and now has the one in the table; withr (none ->
-2.5.0) follows ggplot2 3.5.0.
+2.5.0) follows ggplot2 3.5.2.
