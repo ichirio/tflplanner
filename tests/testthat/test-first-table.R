@@ -111,7 +111,6 @@ test_that("read_data_head() keeps the columns' labels", {
 })
 
 test_that("a row of the analyses grid is edited as a form", {
-  skip_if_not_installed("cards")
   local_home()
   s <- create_study("AF")
   dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
@@ -574,7 +573,6 @@ test_that("the wizard runs the analyses together (ard_stack), unless a subject h
 
 test_that("a forest's blank comparison is left to the template: every other arm", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   local_home()
   s <- create_study("G2")
   dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)

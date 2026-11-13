@@ -4,7 +4,6 @@
 
 test_that("a report with no analysis set, and one with a set by a condition, draw and write", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   home <- withr_tempdir()
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)

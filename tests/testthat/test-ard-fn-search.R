@@ -73,7 +73,6 @@ test_that("both sides are compared in one text", {
 })
 
 test_that("a query finds the function for it first", {
-  skip_if_not_installed("cardx")
   # an abbreviation: SMD is the balance of the background, then the
   # effect sizes
   s <- fn_find_app("SMD")
@@ -141,7 +140,6 @@ test_that("a query finds the function for it first", {
 })
 
 test_that("a company with no keywords of its own has no such category", {
-  skip_if_not_installed("cardx")
   m <- .std_ard_methods()[0, ]
   f <- tflspec::tfl_ard_functions()
   e <- .ard_fn_entries(m, f)
@@ -151,7 +149,6 @@ test_that("a company with no keywords of its own has no such category", {
 })
 
 test_that("a short word is a whole word only", {
-  skip_if_not_installed("cardx")
   # or: not inside categorical, not the ORR of a response rate
   expect_setequal(fn_find("or")$call,
                   c("cardx::ard_regression", "cardx::ard_stats_fisher_test",
@@ -163,7 +160,6 @@ test_that("a short word is a whole word only", {
 })
 
 test_that("a near spelling is found when little else is", {
-  skip_if_not_installed("cardx")
   s <- fn_find("wilcoxn")
   expect_true(all(s$tier == 4))
   expect_identical(s$value[1L], "wilcox")
@@ -175,7 +171,6 @@ test_that("a near spelling is found when little else is", {
 })
 
 test_that("a question with no function of its own leads on", {
-  skip_if_not_installed("cardx")
   # MMRM: the mmrm package through ard_regression and emmeans (checked)
   s <- fn_find("MMRM")
   expect_setequal(s$call, c("cardx::ard_regression", "cardx::ard_emmeans_emmeans",
@@ -193,7 +188,6 @@ test_that("a question with no function of its own leads on", {
 
 test_that("the screen says why a function was found, and its category", {
   skip_on_cran()
-  skip_if_not_installed("cardx")
   local_home()
   s <- create_study("FS")
   dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
@@ -247,7 +241,6 @@ test_that("the screen says why a function was found, and its category", {
 
 test_that("the chooser is one line once a function is chosen", {
   skip_on_cran()
-  skip_if_not_installed("cardx")
   local_home()
   s <- create_study("FC")
   dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
@@ -344,7 +337,6 @@ test_that("a new function of one's own has a keywords line to fill in", {
 })
 
 test_that("the statistical review's points (S1, #139)", {
-  skip_if_not_installed("cardx")
   # a CI of the pseudo-median is not a median CI
   s <- fn_find("median CI")
   expect_identical(s$rank[s$call == "cardx::ard_continuous_ci"], 3L)
@@ -364,7 +356,6 @@ test_that("the statistical review's points (S1, #139)", {
 
 test_that("every setting in the dictionary runs as written", {
   skip_on_cran()
-  skip_if_not_installed("cardx")
   d <- .fn_dict()
   d <- d[nzchar(d$args), , drop = FALSE]
   # only functions take a setting, and each is R
@@ -447,7 +438,6 @@ test_that("every setting in the dictionary runs as written", {
 })
 
 test_that("a word that means a setting brings it", {
-  skip_if_not_installed("cardx")
   s <- fn_find("PROC LOGISTIC")
   expect_identical(s$args[1L], 'method = "glm", method.args = list(family = binomial), exponentiate = TRUE')
   expect_identical(fn_find("PROC PHREG")$args[1L],
@@ -463,7 +453,6 @@ test_that("a word that means a setting brings it", {
 
 test_that("the form starts from the setting a word means", {
   skip_on_cran()
-  skip_if_not_installed("cardx")
   local_home()
   s <- create_study("FP")
   dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
@@ -498,7 +487,6 @@ test_that("the form starts from the setting a word means", {
 
 test_that("a setting that replaces the analysis's own arguments says so", {
   skip_on_cran()
-  skip_if_not_installed("cardx")
   local_home()
   s <- create_study("FR")
   dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)

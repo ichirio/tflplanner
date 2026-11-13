@@ -379,7 +379,6 @@ test_that("a part's id never reaches a program, a file or the table's sheets", {
 
 test_that("the preview of a part from a dataset runs the data code with the study's helpers", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   s <- .part_study()
   expect_true(any(grepl("order_levels(", .table_dataset_lines(s$planner, "T-14-1-2"), fixed = TRUE)))
   wd <- getwd()
@@ -395,7 +394,6 @@ test_that("the preview of a part from a dataset runs the data code with the stud
 
 test_that("the preview reads the study's own study_helpers.R, and says when it stops", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   s <- .part_study()
   f <- file.path(s$path, "programs", "study_helpers.R")
   writeLines("order_levels <- function(data, ...) { data$MARKED <- 1L; data }", f)
@@ -411,7 +409,6 @@ test_that("the preview reads the study's own study_helpers.R, and says when it s
 
 test_that("a part that stops the table is left out of the preview, whatever its error, and said", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   s <- .part_study()
   suppressMessages(fetch_ard(s, "T-14-1-2"))
   # the part reads a dataset with its own column key: it stops the table, and not
@@ -440,7 +437,6 @@ test_that("a part that stops the table is left out of the preview, whatever its 
 
 test_that("a part that stops the table is left out of the preview, whatever its error, and said", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   s <- .part_study()
   suppressMessages(fetch_ard(s, "T-14-1-2"))
   # the part reads a dataset with its own column key: it stops the table, and not

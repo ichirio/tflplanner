@@ -119,7 +119,6 @@ test_that("a report's analysis set is saved with the study", {
 })
 
 test_that("step 1: the report's analysis set chosen, its data made, 1-1 starts from it", {
-  skip_if_not_installed("cards")
   local_home()
   p <- pop_planner()
   s <- create_study("RQ", planner = p)

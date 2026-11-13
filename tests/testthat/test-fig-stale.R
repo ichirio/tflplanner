@@ -52,7 +52,6 @@ test_that("a figure from an ARD records the definition it read; batch.R knows it
 
 test_that("the figure turns outdated with the table's ARD, and the preview and the batch make it first", {
   skip_on_cran()
-  skip_if_not_installed("cardx")
   skip_if_not_installed("ggsurvfit")
   s <- stale_study()
   # the preview: T-14-2-2's ARD made first (it is not made yet)

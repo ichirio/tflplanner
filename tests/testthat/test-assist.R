@@ -19,7 +19,6 @@ ae_data <- function() {
 }
 
 test_that("ard_meta() reads keys, variables, levels and statistics", {
-  skip_if_not_installed("cards")
   m <- ard_meta(dm_ard())
   expect_equal(names(m$keys), "TRT01A")
   expect_setequal(m$keys$TRT01A,
@@ -37,7 +36,6 @@ test_that("ard_meta() reads keys, variables, levels and statistics", {
 })
 
 test_that("ard_meta() reads the rework, and a hierarchy", {
-  skip_if_not_installed("cards")
   d <- rtfreporter::normalize_ard(dm_ard())
   d$variable_level[d$variable == "SEX"] <-
     ifelse(d$variable_level[d$variable == "SEX"] == "F", "Female", "Male")
@@ -54,7 +52,6 @@ test_that("ard_meta() reads the rework, and a hierarchy", {
 
 test_that("fill_variables() and fill_tables() fill from the metadata", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   m <- ard_meta(dm_ard())
   p <- add_output(new_planner(), "DM")
   p <- fill_variables(p, "DM", m)
@@ -119,7 +116,6 @@ test_that("a report inherits the defaults it has no row for", {
 })
 
 test_that("fetch_ard() runs the data part from the study folder", {
-  skip_if_not_installed("cards")
   skip_on_cran()
   home <- withr_tempdir()
   old <- options(tflplanner.home = home)

@@ -1,5 +1,4 @@
 test_that("args go into the fields and back, and nothing written by hand is lost", {
-  skip_if_not_installed("cardx")
   f <- .ard_form_fields("cardx::ard_categorical_ci")
   expect_true(all(c("method", "conf.level", "value") %in% f$arg))
   expect_false(any(c("data", "variables", "by", "fmt_fun") %in% f$arg))
@@ -23,7 +22,6 @@ test_that("args go into the fields and back, and nothing written by hand is lost
 })
 
 test_that("the functions are the company's keywords and the catalog, by category", {
-  skip_if_not_installed("cardx")
   e <- .ard_fn_entries(.std_ard_methods(), tflspec::tfl_ard_functions())
   expect_identical(e$category[1], "Company standard")
   expect_true("cardx::ard_categorical_ci" %in% e$value)
@@ -75,7 +73,6 @@ test_that("a level field offers the code lists (as the ARD has them), else the d
 
 test_that("the form picks a function, fills its arguments and writes args", {
   skip_on_cran()
-  skip_if_not_installed("cardx")
   local_home()
   s <- create_study("AG")
   dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
@@ -168,7 +165,6 @@ test_that("every hint of the ARD catalog has its Japanese", {
 })
 
 test_that("what the catalog does not offer is not listed", {
-  skip_if_not_installed("cardx")
   f <- tflspec::tfl_ard_functions()
   skip_if(!"offered" %in% names(f))
   e <- .ard_fn_entries(.std_ard_methods(), f)
@@ -177,7 +173,6 @@ test_that("what the catalog does not offer is not listed", {
 
 test_that("the form shows the variables, groups and strata in the definition's order", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   local_home()
   s <- create_study("VO")
   dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)

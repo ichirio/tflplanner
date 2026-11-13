@@ -303,7 +303,6 @@ test_that("the Japanese says one word for post-baseline, and the tip has its \\n
 
 test_that("a template report's preview is its content run on its ARD, not the study defaults' sheets", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   home <- local_home()
   s <- suppressMessages(create_sample_study(run = FALSE, home = home))
   # the lab data the shift table reads (tflspec's simulated ADLB)
