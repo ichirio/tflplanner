@@ -11,7 +11,7 @@ version; processx and testthat need ps of a version; ggplot2 needs withr of
 a version).
 
 **The two ends.** *The minimum environment* is R at the minimum
-`DESCRIPTION` names (`Depends: R (>= 4.2)`) with every direct dependency at
+`DESCRIPTION` names (`Depends: R (>= 4.3)`) with every direct dependency at
 exactly its minimum (the R-CMD-check job *minimum environment*). The
 suggested packages with no minimum, and every indirect dependency, come
 from CRAN as it was on **2026-07-07**: the Posit Package Manager snapshot of
@@ -42,7 +42,7 @@ version is listed, not called).
 
 | Package | Minimum | What needs it (function or argument -> version) | Source |
 |---|---|---|---|
-| R (`Depends`) | 4.2 | cardx 0.3.1 (below) depends on R (>= 4.2). What tflplanner itself uses needs less: the native pipe and `\(x)` -> 4.1.0; cards 0.8.0 needs R (>= 4.1). | cardx 0.3.1 `DESCRIPTION`; R NEWS 4.1.0 |
+| R (`Depends`) | 4.3 | R 4.3: rtfreporter (a hard dependency) needs R >= 4.3 (rtfreporter #1044). Tried 4.2 first: cardx 0.3.1 depends on R (>= 4.2) and the minimum environment installed with it, until rtfreporter `next` raised its own floor to 4.3 and made 4.2 impossible. cardx 0.3.1 (below) depends on R (>= 4.2). What tflplanner itself uses needs less: the native pipe and `\(x)` -> 4.1.0; cards 0.8.0 needs R (>= 4.1). | cardx 0.3.1 `DESCRIPTION`; R NEWS 4.1.0 |
 | stats, tools, utils (`Imports`) | none | They ship with R, so their version is R's. | -- |
 | shiny | 1.11.0 | `updateOn = "blur"` of `textInput()`, `textAreaInput()` and `numericInput()` (the editor's fields: `R/srv_add_report.R`, `R/srv_study.R`, `R/app_ui.R`, `R/srv_figure_page.R`) -> 1.11.0 (it was 1.8.1, for the launcher's `stop_on_close`, NEWS #256); `moduleServer()`, `testServer()` -> 1.5.0; `onStop()` -> 1.0.4; `debounce()` -> 1.0.0. | shiny NEWS 1.11.0 ("`textInput()`, `textAreaInput()`, `numericInput()` ... all gain an `updateOn` option"); `NAMESPACE` of each release |
 | bslib | 0.6.0 | `navset_underline()`, `navset_card_underline()` -> 0.6.0; `tooltip()`, `input_switch()` -> 0.5.1; `accordion()`, `sidebar()`, `layout_sidebar()`, `breakpoints()`, `nav_panel()`, `navset_pill_list()` -> 0.5.0. shiny 1.11.0 needs bslib (>= 0.6.0) too. | bslib NEWS 0.6.0 ("new `navset_underline()` & `navset_card_underline()`"); shiny 1.11.0 `DESCRIPTION` |
@@ -76,7 +76,7 @@ version is listed, not called).
 ## Changes
 
 The minimums before this table was made, and why each changed: R 4.1 ->
-4.2 (cardx 0.3.1); shiny 1.8.1 -> 1.11.0 (`updateOn`); testthat 3.0.0 ->
+4.3 (rtfreporter #1044; 4.2 first, for cardx 0.3.1); shiny 1.8.1 -> 1.11.0 (`updateOn`); testthat 3.0.0 ->
 3.1.7 (`local_mocked_bindings()`); cards, cardx and ggplot2 moved from
 `Suggests` to `Imports`, with the minimums above (ggplot2 3.5.2, as tflspec's); jsonlite and openxlsx are tflspec's minimums; every other `Imports`
 entry had no minimum and now has the one in the table; withr (none ->

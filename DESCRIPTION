@@ -26,7 +26,7 @@ BugReports: https://github.com/ichirio/tflplanner/issues
 Encoding: UTF-8
 Language: en-GB
 Depends:
-    R (>= 4.2)
+    R (>= 4.3)
 Imports:
     bslib (>= 0.6.0),
     cards (>= 0.8.0),
