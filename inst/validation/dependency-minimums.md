@@ -15,7 +15,7 @@ a version).
 exactly its minimum (the R-CMD-check job *minimum environment*). The
 suggested packages with no minimum, and every indirect dependency, come
 from CRAN as it was on **2026-07-07**: the Posit Package Manager snapshot of
-that date (`https://packagemanager.posit.co/cran/__linux__/noble/2026-07-06`,
+that date (`https://packagemanager.posit.co/cran/__linux__/noble/2026-07-07`,
 for Ubuntu 24.04). That date is the first snapshot that has the newest of
 the minimums, cardx 0.3.4 (on CRAN on 2026-07-06, in the snapshot of 2026-07-07, not yet in that of 2026-07-06; cards 0.8.0, the
 next newest, is from 2026-05-28). rtfreporter and tflspec are installed from
