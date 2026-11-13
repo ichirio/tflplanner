@@ -67,6 +67,10 @@ button[onclick*='tpl_revert'] { white-space: nowrap; flex-shrink: 0; }
 .rp-field-row > .rp-r-input { flex: 1 1 auto; min-width: 0; display: none; }
 .rp-field.rp-field-r > .rp-field-row > .rp-form-input { display: none; }
 .rp-field.rp-field-r > .rp-field-row > .rp-r-input { display: block; }
+/* (an argument that is R only: its field is the R field, never hidden) */
+.rp-field.rp-field-ronly > .rp-field-row > .rp-form-input { display: block; }
+.rp-field-locked .selectize-control.multi .selectize-input.disabled > div { color: #4b5563;
+  background: #e5e7eb; }
 .rp-r-toggle { margin: 0; cursor: pointer; font-size: 11px; font-family: Consolas, 'Courier New', monospace;
   color: #9ca3af; border: 1px solid #e5e7eb; border-radius: .25rem; padding: 0 .3rem; line-height: 1.5; }
 .rp-r-toggle input { display: none; }
@@ -77,6 +81,11 @@ button[onclick*='tpl_revert'] { white-space: nowrap; flex-shrink: 0; }
 .rp-field .form-control, .rp-field .form-select, .rp-field .selectize-input {
   padding: 2px 6px; font-size: 13px; min-height: 0; }
 .rp-mono { font-family: Consolas, 'Courier New', monospace; }
+.rp-badge-locked { background: #f3f4f6; border-color: #d1d5db; color: #4b5563; }
+.rp-badge-unset { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+.rp-field-locked .rp-form-input { opacity: .65; }
+.rp-field-unset .selectize-input, .rp-field-unset .form-control, .rp-field-unset .form-select {
+  border-color: #fca5a5; }
 .rp-check { margin: 0; padding: 0; min-height: 0; }
 .rp-check .form-check-input { margin: 0; }
 .rp-swatch { display: inline-block; width: .9em; height: .9em; border: 1px solid #9ca3af;

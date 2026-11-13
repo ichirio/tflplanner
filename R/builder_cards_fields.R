@@ -15,14 +15,15 @@
   if (grepl("^enum\\[", first)) return("enum")
   if (grepl("^(list|vec)<", first)) {
     inner <- sub("^(list|vec)<(.*)>$", "\\2", first)
-    return(if (grepl("^column", inner) || grepl("^string", inner) ||
+    return(if (grepl("^column|^level|^enum\\[", inner) || grepl("^string", inner) ||
                  grepl("^number|^integer|^date", inner)) "list" else "r")
   }
   if (grepl("^map<", first)) return("map")
   if (grepl("^call", first)) return("call")
   if (grepl("^rows<", first)) return("r")
   if (first %in% c("string", "integer", "number", "logical", "column", "stat",
-                   "template", "colour", "shape", "object", "plot", "r")) {
+                   "template", "colour", "shape", "object", "plot", "r",
+                   "dataset", "population", "level")) {
     return(first)
   }
   "r"
@@ -34,6 +35,15 @@
   e <- alts[grepl("^enum\\[", alts)]
   if (!length(e)) return(character())
   strsplit(sub("^enum\\[(.*)\\]$", "\\1", e[[1L]]), "|", fixed = TRUE)[[1L]]
+}
+
+# the inner type of a list<..> / vec<..> (NULL: not a list)
+.type_list_inner <- function(type) {
+  if (is.null(type) || !nzchar(type)) return(NULL)
+  alts <- .type_split(trimws(type), "|")
+  alts <- c(setdiff(alts, "r"), intersect(alts, "r"))
+  if (!grepl("^(list|vec)<", alts[[1L]])) return(NULL)
+  sub("^(list|vec)<(.*)>$", "\\2", alts[[1L]])
 }
 
 # the function of a call<fn>; NULL for a plain call
@@ -79,9 +89,16 @@
 arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default = NULL,
                       choices = NULL, from = "own", help = NULL, required = FALSE,
                       lang = "en", fn = NULL, aes = NULL, nav = NULL, help_link = NULL,
-                      own = NULL) {
+                      own = NULL, locked = FALSE) {
   t <- function(x) tr(x, lang)
   kind <- .arg_kind(type)
+  # (a list<enum[a|b]> chooses among the entries; a list<string> may be
+  # typed to; a level is one of a variable's values, or typed)
+  inner <- if (identical(kind, "list")) .type_list_inner(type)
+  if (!is.null(inner) && grepl("^enum\\[", inner) && is.null(choices)) {
+    choices <- .type_enum(inner)
+  }
+  free <- (!is.null(inner) && grepl("^(string|level)", inner)) || identical(kind, "level")
   fid <- paste0(id, "__", arg)
   # (an argument that is R only -- no other form -- shows its R in its own
   # field, as the others' R: no switch to press, its R mark fixed)
@@ -95,7 +112,12 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
   control <- switch(
     kind,
     column = .field_select(fid, choices, value, multiple = FALSE, lang = lang, placeholder = default),
-    list = .field_select(fid, choices, value, multiple = TRUE, lang = lang, placeholder = default),
+    dataset = .field_select(fid, choices, value, multiple = FALSE, lang = lang, placeholder = default),
+    population = .field_select(fid, choices, value, multiple = FALSE, lang = lang, placeholder = default),
+    level = .field_select(fid, choices, value, multiple = FALSE, lang = lang, placeholder = default,
+                          create = TRUE),
+    list = .field_select(fid, choices, value, multiple = TRUE, lang = lang, placeholder = default,
+                         create = free),
     enum = .field_enum(fid, .type_enum(type), value, default, lang, labels = .enum_labels[[arg]]),
     number = .field_number(fid, value, default, step = "any"),
     integer = .field_number(fid, value, default, step = "1", min = "0"),
@@ -118,19 +140,43 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
     shiny::tags$input(type = "checkbox", id = paste0(fid, "__isr"), class = "rp-isr",
                       checked = if (is_r) NA else NULL),
     shiny::tags$span("R"))
+  has_val <- nzchar(r_text) || .has_value(value)
+  # (a value the template fixes: shown, not editable; a required value
+  # nobody has set: marked "Not set")
+  locked <- isTRUE(locked)
+  unset <- required && !has_val && !locked
+  if (locked) {
+    control <- .disable_inputs(control)
+    r_input <- .disable_inputs(r_input)
+    r_switch <- .disable_inputs(r_switch)
+  }
   cls <- c("rp-field", paste0("rp-field-", kind), if (required) "rp-field-required",
-           if (is_r) "rp-field-r", if (nzchar(r_text) || .has_value(value)) "rp-has-value")
+           if (locked) "rp-field-locked", if (unset) "rp-field-unset",
+           if (is_r) "rp-field-r", if (r_only) "rp-field-ronly", if (has_val) "rp-has-value")
   shiny::div(
     class = paste(cls, collapse = " "), `data-arg` = arg, `data-field` = fid,
     shiny::tags$label(class = "rp-field-label", `for` = fid,
                       builder_label(label, arg, "arg", lang),
                       if (required) shiny::tags$span(class = "rp-req", title = t("Required"), "*"),
                       from_badge(from, lang, own = own),
+                      if (locked) shiny::tags$span(class = "rp-badge rp-badge-locked",
+                                                   title = t("Fixed by the template"),
+                                                   "\U0001F512 ", t("Fixed by the template")),
+                      if (unset) shiny::tags$span(class = "rp-badge rp-badge-unset", t("Not set")),
                       help_tip(help), help_link),
     shiny::div(class = "rp-field-row",
                shiny::div(class = "rp-form-input", control),
                if (!r_only) r_input, r_switch),
     if (!is.null(nav)) nav_hint(nav, "field", lang))
+}
+
+# every input of a field not editable (a value the template fixes)
+.disable_inputs <- function(tag) {
+  q <- htmltools::tagQuery(tag)
+  for (sel in c("input", "select", "textarea")) {
+    q$find(sel)$addAttrs(disabled = "disabled")$resetSelected()
+  }
+  q$allTags()
 }
 
 .has_value <- function(v) {
@@ -140,13 +186,17 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
 }
 
 # a select of the data's columns (or any choices), one or several
-.field_select <- function(fid, choices, value, multiple = FALSE, lang = "en", placeholder = NULL) {
+.field_select <- function(fid, choices, value, multiple = FALSE, lang = "en", placeholder = NULL,
+                          create = FALSE) {
   choices <- .choices_with(choices, value)
-  ph <- if (!is.null(placeholder)) as.character(placeholder)[[1L]] else tr("Choose", lang)
+  ph <- if (!is.null(placeholder) && length(placeholder)) {
+    paste(as.character(placeholder), collapse = ", ")
+  } else tr("Choose", lang)
   opts <- list(placeholder = ph)
   # (several: in order, dragged to reorder -- a hierarchy's levels, the
   # columns of a stub, the keys of an order)
   if (multiple) opts$plugins <- list("remove_button", "drag_drop")
+  if (isTRUE(create)) opts$create <- TRUE
   shiny::selectizeInput(fid, NULL, choices = c(stats::setNames("", ""), choices),
                         selected = value, multiple = multiple, width = "100%", options = opts)
 }

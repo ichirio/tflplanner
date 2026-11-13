@@ -153,6 +153,8 @@
       text = if (several) "chips" else "text",
       choice = if (several) "choices" else "choice",
       list = "list",
+      object = "object",
+      r = "expr",
       "text"))
   }
   d <- prm$default
