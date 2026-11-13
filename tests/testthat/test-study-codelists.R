@@ -332,14 +332,9 @@ test_that("the sheets path takes no inherited list a variable the ARD does not r
   expect_true(any(grepl("Young", program_code(p, "DM"), fixed = TRUE)))
 })
 
-<<<<<<< HEAD
-test_that("the ARS reads a report's inherited lists: a condition on a label is the data's value", {
-=======
 test_that("the ARS reads a report's inherited lists: a condition on a label stops", {
-  skip_if_not_installed("cards")
   # tflspec #796: the data hold the codes, so a `where` written with a label
   # stops in the ARS as in the ARD program, and says the code to write
->>>>>>> origin/next
   cl_home()
   s <- cl_study("CL13")
   p <- s$planner
