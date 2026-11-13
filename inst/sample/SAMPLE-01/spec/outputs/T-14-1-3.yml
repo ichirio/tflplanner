@@ -2,15 +2,15 @@ id: T-14-1-3
 kind: table
 label: 'Age group and sex: the ARD keeps cards'' default n, N and p; the table prints
   n (%) and leaves the N rows out'
-population: SAF
+common:
+  population: SAF
 extends:
   - defaults
+data:
+  - id: adsl_saf
+    label: Safety set
+    from: ADSL
 ard:
-  analysis_data:
-    - id: adsl_saf
-      label: Safety set
-      from: ADSL
-      population: SAF
   analyses:
     - id: GROUPN
       method: categorical
@@ -28,9 +28,6 @@ ard:
         - AGEGR1
         - SEX
       purpose: PRIMARY OUTCOME MEASURE
-data:
-  source: ard
-  object: ard
 codelists:
   TRT01A:
     - value: Drug X

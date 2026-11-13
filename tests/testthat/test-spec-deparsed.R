@@ -34,7 +34,7 @@ test_that("opening a study with such a value warns with the report id", {
   s <- suppressMessages(create_sample_study(run = FALSE, home = home))
   f <- file.path(s$path, "spec", "outputs", "T-BAD.yml")
   tflspec::tfl_write_output(tflspec::tfl_output(
-    "T-BAD", "table", label = "x", population = "SAF",
+    "T-BAD", "table", label = "x", common = list(population = "SAF"),
     template = list(name = "demog", args = list(
       by = "TRT01A", categorical = "SEX", count_cell = bad_text))), f)
   # (taken in from the files, then again from the state: each open says it)

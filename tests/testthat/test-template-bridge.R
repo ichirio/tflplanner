@@ -5,7 +5,7 @@
 test_that("a cells-sheet edit of a template report writes one item after the template", {
   skip_on_cran()
   p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
-  o <- tflspec::tfl_output("T-99", "table", population = "SAF",
+  o <- tflspec::tfl_output("T-99", "table", common = list(population = "SAF"),
                            template = list(name = "demog",
                                          args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   p <- .spec_add_output(p, o, population = "SAF")
@@ -48,7 +48,7 @@ test_that("a template report is expanded before tflspec makes its sheets", {
   # the expanding to tflplanner: the sheets still hold the report's items
   skip_on_cran()
   p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
-  o <- tflspec::tfl_output("T-99", "table", population = "SAF",
+  o <- tflspec::tfl_output("T-99", "table", common = list(population = "SAF"),
                            template = list(name = "demog",
                                          args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   p <- .spec_add_output(p, o, population = "SAF")

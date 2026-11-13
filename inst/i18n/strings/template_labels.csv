@@ -219,3 +219,7 @@
 "which records (R) of a `data` other than ADSL: ANL01FL == ""Y""; unset: all; for which subjects, `subset`","残すレコード（R）。ADSL 以外の `data` の場合: ANL01FL == ""Y""; 未指定: すべて; 被験者の絞り込みは `subset`"
 "the parameters' order variable; NULL: by their PARAMCD","パラメータの順序変数; NULL: PARAMCD 順"
 "the rows kept: this % of subjects or more (a step of the ARD); NULL: all","残す行: 被験者のこの % 以上（ARD の 1 ステップ）。NULL: すべて"
+"the analysis data's id; NULL: <data>_sub","解析データの ID。NULL: <data>_sub"
+"the analysis set's id: the report's `common: population`","解析対象集団の ID。帳票の `common: population` に書いたもの"
+"the events' analysis data's id; NULL: <data>_sub","イベントの解析データの ID。NULL: <data>_sub"
+"the analysis data's id when `data` is not ADSL; NULL: <data>_sub","`data` が ADSL でないときの解析データの id。NULL: <data>_sub"

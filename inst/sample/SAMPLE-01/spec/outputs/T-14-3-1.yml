@@ -1,21 +1,21 @@
 id: T-14-3-1
 kind: table
 label: TEAEs by SOC / PT
-population: SAF
+common:
+  population: SAF
 extends:
   - patterns/Compact
   - defaults
+data:
+  - id: adsl_saf
+    label: Safety set
+    from: ADSL
+  - id: adae_saf
+    label: Treatment-emergent AEs of the safety set
+    from: ADAE
+    subjects: adsl_saf
+    where: !r TRTEMFL == "Y"
 ard:
-  analysis_data:
-    - id: adsl_saf
-      label: Safety set
-      from: ADSL
-      population: SAF
-    - id: adae_saf
-      label: Treatment-emergent AEs of the safety set
-      from: ADAE
-      subjects: adsl_saf
-      where: !r TRTEMFL == "Y"
   analyses:
     - id: TEAE
       label: TEAE by SOC / PT
@@ -29,9 +29,6 @@ ard:
       denominator: adsl_saf
       args: !r over_variables = TRUE
       purpose: PRIMARY OUTCOME MEASURE
-data:
-  source: ard
-  object: ard
 codelists:
   TRT01A:
     - value: Drug X

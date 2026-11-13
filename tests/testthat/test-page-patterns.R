@@ -482,7 +482,7 @@ test_that("a step the report's extends does not name is its template's own, else
   pp_cleanup <- function() rm("pp_page_tpl", envir = reg)
   on.exit(pp_cleanup(), add = TRUE)
   p0 <- ext_sample()
-  o <- tflspec::tfl_output("T-PP", "table", population = "SAF",
+  o <- tflspec::tfl_output("T-PP", "table", common = list(population = "SAF"),
                            template = list(name = "pp_page_tpl", args = list()))
   p0 <- suppressWarnings(.spec_add_output(p0, o, label = "pp", population = "SAF"))
   id <- "T-PP"
