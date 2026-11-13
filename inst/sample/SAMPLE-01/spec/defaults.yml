@@ -38,28 +38,51 @@ styles:
   standard:
     page:
       header:
-        '1':
-          left: Sample Pharma (tflplanner sample)
-          right: DRAFT
-        '2':
-          left: 'Protocol: SAMPLE-01 (tflspec''s oncology sample data)'
-          right: Page {PAGE} of {TOTAL_PAGES}
-        '3': []
-        '4':
-          center: '{OUTPUT_LABEL}'
-        '5':
-          center: '{OUTPUT_TITLE}'
-        '6':
-          center: ({OUTPUT_POPULATION})
+        first:
+          '1':
+            left: Sample Pharma (tflplanner sample)
+            right: DRAFT
+          '2':
+            left: 'Protocol: SAMPLE-01 (tflspec''s oncology sample data)'
+            right: Page {PAGE} of {TOTAL_PAGES}
+          '3': []
+          '4':
+            center: '{OUTPUT_LABEL}'
+          '5':
+            center: '{OUTPUT_TITLE}'
+          '6':
+            center: ({OUTPUT_POPULATION})
       footer:
         last:
           '98':
-            left: 'Source: tflspec''s oncology sample study XYZ-ONC-01 (simulated ADaM data;
-              not real patients).'
+            left: 'Source: tflspec''s oncology sample study XYZ-ONC-01 (simulated
+              ADaM data; not real patients).'
           '99':
             left: '{PROGRAM}       Generated on: {DATETIME}'
   compact:
     page:
+      header:
+        first:
+          '1':
+            left: Sample Pharma (tflplanner sample)
+            right: DRAFT
+          '2':
+            left: 'Protocol: SAMPLE-01 (tflspec''s oncology sample data)'
+            right: Page {PAGE} of {TOTAL_PAGES}
+          '3': []
+          '4':
+            center: '{OUTPUT_LABEL}'
+          '5':
+            center: '{OUTPUT_TITLE}'
+          '6':
+            center: ({OUTPUT_POPULATION})
+      footer:
+        last:
+          '98':
+            left: 'Source: tflspec''s oncology sample study XYZ-ONC-01 (simulated
+              ADaM data; not real patients).'
+          '99':
+            left: '{PROGRAM}       Generated on: {DATETIME}'
       rtf_page:
         margin_top_in: 0.5
         margin_bottom_in: 0.5
@@ -67,24 +90,4 @@ styles:
         margin_right_in: 0.5
       rtf_style:
         font_size_half_points: 16
-      header:
-        '1':
-          left: Sample Pharma (tflplanner sample)
-          right: DRAFT
-        '2':
-          left: 'Protocol: SAMPLE-01 (tflspec''s oncology sample data)'
-          right: Page {PAGE} of {TOTAL_PAGES}
-        '3': []
-        '4':
-          center: '{OUTPUT_LABEL}'
-        '5':
-          center: '{OUTPUT_TITLE}'
-        '6':
-          center: ({OUTPUT_POPULATION})
-      footer:
-        last:
-          '98':
-            left: 'Source: tflspec''s oncology sample study XYZ-ONC-01 (simulated ADaM data;
-              not real patients).'
-          '99':
-            left: '{PROGRAM}       Generated on: {DATETIME}'
+

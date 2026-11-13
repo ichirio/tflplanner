@@ -2,7 +2,6 @@ id: T-14-3-1
 kind: table
 label: TEAEs by SOC / PT
 population: SAF
-style: compact
 extends:
   - defaults
 ard:
@@ -85,5 +84,6 @@ page:
     OUTPUT_TITLE: Treatment-Emergent Adverse Events by System Organ Class and Preferred
       Term
     OUTPUT_POPULATION: Safety Analysis Set
+style: compact
 note: TEAE by SOC / PT, frequency descending
 

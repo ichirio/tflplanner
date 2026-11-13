@@ -100,12 +100,13 @@ test_that("step 3: the pattern chosen, a value written, a line left out, from th
                                      line = "", part = "", name = "", value = "8", n = 2))
     expect_identical(page_value_from(rv$p, "page", "font_size_half_points", "T1")$value, "16")
     expect_match(output$page_form$html, "Back to the study default", fixed = TRUE)
-    session$setInputs(pg_act = list(act = "omit", band = "header", line = "1",
+    # (the form's line ids: a configuration's lines are first:N / last:N)
+    session$setInputs(pg_act = list(act = "omit", band = "header", line = "first:1",
                                     name = "", n = 3))
     expect_true(page_lines_from(rv$p, "header", "T1")$omitted[1])
-    session$setInputs(pg_act = list(act = "own", band = "header", line = "2",
+    session$setInputs(pg_act = list(act = "own", band = "header", line = "first:2",
                                     name = "", n = 4))
-    session$setInputs(pg_edit = list(kind = "line", band = "header", line = "2",
+    session$setInputs(pg_edit = list(kind = "line", band = "header", line = "first:2",
                                      part = "left", name = "", value = "PK study", n = 5))
     d <- page_lines_from(rv$p, "header", "T1")
     expect_identical(d$left[d$line == "2"], "PK study")
