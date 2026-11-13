@@ -90,14 +90,24 @@ cl_ahead <- function(p, id = "DM") {
 cl_body <- function(x) x[!grepl("^#", x)]
 # a table program without its plan_labels() step: tflspec writes one merged
 # step from the study's code lists when the program is generated from the
-# spec (tflspec #796); the view ahead of the spec (the sheets path) has none
+# spec (tflspec #796); the view ahead of the spec (the sheets path) has none.
+# Nor does it have the page the spec path writes from the built-in standard
+# page configuration (tokens, the section's header and footer): those lines
+# go too, so what is compared is the table.
 cl_unlabel <- function(x) {
+  x <- cl_unpage(x)
   i <- grep("  plan_labels(", x, fixed = TRUE)
   if (!length(i)) return(x)
   j <- if (endsWith(x[i[1L]], ")")) i[1L] else i[1L] + which(x[-seq_len(i[1L])] == "  )")[1L]
   x <- x[-(i[1L]:j)]
   x[i[1L] - 1L] <- sub(" |>", "", x[i[1L] - 1L], fixed = TRUE)
   x
+}
+cl_unpage <- function(x) {
+  i <- grep("^  tokens = list\\($", x)
+  if (length(i)) x <- x[-(i[1L]:(i[1L] - 1L + which(x[-seq_len(i[1L] - 1L)] == "  ),")[1L]))]
+  x <- x[!grepl("^  rtf_section\\(header = ", x)]
+  sub(", auto_section = TRUE", "", x, fixed = TRUE)
 }
 
 cl_ard <- function(s, id) .ard_spec_code(.ard_spec(s$planner$ard), id,
