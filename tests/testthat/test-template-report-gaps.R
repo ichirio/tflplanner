@@ -209,7 +209,7 @@ test_that("a report's file with the template and arguments set, in the template'
   p <- .spec_add_output(p, tpl_demog_output(), population = "SAF")
   o <- .tpl_output(p, "T-99", list(zzz = 1, population = "FAS"), name = "disposition")
   expect_identical(o$template$name, "disposition")
-  expect_identical(names(o$template$args), c("population", "zzz"))
+  expect_identical(names(o$template$args), "zzz")
   expect_identical(o$common$population, "FAS")
   # the name kept when none is given
   expect_identical(.tpl_output(p, "T-99", list())$template$name, "demog")

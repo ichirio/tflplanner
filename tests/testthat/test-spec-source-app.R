@@ -98,7 +98,7 @@ test_that("keeping my changes in a conflict keeps a template report's template",
   shiny::testServer(server_for(s$meta$study_id), {
     rv <- session$userData$rv
     rv$p <- .spec_set_output(rv$p, "T-TPL", .tpl_output(
-      rv$p, "T-TPL", list(population = "SAF", continuous = "AGE")))
+      rv$p, "T-TPL", list(population = "SAF", by = "TRT01A", continuous = "AGE")))
     rv$p <- set_sheet_rows(rv$p, "titles", "T-TPL", data.frame(line = "1", center = "Mine"))
     x <- tflspec::tfl_read_output(f)
     x$page$titles[["1"]]$center <- "Theirs"

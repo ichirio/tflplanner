@@ -685,8 +685,11 @@
   if (!is.null(name)) o$template$name <- name
   prm <- .tpl_params(o$template$name)
   args <- args[c(intersect(names(prm), names(args)), setdiff(names(args), names(prm)))]
-  o$template$args <- args
   if (!is.null(args$population)) o$common$population <- as.character(args$population)
+  # (a template whose analysis set is the report's population (demog) holds
+  # it in `common:`, not in its arguments)
+  if (.tpl_pop_of_report(prm)) args$population <- NULL
+  o$template$args <- args
   o
 }
 
