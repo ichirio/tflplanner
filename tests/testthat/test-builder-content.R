@@ -349,7 +349,7 @@ test_that("the screen review's fixes: per-variable templates said, every argumen
   expect_match(h, 'data-arg="keep"', fixed = TRUE)
   # ... read back onto the item's arguments as they are now
   # (keep's default TRUE: unticked is written, ticked again is none)
-  r <- .special_read(list(c__keep = FALSE), "c", "plan_sort")
+  r <- .special_read(list(c__keep = FALSE, c__keep__set = FALSE), "c", "plan_sort")
   expect_identical(.special_args_put(it$args, r)$keep, FALSE)
   expect_identical(.special_args_put(c(it$args, list(keep = FALSE)),
                                      .special_read(list(c__keep = TRUE), "c", "plan_sort")),

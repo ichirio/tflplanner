@@ -161,9 +161,10 @@ builder_card <- function(id, fn, label = NULL, from = "own", required = FALSE, o
 # argument left blank left out (not written).  NULL when the card is
 # switched off.  `schema` gives the arguments and their types (`args`,
 # `formals`, `aes`); an argument whose R switch is on is its R text.
-# `logical_false`: an unticked check is FALSE (not left out).
+# A switch (logical) is read from `<id>__<arg>__set`: its value when the report
+# set it, NULL while it shows the default (nothing is written then).
 #' @noRd
-builder_card_read <- function(input, id, schema = NULL, args = NULL, logical_false = FALSE) {
+builder_card_read <- function(input, id, schema = NULL, args = NULL) {
   get <- function(...) .input_value(input, paste(c(id, ...), collapse = "__"))
   on <- get("on")
   if (isFALSE(on)) return(NULL)
@@ -196,15 +197,13 @@ builder_card_read <- function(input, id, schema = NULL, args = NULL, logical_fal
       if (length(m)) out[[a]] <- m
       next
     }
-    v <- get(a)
-    if (is.null(v)) next
     if (kind == "logical") {
-      dflt <- schema$args[[a]]$default
-      # unticked: FALSE when the default is TRUE, or when every logical is
-      # wanted as it is (`logical_false`: a value over the study's default)
-      if (isTRUE(v)) out[[a]] <- TRUE else if (isTRUE(dflt) || logical_false) out[[a]] <- FALSE
+      st <- get(a, "set")
+      if (!is.null(st)) out[[a]] <- isTRUE(as.logical(st))
       next
     }
+    v <- get(a)
+    if (is.null(v)) next
     if (kind %in% c("number", "integer")) {
       if (length(v) && !is.na(v) && nzchar(as.character(v))) {
         out[[a]] <- if (kind == "integer") as.integer(v) else as.numeric(v)

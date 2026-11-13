@@ -427,7 +427,9 @@ test_that("a card's inputs come back as the item's arguments; blanks are left ou
     c1__max_rows = "26",
     c1__width = 0.4,
     c1__keep = TRUE,
+    c1__keep__set = TRUE,
     c1__notes = FALSE,
+    c1__notes__set = FALSE,
     c1__position = "",
     c1__label = "",
     c1__mapping__x = "AVISITN",
@@ -446,6 +448,18 @@ test_that("a card's inputs come back as the item's arguments; blanks are left ou
     colour = "grey50"))
   # a logical left unticked with no default: not written
   expect_identical(builder_card_read(list(c1__keep = FALSE), "c1", schema), list())
+  # a switch is read from its __set input: TRUE / FALSE when the report set it,
+  # nothing while it shows the default (ticked or not)
+  sw <- function(...) builder_card_read(list(...), "c1", schema, args = c("keep", "notes"))
+  expect_identical(sw(), list())
+  expect_identical(sw(c1__keep = TRUE, c1__notes = TRUE), list())        # default TRUE, untouched
+  expect_identical(sw(c1__keep = FALSE, c1__notes = FALSE), list())
+  expect_identical(sw(c1__notes = TRUE, c1__notes__set = TRUE), list(notes = TRUE))
+  expect_identical(sw(c1__notes = FALSE, c1__notes__set = FALSE), list(notes = FALSE))  # set FALSE over TRUE
+  expect_identical(sw(c1__keep = FALSE, c1__keep__set = FALSE), list(keep = FALSE))     # set FALSE over FALSE
+  expect_identical(sw(c1__keep__set = TRUE, c1__notes__set = FALSE), list(keep = TRUE, notes = FALSE))
+  # (the page sends NULL on reset and the value when set)
+  expect_match(.builder_cards_js, "Shiny.setInputValue(id + '__set'", fixed = TRUE)
   # switched off: nothing at all
   off <- input
   off$c1__on <- FALSE
@@ -519,6 +533,12 @@ test_that("a type's kind picks the field", {
     } else if (type == "checkbox") {
       out[[id]] <- grepl("checked", s, fixed = TRUE)
     }
+  }
+  # (a switch the report set tells the server so, as the page's script does)
+  fl <- regmatches(html, gregexpr("data-field=\"[^\"]+\"[^>]*data-flag-set=\"1\"", html))[[1L]]
+  for (s in fl) {
+    id <- strsplit(s, "\"", fixed = TRUE)[[1L]][[2L]]
+    if (!is.null(out[[id]])) out[[paste0(id, "__set")]] <- out[[id]]
   }
   out
 }

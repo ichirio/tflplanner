@@ -205,7 +205,7 @@
   seen <- ex[vapply(ex, function(k) !is.null(.input_value(input, paste0(cid, "__", k))), NA)]
   if (!length(seen)) return(NULL)
   sch <- .plan_form_schema(fn)
-  r <- builder_card_read(input, cid, sch, args = seen, logical_false = TRUE)
+  r <- builder_card_read(input, cid, sch, args = seen)
   out <- list(set = list(), unset = character())
   for (k in seen) {
     v <- r[[k]]
@@ -252,8 +252,7 @@
       isTRUE(.input_value(input, paste0(cid, "__", k, "__isr")))
   }, NA)
   if (!any(seen)) return(NULL)
-  out <- builder_card_read(input, cid, sch, args = setdiff(sch$formals, c(wa, sch$fixed)),
-                           logical_false = TRUE)
+  out <- builder_card_read(input, cid, sch, args = setdiff(sch$formals, c(wa, sch$fixed)))
   for (k in intersect(names(out), names(sch$args))) {
     out[[k]] <- .form_list_value(out[[k]], sch$args[[k]]$type)
     if (identical(sch$args[[k]]$type, "formula")) out[[k]] <- .formula_text(out[[k]])

@@ -301,11 +301,13 @@ test_that("the layout cards' forms: their fields, the study's defaults marked, e
   expect_match(h, 'id="c__align_count_pct" checked', fixed = TRUE)
   # read back unchanged: nothing to write
   it <- item(items, "plan_blanks")
-  inp <- list(c__where = "between_groups", c__first = TRUE, c__last = TRUE, c__counted = TRUE)
+  inp <- list(c__where = "between_groups", c__first = TRUE, c__last = TRUE, c__counted = TRUE,
+              c__first__set = TRUE, c__last__set = TRUE, c__counted__set = TRUE)
   r <- .plan_form_read(inp, "c", "plan_blanks")
   expect_identical(.plan_form_args(r, it, "plan_blanks"), it$args %||% list())
   # a check unticked over the study's TRUE: the report's own FALSE, written
   inp$c__first <- FALSE
+  inp$c__first__set <- FALSE
   own <- .plan_form_args(.plan_form_read(inp, "c", "plan_blanks"), it, "plan_blanks")
   # (the item whole, the study's values with it: the report's own from now on)
   expect_identical(own, utils::modifyList(it$args, list(first = FALSE)))
@@ -323,13 +325,15 @@ test_that("the layout cards' forms: their fields, the study's defaults marked, e
   # the style's and the row label column's
   it <- item(items, "plan_style")
   own <- .plan_form_args(.plan_form_read(list(c__border = "tfl", c__align_count_pct = TRUE,
+                                             c__align_count_pct__set = TRUE,
                                              c__font_size_half_points = 18), "c", "plan_style"),
                         it, "plan_style")
   expect_identical(own$border, "tfl")
   q <- .builder_item_write(p, id, "plan_style", own)
   expect_identical(item(builder_items(q, id), "plan_style")$args$font_size_half_points, 18L)
   it <- item(items, "plan_stub")
-  own <- .plan_form_args(.plan_form_read(list(c__name = "row_label", c__indent = 3, c__before = TRUE),
+  own <- .plan_form_args(.plan_form_read(list(c__name = "row_label", c__indent = 3, c__before = TRUE,
+                                             c__before__set = TRUE),
                                         "c", "plan_stub"), it, "plan_stub")
   expect_identical(own, utils::modifyList(it$args, list(indent = 3L)))
   q <- .builder_item_write(p, id, "plan_stub", own)
@@ -380,7 +384,10 @@ test_that("nothing changed, nothing written: the sample's items and program as t
       inp <- list()
       for (a in sch$formals) {
         v <- it$args[[a]]
-        if (identical(.arg_kind(sch$args[[a]]$type), "logical")) v <- isTRUE(v)
+        if (identical(.arg_kind(sch$args[[a]]$type), "logical")) {
+          if (!is.null(v)) inp[[paste0("c__", a, "__set")]] <- isTRUE(v)
+          v <- isTRUE(v)
+        }
         if (!is.null(v)) inp[[paste0("c__", a)]] <- if (is.logical(v)) v else
           if (.arg_kind(sch$args[[a]]$type) %in% c("r", "string") && !is.character(v)) .arg_to_r(v) else v
       }

@@ -85,31 +85,45 @@ button[onclick*='tpl_revert'] { white-space: nowrap; flex-shrink: 0; }
   border-color: var(--bs-primary, #0d6efd); }
 /* an R-only argument: a plain grey letter, not a switch */
 .rp-r-label { font-size: 11px; font-family: Consolas, 'Courier New', monospace; color: #9ca3af;
-  padding: 0 .35rem; cursor: default; }
+  padding: 0 .35rem; cursor: default; border: 1px solid transparent; line-height: 1.6; }
+/* (an empty slot where a locked field has no switch: the rows end together) */
+.rp-r-slot { visibility: hidden; }
 .rp-field .shiny-input-container { width: 100% !important; margin-bottom: 0; }
 /* one height, inset and font size for the select, the text and the number */
 .rp-field .form-control, .rp-field .form-select, .rp-field .selectize-input {
   box-sizing: border-box; height: 30px; min-height: 30px; padding: 3px 8px; font-size: 13px;
   line-height: 22px; }
 .rp-field .selectize-control { margin: 0; }
-.rp-field .selectize-control.multi .selectize-input { height: auto; padding: 2px 6px; }
+.rp-field .selectize-control.multi .selectize-input,
+.rp-field .selectize-control.multi .selectize-input.has-items { height: auto; min-height: 30px;
+  padding: 2px 6px; }
+.rp-field .selectize-control.multi .selectize-input:not(.has-items) { padding: 3px 8px; }
 .rp-field .selectize-control.multi .selectize-input > div { font-size: 13px; line-height: 20px;
-  margin: 1px 3px 1px 0; }
-.rp-field .selectize-input > input, .rp-field .selectize-input .item { font-size: 13px !important;
+  margin: 1px 3px 1px 0; padding: 0 6px; }
+.rp-field .selectize-input > input { font-size: 13px !important; line-height: 22px !important; }
+.rp-field .selectize-control.single .selectize-input .item { font-size: 13px !important;
   line-height: 22px !important; }
 .rp-field .selectize-control.single .selectize-input:after { right: 8px; }
 .rp-field .form-control::placeholder, .rp-field .selectize-input > input::placeholder {
   color: #9ca3af; font-style: italic; opacity: 1; font-size: 13px; }
 /* set (the report's own value): a bar on the left and the reset */
 .rp-field.rp-set .form-control, .rp-field.rp-set .form-select, .rp-field.rp-set .selectize-input {
-  box-shadow: inset 3px 0 0 var(--bs-primary, #0d6efd); border-color: #93b4f5; }
-.rp-reset { display: none; border: 0; background: none; color: #6b7280; padding: 0 .3rem;
+  box-shadow: inset 3px 0 0 var(--bs-primary, #0d6efd); }
+.rp-reset { visibility: hidden; border: 0; background: none; color: #6b7280; padding: 0 .3rem;
   font-size: 17px; line-height: 1; cursor: pointer; }
 .rp-reset:hover { color: #dc3545; }
-.rp-field.rp-set .rp-reset { display: inline-block; }
+.rp-field.rp-set .rp-reset { visibility: visible; }
 /* a switch: dimmed while it shows the default, normal and barred once set */
 .rp-field-logical .rp-form-input { padding-left: 3px; border-left: 3px solid transparent; }
 .rp-field-logical:not(.rp-set) .rp-check { opacity: .45; }
+/* (its value in words beside it, default and set alike) */
+.rp-field-logical .rp-check { display: flex; align-items: center; }
+.rp-field-logical .rp-check:has(input:checked)::after { content: 'TRUE'; }
+.rp-field-logical .rp-check:has(input:not(:checked))::after { content: 'FALSE'; }
+.rp-field-logical .rp-check::after { margin-left: .5rem; font-size: 13px; color: #111827; }
+.rp-field-logical:not(.rp-set):not(.rp-field-locked) .rp-check::after { font-style: italic;
+  color: #6b7280; }
+.rp-field-unset.rp-field-logical .form-check-input { border-color: #fca5a5; }
 .rp-field-logical.rp-set .rp-form-input { border-left-color: var(--bs-primary, #0d6efd); }
 .rp-mono { font-family: Consolas, 'Courier New', monospace; }
 .rp-badge-locked { background: #f3f4f6; border-color: #d1d5db; color: #4b5563; }
@@ -123,6 +137,13 @@ button[onclick*='tpl_revert'] { white-space: nowrap; flex-shrink: 0; }
 .rp-field-locked .selectize-input .item, .rp-field-locked .selectize-input.disabled .item {
   color: #111827 !important; opacity: 1 !important; }
 .rp-field-locked .selectize-control.single .selectize-input:after { opacity: .4; }
+/* (no remove cross on a locked field's chips) */
+.rp-field-locked .selectize-control.multi .item .remove { display: none; }
+.rp-field-locked .selectize-control.multi .selectize-input > .item { padding-right: 6px !important;
+  cursor: default; }
+/* (a locked switch: grey, full contrast, its value in words like the others) */
+.rp-field-locked.rp-field-logical .rp-check { opacity: 1; }
+.rp-field-locked .rp-check .form-check-input:disabled { opacity: 1; filter: grayscale(1); }
 .rp-field-unset .selectize-input, .rp-field-unset .form-control, .rp-field-unset .form-select {
   border-color: #fca5a5; }
 /* (selectize copies the select's classes to its wrapper: the wrapper is no box) */
@@ -250,7 +271,6 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
   // ---- a field's state: default / set (the changed mark and its reset) -----------
   // Nothing here reaches the server by itself: the report is read when Update
   // is pressed.  The marks are drawn from the controls' own values.
-  window.rpQuiet = false;
   function formCtl(f) {
     return f.children('.rp-field-row').children('.rp-form-input').find('select, input, textarea')
       .filter(function() {
@@ -289,14 +309,30 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
     if (!v) return '';
     return c.is('select') || c.attr('type') !== 'number' ? JSON.stringify(v) : v;
   }
+  // a switch tells the server whether it was set: its value when set, NULL when
+  // it shows the default (the reader writes it only when set)
+  function sendFlag(f) {
+    if (!window.Shiny || !Shiny.setInputValue || !f.hasClass('rp-field-logical')) return;
+    var c = formCtl(f), id = f.attr('data-field');
+    if (!id) return;
+    Shiny.setInputValue(id + '__set', f.attr('data-flag-set') === '1' && c.length ? c.prop('checked') : null);
+  }
+  function sendFlags() {
+    $('.rp-field-logical[data-field]').each(function() { sendFlag($(this)); });
+  }
+  $(document).on('shiny:connected shiny:value shiny:visualchange', function() { setTimeout(sendFlags, 0); });
   function focusCtl(f) {
     var c = formCtl(f);
     if (c.length && c[0].selectize) c[0].selectize.focus(); else c.trigger('focus');
   }
   $(document).on('input change', '.rp-field input, .rp-field select, .rp-field textarea', function() {
-    if (window.rpQuiet || $(this).is('.rp-isr')) return;
+    // (typing in a select's search box changes no value: a choice arrives as the select's change)
+    if ($(this).is('.rp-isr') || $(this).closest('.selectize-input').length) return;
     var f = $(this).closest('.rp-field');
-    if ($(this).is(':checkbox') && f.hasClass('rp-field-logical')) f.attr('data-flag-set', '1');
+    if ($(this).is(':checkbox') && f.hasClass('rp-field-logical')) {
+      f.attr('data-flag-set', '1');
+      sendFlag(f);
+    }
     var ch = f.data('rpChips');
     if (ch) ch.touched = true;
     refreshField(f);
@@ -313,13 +349,15 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
     if (c.length && c[0].selectize) {
       c[0].selectize.clear();
     } else if (f.hasClass('rp-field-logical')) {
-      c.prop('checked', f.attr('data-default') === 'true').trigger('change');
+      c.prop('checked', f.attr('data-default') === 'true');
     } else if (c.length) {
       c.val('').trigger('input').trigger('change');
     }
     f.attr('data-flag-set', '0');
     f.removeData('rpChips');
+    sendFlag(f);
     refreshField(f);
+    focusCtl(f);
   });
   // the R switch: on, the R input takes the value written as R and the focus;
   // off, the form control takes the focus

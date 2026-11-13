@@ -61,17 +61,22 @@
     $('.rp-fs-sticky').toggleClass('rp-fs-stale', on);
   }
   $(document).on('input change', '#fs_screen .rp-field input, #fs_screen .rp-field select, #fs_screen .rp-field textarea', function() {
-    if (!window.rpQuiet && !$(this).is('.rp-isr')) stale(true);
+    // (typing in a select's search box changes no value)
+    if (!$(this).closest('.selectize-input').length) stale(true);
   });
   $(document).on('click', '#fs_screen .rp-field .rp-reset', function() { stale(true); });
   $(document).on('click', '#fs_update', function() { stale(false); });
-  $(document).on('keydown', function(e) {
+  // (capture phase, stopped: a select's own Enter would take the highlighted
+  // option; only while the Update button is on screen; the focus stays)
+  document.addEventListener('keydown', function(e) {
     if (!(e.ctrlKey || e.metaKey) || e.key !== 'Enter') return;
-    if (!$('#fs_update').length) return;
+    if (!$('#fs_update').is(':visible')) return;
     e.preventDefault();
-    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    e.stopImmediatePropagation();
+    var a = document.activeElement;
+    if (a && $(a).is('input:not(.selectize-input input), textarea')) $(a).trigger('change');
     setTimeout(function() { $('#fs_update').trigger('click'); }, 30);
-  });
+  }, true);
 })();
 "
 

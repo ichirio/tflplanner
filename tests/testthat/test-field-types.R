@@ -137,10 +137,32 @@ test_that("a value of the report's own is marked changed and has the reset; the 
   h <- as.character(arg_field("m", "x", "logical", default = TRUE))
   expect_match(h, "data-flag-set=\"0\"", fixed = TRUE)
   expect_match(h, "data-default=\"true\"", fixed = TRUE)
-  # a locked field has no reset and no changed mark
+  # a locked field has no reset (an empty slot keeps the row's width) and no changed mark
   h <- as.character(arg_field("m", "x", "string", value = "x", locked = TRUE))
-  expect_false(grepl("rp-reset", h, fixed = TRUE))
+  expect_false(grepl("<button[^>]*rp-reset", h))
+  expect_match(h, "<span class=\"rp-reset\" aria-hidden", fixed = TRUE)
   expect_false(is_set(h))
+})
+
+test_that("the reset is out of the tab order, named, and a locked field has no R switch", {
+  h <- as.character(arg_field("m", "x", "string", value = "x", lang = "en"))
+  expect_match(h, "class=\"rp-reset\" tabindex=\"-1\"", fixed = TRUE)
+  expect_match(h, "aria-label=\"Reset to the default\"", fixed = TRUE)
+  expect_identical(tr("Reset to the default", "ja"), "既定値に戻す")
+  # locked: no switch (an empty slot), a plain R where the value is R
+  h <- as.character(arg_field("m", "x", "string", value = "x", locked = TRUE))
+  expect_false(grepl("rp-r-toggle", h, fixed = TRUE))
+  expect_match(h, "rp-r-slot", fixed = TRUE)
+  h <- as.character(arg_field("m", "x", "string", value = structure("paste(A)", class = "tfl_r"),
+                              locked = TRUE))
+  expect_false(grepl("rp-r-toggle", h, fixed = TRUE))
+  expect_false(grepl("rp-r-slot", h, fixed = TRUE))
+  expect_match(h, "class=\"rp-r-label\"", fixed = TRUE)
+  # the script: Ctrl+Enter in the capture phase, no remove cross on locked chips
+  expect_match(.fs_js, "stopImmediatePropagation", fixed = TRUE)
+  expect_false(grepl("rpQuiet", paste(.fs_js, .builder_cards_js), fixed = TRUE))
+  expect_match(.builder_cards_css, ".rp-field-locked .selectize-control.multi .item .remove { display: none; }",
+               fixed = TRUE)
 })
 
 test_that("a locked field has one badge, whatever its source", {
@@ -164,7 +186,7 @@ test_that("an R-only argument has a plain R label, not a switch, locked or not",
 test_that("the R switch is a checkbox the keyboard reaches, hidden visually only", {
   h <- as.character(arg_field("m", "x", "number"))
   expect_match(h, "<input type=\"checkbox\" id=\"m__x__isr\" class=\"rp-isr\"", fixed = TRUE)
-  expect_false(grepl("tabindex", h, fixed = TRUE))
+  expect_false(grepl("rp-isr[^>]*tabindex", h))
   expect_false(grepl("disabled", h, fixed = TRUE))
   css <- gsub("[[:space:]]+", " ", .builder_cards_css)
   expect_false(grepl("rp-r-toggle input \\{ display: none", css))
@@ -200,5 +222,5 @@ test_that("the preview is made on Update only: no focusout regrouping, Ctrl+Ente
   expect_false(grepl("focusout', '.rp-plan-args", .builder_cards_js, fixed = TRUE))
   expect_match(.fs_js, "ctrlKey", fixed = TRUE)
   expect_match(.fs_js, "fs_update", fixed = TRUE)
-  expect_match(.fs_js, "blur", fixed = TRUE)
+  expect_false(grepl("activeElement.blur", .fs_js, fixed = TRUE))   # the focus stays
 })

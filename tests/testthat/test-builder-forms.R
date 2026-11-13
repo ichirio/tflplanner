@@ -156,6 +156,7 @@ test_that("plan_columns(): a width a column, the decimal alignment, the row titl
   inp$c__widths__3 <- "25"
   inp$c__decimal <- ".values"
   inp$c__auto_width <- TRUE
+  inp$c__auto_width__set <- TRUE
   own <- .plan_form_args(.plan_form_read(inp, "c", "plan_columns", cols = cols), it, "plan_columns")
   q <- .builder_item_write(p, "T-14-1-1", "plan_columns", own)
   co <- sheet_rows(q, "columns", "T-14-1-1")

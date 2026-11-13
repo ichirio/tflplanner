@@ -136,8 +136,13 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
                                value = r_text, placeholder = "R", spellcheck = "false")
   # (the R switch is a checkbox the keyboard reaches -- hidden visually, its
   # label shows the focus; an R-only argument has no switch, only a plain "R")
-  r_switch <- if (r_only) shiny::tags$span(class = "rp-r-label", title = t("As R"), "R") else
-    shiny::tags$label(
+  # (a locked field has no switch: a plain "R" where its value is R, else an
+  # empty slot, so the rows end together)
+  r_switch <- if (r_only || (isTRUE(locked) && is_r)) {
+    shiny::tags$span(class = "rp-r-label", title = t("As R"), "R")
+  } else if (isTRUE(locked)) {
+    shiny::tags$span(class = "rp-r-label rp-r-slot", `aria-hidden` = "true", "R")
+  } else shiny::tags$label(
     class = "rp-r-toggle", title = t("As R"),
     shiny::tags$input(type = "checkbox", id = paste0(fid, "__isr"), class = "rp-isr",
                       checked = if (is_r) NA else NULL),
@@ -154,7 +159,6 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
   if (locked) {
     control <- .disable_inputs(control)
     r_input <- .disable_inputs(r_input)
-    r_switch <- .disable_inputs(r_switch)
   }
   cls <- c("rp-field", paste0("rp-field-", kind), if (required) "rp-field-required",
            if (locked) "rp-field-locked", if (unset) "rp-field-unset", if (is_set) "rp-set",
@@ -179,8 +183,10 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
     shiny::div(class = "rp-field-row",
                shiny::div(class = "rp-form-input", control),
                if (!r_only) r_input,
-               if (!locked) shiny::tags$button(type = "button", class = "rp-reset",
-                                               title = t("Reset to the default"), "\u00d7"),
+               if (!locked) shiny::tags$button(type = "button", class = "rp-reset", tabindex = "-1",
+                                               title = t("Reset to the default"),
+                                               `aria-label` = t("Reset to the default"), "\u00d7") else
+                 shiny::tags$span(class = "rp-reset", `aria-hidden` = "true", "\u00d7"),
                r_switch),
     if (!is.null(nav)) nav_hint(nav, "field", lang))
 }
@@ -195,13 +201,20 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
     " ", tr("Fixed", lang))
 }
 
-# every input of a field not editable (a value the template fixes)
+# every input of a field not editable (a value the template fixes); the
+# tag itself too where it is an input (find() looks only below it)
 .disable_inputs <- function(tag) {
+  one <- function(x) {
+    if (inherits(x, "shiny.tag") && x$name %in% c("input", "select", "textarea")) {
+      htmltools::tagAppendAttributes(x, disabled = "disabled")
+    } else x
+  }
   q <- htmltools::tagQuery(tag)
   for (sel in c("input", "select", "textarea")) {
     q$find(sel)$addAttrs(disabled = "disabled")$resetSelected()
   }
-  q$allTags()
+  out <- q$allTags()
+  if (inherits(out, "shiny.tag")) one(out) else do.call(htmltools::tagList, lapply(out, one))
 }
 
 .has_value <- function(v) {
