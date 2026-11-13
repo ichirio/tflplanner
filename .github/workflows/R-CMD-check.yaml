@@ -78,7 +78,7 @@ jobs:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
       R_MIN: '4.2'
-      PPM_DATE: '2026-07-06'
+      PPM_DATE: '2026-07-07'
       # suggested packages left out (space-separated): the newest one the
       # snapshot has needs a newer package than the minimum of a direct
       # dependency (chromote: later >= 1.1.0; ggsurvfit 1.2.0: ggplot2 >= 4.0.0, so

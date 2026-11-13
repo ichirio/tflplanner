@@ -14,10 +14,10 @@ a version).
 `DESCRIPTION` names (`Depends: R (>= 4.2)`) with every direct dependency at
 exactly its minimum (the R-CMD-check job *minimum environment*). The
 suggested packages with no minimum, and every indirect dependency, come
-from CRAN as it was on **2026-07-06**: the Posit Package Manager snapshot of
+from CRAN as it was on **2026-07-07**: the Posit Package Manager snapshot of
 that date (`https://packagemanager.posit.co/cran/__linux__/noble/2026-07-06`,
 for Ubuntu 24.04). That date is the first snapshot that has the newest of
-the minimums, cardx 0.3.4 (on CRAN on 2026-07-06; cards 0.8.0, the
+the minimums, cardx 0.3.4 (on CRAN on 2026-07-06, in the snapshot of 2026-07-07, not yet in that of 2026-07-06; cards 0.8.0, the
 next newest, is from 2026-05-28). rtfreporter and tflspec are installed from
 their `next`, where their minimums are what `next` has. *The recommended
 environment* is the latest R with the latest packages: the release jobs of
@@ -51,8 +51,8 @@ version is listed, not called).
 | jsonlite | 2.0.0 | `read_json()`, `write_json()` -> 1.2; `base64_enc()` -> 1.0; `toJSON(auto_unbox = , null = , na = )`, `fromJSON(simplifyVector = )` -> before 1.0. Raised to tflspec's minimum, 2.0.0: tflplanner shows and runs what tflspec writes, whose JSON (`toJSON(pretty = TRUE)`) is formatted differently by 1.x. | `NAMESPACE` of each release; tflspec `dependency-minimums.md` |
 | later | 1.0.0 | `later()` -> 0.3. shiny 1.11.0 needs later (>= 1.0.0), and the minimum environment installs shiny at its minimum. | shiny 1.11.0 `DESCRIPTION` |
 | openxlsx | 4.2.5 | `writeData(keepNA = )`, `getSheetNames()`, `int2col()` -> 3.0.0; `freezePane(firstRow = )`, `saveWorkbook(overwrite = )`, `loadWorkbook()` -> 2.x or earlier. Raised to tflspec's minimum, 4.2.5 (`write.xlsx(overwrite = TRUE)` default) (`type = "list"` drop-downs -> 4.0.17, `write.xlsx()` on R >= 4.2 -> 4.2.4), since the workbooks tflplanner reads and writes are tflspec's. | `NAMESPACE` of each release; tflspec `dependency-minimums.md` |
-| processx | 3.6.1 | `run(stderr_to_stdout = )` and `process$new(stderr = "2>&1")` (a program's output with its errors, `R/ard_programs.R`, `R/batch.R`) -> 3.3.0; `run(timeout = , wd = , echo = , error_on_status = )` -> 2.0.0 or earlier. Raised to 3.6.1, which callr (needed by testthat and by rcmdcheck) needs: in the minimum environment, with processx 3.3.0, they could not be installed (CI run of the minimum environment, "Conflicts with processx@3.3.0"). | processx NEWS 3.3.0; callr 3.7.6 `DESCRIPTION` (processx >= 3.6.1) |
-| ps | 1.3.4 | `ps_handle()`, `ps_create_time()`, `ps_kill()` -> 1.0.0. processx 3.3.0 needs ps (>= 1.2.0) and testthat 3.1.7 needs ps (>= 1.3.4). | processx 3.3.0 and testthat 3.1.7 `DESCRIPTION`; `NAMESPACE` of each release |
+| processx | 3.8.2 | `run(stderr_to_stdout = )` and `process$new(stderr = "2>&1")` (a program's output with its errors, `R/ard_programs.R`, `R/batch.R`) -> 3.3.0; `run(timeout = , wd = , echo = , error_on_status = )` -> 2.0.0 or earlier. Raised to 3.8.2, which testthat 3.2.1 needs (a test mocks `processx::process`); before that to 3.6.1, which callr (needed by testthat and by rcmdcheck) needs: in the minimum environment, with processx 3.3.0, they could not be installed (CI run of the minimum environment, "Conflicts with processx@3.3.0"). | processx NEWS 3.3.0; callr 3.7.6 `DESCRIPTION` (processx >= 3.6.1) |
+| ps | 1.7.5 | `ps_handle()`, `ps_create_time()`, `ps_kill()` -> 1.0.0. processx 3.3.0 needs ps (>= 1.2.0) and testthat 3.2.1 needs ps (>= 1.7.5). | processx 3.3.0 and testthat 3.2.1 `DESCRIPTION`; `NAMESPACE` of each release |
 | readxl | 1.2.0 | `read_excel(.name_repair = )` -> 1.2.0, with a current tibble (1.0.0 calls `tibble::as_tibble(validate = )`, which tibble has made defunct; rtfreporter's minimum is the same); `read_excel(range = , n_max = , trim_ws = )`, `cell_rows()` -> 1.0.0; `excel_sheets()` -> 0.1.0. | readxl NEWS 1.2.0; rtfreporter `dependency-minimums.md` |
 | rhandsontable | 0.3.4 | The custom parameter `planner_key` passed through `rhandsontable(...)` and read back in the grid's events -> 0.3.4 ("the ability to pass custom parameters to the table"); `selectCallback = `, `hot_col(allowInvalid = , readOnly = )`, `hot_context_menu(allowRowEdit = , allowColEdit = )` -> 0.3.3 or earlier. | rhandsontable NEWS 0.3.4; `R/rhandsontable.R` of 0.3.3 and 0.3.4 |
 | sortable | 0.5.0 | `rank_list(orientation = )` (a horizontal list) -> 0.5.0; `bucket_list()`, `add_rank_list()` -> 0.4.2, the first CRAN release. | sortable NEWS 0.5.0 ("switch the orientation of `rank_list()` items to horizontal") |
