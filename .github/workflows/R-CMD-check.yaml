@@ -6,6 +6,11 @@ on:
   # (a pull request into next runs quick-check.yaml instead)
   pull_request:
     branches-ignore: [next]
+  # nightly, on next (a schedule runs the default branch's copy of this file;
+  # each job checks out next): every test, the slow files the quick check
+  # leaves out among them
+  schedule:
+    - cron: '0 18 * * *'
   workflow_dispatch:
 
 name: R-CMD-check
@@ -20,6 +25,63 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Every test file, the slow ones the quick check leaves out
+  # (skip_if_quick(), TFLPLANNER_QUICK) among them, with the counts and the
+  # slowest files in the job summary.  4 workers: setup-r sets
+  # options(Ncpus = 1), which testthat reads before TESTTHAT_CPUS.
+  full-tests:
+    runs-on: ubuntu-latest
+    name: full tests (ubuntu-latest, R release)
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      NOT_CRAN: true
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'schedule' && 'next' || '' }}
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::testthat
+          needs: check
+
+      - name: Install the package
+        run: R CMD INSTALL --no-docs --no-multiarch .
+
+      - name: Tests (all)
+        env:
+          TESTTHAT_CPUS: 4
+          TFLPLANNER_QUICK: false
+        shell: Rscript {0}
+        run: |
+          options(Ncpus = 4L)
+          pkg <- read.dcf("DESCRIPTION", fields = "Package")[1L, 1L]
+          library(pkg, character.only = TRUE)
+          res <- testthat::test_dir("tests/testthat", package = pkg, load_package = "installed",
+                                    reporter = testthat::ProgressReporter$new(show_praise = FALSE),
+                                    stop_on_failure = FALSE)
+          d <- as.data.frame(res)
+          by_file <- aggregate(cbind(real, nb) ~ file, d, sum)
+          by_file <- by_file[order(-by_file$real), ]
+          out <- c("## Tests (all)",
+                   sprintf("%d files, %d tests, %d expectations; %d failed, %d errors, %d skipped",
+                           length(unique(d$file)), nrow(d), sum(d$nb), sum(d$failed),
+                           sum(d$error), sum(d$skipped)),
+                   "", "The slowest files (seconds, summed over their tests):", "```",
+                   sprintf("%-40s %7.1f %6d", by_file$file, by_file$real, by_file$nb)[seq_len(min(25L, nrow(by_file)))],
+                   "```")
+          cat(out, sep = "\n")
+          cat(out, file = Sys.getenv("GITHUB_STEP_SUMMARY"), sep = "\n", append = TRUE)
+          if (sum(d$failed) > 0L || any(d$error)) quit(status = 1L)
+
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
 
@@ -42,6 +104,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # the nightly run checks next (empty: the event's own ref)
+          ref: ${{ github.event_name == 'schedule' && 'next' || '' }}
 
       - uses: r-lib/actions/setup-pandoc@v2
 
@@ -88,6 +153,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # the nightly run checks next (empty: the event's own ref)
+          ref: ${{ github.event_name == 'schedule' && 'next' || '' }}
 
       - uses: r-lib/actions/setup-pandoc@v2
 

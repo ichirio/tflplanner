@@ -1,6 +1,8 @@
 # Template SPEC reports (#440): the inputs of a template's arguments, and
 # the builder's card rules
 
+skip_if_quick()  # slow: not in the quick check of a PR into next (helper.R)
+
 test_that("an argument's input follows the type tflspec declares", {
   p <- function(...) utils::modifyList(list(name = "x", default = NULL, required = FALSE), list(...))
   expect_identical(.tpl_type(p(type = "vars", multiple = TRUE)), "vars")

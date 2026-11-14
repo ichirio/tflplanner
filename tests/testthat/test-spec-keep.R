@@ -6,6 +6,7 @@
 # (slow: its tests write study folders or start the app -- run on CI
 # and locally with NOT_CRAN=true, not in CRAN's check)
 skip_on_cran()
+skip_if_quick()  # slow: not in the quick check of a PR into next (helper.R)
 
 # what rhandsontable sends when one cell of a grid drawn by the app is
 # changed: the grid's own rows (as the browser has them), one cell new

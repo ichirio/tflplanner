@@ -5,6 +5,7 @@
 # ARD (#602) and the stale-say window of the template card (#596).
 
 skip_on_cran()
+skip_if_quick()  # slow: not in the quick check of a PR into next (helper.R)
 
 # the program of a report, run in its own R from the study folder
 run_program <- function(s, id, dir = "tfl") {

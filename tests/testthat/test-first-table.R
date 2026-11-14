@@ -1,6 +1,7 @@
 # (slow: its tests write study folders or start the app -- run on CI
 # and locally with NOT_CRAN=true, not in CRAN's check)
 skip_on_cran()
+skip_if_quick()  # slow: not in the quick check of a PR into next (helper.R)
 
 test_that("data files go into the data catalog once, with name and level", {
   p <- new_planner()
