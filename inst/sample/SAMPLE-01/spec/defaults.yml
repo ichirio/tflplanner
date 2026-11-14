@@ -34,6 +34,54 @@ content:
         .values: 18.0
   - plan_style:
       align_count_pct: true
+# The study's code lists, as read from its define.xml: each variable's
+# values as the ADaM data holds them, in the order of its N variable
+# (TRT01AN, TRT01PN, AGEGR1N) or, without one, the define's order, and the
+# words a table prints for each.  A report's own list for a variable takes
+# this one's place.
+codelists:
+  TRT01A:
+    - value: Drug X
+      label: Drug X
+    - value: Control
+      label: Control
+  TRT01P:
+    - value: Drug X
+      label: Drug X
+    - value: Control
+      label: Control
+  SEX:
+    - value: F
+      label: Female
+    - value: M
+      label: Male
+  AGEGR1:
+    - value: <65
+      label: <65 years
+    - value: '>=65'
+      label: '>=65 years'
+  RACE:
+    - value: WHITE
+      label: White
+    - value: BLACK OR AFRICAN AMERICAN
+      label: Black or African American
+    - value: ASIAN
+      label: Asian
+    - value: AMERICAN INDIAN OR ALASKA NATIVE
+      label: American Indian or Alaska Native
+    - value: NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER
+      label: Native Hawaiian or Other Pacific Islander
+    - value: OTHER
+      label: Other
+  ETHNIC:
+    - value: HISPANIC OR LATINO
+      label: Hispanic or Latino
+    - value: NOT HISPANIC OR LATINO
+      label: Not Hispanic or Latino
+    - value: NOT REPORTED
+      label: Not reported
+    - value: UNKNOWN
+      label: Unknown
 styles:
   standard:
     page:
