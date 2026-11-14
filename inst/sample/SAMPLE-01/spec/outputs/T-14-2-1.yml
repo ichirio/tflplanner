@@ -1,20 +1,20 @@
 id: T-14-2-1
 kind: table
 label: 'Systolic blood pressure: change from baseline at week 24 (cycle 9 day 1)'
-population: SAF
+common:
+  population: SAF
 extends:
   - defaults
+data:
+  - id: adsl_saf
+    label: Safety set
+    from: ADSL
+  - id: advs_saf_sysbp
+    label: Systolic blood pressure at week 24, safety set
+    from: ADVS
+    subjects: adsl_saf
+    where: !r PARAMCD == "SYSBP" & AVISIT == "CYCLE 9 DAY 1"
 ard:
-  analysis_data:
-    - id: adsl_saf
-      label: Safety set
-      from: ADSL
-      population: SAF
-    - id: advs_saf_sysbp
-      label: Systolic blood pressure at week 24, safety set
-      from: ADVS
-      subjects: adsl_saf
-      where: !r PARAMCD == "SYSBP" & AVISIT == "CYCLE 9 DAY 1"
   analyses:
     - id: GROUPN
       method: categorical
@@ -43,9 +43,6 @@ ard:
         - min
         - max
       purpose: PRIMARY OUTCOME MEASURE
-data:
-  source: ard
-  object: ard
 codelists:
   TRTA:
     - value: Drug X

@@ -540,7 +540,7 @@
   if (is.null(tp)) return(character())
   miss <- .tpl_missing(tp$name, tp$args, p$spec$study)
   if (.tpl_pop_of_report(.tpl_params(tp$name))) {
-    pid <- as.character(p$spec$outputs[[output_id]]$population %||% "")[1L]
+    pid <- as.character(p$spec$outputs[[output_id]]$common$population %||% "")[1L]
     if (is.na(pid) || !nzchar(pid)) miss <- c("population", miss)
   }
   miss
@@ -685,8 +685,11 @@
   if (!is.null(name)) o$template$name <- name
   prm <- .tpl_params(o$template$name)
   args <- args[c(intersect(names(prm), names(args)), setdiff(names(args), names(prm)))]
+  if (!is.null(args$population)) o$common$population <- as.character(args$population)
+  # (a template whose analysis set is the report's population (demog) holds
+  # it in `common:`, not in its arguments)
+  if (.tpl_pop_of_report(prm)) args$population <- NULL
   o$template$args <- args
-  if (!is.null(args$population)) o$population <- as.character(args$population)
   o
 }
 

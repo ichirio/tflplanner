@@ -213,7 +213,7 @@ test_that("Add from a template writes the report with its template, the argument
     skip_if(is.na(other), "the sample study has one population")
     session$setInputs(tpl_report_pop = other)
     expect_identical(add_row(rv$p, "T-ZZ-5")$population, other)
-    expect_identical(rv$p$spec$outputs[["T-ZZ-5"]]$population, other)
+    expect_identical(rv$p$spec$outputs[["T-ZZ-5"]]$common$population, other)
     expect_null(.tpl_of(rv$p, "T-ZZ-5")$args$population)
   })
 })
@@ -335,11 +335,11 @@ test_that("a template listing: its data card writes the dataset's steps, keeps a
     expect_identical(c(f$dataset, f$filter), c("ADAE", "AESER == 'Y'"))
     expect_true(f$join)
     expect_identical(f$join_where, "SAFFL == \"Y\"")
-    expect_identical(rv$p$spec$outputs[["L-ZZ-7"]]$population, "SAF")
+    expect_identical(rv$p$spec$outputs[["L-ZZ-7"]]$common$population, "SAF")
     # the report's own join, as it is: no population of the study
     session$setInputs(tpl_data_pop = ".own", tpl_data_apply = 3)
     expect_true(.tpl_steps_fields(steps())$join)
-    expect_true(is.na(rv$p$spec$outputs[["L-ZZ-7"]]$population))
+    expect_true(is.null(rv$p$spec$outputs[["L-ZZ-7"]]$common$population))
     # no analysis set and no filter: the dataset is read, and that is all
     session$setInputs(tpl_data_pop = "", tpl_data_filter = "", tpl_data_apply = 4)
     f <- .tpl_steps_fields(steps())
@@ -466,7 +466,7 @@ test_that("a switch to demog keeps population as the report's population; back f
     suppressWarnings(suppressMessages(session$setInputs(tpl_switch_ok = 1)))
     expect_identical(.tpl_of(rv$p, "T-ZZ-7")$name, "demog")
     expect_null(add_args(rv$p, "T-ZZ-7")$population)
-    expect_identical(rv$p$spec$outputs[["T-ZZ-7"]]$population, "SAF")
+    expect_identical(rv$p$spec$outputs[["T-ZZ-7"]]$common$population, "SAF")
     # (back: the report's population is the argument again)
     session$setInputs(tpl_switch = "shift")
     dlg <- add_text(add_modal(shown))
@@ -507,7 +507,7 @@ test_that("demog's preview reads the study standard the report resolves with: it
   skip_on_cran()
   home <- local_home()
   s <- suppressMessages(create_sample_study(run = FALSE, home = home))
-  o <- tflspec::tfl_output("T-DM", "table", label = "Demog", population = "SAF",
+  o <- tflspec::tfl_output("T-DM", "table", label = "Demog", common = list(population = "SAF"),
                            template = list(name = "demog",
                                            args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   s$planner <- .spec_add_output(s$planner, o, label = "Demog", population = "SAF")

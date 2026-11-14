@@ -284,7 +284,7 @@ tpl_fig_planner <- function(p, name, id, ...) {
   saf <- as.list(pops[match("SAF", pops$population_id),
                       intersect(c("population_id", "dataset", "where"), names(pops)), drop = FALSE])
   steps <- if (.tpl_own_data(tflspec::tfl_template_params(name))) .tpl_steps_from("ADTTE", saf, "PFS")
-  o <- tflspec::tfl_output(id, "figure", label = name, population = "SAF",
+  o <- tflspec::tfl_output(id, "figure", label = name, common = list(population = "SAF"),
                            template = list(name = name, args = list(...)),
                            data = if (length(steps)) list(steps = steps))
   .spec_add_output(p, o, label = name, population = "SAF")
