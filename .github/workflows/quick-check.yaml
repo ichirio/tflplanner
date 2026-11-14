@@ -1,8 +1,9 @@
 # A pull request into next: one quick job -- the package installed and its
 # tests run, on ubuntu with R release; no --as-cran, no other platforms,
 # no pkgdown -- so that next does not queue behind the full matrix.
-# The full R-CMD-check still runs on each push to next (the latest head
-# only), on pull requests into main, and on its schedule.
+# The full R-CMD-check -- and every test, the slow files the quick check
+# leaves out (TFLPLANNER_QUICK) among them -- still runs on each push to next
+# (the latest head only), on pull requests into main, and nightly.
 on:
   pull_request:
     branches: [next]
@@ -43,13 +44,33 @@ jobs:
       - name: Install the package
         run: R CMD INSTALL --no-docs --no-multiarch .
 
+      # 4 workers (Config/testthat/parallel): setup-r sets options(Ncpus = 1),
+      # which testthat reads before TESTTHAT_CPUS -- the tests ran in one
+      # process ("Starting 1 test process").  TFLPLANNER_QUICK leaves out the
+      # slowest files (skip_if_quick(), tests/testthat/helper.R); they run on
+      # each push to next, on pull requests into main and nightly
+      # (R-CMD-check.yaml's full-tests).
       - name: Tests
         env:
           TESTTHAT_CPUS: 4
+          TFLPLANNER_QUICK: true
         shell: Rscript {0}
         run: |
+          options(Ncpus = 4L)
+          # every file runs to its end (the counts below are the whole suite's)
+          testthat::set_max_fails(Inf)
           pkg <- read.dcf("DESCRIPTION", fields = "Package")[1L, 1L]
           library(pkg, character.only = TRUE)
-          testthat::test_dir("tests/testthat", package = pkg, load_package = "installed",
-                             reporter = testthat::ProgressReporter$new(show_praise = FALSE),
-                             stop_on_failure = TRUE)
+          res <- testthat::test_dir("tests/testthat", package = pkg, load_package = "installed",
+                                    reporter = testthat::ProgressReporter$new(show_praise = FALSE),
+                                    stop_on_failure = FALSE)
+          d <- as.data.frame(res)
+          out <- c("## Tests (quick: TFLPLANNER_QUICK=true)",
+                   sprintf("%d files, %d tests, %d expectations; %d failed, %d errors, %d skipped",
+                           length(unique(d$file)), nrow(d), sum(d$nb), sum(d$failed),
+                           sum(d$error), sum(d$skipped)),
+                   "", "Errors and failures:",
+                   unique(d$file[d$error | d$failed > 0L]))
+          cat(out, sep = "\n")
+          cat(out, file = Sys.getenv("GITHUB_STEP_SUMMARY"), sep = "\n", append = TRUE)
+          if (sum(d$failed) > 0L || any(d$error)) quit(status = 1L)

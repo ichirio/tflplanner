@@ -2,6 +2,8 @@
 # pattern; step 3's form shows each value with where it comes from and
 # writes only the report's own rows.
 
+skip_if_quick()  # slow: not in the quick check of a PR into next (helper.R)
+
 pat_planner <- function() {
   p <- add_output(add_output(new_planner(), "T1"), "T2")
   p$sheets$header <- .normalize_sheet(data.frame(

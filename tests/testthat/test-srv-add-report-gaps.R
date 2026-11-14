@@ -4,6 +4,8 @@
 # -- driven through shiny::testServer() on the whole app, as the other server
 # tests do.
 
+skip_if_quick()  # slow: not in the quick check of a PR into next (helper.R)
+
 # what the server showed and where it went, instead of the screen: the notes,
 # the dialogs (as text) and the tabs chosen
 watch_add <- function(env = parent.frame()) {

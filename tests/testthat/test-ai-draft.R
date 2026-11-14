@@ -4,6 +4,7 @@
 # (slow: a study is prepared with tflspec -- run on CI and locally with
 # NOT_CRAN=true, not in CRAN's check)
 skip_on_cran()
+skip_if_quick()  # slow: not in the quick check of a PR into next (helper.R)
 skip_if_not_installed("haven")
 
 # A study prepared once for the file (tfl_ai_prepare() on tflspec's own

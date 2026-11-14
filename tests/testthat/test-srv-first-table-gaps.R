@@ -3,6 +3,8 @@
 # grid, note and upload -- driven through shiny::testServer() on the whole
 # app, as the other server tests do.
 
+skip_if_quick()  # slow: not in the quick check of a PR into next (helper.R)
+
 # what the server showed, instead of the screen: the notes and the dialogs
 # (a dialog's title and body as text)
 watch_screen <- function(env = parent.frame()) {
