@@ -272,6 +272,11 @@ test_that("the verbs after a template's call: the ones its program has", {
   expect_identical(.tpl_code_fns(p, code_id), character())
 })
 
+# demog's study items: in its call with tflspec#780 (tfl_tpl(study = )), none with #764
+.demog_study_fns <- if ("study" %in% names(formals(tflspec::tfl_tpl))) {
+  c("plan_cells", "plan_stub", "plan_style")
+} else character()
+
 test_that("the verbs after a template's call in the program tflspec writes now", {
   skip_on_cran()
   # (demog and summary take the study standard's verbs as their arguments,
@@ -282,7 +287,9 @@ test_that("the verbs after a template's call in the program tflspec writes now",
   p <- .spec_add_output(tpl_sample_planner(), o, population = "SAF")
   expect_identical(.tpl_code_fns(p, "T-99"), character())
   q <- .spec_add_output(tpl_sample_planner(), tpl_demog_output(), population = "SAF")
-  expect_identical(.tpl_code_fns(q, "T-99"), character())
+  # (demog's study items are in its call, `study = list(`, tflspec#780: the
+  # verbs of those, from the template record; none with tflspec#764)
+  expect_identical(.tpl_code_fns(q, "T-99"), .demog_study_fns)
 })
 
 test_that("a program with no template call, or that tflspec cannot make, has no verbs", {
@@ -290,14 +297,17 @@ test_that("a program with no template call, or that tflspec cannot make, has no 
   p <- .spec_add_output(tpl_sample_planner(), tpl_demog_output(), population = "SAF")
   testthat::local_mocked_bindings(tfl_content_code = function(...) c("plan_cells(x)", "plan_labels(y)"),
                                   .package = "tflspec")
-  expect_identical(.tpl_code_fns(p, "T-99"), character())
+  expect_identical(.tpl_code_fns(p, "T-99"), .demog_study_fns)
   testthat::local_mocked_bindings(
     tfl_content_code = function(...) c("tpl_demog(x)", "  plan_cells(x)", "not a verb", "plan_labels(y)"),
     .package = "tflspec")
-  expect_identical(.tpl_code_fns(p, "T-99"), c("plan_cells", "plan_labels"))
+  # (the call's own items first, those the lines after it say again counted
+  # there: the lines' verbs last, in their order)
+  expect_identical(.tpl_code_fns(p, "T-99"),
+                   c(setdiff(.demog_study_fns, c("plan_cells", "plan_labels")), "plan_cells", "plan_labels"))
   testthat::local_mocked_bindings(tfl_content_code = function(...) stop("cannot"),
                                   .package = "tflspec")
-  expect_identical(.tpl_code_fns(p, "T-99"), character())
+  expect_identical(.tpl_code_fns(p, "T-99"), .demog_study_fns)
 })
 
 test_that("a template's name in a report's file, and its call in the program", {
