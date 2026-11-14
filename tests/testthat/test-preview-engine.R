@@ -2,10 +2,15 @@
 
 # the sample study in a folder of its own, made by the package's function
 .pv_sample <- function(env = parent.frame()) {
-  home <- withr_tempdir(env)
+  home <- tempfile("pv-home")
+  dir.create(home)
   old <- options(tflplanner.home = home)
-  withr_old <- function() options(old)
-  do.call(on.exit, list(substitute(withr_old()), add = TRUE), envir = env)
+  cleanup <- function() {
+    options(old)
+    unlink(home, recursive = TRUE)
+  }
+  do.call(on.exit, list(quote(cleanup()), add = TRUE), envir = env)
+  assign("cleanup", cleanup, envir = env)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
   s <- suppressMessages(create_sample_study(run = FALSE))
   s$path
@@ -76,4 +81,27 @@ test_that("a broken report gives ok = FALSE and a message, never an error", {
   # no study folder
   r3 <- expect_no_error(.preview_report(text, file.path(root, "nope"), cache = new.env()))
   expect_false(r3$ok)
+})
+
+test_that("a `template: demog` report previews: its table has the DM rows", {
+  skip_on_cran()
+  root <- .pv_sample()
+  text <- paste(c(
+    "id: T-DM-TPL", "kind: table", "label: Demographic characteristics (template)",
+    "population: SAF", "extends:", "  - defaults",
+    "template:", "  name: demog", "  args:", "    by: TRT01A",
+    "    continuous: AGE", "    categorical:", "      - AGEGR1", "      - SEX",
+    "    labels:", "      AGE: Age (years)", "      AGEGR1: Age group, n (%)",
+    "      SEX: Sex, n (%)"), collapse = "
+")
+  writeLines(text, file.path(root, "spec", "outputs", "T-DM-TPL.yml"))
+  cache <- new.env()
+  r <- .preview_report(text, root, "table", cache = cache)
+  expect_true(r$ok, info = paste(r$messages, collapse = " | "))
+  if (isTRUE(r$ok)) {
+    expect_match(r$html, "<table", fixed = TRUE)
+    expect_match(r$html, "Age (years)", fixed = TRUE)
+    expect_match(r$html, "Sex, n (%)", fixed = TRUE)
+    message(sprintf("preview timing: template demog table %.2f s", r$seconds))
+  }
 })
