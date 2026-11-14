@@ -2,22 +2,21 @@ id: T-14-1-5
 kind: table
 label: Demographics, race's Asian sub-categories nested under Asian (screened subjects
   by arm, Total; ASIANSUB derived for demonstration)
-population: ENR
+common:
+  population: ENR
 extends:
   - defaults
+data:
+  - id: adsl_enr
+    label: Screened subjects
+    from: ADSL
+    derive: !r ARMGRP = dplyr::if_else(ARMNRS %in% "SCREEN FAILURE", "Screen Failure",
+      as.character(ARM)) | ASIANSUB = dplyr::case_when(RACE == "ASIAN" & COUNTRY ==
+      "JPN" ~ "JAPANESE", RACE == "ASIAN" & COUNTRY == "KOR" ~ "KOREAN")
+  - id: adsl_enr_1
+    label: Screened Set
+    from: ADSL
 ard:
-  analysis_data:
-    - id: adsl_enr
-      label: Screened subjects
-      from: ADSL
-      population: ENR
-      derive: !r ARMGRP = dplyr::if_else(ARMNRS %in% "SCREEN FAILURE", "Screen Failure",
-        as.character(ARM)) | ASIANSUB = dplyr::case_when(RACE == "ASIAN" & COUNTRY
-        == "JPN" ~ "JAPANESE", RACE == "ASIAN" & COUNTRY == "KOR" ~ "KOREAN")
-    - id: adsl_enr_1
-      label: Screened Set
-      from: ADSL
-      population: ENR
   analyses:
     - id: GROUPN
       method: categorical
@@ -86,9 +85,6 @@ ard:
         - p
       denominator: adsl_enr
       purpose: PRIMARY OUTCOME MEASURE
-data:
-  source: ard
-  object: ard
 codelists:
   ARMGRP:
     - value: Drug X

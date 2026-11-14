@@ -492,7 +492,7 @@ test_that("the page form's configuration choice writes the report's style: and l
 test_that("a template report takes the style: like any report; the page step has no chain", {
   skip_on_cran()
   p0 <- cfg_sample()
-  o <- tflspec::tfl_output("T-PP", "table", population = "SAF",
+  o <- tflspec::tfl_output("T-PP", "table", common = list(population = "SAF"),
                            template = list(name = "demog", args = list()))
   p0 <- suppressWarnings(.spec_add_output(p0, o, label = "pp", population = "SAF"))
   id <- "T-PP"

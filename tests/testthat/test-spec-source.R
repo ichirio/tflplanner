@@ -284,7 +284,7 @@ edit_data_yml <- function(s) {
   writeLines(sub("label: Screened Set", "label: Enrolled Set", readLines(f), fixed = TRUE), f)
 }
 template_report <- function(id = "T-TPL", args = list(by = "TRT01A", categorical = "SEX")) {
-  tflspec::tfl_output(id, "table", label = "Demographics", population = "SAF",
+  tflspec::tfl_output(id, "table", label = "Demographics", common = list(population = "SAF"),
                       template = list(name = "demog", args = args))
 }
 # the app's reload: the files read, `mine` merged over them, then a save
