@@ -57,21 +57,20 @@ jobs:
         shell: Rscript {0}
         run: |
           options(Ncpus = 4L)
+          # every file runs to its end (the counts below are the whole suite's)
+          testthat::set_max_fails(Inf)
           pkg <- read.dcf("DESCRIPTION", fields = "Package")[1L, 1L]
           library(pkg, character.only = TRUE)
           res <- testthat::test_dir("tests/testthat", package = pkg, load_package = "installed",
                                     reporter = testthat::ProgressReporter$new(show_praise = FALSE),
                                     stop_on_failure = FALSE)
           d <- as.data.frame(res)
-          by_file <- aggregate(cbind(real, nb) ~ file, d, sum)
-          by_file <- by_file[order(-by_file$real), ]
           out <- c("## Tests (quick: TFLPLANNER_QUICK=true)",
                    sprintf("%d files, %d tests, %d expectations; %d failed, %d errors, %d skipped",
                            length(unique(d$file)), nrow(d), sum(d$nb), sum(d$failed),
                            sum(d$error), sum(d$skipped)),
-                   "", "The slowest files (seconds, summed over their tests):", "```",
-                   sprintf("%-40s %7.1f %6d", by_file$file, by_file$real, by_file$nb)[seq_len(min(15L, nrow(by_file)))],
-                   "```")
+                   "", "Errors and failures:",
+                   unique(d$file[d$error | d$failed > 0L]))
           cat(out, sep = "\n")
           cat(out, file = Sys.getenv("GITHUB_STEP_SUMMARY"), sep = "\n", append = TRUE)
           if (sum(d$failed) > 0L || any(d$error)) quit(status = 1L)
