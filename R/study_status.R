@@ -142,6 +142,8 @@ study_status <- function(study) {
 run_study <- function(study, output_id = NULL, wait = TRUE) {
   p <- study$planner
   ids <- output_id %||% p$outputs$output_id
+  # a package a report needs, not installed: said before anything runs (#682)
+  .need_report_pkgs(p, ids)
   # a figure printing an ARD's numbers: that ARD first, when it is not made
   # from its definition now (as the official run does, #293); a table's own
   # likewise -- the builder's preview makes its ARD apart and leaves the

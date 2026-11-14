@@ -398,6 +398,11 @@ run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE, data = FALSE,
          paste(sQuote(names(batch_sets(study$planner))), collapse = ", "),
          ".", call. = FALSE)
   }
+  # a report whose template or code needs a package not installed: said
+  # now, not as an error in the middle of the run (#682)
+  if ("tfl" %in% parts) {
+    .need_report_pkgs(study$planner, .batch_report_ids(study$planner, only, exclude, batch))
+  }
   # leaving reports out, a named batch: the runner that knows how (a study
   # saved by an earlier tflplanner has an older programs/batch.R)
   runner <- readLines(file.path(study$path, "programs", .batch_file), warn = FALSE)

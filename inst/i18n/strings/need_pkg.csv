@@ -1,0 +1,7 @@
+"en","ja"
+"Install the %s package: install.packages(%s)","%s パッケージをインストールしてください: install.packages(%s)"
+"Install the %s packages: install.packages(%s)","%s パッケージをインストールしてください: install.packages(%s)"
+"%s needs a package that is not installed.","%s には、インストールされていないパッケージが必要です。"
+"Reading .%s files",".%s ファイルの読み込み"
+"The report %s","帳票 %s"
+"The reports %s","帳票 %s"

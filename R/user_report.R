@@ -76,6 +76,8 @@
 #' options(old)
 #' @export
 preview_code <- function(study, output_id, timeout = 300) {
+  # a package the report needs, not installed: said before it runs (#682)
+  .need_report_pkgs(study$planner, output_id)
   code <- data_lines(study$planner, output_id, todo = FALSE)
   if (is.null(code)) stop("The report has no code yet.", call. = FALSE)
   code <- c(.report_id_line(output_id), code)

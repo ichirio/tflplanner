@@ -102,16 +102,9 @@
       ard_cols[[k]]
     })))
   }
-  ard_functions <- function() {
-    fs <- character()
-    for (pkg in c("cards", "cardx")) {
-      if (requireNamespace(pkg, quietly = TRUE)) {
-        e <- getNamespaceExports(pkg)
-        fs <- c(fs, paste0(pkg, "::", sort(e[startsWith(e, "ard_")])))
-      }
-    }
-    fs
-  }
+  # (a function whose package is not installed stays in the list:
+  # choosing it says which to install, #682)
+  ard_functions <- function() .ard_function_choices()
   ard_choices <- function(sheet) {
     p <- rv$p
     cols <- data_columns()
@@ -171,7 +164,12 @@
       d <- read_grid(h)
       if (is.null(d)) return()
       tg <- tg_of()
-      guarded(rv$p <- set_ard_rows(rv$p, sh, tg, d))
+      was <- if (by_report) ard_rows(rv$p, sh, tg)$method
+      guarded({
+        rv$p <- set_ard_rows(rv$p, sh, tg, d)
+        # a function chosen whose package is not installed: kept, and said
+        if (by_report) .need_ard_methods(setdiff(d$method, was))
+      })
     })
   })
   # 1-1's sheet: the analysis data the report reads, edited in their place
@@ -428,7 +426,10 @@
   shiny::observe({
     st_drawn()
     v <- input[[st_id("fn_pick")]]
-    if (!is.null(v) && nzchar(v)) st_method(v)
+    if (is.null(v) || !nzchar(v)) return()
+    # a function whose package is not installed: the package to install
+    # said, the method left as it was (#682)
+    if (!is.null(guarded(.need_ard_methods(v)))) st_method(v)
   })
   # the row as the form has it now: its method may be changed there
   st_row_now <- function() {
@@ -458,8 +459,13 @@
     fn_memo[[key]]
   }
   fn_entries_make <- function(current, own) {
-    e <- .ard_fn_entries(.company_keywords(current), tflspec::tfl_ard_functions(),
+    fs <- .ard_functions_offered()
+    e <- .ard_fn_entries(.company_keywords(current), fs,
                          current = current, company = "Company standard")
+    # one whose package (or the package it calls) is not installed: listed,
+    # marked; choosing it says what to install (#682)
+    e$needs <- fs$needs[match(e$call, fs$call)]
+    e$state[!is.na(e$needs) & nzchar(e$needs)] <- "needs"
     k <- e$category == "Company standard"
     e$label[k] <- method_label(e$value[k], e$label[k])
     e$description[k] <- method_note(e$value[k], e$description[k])
@@ -487,7 +493,8 @@
         description = paste0("[", t(unname(own_where_words[own$where])), "] ",
                              ifelse(is.na(own$description), "", own$description)),
         category = "Own and code", call = own$name,
-        state = ifelse(own$loaded, "ok", "own_off"), stringsAsFactors = FALSE)
+        state = ifelse(own$loaded, "ok", "own_off"), needs = NA_character_,
+        stringsAsFactors = FALSE)
       e <- e[!e$value %in% add$value, , drop = FALSE]
       e <- rbind(e, add[names(e)])
     }
@@ -737,8 +744,8 @@
     # each row's category, unless one is chosen
     show_cat <- identical(cat_now, ".all")
     near_spelling <- searching & e$tier >= 4
-    ok <- e[e$state %in% c("ok", "old", "out"), , drop = FALSE]
-    off <- e[!e$state %in% c("ok", "old", "out"), , drop = FALSE]
+    ok <- e[e$state %in% c("ok", "old", "out", "needs"), , drop = FALSE]
+    off <- e[!e$state %in% c("ok", "old", "out", "needs"), , drop = FALSE]
     fn_of <- function(v) if (grepl("::", v, fixed = TRUE))
       paste0(" (", sub("^.*::", "", v), ")") else ""
     # why a row was found: the keywords and their note; a near one says so
@@ -768,7 +775,9 @@
       if (identical(d$state[i], "old"))
         shiny::div(class = "small text-warning", t("An old name: choose its new one.")),
       if (identical(d$state[i], "out"))
-        shiny::div(class = "small text-warning", t("Not offered by the builder: kept as written.")))
+        shiny::div(class = "small text-warning", t("Not offered by the builder: kept as written.")),
+      if (identical(d$state[i], "needs"))
+        shiny::div(class = "small text-danger", .need_pkg_message(strsplit(d$needs[i], ",")[[1L]])))
     shiny::tagList(
       if (searching) shiny::div(
         class = "ard-fn-searching small text-muted mb-1",
