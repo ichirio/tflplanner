@@ -217,7 +217,12 @@ open_study <- function(study, home = tflplanner_home()) {
   id <- if (is_dir) .read_meta(study)$study_id else study
   st <- .read_state(id, home)
   if (is.null(st)) {
-    if (is_dir) return(register_study(study, home = home))
+    if (is_dir) {
+      # its programs as its setup has it, as below (#680)
+      s <- register_study(study, home = home)
+      .use_study(s$path)
+      return(s)
+    }
     stop("No study '", study, "': not registered and not a study folder.",
          call. = FALSE)
   }
