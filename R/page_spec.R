@@ -1,17 +1,22 @@
 # Step 3 on the YAML spec (#438, step B4 of the "YAML native" plan): a
 # page's values read layer by layer from the `page:` maps -- the report's
-# own (spec/outputs/<id>.yml), its style, the patterns it extends
-# (spec/patterns/<name>.yml), the study's defaults (spec/defaults.yml) --
-# each with where it comes from, and written into the one layer's file,
-# only the key changed.  The sheets' view of that layer is made again from
-# the spec, so the screens that read the sheets see the same.
+# own (spec/outputs/<id>.yml) over its page configuration (a style set of
+# spec/defaults.yml `styles:`, the report's `style:` or the study's
+# default, settings.style; tflspec's PP-1b), the study's tokens
+# (study.yml `tokens:`) -- each with where it comes from, and written into
+# the one layer's file, only the key changed.  The sheets' view of that
+# layer is made again from the spec, so the screens that read the sheets
+# see the same.
 #
-# A target is a report's id, a pattern ("@<name>") or NA (Standard: the
-# study's defaults).  The keys are rtfreporter's: a function, then its
-# argument (rtf_page: paper_size), or a band and its line number
-# (footer: '99': left), or tokens and a name.  `!unset` (tflspec::tfl_unset())
-# takes away what a layer below says: a line or a token left out, a value
-# none.
+# A target is a report's id, a page configuration ("@<name>", the screen's
+# "pattern") or NA (Standard: the study's default configuration).  A
+# configuration is complete: no layer lies under it.  The keys are
+# rtfreporter's: a function, then its argument (rtf_page: paper_size), or a
+# band and its line (footer: 'last:99': left; a configuration's line is in
+# its block `first` or `last`, a report's own line is its body, a report's
+# `first:` / `last:` lines change the configuration's), or tokens and a
+# name.  `!unset` (tflspec::tfl_unset()) takes away what a layer below says:
+# a line or a token left out, a value none.
 
 # ---- the fields: rtfreporter's functions and the arguments tflspec writes
 
@@ -129,27 +134,123 @@
   page
 }
 
-.pgs_layers_as_said <- function(sp, target) {
-  st <- sp$study
-  if (is.na(target)) return(list(own = st$defaults$page %||% list()))
-  if (.is_pattern_id(target)) {
-    return(list(own = st$patterns[[substring(target, 2L)]]$page %||% list(),
-                defaults = st$defaults$page %||% list()))
-  }
-  o <- sp$outputs[[target]]
-  out <- list(own = o$page %||% list())
-  sn <- o$style %||% "standard"
-  if (is.character(sn) && length(sn) == 1L && !is.null(st$styles[[sn]])) {
-    out[[paste0("style:", sn)]] <- st$styles[[sn]]$page %||% list()
-  }
-  chain <- .pgs_page_chain(o)
-  for (nm in chain) {
-    if (identical(nm, "defaults")) {
-      out$defaults <- st$defaults$page %||% list()
-    } else if (startsWith(nm, "patterns/")) {
-      out[[paste0("pattern:", substring(nm, 10L))]] <- st$patterns[[substring(nm, 10L)]]$page %||% list()
+# ---- the study's page configurations (a style set of defaults.yml styles:)
+
+.pgs_blocks <- c("first", "last")
+.pgs_bands <- c("header", "footer", "titles", "footnotes")
+
+# The name of the study's default configuration: study.yml settings.style,
+# else tflspec's built-in tfl_standard
+.pgs_default_style <- function(st) {
+  nm <- st$study$settings$style
+  if (is.character(nm) && length(nm) == 1L && !is.na(nm) && nzchar(nm)) nm else "tfl_standard"
+}
+
+# The configuration a report uses: its `style:`, else the study's default
+.pgs_style_of <- function(sp, id) {
+  nm <- sp$outputs[[id]]$style
+  if (is.character(nm) && length(nm) == 1L && !is.na(nm) && nzchar(nm)) nm
+  else .pgs_default_style(sp$study)
+}
+
+# tflspec's built-in configurations (reserved names)
+.pgs_builtin_names <- function(st) {
+  d <- tryCatch(tflspec::tfl_styles(st), error = function(e) NULL)
+  if (is.null(d)) c("tfl_standard", "tfl_small", "stf_t02") else d$name[d$source == "built-in"]
+}
+
+# A built-in configuration's page (read only: tflspec's)
+.pgs_builtin_page <- function(name) {
+  f <- get0(".tpl_style_builtin_set", envir = asNamespace("tflspec"), mode = "function")
+  s <- if (is.function(f)) tryCatch(f(name), error = function(e) NULL)
+  s$page %||% list()
+}
+
+# A band's lines as one map by line: a configuration's lines by block and
+# number ("first:1", "last:99"), a report's own body lines by number, its
+# `first` / `last` lines by block and number
+.pgs_flat_band <- function(m, config) {
+  if (.pgs_unset(m) || !is.list(m)) return(m)
+  if (is.null(names(m)) && length(m)) names(m) <- seq_along(m)
+  out <- list()
+  for (k in names(m)) {
+    v <- m[[k]]
+    if (k %in% .pgs_blocks && is.list(v) && !.pgs_unset(v)) {
+      if (is.null(names(v)) && length(v)) names(v) <- seq_along(v)
+      for (ln in names(v)) out[paste0(k, ":", ln)] <- list(v[[ln]])
+    } else if (config) {
+      out[paste0("first:", k)] <- list(v)
+    } else {
+      out[k] <- list(v)
     }
   }
+  out
+}
+.pgs_flat_page <- function(page, config) {
+  if (!is.list(page)) return(list())
+  for (b in intersect(.pgs_bands, names(page))) page[b] <- list(.pgs_flat_band(page[[b]], config))
+  page
+}
+
+# ... and back: the blocks of a configuration's band (each in the order of
+# its numbers), a report's body lines and its `first` / `last` lines
+.pgs_unflat_band <- function(m, config) {
+  if (.pgs_unset(m) || !is.list(m)) return(m)
+  out <- list()
+  for (k in names(m)) {
+    if (grepl("^(first|last):", k)) {
+      blk <- sub(":.*$", "", k)
+      cur <- out[[blk]] %||% list()
+      cur[sub("^[a-z]+:", "", k)] <- list(m[[k]])
+      out[[blk]] <- cur
+    } else {
+      out[k] <- list(m[[k]])
+    }
+  }
+  if (config) {
+    for (blk in names(out)) {
+      n <- suppressWarnings(as.numeric(names(out[[blk]])))
+      out[[blk]] <- out[[blk]][order(is.na(n), n)]
+    }
+  }
+  out
+}
+.pgs_unflat_page <- function(page, config) {
+  for (b in intersect(.pgs_bands, names(page))) {
+    v <- .pgs_unflat_band(page[[b]], config)
+    if (is.list(v) && !.pgs_unset(v) && !length(v)) page[[b]] <- NULL else page[b] <- list(v)
+  }
+  page
+}
+
+# A configuration's page as the layers hold it: the study's own, else a
+# built-in one
+.pgs_cfg_page <- function(st, name) {
+  s <- st$styles[[name]]
+  .pgs_flat_page((if (!is.null(s)) s$page else .pgs_builtin_page(name)) %||% list(), TRUE)
+}
+
+# The study's tokens (study.yml `tokens:`)
+.pgs_study_tokens <- function(st) {
+  tk <- st$study$tokens
+  if (is.list(tk)) tk else list()
+}
+
+.pgs_layers_as_said <- function(sp, target) {
+  st <- sp$study
+  tk <- .pgs_study_tokens(st)
+  if (is.na(target) || .is_pattern_id(target)) {
+    # the study's default configuration, or one by its name: complete, and the
+    # study's tokens beside it (their own file, study.yml)
+    pg <- .pgs_cfg_page(st, if (is.na(target)) .pgs_default_style(st) else substring(target, 2L))
+    if (length(tk)) pg$tokens <- tk
+    return(list(own = pg))
+  }
+  o <- sp$outputs[[target]]
+  out <- list(own = .pgs_flat_page(o$page %||% list(), FALSE))
+  nm <- .pgs_style_of(sp, target)
+  out[[paste0("style:", nm)]] <- .pgs_cfg_page(st, nm)
+  if (length(tk)) out$defaults <- list(tokens = tk)
   out
 }
 
@@ -296,8 +397,11 @@
     cell <- function(k) .pgs_text(if (is.list(cells) && !.pgs_unset(cells)) cells[[k]])
     out[nrow(out) + 1L, ] <- list(ln, cell("left"), cell("center"), cell("right"), f$from, f$unset)
   }
-  n <- suppressWarnings(as.integer(out$line))
-  out <- out[order(is.na(n), n, out$line), , drop = FALSE]
+  # (in the order the band prints: a configuration's first lines, the body,
+  # its last lines)
+  rank <- ifelse(startsWith(out$line, "first:"), 1L, ifelse(startsWith(out$line, "last:"), 3L, 2L))
+  n <- suppressWarnings(as.integer(sub("^(first|last):", "", out$line)))
+  out <- out[order(rank, is.na(n), n, out$line), , drop = FALSE]
   rownames(out) <- NULL
   out
 }
@@ -329,34 +433,24 @@
   out
 }
 
-# Every page of a spec, and the reports' extends: what step 3's form is
+# Every page of a spec, and the reports' styles: what step 3's form is
 # drawn from (a value that changes when they do)
 .pgs_pages <- function(sp) {
   if (is.null(sp)) return(NULL)
-  list(sp$study$defaults$page, lapply(sp$study$patterns, `[[`, "page"),
-       lapply(sp$outputs, function(o) list(o$page, o$extends)))
+  list(lapply(sp$study$styles, `[[`, "page"), sp$study$study$tokens, sp$study$study$settings$style,
+       lapply(sp$outputs, function(o) list(o$page, o$style)))
 }
 
-# the patterns of the study (its spec/patterns/ files)
-.pgs_patterns <- function(sp) sort(names(sp$study$patterns %||% list()))
-
-# The files a report lays under its page, nearest first: its `extends`
-# (a plain chain, or the `page` step of one by step, `{content: none}`) or,
-# when it writes none for the page, its template's (tflspec's
-# tfl_output_extends(); a tflspec without it: the report's own chain)
-.pgs_page_chain <- function(o) {
-  f <- tryCatch(getExportedValue("tflspec", "tfl_output_extends"), error = function(e) NULL)
-  ch <- if (!is.null(f)) tryCatch(f(o, "page"), error = function(e) NULL)
-  if (is.null(ch)) ch <- if (is.list(o$extends)) o$extends$page else o$extends
-  ch <- as.character(unlist(ch))
-  if (identical(ch, "none")) character() else ch
+# the page configurations of the study other than its default (defaults.yml
+# `styles:`): what the screen calls its page patterns
+.pgs_patterns <- function(sp) {
+  sort(setdiff(names(sp$study$styles %||% list()), .pgs_default_style(sp$study)))
 }
 
-# a report's pattern: the first patterns/<name> it extends (NA: Standard)
+# a report's configuration when it is not the study's default (NA: Standard)
 .pgs_pattern_of <- function(sp, id) {
-  ch <- .pgs_page_chain(sp$outputs[[id]])
-  pat <- grep("^patterns/", ch, value = TRUE)
-  if (length(pat)) substring(pat[1L], 10L) else NA_character_
+  nm <- .pgs_style_of(sp, id)
+  if (identical(nm, .pgs_default_style(sp$study))) NA_character_ else nm
 }
 
 # ---- writing ---------------------------------------------------------------
@@ -375,33 +469,73 @@
   m
 }
 
-# A target's own page written: the report's file, the defaults' or a
-# pattern's, and the view's rows of it made again
+# A target's own page written: the report's file, or the configuration's (a
+# set of defaults.yml; Standard: the study's default one) with the study's
+# tokens (study.yml), and the view's rows of it made again
 .pgs_write <- function(p, target, page) {
   p <- .spec_ensure(p)
   p <- .spec_sync(p, p$spec$meta)
   attr(p, "changed") <- NULL
   if (!length(page)) page <- NULL
+  sp <- p$spec
+  old <- .pgs_layers(sp, target)$own
+  if (identical(page %||% list(), old)) return(p)
   if (!is.na(target) && !.is_pattern_id(target)) {
-    o <- p$spec$outputs[[target]]
+    o <- sp$outputs[[target]]
     if (is.null(o)) stop("The spec has no report ", target, ".", call. = FALSE)
-    if (identical(o$page, page)) return(p)
-    o["page"] <- list(page)
+    o["page"] <- list(.pgs_unflat_page(page, FALSE))
     return(.spec_set_output(p, target, o, page_only = TRUE))
   }
-  sp <- p$spec
-  if (is.na(target)) {
-    if (identical(sp$study$defaults$page, page)) return(p)
-    sp$study$defaults["page"] <- list(page %||% list())
-    p$spec <- sp
-    return(.spec_set_study_part(p, "defaults"))
+  st <- sp$study
+  nm <- if (is.na(target)) .pgs_default_style(st) else substring(target, 2L)
+  if (is.null(st$styles[[nm]])) {
+    if (nm %in% .pgs_builtin_names(st)) {
+      stop("The page configuration ", nm, " is a built-in one: copy it into the study's own (",
+           "defaults.yml styles:) and make that the study's default (study.yml settings: style) ",
+           "to change it here.", call. = FALSE)
+    }
+    stop("The study has no page configuration ", nm, " (defaults.yml styles:); ",
+         "add it first (it is neither one of the study's nor a built-in one).", call. = FALSE)
   }
-  nm <- substring(target, 2L)
-  if (is.null(sp$study$patterns[[nm]])) stop("No page pattern ", nm, ".", call. = FALSE)
-  if (identical(sp$study$patterns[[nm]]$page, page)) return(p)
-  sp$study$patterns[[nm]]["page"] <- list(page %||% list())
+  old_tk <- old$tokens
+  old$tokens <- NULL
+  new_tk <- page$tokens
+  page$tokens <- NULL
+  styles_changed <- !identical(page %||% list(), old)
+  if (styles_changed) sp$study$styles[[nm]]["page"] <- list(.pgs_unflat_page(page, TRUE))
+  if (!identical(new_tk %||% list(), old_tk %||% list())) {
+    sp$study$study$tokens <- if (length(new_tk)) new_tk
+    sp$text[[.study_file]] <- .study_yml_tokens_lines(sp$text[[.study_file]], new_tk)
+  }
   p$spec <- sp
-  .spec_set_study_part(p, "patterns", nm)
+  if (styles_changed) .spec_set_study_part(p, "defaults") else .spec_view_study_page(p)
+}
+
+# study.yml's lines with its `tokens:` block as `tokens` say it (none: no
+# block); a new block follows `settings:`
+.study_yml_tokens_lines <- function(lines, tokens) {
+  at <- grep("^tokens:", lines)
+  pos <- NULL
+  if (length(at)) {
+    end <- at[1L]
+    while (end < length(lines) && grepl("^[ 	]", lines[end + 1L])) end <- end + 1L
+    lines <- lines[-(at[1L]:end)]
+    pos <- at[1L] - 1L
+  } else {
+    s <- grep("^settings:", lines)
+    if (length(s)) {
+      end <- s[1L]
+      while (end < length(lines) && grepl("^[ 	]", lines[end + 1L])) end <- end + 1L
+      pos <- end
+    } else {
+      pos <- length(lines)
+    }
+  }
+  if (!length(tokens)) return(lines)
+  new <- strsplit(sub("
+$", "", yaml::as.yaml(list(tokens = tokens))), "
+", fixed = TRUE)[[1L]]
+  append(lines, new, after = pos)
 }
 
 # One study part's file written from the spec (tflspec::tfl_write_study_part()),
@@ -426,32 +560,29 @@
   readLines(f, encoding = "UTF-8", warn = FALSE)
 }
 
-# The view's study rows of the report sheets (the defaults' page: blank
-# output_id; a pattern's: @<name>) made again from the spec
+# The view's study rows of the report sheets (the study's default page
+# configuration and tokens: blank output_id) made again from the spec
 .spec_view_study_page <- function(p) {
   st <- p$spec$study
   lean <- st
   if (!is.null(lean$defaults)) lean$defaults["content"] <- list(NULL)
   lean$patterns <- lapply(lean$patterns, function(l) { l["content"] <- list(NULL); l })
-  lean$styles <- list()
+  lean$styles <- lapply(lean$styles, function(l) { l["content"] <- list(NULL); l })
   v <- .planner_from_spec(lean, list())
   no_id <- function(d) { d$output_id <- NULL; rownames(d) <- NULL; d }
-  ids <- c(NA_character_, paste0("@", names(st$patterns)))
+  # (the study's default configuration and tokens are the blank rows; the
+  # other configurations and the patterns have no rows in the sheets)
   for (s in report_sheets()) {
-    have <- unique(p$sheets[[s]]$output_id)
-    ids_s <- union(ids, have[.is_pattern_id(have)])
-    for (id in ids_s) {
-      new <- sheet_rows(v, s, id)
-      old <- sheet_rows(p, s, id)
-      # (a pattern with no page rows keeps its report row, the marker:
-      # set_sheet_rows() drops a row of nothing)
-      if (s == "report" && id %in% ids[-1L] && !nrow(.drop_blank_rows(no_id(new))) &&
-          !.pattern_in_view(v, id, setdiff(.pattern_sheets, "report"))) {
-        if (!nrow(old)) p <- .pattern_marker(p, id)
-        next
-      }
-      if (!identical(no_id(old), no_id(new))) p <- set_sheet_rows(p, s, id, no_id(new))
-    }
+    new <- sheet_rows(v, s, NA_character_)
+    old <- sheet_rows(p, s, NA_character_)
+    if (!identical(no_id(old), no_id(new))) p <- set_sheet_rows(p, s, NA_character_, no_id(new))
+  }
+  # (a page configuration is a name on the sheets too: a configuration with
+  # nothing that differs from the default rows has one empty row of the report
+  # sheet, so a report's pattern cell is known)
+  keep <- setdiff(names(st$styles), .pgs_default_style(st))
+  for (nm in keep) {
+    if (!.pattern_in_view(p, paste0("@", nm))) p <- .pattern_marker(p, paste0("@", nm))
   }
   if (!is.null(p$spec$base)) p$spec$base <- .planner_body(p)
   p
@@ -524,161 +655,113 @@
   .pgs_write(p, target, page)
 }
 
-# ---- extends and the patterns ---------------------------------------------
+# ---- the page configuration a report uses ---------------------------------
 
-# A report's page pattern (NA or "Standard": none): its `extends:` with the
-# pattern in place of the one it had (put first when it had none)
+# A report's page configuration (NA or "Standard": the study's default): its
+# `style:`.  A name the study's styles: or tflspec's built-in sets have; the
+# study's default one is no choice (`style:` goes).
 .pgs_set_pattern <- function(p, id, pattern) {
   if (!is.na(pattern) && identical(pattern, "Standard")) pattern <- NA_character_
   sp <- .pgs_spec(p)
   o <- sp$outputs[[id]]
   if (is.null(o)) stop("The spec has no report ", id, ".", call. = FALSE)
-  if (!is.na(pattern) && !pattern %in% .pgs_patterns(sp)) {
-    stop("No page pattern ", pattern, ".", call. = FALSE)
+  if (!is.na(pattern) && !pattern %in% c(names(sp$study$styles), .pgs_builtin_names(sp$study))) {
+    stop("No page configuration ", pattern, ".", call. = FALSE)
   }
-  # (a report that writes its `extends` by step has only its `page` step
-  # rewritten; one that writes none -- a template report takes its
-  # template's -- gets a map with that step alone, so its other steps stay
-  # the template's)
-  raw <- o$extends
-  by_step <- is.list(raw) || (is.null(raw) && .pgs_has_extends_accessor())
-  was <- if (is.list(raw)) raw$page else raw
-  ch <- .pgs_page_chain(o)
-  had <- grep("^patterns/", ch)
-  # (the chain's pattern is replaced where it stands, so the order of the
-  # layers stays: [defaults, patterns/a] with b is [defaults, patterns/b])
-  new <- if (length(had) && !is.na(pattern)) {
-    replace(ch, had[1L], paste0("patterns/", pattern))
-  } else {
-    c(if (!is.na(pattern)) paste0("patterns/", pattern),
-      if (length(had)) ch[-had[1L]] else ch)
-  }
-  if (!length(new)) new <- if (identical(was, "none")) "none" else character()
-  if (identical(as.character(was %||% ch), new)) return(p)
-  if (by_step) {
-    m <- as.list(raw)
-    # (the page step goes when it says what the report would have without it)
-    m[["page"]] <- if (length(new) && !identical(new, .pgs_inherited_page(o))) new
-    o["extends"] <- list(if (length(m)) m)
-  } else {
-    o["extends"] <- list(if (length(new)) new)
-  }
+  if (!is.na(pattern) && identical(pattern, .pgs_default_style(sp$study))) pattern <- NA_character_
+  new <- if (is.na(pattern)) NULL else pattern
+  if (identical(o$style, new)) return(p)
+  o["style"] <- list(new)
   p <- .spec_ensure(p)
   p <- .spec_sync(p, p$spec$meta)
   .spec_set_output(p, id, o, page_only = TRUE)
 }
 
-# A report's `extends` as one line (a map by step: content: none; page: a, b)
+# A report's `extends` as one line (a map by step: content: none; data: a, b)
 .pgs_extends_label <- function(x) {
   if (is.null(x)) return("-")
   if (!is.list(x)) return(paste(x, collapse = ", "))
   paste(sprintf("%s: %s", names(x), vapply(x, paste, "", collapse = ", ")), collapse = "; ")
 }
 
-# The page chain a report has when its `extends` names no `page` step: its
-# template's own for that step, else the defaults (a report that is no
-# template's: the defaults; a tflspec without the accessor: the defaults)
-.pgs_inherited_page <- function(o) {
-  if (!is.list(o) || !.pgs_has_extends_accessor()) return("defaults")
-  if (is.list(o$extends)) {
-    o$extends[["page"]] <- NULL
-    if (!length(o$extends)) o["extends"] <- list(NULL)
-  } else if (!is.null(o$extends)) {
-    return(.pgs_page_chain(o))
-  }
-  ch <- .pgs_page_chain(o)
-  if (is.null(o$template)) "defaults" else ch
-}
+# The page chain a report has when its `extends` names no `page` step: the
+# page step has no files (the report's page is its configuration's, the
+# report's own over it), so the defaults
+.pgs_inherited_page <- function(o) "defaults"
 
-.pgs_has_extends_accessor <- function() {
-  !is.null(tryCatch(getExportedValue("tflspec", "tfl_output_extends"), error = function(e) NULL))
-}
-
-# The reports whose extends names a pattern (in any of its steps)
+# The reports that use a page configuration
 .pgs_pattern_reports <- function(sp, name) {
   ids <- names(sp$outputs)
-  ids[vapply(sp$outputs, function(o) {
-    paste0("patterns/", name) %in% c(unlist(o$extends), .pgs_page_chain(o))
-  }, NA)]
+  ids[vapply(ids, function(i) identical(.pgs_style_of(sp, i), name), NA)]
 }
 
-# A new pattern: Standard's page, no difference (an empty file)
+# A configuration's name: a letter, then letters, digits or _; not a built-in
+# set's (tfl_standard, tfl_small ...), not the screen's word for the default
+.pgs_check_name <- function(st, name, what = "A page configuration's") {
+  name <- trimws(sub("^@", "", name %||% ""))
+  if (!grepl(.pattern_rx, name)) {
+    stop(what, " name is a letter, then letters, digits or _ (Compact): not '", name, "'.",
+         call. = FALSE)
+  }
+  if (name %in% .pgs_builtin_names(st)) {
+    stop(name, " is a built-in page configuration: give yours another name.", call. = FALSE)
+  }
+  if (identical(name, "Standard")) {
+    stop("Standard is the study's default configuration here: give the new one another name.",
+         call. = FALSE)
+  }
+  if (name %in% names(st$styles)) stop("There is a page configuration '", name, "' already.", call. = FALSE)
+  name
+}
+
+# A new page configuration: a copy of the study's default one (a set is
+# complete: it shares nothing)
 .pgs_add_pattern <- function(p, name) {
   p <- .spec_ensure(p)
   p <- .spec_sync(p, p$spec$meta)
   sp <- p$spec
-  name <- trimws(sub("^@", "", name %||% ""))
-  if (!grepl(.pattern_rx, name)) {
-    stop("A page pattern's name is a letter, then letters, digits or _ (Compact): not '",
-         name, "'.", call. = FALSE)
-  }
-  if (identical(tolower(name), "standard")) {
-    stop("Standard is the study's defaults: give the pattern another name.", call. = FALSE)
-  }
-  if (name %in% .pgs_patterns(sp)) stop("There is a page pattern '", name, "' already.", call. = FALSE)
-  sp$study$patterns[[name]] <- list(data = list(), codelists = list(), content = list(),
-                                    page = list())
+  name <- .pgs_check_name(sp$study, name)
+  base <- sp$study$styles[[.pgs_default_style(sp$study)]]
+  if (is.null(base)) base <- list(page = .pgs_builtin_page(.pgs_default_style(sp$study)))
+  sp$study$styles[[name]] <- list(page = base$page %||% list(), content = base$content %||% list())
   p$spec <- sp
-  p <- .spec_set_study_part(p, "patterns", name)
-  # (the view: the pattern's empty report row, as the sheets have it)
-  if (!name %in% page_patterns(p)) {
-    p <- add_page_pattern(p, name)
-    if (!is.null(p$spec$base)) p$spec$base <- .planner_body(p)
-  }
-  p
+  .spec_set_study_part(p, "defaults")
 }
 
-# A pattern renamed: its file and the reports that extend it
+# A page configuration renamed: its set and the reports that use it
 .pgs_rename_pattern <- function(p, name, new) {
   p <- .spec_ensure(p)
   p <- .spec_sync(p, p$spec$meta)
   sp <- p$spec
-  new <- trimws(sub("^@", "", new %||% ""))
-  if (!name %in% .pgs_patterns(sp)) stop("No page pattern ", name, ".", call. = FALSE)
-  if (!grepl(.pattern_rx, new) || identical(tolower(new), "standard")) {
-    stop("A page pattern's name is a letter, then letters, digits or _ (Compact): not '",
-         new, "'.", call. = FALSE)
-  }
-  if (new %in% .pgs_patterns(sp)) stop("There is a page pattern '", new, "' already.", call. = FALSE)
+  if (!name %in% .pgs_patterns(sp)) stop("No page configuration ", name, ".", call. = FALSE)
+  new <- .pgs_check_name(sp$study, new)
   used <- .pgs_pattern_reports(sp, name)
-  pats <- sp$study$patterns
-  names(pats)[names(pats) == name] <- new
-  sp$study$patterns <- pats[sort(names(pats), method = "radix")]
-  dir <- file.path(study_layout()[["spec"]], "patterns")
-  sp$text[[file.path(dir, paste0(name, ".yml"))]] <- NULL
+  sty <- sp$study$styles
+  names(sty)[names(sty) == name] <- new
+  sp$study$styles <- sty
   p$spec <- sp
-  p <- .spec_set_study_part(p, "patterns", new)
+  p <- .spec_set_study_part(p, "defaults")
   for (id in used) {
     o <- p$spec$outputs[[id]]
-    swap <- function(ch) {
-      ch[ch == paste0("patterns/", name)] <- paste0("patterns/", new)
-      ch
-    }
-    o$extends <- if (is.list(o$extends)) lapply(o$extends, swap) else swap(o$extends)
+    o["style"] <- list(new)
     p <- .spec_set_output(p, id, o, page_only = TRUE)
   }
-  # (the view: its rows of every sheet under the new name)
-  if (name %in% page_patterns(p)) p <- rename_page_pattern(p, name, new)
-  p <- .spec_view_study_page(p)
-  if (!is.null(p$spec$base)) p$spec$base <- .planner_body(p)
   p
 }
 
-# A pattern no report extends taken away (its file goes on save)
+# A page configuration no report uses taken away (the study's default one
+# stays)
 .pgs_remove_pattern <- function(p, name) {
   p <- .spec_ensure(p)
   p <- .spec_sync(p, p$spec$meta)
   sp <- p$spec
+  if (!name %in% .pgs_patterns(sp)) stop("No page configuration ", name, ".", call. = FALSE)
   used <- .pgs_pattern_reports(sp, name)
   if (length(used)) {
-    stop("The page pattern '", name, "' is used by ", paste(used, collapse = ", "),
+    stop("The page configuration '", name, "' is used by ", paste(used, collapse = ", "),
          ": choose another for them first.", call. = FALSE)
   }
-  sp$study$patterns[[name]] <- NULL
-  sp$text[[file.path(study_layout()[["spec"]], "patterns", paste0(name, ".yml"))]] <- NULL
+  sp$study$styles[[name]] <- NULL
   p$spec <- sp
-  if (name %in% page_patterns(p)) p <- remove_page_pattern(p, name)
-  p <- .spec_view_study_page(p)
-  if (!is.null(p$spec$base)) p$spec$base <- .planner_body(p)
-  p
+  .spec_set_study_part(p, "defaults")
 }

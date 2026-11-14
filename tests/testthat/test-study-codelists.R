@@ -51,11 +51,9 @@ cl_study <- function(id, file = TRUE) {
   cat("codelists:\n  SEX: [{value: F, label: DefF}, {value: M, label: DefM}]\n",
       file = file.path(sp, "defaults.yml"), append = TRUE)
   dir.create(file.path(sp, "patterns"))
-  # (a pattern with a page: tflspec's sheets name a pattern by its page
-  # rows, and a pattern with none is refused by the report sheet)
+  # (a pattern holds no page: that is a page configuration's, tflspec PP-1b)
   writeLines(c("codelists:", paste0("  ", cl_trt),
-               "  SEX: [{value: F, label: PatF}, {value: M, label: PatM}]",
-               "page:", "  titles:", "    1: {center: Pattern title}"),
+               "  SEX: [{value: F, label: PatF}, {value: M, label: PatM}]"),
              file.path(sp, "patterns", "pp.yml"))
   f <- file.path(sp, "outputs", "DM2.yml")
   writeLines(sub("^  - defaults$", "  - patterns/pp", readLines(f)), f)
@@ -92,14 +90,24 @@ cl_ahead <- function(p, id = "DM") {
 cl_body <- function(x) x[!grepl("^#", x)]
 # a table program without its plan_labels() step: tflspec writes one merged
 # step from the study's code lists when the program is generated from the
-# spec (tflspec #796); the view ahead of the spec (the sheets path) has none
+# spec (tflspec #796); the view ahead of the spec (the sheets path) has none.
+# Nor does it have the page the spec path writes from the built-in standard
+# page configuration (tokens, the section's header and footer): those lines
+# go too, so what is compared is the table.
 cl_unlabel <- function(x) {
+  x <- cl_unpage(x)
   i <- grep("  plan_labels(", x, fixed = TRUE)
   if (!length(i)) return(x)
   j <- if (endsWith(x[i[1L]], ")")) i[1L] else i[1L] + which(x[-seq_len(i[1L])] == "  )")[1L]
   x <- x[-(i[1L]:j)]
   x[i[1L] - 1L] <- sub(" |>", "", x[i[1L] - 1L], fixed = TRUE)
   x
+}
+cl_unpage <- function(x) {
+  i <- grep("^  tokens = list\\($", x)
+  if (length(i)) x <- x[-(i[1L]:(i[1L] - 1L + which(x[-seq_len(i[1L] - 1L)] == "  ),")[1L]))]
+  x <- x[!grepl("^  rtf_section\\(header = ", x)]
+  sub(", auto_section = TRUE", "", x, fixed = TRUE)
 }
 
 cl_ard <- function(s, id) .ard_spec_code(.ard_spec(s$planner$ard), id,
@@ -216,7 +224,6 @@ test_that("the lists are asked of tflspec once for the same spec", {
 })
 
 test_that("the ARD built from the layers' lists is built, not outdated (programs, tflspec's build, the batch's hash)", {
-  skip_if_not_installed("cards")
   cl_home()
   s <- save_study(cl_study("CL6"))
   # the ARD program of the planner
@@ -334,7 +341,6 @@ test_that("the sheets path takes no inherited list a variable the ARD does not r
 })
 
 test_that("the ARS reads a report's inherited lists: a condition on a label stops", {
-  skip_if_not_installed("cards")
   # tflspec #796: the data hold the codes, so a `where` written with a label
   # stops in the ARS as in the ARD program, and says the code to write
   cl_home()

@@ -72,7 +72,6 @@ test_that("left out of a run: a report's ARD and report programs; who reads them
 })
 
 test_that("an official run of a named batch, or leaving reports out", {
-  skip_if_not_installed("cards")
   skip_on_cran()
   bs_home()
   p <- set_batch(bs_planner(), "Topline", c("DM", "L1"))
@@ -177,7 +176,6 @@ test_that("the data each program reads, by the data catalog", {
 })
 
 test_that("an official run keeps the data its programs read, and the versions", {
-  skip_if_not_installed("cards")
   skip_on_cran()
   bs_home()
   s <- create_study("BD", planner = bs_planner())
@@ -353,7 +351,6 @@ test_that("two official runs compared: their inputs where kept, their results", 
 
 test_that("two official runs of the sample compared after a data fix", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   home <- withr_tempdir()
   withr::local_options(tflplanner.home = home)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))

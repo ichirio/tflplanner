@@ -191,7 +191,6 @@ test_that("saving writes the programs from the definition, an edited one too", {
 })
 
 test_that("a study runs end to end and reports what it produced", {
-  skip_if_not_installed("cards")
   skip_on_cran()
   local_home()
   p <- sample_planner()

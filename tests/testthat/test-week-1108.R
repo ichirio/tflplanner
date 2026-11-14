@@ -212,8 +212,6 @@ tpl_fig_study <- function(h, id = "F-9-1") {
 }
 
 test_that("a forest_hr template figure's program makes and reads its ARD, and its RTF has the figure", {
-  skip_if_not_installed("cardx")
-  skip_if_not_installed("ggplot2")
   h <- sample_in_home()
   s <- tpl_fig_study(h)
   expect_true(file.exists(file.path(s$path, "programs", "ard", "F-9-1.R")))

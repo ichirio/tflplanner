@@ -72,7 +72,6 @@ test_that("a column the form makes: the errors in words", {
 })
 
 test_that("1-1: a column made in the form, saved as the sheet's derive", {
-  skip_if_not_installed("cards")
   local_home()
   p <- add_output(new_planner(), "DM")
   p$ard$datasets <- data.frame(dataset = "ADSL", path = "data/adam/adsl.rds")

@@ -87,9 +87,6 @@ test_that("the sample's T-14-1-1S is T-14-1-1's ARD as one ard_stack", {
 
 test_that("the sample study makes its ARD and reports", {
   skip_on_cran()
-  skip_if_not_installed("cards")
-  skip_if_not_installed("cardx")
-  skip_if_not_installed("ggplot2")
   skip_if_not_installed("ggsurvfit")
   skip_if_not_installed("patchwork")
   home <- withr_tempdir()

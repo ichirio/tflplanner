@@ -57,7 +57,6 @@ test_that("pages, a hierarchy, two column keys; no meta", {
 
 test_that("the builder shows the card, and the whole ARD on its button", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   local_home()
   p <- add_standard_defaults(add_output(new_planner(), "T-AC", type = "table"), "AC")
   s <- create_study("AC", planner = p)
