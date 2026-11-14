@@ -287,7 +287,7 @@ test_that("a template card: an edit is written, a value just replaced is not an 
 # ---- a template report writes no `extends` (tflspec: the template's own) -----------------------
 
 test_that("a template report made in the dialog writes no extends", {
-  skip_if_not(.pgs_has_extends_accessor(), "tflspec's extends per step (#778)")
+  skip_if_not("tfl_output_extends" %in% getNamespaceExports("tflspec"), "tflspec's extends per step (#778)")
   id <- sample_for_add()
   watch_add()
   shiny::testServer(server_for(id), {
@@ -301,10 +301,11 @@ test_that("a template report made in the dialog writes no extends", {
     txt <- paste(rv$p$spec$text[["spec/outputs/L-ZZ-8.yml"]], collapse = "
 ")
     expect_false(grepl("extends", txt, fixed = TRUE))
-    # (and the page's pattern chosen on it writes the page step alone)
+    # (and the page configuration chosen on it writes its `style:` alone, no extends)
     q <- .pgs_add_pattern(rv$p, "Wide")
     q <- .pgs_set_pattern(q, "L-ZZ-8", "Wide")
-    expect_identical(q$spec$outputs[["L-ZZ-8"]]$extends, list(page = c("patterns/Wide", "defaults")))
+    expect_identical(q$spec$outputs[["L-ZZ-8"]]$style, "Wide")
+    expect_null(q$spec$outputs[["L-ZZ-8"]]$extends)
   })
 })
 

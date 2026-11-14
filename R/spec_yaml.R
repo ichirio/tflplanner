@@ -55,7 +55,7 @@
 # planner's sheets as one definition (with the study keys), the report list
 # and setup (the _tflplanner sheet's rows), the ARD definition, the listing
 # and figure sheets, the figure designs, and the study's fields
-.planner_sheets <- function(p, meta) {
+.planner_sheets <- function(p, meta, style = p$spec$study$study$settings$style) {
   o <- p$outputs[names(.empty_outputs())]
   o$setup_code <- rep(NA_character_, nrow(o))
   planner <- rbind(
@@ -67,6 +67,14 @@
     o)
   study <- meta[intersect(.study_fields, names(meta))]
   study <- study[!vapply(study, function(v) is.null(v) || !length(v) || is.na(v[1L]), NA)]
+  # the study's default page configuration (study.yml settings: style) travels
+  # with the sheets: the bridge names the blank rows' configuration by it
+  # (else `standard`, and an edit of those rows would go to a set no report uses;
+  # `standard` itself is the bridge's own name, left out)
+  if (is.character(style) && length(style) == 1L && !is.na(style) && nzchar(style) &&
+      !identical(style, "standard")) {
+    study$settings <- list(style = style)
+  }
   list(table = unclass(.spec_object(p, c(table_sheets(), report_sheets()),
                                     unique(unlist(.study_keys)))),
        planner = planner, ard = p$ard, listing = p$lf,
