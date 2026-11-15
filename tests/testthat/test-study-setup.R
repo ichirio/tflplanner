@@ -454,11 +454,17 @@ test_that("the setup reads the datasets a report uses, not every dataset of the 
   p$spec$study$data$datasets <- c(p$spec$study$data$datasets,
                                   list(list(dataset = "ADZZ", path = "data/adam/adzz.rds")))
   # the datasets read: `adsl <- readRDS(...)`, or (tflspec#814)
-  # `delayedAssign("adsl", readRDS(...), assign.env = study$adam_org)`
+  # `delayedAssign("adsl", readRDS(...), assign.env = study$adam_org)`,
+  # over one line or several: the parsed code
   read <- function(x) {
-    x <- trimws(grep("readRDS(", x, value = TRUE, fixed = TRUE))
-    ifelse(startsWith(x, "delayedAssign("), sub("^delayedAssign[(]\"([^\"]+)\".*$", "\\1", x),
-           sub(" <- .*$", "", x))
+    reads <- function(e) any(grepl("readRDS(", deparse(e), fixed = TRUE))
+    unlist(lapply(as.list(parse(text = x)), function(e) {
+      if (!is.call(e)) return(NULL)
+      f <- as.character(e[[1L]])
+      if (identical(f, "<-") && reads(e[[3L]])) return(as.character(e[[2L]]))
+      if (identical(f, "delayedAssign") && reads(e[[3L]])) return(as.character(e[[2L]]))
+      NULL
+    }))
   }
   all <- read(tflspec::tfl_study_setup_code(p$spec$study))
   now <- read(tflspec::tfl_study_setup_code(.study_rounding_source(p)))
