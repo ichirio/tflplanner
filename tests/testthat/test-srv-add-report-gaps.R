@@ -527,9 +527,10 @@ test_that("demog's preview reads the study standard the report resolves with: it
   hdr <- unlist(pages[[1L]]$col_header)
   expect_true(any(grepl("^[(]N=[0-9]+[)]$", hdr)))
   expect_true("Characteristic" %in% hdr)
-  # (the categorical rows' values, indented: hard spaces taken away)
+  # (the categorical rows' values, indented: hard spaces taken away; the
+  # study's SEX code list in spec/defaults.yml gives their words)
   txt <- trimws(gsub(" ", " ", unlist(lapply(pages[[1L]]$data, as.character)), fixed = TRUE))
-  expect_true(all(c("F", "M") %in% txt))
+  expect_true(all(c("Female", "Male") %in% txt))
 })
 
 test_that("the dialog shows a key argument open under the required ones, marked, and counts only the rest in the fold", {
