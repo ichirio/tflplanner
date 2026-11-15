@@ -4,7 +4,9 @@
 test_that("every argument a template card shows has a heading and its Japanese", {
   tp <- tflspec::tfl_templates()$name
   shown <- unique(unlist(lapply(tp, function(n) names(.tpl_shown(.tpl_params(n))))))
-  expect_identical(setdiff(shown, names(.tpl_arg_labels)), character())
+  # (data_label: ae_pt_freq and param_change of a tflspec before the data rows
+  # lost their label; no heading is kept for it)
+  expect_identical(setdiff(shown, c(names(.tpl_arg_labels), "data_label")), character())
   s <- .strings()
   expect_identical(setdiff(c(unname(.tpl_arg_labels), unname(.tpl_doc_labels)), s[[1L]]), character())
   docs <- unique(unlist(lapply(tp, function(n) vapply(.tpl_shown(.tpl_params(n)),
