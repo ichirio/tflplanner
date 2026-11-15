@@ -416,14 +416,16 @@ test_that("the study's rounding is set once, in study_setup.R's part 2 (tflspec#
   # the input data (tflspec#794), where tflspec writes it: after the rounding,
   # through the folder variables part 2 defines, not the catalog's paths
   if (any(grepl("readRDS", tflspec::tfl_study_setup_code(s$planner$spec$study)))) {
-    expect_true("adsl <- readRDS(file.path(path_adam, \"adsl.rds\"))" %in% trimws(part2))
+    # (an object of its own, or study$adam_org's, read when first used: tflspec#814)
+    expect_true(any(grepl("readRDS(file.path(path_adam, \"adsl.rds\"))", part2, fixed = TRUE)))
     expect_gt(grep("readRDS", part2)[1L], match(rnd, trimws(part2)))
     expect_false(any(grepl("readRDS(\"data/", part2, fixed = TRUE)))
     # and it runs from the study folder, the sample's data there
     e <- new.env()
-    withr::with_dir(s$path, sys.source(file.path(s$path, .study_setup_path()),
-                                       envir = e, toplevel.env = e))
-    expect_true(is.data.frame(e$adsl))
+    withr::with_dir(s$path, {
+      sys.source(file.path(s$path, .study_setup_path()), envir = e, toplevel.env = e)
+      expect_true(is.data.frame(e$adsl))
+    })
   }
   # the ARD and report setups source it and do not set the rounding again
   ard <- readLines(file.path(s$path, study_layout()[["programs_ard"]], .ard_setup_file))
@@ -451,7 +453,13 @@ test_that("the setup reads the datasets a report uses, not every dataset of the 
   # a dataset of the catalog no report uses (its file is not on disk)
   p$spec$study$data$datasets <- c(p$spec$study$data$datasets,
                                   list(list(dataset = "ADZZ", path = "data/adam/adzz.rds")))
-  read <- function(x) sub(" <- .*$", "", trimws(grep("<- readRDS", x, value = TRUE)))
+  # the datasets read: `adsl <- readRDS(...)`, or (tflspec#814)
+  # `delayedAssign("adsl", readRDS(...), assign.env = study$adam_org)`
+  read <- function(x) {
+    x <- trimws(grep("readRDS(", x, value = TRUE, fixed = TRUE))
+    ifelse(startsWith(x, "delayedAssign("), sub("^delayedAssign[(]\"([^\"]+)\".*$", "\\1", x),
+           sub(" <- .*$", "", x))
+  }
   all <- read(tflspec::tfl_study_setup_code(p$spec$study))
   now <- read(tflspec::tfl_study_setup_code(.study_rounding_source(p)))
   expect_true("adzz" %in% all)
