@@ -28,7 +28,7 @@
 # check (an unticked check would say FALSE).
 .plan_cell_look <- "enum[TRUE|FALSE]|logical"
 .plan_form_types <- list(
-  normalize_ard = c(drop_contexts = "r", stack = "r"),
+  normalize_ard = c(drop_contexts = "r", stack = "r", combine = "r"),
   plan_cell_style = c(bold = .plan_cell_look, italic = .plan_cell_look,
                       underline = .plan_cell_look, color = "colour", background = "colour"),
   plan_columns = c(widths = "widths", row_title = "list<column>"))
