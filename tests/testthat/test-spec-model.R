@@ -472,7 +472,8 @@ test_that("the builder's cells and decimals are plan_cells(); the rounding the s
   st3$cat_format <- "nNpct"
   q <- builder_write(p, id, st3, was = st)
   expect_identical(cells(q)$categorical, "{n:.0f}/{N:.0f} ({p:.1f%})")
-  expect_identical(names(cells(q))[1:3], c("default", "categorical", "continuous"))
+  # (the sample standard's `na` is a key of the cells too, after the default)
+  expect_identical(setdiff(names(cells(q)), "na")[1:3], c("default", "categorical", "continuous"))
   st4 <- st
   st4$value <- "stat_fmt"
   q <- builder_write(p, id, st4, was = st)
