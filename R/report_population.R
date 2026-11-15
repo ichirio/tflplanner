@@ -91,7 +91,7 @@ report_population <- function(x, output_id) {
   }
   # the subjects' own data of a set: adsl_<set>, made as a set's is
   if (!is.na(pop) && .is_blank(r$where) && .is_blank(r$add) && .is_blank(r$derive) &&
-      .is_blank(r$keep) && .is_blank(r$distinct)) {
+      .is_blank(r$arrange) && .is_blank(r$keep) && .is_blank(r$distinct) && .is_blank(r$then)) {
     x <- .ensure_pop_adata(x, output_id, pop)
     return(out(x, attr(x, "data_id")))
   }
@@ -99,7 +99,7 @@ report_population <- function(x, output_id) {
   same <- vapply(seq_len(nrow(ad)), function(j) {
     identical(ad$from[j], r$from) && identical(.blank_na(ad$population_id[j]), .blank_na(pop)) &&
       identical(.blank_na(ad$subjects[j]), .blank_na(subj)) &&
-      all(vapply(c("where", "add", "derive", "keep", "distinct"), function(cn)
+      all(vapply(c("where", "add", "derive", "arrange", "keep", "distinct", "then"), function(cn)
         identical(.blank_na(ad[[cn]][j]), .blank_na(r[[cn]])), NA)) &&
       .is_blank(ad$code[j])
   }, NA)
@@ -112,7 +112,7 @@ report_population <- function(x, output_id) {
   nm <- .adata_free_name(x, output_id, base)
   x <- set_analysis_data(x, output_id, nm, from = r$from, population_id = pop, subjects = subj,
                          where = r$where, add = r$add, derive = r$derive, keep = r$keep,
-                         distinct = r$distinct)
+                         distinct = r$distinct, arrange = r$arrange, then = r$then)
   out(x, nm)
 }
 

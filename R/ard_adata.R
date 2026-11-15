@@ -242,7 +242,7 @@
   val <- function(v) if (.is_blank(v)) NA_character_ else as.character(v)
   for (i in seq_len(nrow(ad))) {
     if (!is.null(but) && identical(ad$data_id[i], but)) next
-    other <- c("add", "derive", "keep", "distinct", "code")
+    other <- c("add", "derive", "arrange", "keep", "distinct", "code", "then")
     if (any(vapply(intersect(other, names(ad)), function(cn) !.is_blank(ad[[cn]][i]), NA))) next
     if (identical(val(ad$from[i]), val(from)) &&
         identical(val(ad$population_id[i]), val(pop)) &&
@@ -365,10 +365,12 @@
 #' @param data_id The name (lower case; also the object's name in the ARD
 #'   program).
 #' @param from A dataset, or an analysis data above.
-#' @param population_id,subjects,where,add,derive,keep,distinct The
+#' @param population_id,subjects,where,add,derive,arrange,keep,distinct,then The
 #'   other columns (`subjects`: an analysis data above whose subjects it
-#'   keeps, instead of `population_id`; `add`, `keep`, `distinct`: several
-#'   columns with `" | "` between them).
+#'   keeps, instead of `population_id`; `add`, `arrange`, `keep`, `distinct`:
+#'   several columns with `" | "` between them, an `arrange` one a name or
+#'   `desc(name)`; `then`: R added at the end of the data's pipe, not with
+#'   `code`).
 #' @param old The name of the one to replace; `NULL`: a new one.
 #' @param code R that makes the data itself (its value is the data); with
 #'   it the other columns but `from` stay blank.
@@ -390,14 +392,15 @@
 set_analysis_data <- function(x, output_id, data_id, from, population_id = NA,
                               where = NA, add = NA, derive = NA,
                               distinct = NA, old = NULL,
-                              subjects = NA, keep = NA, code = NA) {
+                              subjects = NA, keep = NA, code = NA,
+                              arrange = NA, then = NA) {
   if (.is_blank(output_id)) stop("An analysis data is a report's: give the report.", call. = FALSE)
   ad <- .adata_rows(x, output_id)
   row <- .normalize_ard_sheet(data.frame(
     output_id = output_id, data_id = data_id, from = from,
     population_id = population_id, subjects = subjects, where = where,
-    add = add, derive = derive, keep = keep, distinct = distinct,
-    code = code, stringsAsFactors = FALSE), "analysis_data")
+    add = add, derive = derive, arrange = arrange, keep = keep, distinct = distinct,
+    code = code, then = then, stringsAsFactors = FALSE), "analysis_data")
   if (!nrow(row) || is.na(row$data_id)) {
     stop("An analysis data needs its name.", call. = FALSE)
   }

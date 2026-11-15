@@ -204,7 +204,8 @@
       from_ch <- c(stats::setNames(r$from, sprintf(t("%s (as written in the sheet: not a dataset nor an analysis data above)"),
                                                    r$from)), from_ch)
     }
-    more <- !.is_blank(r$add) || !.is_blank(r$derive) || !.is_blank(r$keep) || !.is_blank(r$distinct)
+    more <- !.is_blank(r$add) || !.is_blank(r$derive) || !.is_blank(r$arrange) || !.is_blank(r$keep) ||
+      !.is_blank(r$distinct) || !.is_blank(r$then)
     has_cl <- nrow(sheet_rows(p, "codelists", ard_target() %||% "") %||% data.frame()) > 0L
     adata_drv$load(r$derive)
     # add: columns of the subjects' data joined in -- not offered while it is
@@ -284,6 +285,16 @@
           .derive_editor_ui(t, with_tip(argl("Columns made or changed", "derive"),
                                         t("The columns this data makes, or changes when the name is a column it has: split by conditions, cut a number into groups, days between two dates, or any R (mutate()). The sheet keeps each as NAME = R (derive, | between them); one the form cannot draw is kept as written.")),
                             blank_na(r$derive))),
+        # (the sort: after the columns made, before those kept; each a
+        # variable or desc(variable), picked from the choices or typed)
+        shiny::div(class = "rp-num-part", shiny::span(class = "rp-num", ""),
+          shiny::selectizeInput("adata_arrange", with_tip(
+            argl("Sort by", "arrange"),
+            t("The sort order of the rows (arrange()), after the columns made and before those kept; a variable not kept can still sort. Pick in order; desc(X) sorts X from the largest. The rows are not changed in number: with \"One row per\" the first row in this order is kept.")),
+                                choices = unique(c(bar(r$arrange), adata_cols(adata_root(r$from)),
+                                                   sprintf("desc(%s)", adata_cols(adata_root(r$from))))),
+                                selected = bar(r$arrange), multiple = TRUE, width = "100%",
+                                options = list(create = TRUE, plugins = list("remove_button")))),
         shiny::div(class = "rp-num-part", shiny::span(class = "rp-num", "\u2462"),
           shiny::selectizeInput("adata_keep", with_tip(
             argl("Columns kept (blank: all)", "keep"),
@@ -299,7 +310,15 @@
                                 selected = bar(r$distinct), multiple = TRUE, width = "100%",
                                 options = list(create = TRUE, plugins = list("remove_button")))),
         shiny::div(class = "rp-num-part", shiny::span(class = "rp-num", "\u2463"),
-          shiny::div(shiny::uiOutput("adata_cl"), shiny::uiOutput("adata_cl_detail"))))),
+          shiny::div(shiny::uiOutput("adata_cl"), shiny::uiOutput("adata_cl_detail"))),
+        # (R added at the end, after all of the above)
+        shiny::div(class = "rp-num-part", shiny::span(class = "rp-num", ""),
+          shiny::div(class = "w-100",
+            shiny::tags$label(class = "form-label", `for` = "adata_then", with_tip(
+              argl("Add R", "then"),
+              t("R added at the end of this data's steps, after the columns above (a pipe of several steps is fine: dplyr::mutate(...) |> dplyr::filter(...)); the data is its first argument. Not together with \"Write this analysis data whole as R\"."))),
+            shiny::textAreaInput("adata_then", NULL, blank_na(r$then), width = "100%", rows = 3,
+                                 resize = "vertical"))))),
       # the way out: R that makes the data itself (the definition keeps it)
       shiny::tags$details(
         class = "mb-2", open = if (!.is_blank(r$code)) NA,
@@ -407,8 +426,8 @@
   output$adata_same <- shiny::renderUI({
     e <- adata_edit()
     shiny::req(!is.null(e), is.null(e$old), is.null(e$name))
-    more <- c(input$adata_add, adata_derive_now(), input$adata_keep,
-              input$adata_distinct, input$adata_code)
+    more <- c(input$adata_add, adata_derive_now(), input$adata_arrange, input$adata_keep,
+              input$adata_distinct, input$adata_then, input$adata_code)
     shiny::req(!any(nzchar(trimws(more))))
     subjects <- adata_subj_value()
     ps <- adata_pop_split(subjects)
@@ -438,16 +457,18 @@
     add <- one(input$adata_add)
     keep <- one(input$adata_keep)
     distinct <- one(input$adata_distinct)
+    arrange <- one(input$adata_arrange)
+    then <- one(input$adata_then)
     where <- ps$where
     derive <- one(adata_derive_now())
     # written as R: the fields that make a data are not used
     if (!is.na(code)) {
-      pop <- subjects <- where <- add <- derive <- keep <- distinct <- NA
+      pop <- subjects <- where <- add <- derive <- arrange <- keep <- distinct <- then <- NA
     }
     p <- set_analysis_data(p, ard_target(), id, from = from, population_id = pop, subjects = subjects,
                            where = where, add = add,
                            derive = derive, keep = keep,
-                           distinct = distinct,
+                           distinct = distinct, arrange = arrange, then = then,
                            old = e$old, code = code)
     suppressWarnings(.ard_spec(p$ard))
     p
@@ -534,7 +555,8 @@
                         population_id = ps$pop,
                         where = ps$where, add = one_of(input$adata_add),
                         derive = one_of(adata_derive_now()), keep = one_of(input$adata_keep),
-                        distinct = one_of(input$adata_distinct), old = e$old)
+                        distinct = one_of(input$adata_distinct), old = e$old,
+                        arrange = one_of(input$adata_arrange), then = one_of(input$adata_then))
     }, error = function(err) NULL)
     v <- if (is.null(p)) NA else .adata_code_start(p, ard_target(), trimws(input$adata_id))
     if (is.na(v)) return(notify(t("The code cannot be written yet: give the data a name and what it is made from."), "warning"))
