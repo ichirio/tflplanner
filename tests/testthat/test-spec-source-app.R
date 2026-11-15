@@ -89,7 +89,7 @@ test_that("a save after an outside edit asks to load first; the same part change
 test_that("keeping my changes in a conflict keeps a template report's template", {
   home <- local_home()
   s0 <- suppressMessages(create_sample_study(run = FALSE, home = home))
-  o <- tflspec::tfl_output("T-TPL", "table", label = "Demographics", population = "SAF",
+  o <- tflspec::tfl_output("T-TPL", "table", label = "Demographics", common = list(population = "SAF"),
                            template = list(name = "demog",
                                          args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   s0$planner <- .spec_add_output(s0$planner, o, label = "Demographics", population = "SAF")
@@ -98,7 +98,7 @@ test_that("keeping my changes in a conflict keeps a template report's template",
   shiny::testServer(server_for(s$meta$study_id), {
     rv <- session$userData$rv
     rv$p <- .spec_set_output(rv$p, "T-TPL", .tpl_output(
-      rv$p, "T-TPL", list(population = "SAF", continuous = "AGE")))
+      rv$p, "T-TPL", list(population = "SAF", by = "TRT01A", continuous = "AGE")))
     rv$p <- set_sheet_rows(rv$p, "titles", "T-TPL", data.frame(line = "1", center = "Mine"))
     x <- tflspec::tfl_read_output(f)
     x$page$titles[["1"]]$center <- "Theirs"

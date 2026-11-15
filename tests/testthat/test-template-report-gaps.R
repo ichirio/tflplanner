@@ -10,7 +10,7 @@ tpl_sample_planner <- function() {
 }
 
 tpl_demog_output <- function(id = "T-99") {
-  tflspec::tfl_output(id, "table", population = "SAF",
+  tflspec::tfl_output(id, "table", common = list(population = "SAF"),
                       template = list(name = "demog",
                                     args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
 }
@@ -209,8 +209,8 @@ test_that("a report's file with the template and arguments set, in the template'
   p <- .spec_add_output(p, tpl_demog_output(), population = "SAF")
   o <- .tpl_output(p, "T-99", list(zzz = 1, population = "FAS"), name = "disposition")
   expect_identical(o$template$name, "disposition")
-  expect_identical(names(o$template$args), c("population", "zzz"))
-  expect_identical(o$population, "FAS")
+  expect_identical(names(o$template$args), "zzz")
+  expect_identical(o$common$population, "FAS")
   # the name kept when none is given
   expect_identical(.tpl_output(p, "T-99", list())$template$name, "demog")
 })
@@ -279,14 +279,13 @@ test_that("the verbs after a template's call: the ones its program has", {
 
 test_that("the verbs after a template's call in the program tflspec writes now", {
   skip_on_cran()
-  # (summary: the study standard's verbs follow its call; demog takes them
-  # as its arguments, tflspec#764, and its program has none after it)
-  o <- tflspec::tfl_output("T-99", "table", population = "SAF",
+  # (demog and summary take the study standard's verbs as their arguments,
+  # tflspec#764 / #785, and their programs have none after the call)
+  o <- tflspec::tfl_output("T-99", "table", common = list(population = "SAF"),
                            template = list(name = "summary",
-                                         args = list(population = "SAF", continuous = "AGE", categorical = "SEX")))
+                                         args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   p <- .spec_add_output(tpl_sample_planner(), o, population = "SAF")
-  fns <- .tpl_code_fns(p, "T-99")
-  expect_true(all(c("plan_digits", "plan_stub") %in% fns))
+  expect_identical(.tpl_code_fns(p, "T-99"), character())
   q <- .spec_add_output(tpl_sample_planner(), tpl_demog_output(), population = "SAF")
   # (demog's study items are in its call, `study = list(`, tflspec#780: the
   # verbs of those, from the template record; none with tflspec#764)

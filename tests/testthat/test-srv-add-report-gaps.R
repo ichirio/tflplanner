@@ -161,10 +161,11 @@ test_that("the dialog's Create waits for an ID and the required arguments, and t
     session$setInputs(mtpl_demog__by = "TRT01A")
     expect_match(add_html(output$modal_ok_js$html), "prop('disabled', false)", fixed = TRUE)
     # the template's other arguments: each its own input, counted in the heading
-    opt <- Filter(function(x) !isTRUE(x$required), .tpl_shown(.tpl_params("demog")))
+    opt0 <- Filter(function(x) !isTRUE(x$required), .tpl_shown(.tpl_params("demog")))
+    opt <- Filter(function(x) !.tpl_is_key(x), opt0)
     more <- add_html(output$tpl_modal_more$html)
     expect_match(more, sprintf("More arguments (%d)", length(opt)), fixed = TRUE)
-    for (nm in names(opt)) expect_match(more, sprintf('id="mtpl_demog__%s"', nm), fixed = TRUE)
+    for (nm in names(opt0)) expect_match(more, sprintf('id="mtpl_demog__%s"', nm), fixed = TRUE)
   })
 })
 
@@ -212,12 +213,15 @@ test_that("Add from a template writes the report with its template, the argument
     skip_if(is.na(other), "the sample study has one population")
     session$setInputs(tpl_report_pop = other)
     expect_identical(add_row(rv$p, "T-ZZ-5")$population, other)
-    expect_identical(rv$p$spec$outputs[["T-ZZ-5"]]$population, other)
+    expect_identical(rv$p$spec$outputs[["T-ZZ-5"]]$common$population, other)
     expect_null(.tpl_of(rv$p, "T-ZZ-5")$args$population)
   })
 })
 
 test_that("a template card: an edit is written, a value just replaced is not an edit, a report's own value can be reverted, a header is warned about, and another template asks first", {
+  # On a slow machine a write and its say-back are far apart: the 15 s
+  # window of .tpl_stale_say() is widened so the test does not depend on it.
+  withr::local_options(tflplanner.tpl_stale_window = 3600)
   id <- sample_for_add()
   shown <- watch_add()
   shiny::testServer(server_for(id), {
@@ -229,14 +233,14 @@ test_that("a template card: an edit is written, a value just replaced is not an 
     session$setInputs(target = "T-ZZ-6", nav = "make", step = "content", content_nav = "content")
     invisible(suppressMessages(output$tpl_card$html))
     expect_identical(add_args(rv$p, "T-ZZ-6"), list(population = "SAF"))
-    # a flag: written when it differs from the template's default (TRUE)
-    session$setInputs(tpl_shift__param_page = FALSE)
-    expect_identical(add_args(rv$p, "T-ZZ-6")$param_page, FALSE)
+    # a choice: written when it differs from the template's default ("none")
+    session$setInputs(tpl_shift__split = "group_safe")
+    expect_identical(add_args(rv$p, "T-ZZ-6")$split, "group_safe")
     # (the value the write just replaced, said again by a card drawn before it: not an edit)
-    session$setInputs(tpl_shift__param_page = TRUE)
-    expect_identical(add_args(rv$p, "T-ZZ-6")$param_page, FALSE)
-    session$setInputs(tpl_revert = "param_page")
-    expect_null(add_args(rv$p, "T-ZZ-6")$param_page)
+    session$setInputs(tpl_shift__split = "none")
+    expect_identical(add_args(rv$p, "T-ZZ-6")$split, "group_safe")
+    session$setInputs(tpl_revert = "split")
+    expect_null(add_args(rv$p, "T-ZZ-6")$split)
     # a text, written; Revert takes it out
     session$setInputs(tpl_shift__analysis_id = "A1")
     expect_identical(add_args(rv$p, "T-ZZ-6")$analysis_id, "A1")
@@ -280,6 +284,31 @@ test_that("a template card: an edit is written, a value just replaced is not an 
   })
 })
 
+# ---- a template report writes no `extends` (tflspec: the template's own) -----------------------
+
+test_that("a template report made in the dialog writes no extends", {
+  skip_if_not("tfl_output_extends" %in% getNamespaceExports("tflspec"), "tflspec's extends per step (#778)")
+  id <- sample_for_add()
+  watch_add()
+  shiny::testServer(server_for(id), {
+    rv <- session$userData$rv
+    session$setInputs(add = 1, modal_type = "listing", modal_how = "template", modal_tpl_listing = "listing",
+                      modal_id = "ZZ-8", modal_desc = "", modal_section = "",
+                      mtpl_listing__data = "ADAE", mtpl_listing__columns = "USUBJID | Subject")
+    session$setInputs(add_ok = 1)
+    expect_identical(.tpl_of(rv$p, "L-ZZ-8")$name, "listing")
+    expect_null(rv$p$spec$outputs[["L-ZZ-8"]]$extends)
+    txt <- paste(rv$p$spec$text[["spec/outputs/L-ZZ-8.yml"]], collapse = "
+")
+    expect_false(grepl("extends", txt, fixed = TRUE))
+    # (and the page configuration chosen on it writes its `style:` alone, no extends)
+    q <- .pgs_add_pattern(rv$p, "Wide")
+    q <- .pgs_set_pattern(q, "L-ZZ-8", "Wide")
+    expect_identical(q$spec$outputs[["L-ZZ-8"]]$style, "Wide")
+    expect_null(q$spec$outputs[["L-ZZ-8"]]$extends)
+  })
+})
+
 # ---- a template listing: its data, its conversion to code --------------------------------------
 
 test_that("a template listing: its data card writes the dataset's steps, keeps a join of its own and takes the steps away; Convert to code asks first", {
@@ -306,11 +335,11 @@ test_that("a template listing: its data card writes the dataset's steps, keeps a
     expect_identical(c(f$dataset, f$filter), c("ADAE", "AESER == 'Y'"))
     expect_true(f$join)
     expect_identical(f$join_where, "SAFFL == \"Y\"")
-    expect_identical(rv$p$spec$outputs[["L-ZZ-7"]]$population, "SAF")
+    expect_identical(rv$p$spec$outputs[["L-ZZ-7"]]$common$population, "SAF")
     # the report's own join, as it is: no population of the study
     session$setInputs(tpl_data_pop = ".own", tpl_data_apply = 3)
     expect_true(.tpl_steps_fields(steps())$join)
-    expect_true(is.na(rv$p$spec$outputs[["L-ZZ-7"]]$population))
+    expect_true(is.null(rv$p$spec$outputs[["L-ZZ-7"]]$common$population))
     # no analysis set and no filter: the dataset is read, and that is all
     session$setInputs(tpl_data_pop = "", tpl_data_filter = "", tpl_data_apply = 4)
     f <- .tpl_steps_fields(steps())
@@ -437,7 +466,7 @@ test_that("a switch to demog keeps population as the report's population; back f
     suppressWarnings(suppressMessages(session$setInputs(tpl_switch_ok = 1)))
     expect_identical(.tpl_of(rv$p, "T-ZZ-7")$name, "demog")
     expect_null(add_args(rv$p, "T-ZZ-7")$population)
-    expect_identical(rv$p$spec$outputs[["T-ZZ-7"]]$population, "SAF")
+    expect_identical(rv$p$spec$outputs[["T-ZZ-7"]]$common$population, "SAF")
     # (back: the report's population is the argument again)
     session$setInputs(tpl_switch = "shift")
     dlg <- add_text(add_modal(shown))
@@ -476,10 +505,9 @@ test_that("demog with no population: no ARD run and no error note, the preview w
 
 test_that("demog's preview reads the study standard the report resolves with: its count cells and arm headings", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   home <- local_home()
   s <- suppressMessages(create_sample_study(run = FALSE, home = home))
-  o <- tflspec::tfl_output("T-DM", "table", label = "Demog", population = "SAF",
+  o <- tflspec::tfl_output("T-DM", "table", label = "Demog", common = list(population = "SAF"),
                            template = list(name = "demog",
                                            args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   s$planner <- .spec_add_output(s$planner, o, label = "Demog", population = "SAF")
@@ -502,4 +530,25 @@ test_that("demog's preview reads the study standard the report resolves with: it
   # (the categorical rows' values, indented: hard spaces taken away)
   txt <- trimws(gsub(" ", " ", unlist(lapply(pages[[1L]]$data, as.character)), fixed = TRUE))
   expect_true(all(c("F", "M") %in% txt))
+})
+
+test_that("the dialog shows a key argument open under the required ones, marked, and counts only the rest in the fold", {
+  id <- sample_for_add()
+  shown <- watch_add()
+  shiny::testServer(server_for(id), {
+    session$setInputs(add = 1, modal_type = "table", modal_how = "template",
+                      modal_tpl_table = "ae_soc_pt", modal_id = "")
+    prm <- .tpl_shown(.tpl_params("ae_soc_pt"))
+    top <- names(Filter(function(x) !isTRUE(x$required) && .tpl_is_key(x), prm))
+    skip_if(!length(top), "this tflspec has no key tier")
+    rest <- setdiff(names(Filter(function(x) !isTRUE(x$required), prm)), top)
+    more <- add_html(output$tpl_modal_more$html)
+    expect_match(more, "rp-tpl-badge-key", fixed = TRUE)
+    expect_match(more, sprintf("More arguments (%d)", length(rest)), fixed = TRUE)
+    fold <- sub("^.*<details", "<details", more)
+    for (nm in top) {
+      expect_match(more, sprintf('id="mtpl_ae_soc_pt__%s"', nm), fixed = TRUE)
+      expect_false(grepl(sprintf('id="mtpl_ae_soc_pt__%s"', nm), fold, fixed = TRUE))
+    }
+  })
 })

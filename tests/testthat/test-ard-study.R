@@ -55,7 +55,6 @@ test_that("a table the ARD definition serves reads its part of the study ARD", {
 })
 
 test_that("the definition is saved, reopened and run", {
-  skip_if_not_installed("cards")
   skip_on_cran()
   local_home2()
   s <- create_study("A1", planner = ard_planner())
@@ -233,7 +232,6 @@ test_that("an ARS row names its report: the longest output id that fits", {
 })
 
 test_that("a report's code lists reach its ARD program", {
-  skip_if_not_installed("cards")
   skip_on_cran()
   skip_if(utils::packageVersion("tflspec") < "0.0.24.9031")
   local_home2()
@@ -271,7 +269,6 @@ test_that("a report's code lists reach its ARD program", {
 })
 
 test_that("the analysis data is saved, reopened and run (tflspec #135)", {
-  skip_if_not_installed("cards")
   skip_on_cran()
   local_home2()
   p <- ard_planner()

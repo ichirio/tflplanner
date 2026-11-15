@@ -10,31 +10,32 @@
 # by field.
 
 # whose value the form edits, as its marker says it: the report's, the
-# pattern's (in the pattern dialog), Standard's
+# pattern's (a page configuration, in the pattern dialog), Standard's (the
+# study's default configuration)
 .pg_own_word <- function(id, t, kind = NULL) {
-  if (is.na(id)) t("Standard") else if (.is_pattern_id(id)) t("this pattern") else
+  if (is.na(id)) t("Standard") else if (.is_pattern_id(id)) t("this page configuration") else
     if (is.null(kind) || identical(kind, "table")) t("This table") else t("This report")
 }
-# what Revert goes back to, its tooltip
+# what Revert goes back to, its tooltip (a configuration is complete: nothing
+# lies under its values)
 .pg_back_word <- function(id, t) {
-  if (is.na(id)) t("Clear") else if (.is_pattern_id(id)) t("Back to Standard") else
-    t("Back to the study default")
+  if (is.na(id) || .is_pattern_id(id)) t("Clear") else t("Back to the study default")
 }
 # the form's target in the browser: a report's id, @name, or "" (Standard)
 .pg_target <- function(id) if (is.na(id)) "" else id
 .pg_target_id <- function(v) if (is.null(v) || !nzchar(v)) NA_character_ else v
 
 # where a value comes from, as the form says it: the layer's name
-# (defaults, pattern:<name>, style:<name>); in a pattern's form the
-# defaults are Standard
+# (style:<name>, the report's page configuration; defaults, the study's
+# tokens)
 .page_from_label <- function(from, id, t) {
   kind <- sub(":.*$", "", from %||% "")
   name <- sub("^[^:]*:", "", from %||% "")
   switch(kind,
          own = .pg_own_word(id, t),
-         defaults = if (!is.na(id) && .is_pattern_id(id)) t("Standard") else t("Study default"),
-         pattern = sprintf(t("pattern %s"), name),
-         style = sprintf(t("style %s"), name),
+         defaults = t("Study default"),
+         pattern = sprintf(t("Page configuration: %s"), name),
+         style = sprintf(t("Page configuration: %s"), name),
          "")
 }
 
@@ -336,7 +337,7 @@ $(document).on('shiny:value', function(e) {
     shiny::tags$button(type = "button", class = "pg-act btn btn-sm btn-outline-secondary py-0",
                        `data-act` = "addline", `data-band` = band,
                        if (is.na(id)) t("Add a line") else if (.is_pattern_id(id))
-                         t("Add a line to this pattern") else t("Add a line for this report")))
+                         t("Add a line to this page configuration") else t("Add a line for this report")))
 }
 
 # The tokens a page says but does not set: the report list's (its ID and
@@ -350,6 +351,19 @@ $(document).on('shiny:value', function(e) {
     t("{%s} is rtfreporter's, filled as the RTF is written: give your token another name.")
     else t("{%s} is the report list's: change it where it comes from (the list below says where), or give your token another name."),
     name)
+}
+
+.page_study_tokens_ui <- function(sp, t) {
+  tk <- .pgs_study_tokens(sp$study)
+  rows <- lapply(names(tk), function(k) shiny::tags$tr(
+    shiny::tags$td(shiny::code(paste0("{", k, "}"))),
+    shiny::tags$td(class = "pg-val", .pgs_text(tk[[k]]))))
+  shiny::tagList(
+    if (length(rows)) shiny::tags$table(class = "table table-sm pg-lines pg-tokens mb-1",
+                                        shiny::tags$tbody(rows))
+    else shiny::p(class = "small text-muted mb-1", t("(no tokens)")),
+    shiny::p(class = "small text-muted mb-1",
+             t("Edited for the whole study (study.yml tokens:), not for each page configuration.")))
 }
 
 .page_tokens_ui <- function(sp, id, t, kind = NULL) {
@@ -588,7 +602,7 @@ $(document).on('shiny:value', function(e) {
       shiny::div(class = "small fw-semibold mt-2", t("This report's own tokens")),
       .page_tokens_ui(sp, id, t, kind),
       .page_builtins_ui(t))
-    else card(t("Tokens"), "(rtf_document(tokens =))", .page_tokens_ui(sp, id, t, kind), .page_builtins_ui(t)),
+    else card(t("Tokens"), "(rtf_document(tokens =))", .page_study_tokens_ui(sp, t), .page_builtins_ui(t)),
     .page_paper_ui(sp, id, t, kind),
     .page_fn_ui(sp, id, "rtf_style", t, kind,
                 fields = Filter(function(f) !f$arg %in% .page_paper_moved$rtf_style,
@@ -617,9 +631,18 @@ $(document).on('shiny:value', function(e) {
 
 # A line number for a new line of a band: after the last line the page has
 # (a run line at 99 kept last: before it).  `x` a planner (its sheets) or,
-# with `sp`, the spec.
+# with `sp`, the spec: a report's new line is a body line, a configuration's
+# one of its first block.
 .page_new_line <- function(x, sheet, id, sp = NULL) {
   lines <- if (!is.null(sp)) .pgs_lines(sp, id, sheet)$line else page_lines_from(x, sheet, id)$line
+  if (!is.null(sp)) {
+    cfg <- is.na(id) || .is_pattern_id(id)
+    mine <- if (cfg) lines[startsWith(lines, "first:")] else lines[!grepl("^(first|last):", lines)]
+    n <- suppressWarnings(as.integer(sub("^first:", "", mine)))
+    n <- n[!is.na(n)]
+    nxt <- if (length(n)) max(n) + 1L else 1L
+    return(if (cfg) paste0("first:", nxt) else as.character(nxt))
+  }
   n <- suppressWarnings(as.integer(lines))
   n <- n[!is.na(n)]
   below <- n[n < 90L]

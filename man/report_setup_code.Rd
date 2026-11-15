@@ -20,7 +20,7 @@ study's setup (\code{programs/study_setup.R}, see \code{\link[=study_setup_code]
 reports' font and size (\code{options(rtfreporter.font = )}), the
 study's tokens (\code{options(rtfreporter.tokens = )}: the company, the
 analysis, the protocol ...), its running header and footer
-(\code{study_header}, \code{study_footer}), written once from the study's
+(\code{header_standard}, \code{footer_standard}), written once from the study's
 defaults, \code{spec/defaults.yml} (\code{\link[tflspec:tfl_report_setup_code]{tflspec::tfl_report_setup_code()}}).  Each report program then says
 only its own tokens (\code{OUTPUT_LABEL}, \code{OUTPUT_TITLE} ...), and ends with
 \code{record_report()}, which records the report as made, with the

@@ -11,6 +11,8 @@
 .pattern_sheets <- c("report", "page", "header", "footer", "titles",
                      "footnotes", "tokens")
 .pattern_rx <- "^[A-Za-z][A-Za-z0-9_]*$"
+# tflspec's built-in page configurations (a study's set may not take their names)
+.pattern_reserved <- c("tfl_standard", "tfl_small", "stf_t02")
 .is_pattern_id <- function(id) !is.na(id) & startsWith(id, "@")
 
 #' Page patterns
@@ -78,14 +80,23 @@ set_report_pattern <- function(x, output_id, pattern) {
 #    gets it first (what the pattern cell alone reads back as);
 #  - a chain that is what the `pattern` cell alone reads back as, or empty,
 #    is a blank cell (tflspec writes it blank).
+# A cell by step (`content=none; data=a | b`) keeps its steps as they are; the
+# pattern is the `pattern` cell's alone (tflspec's page step is gone: the
+# page is the report's configuration's, a `page` step in the cell is left
+# out).
 .extends_cell_for <- function(x, output_id, pattern) {
   d <- x$sheets$report
   if (is.null(d$extends)) return(NULL)
   v <- d$extends[!is.na(d$output_id) & d$output_id == output_id]
   v <- v[!is.na(v) & nzchar(trimws(v))]
   if (!length(v)) return(NULL)
-  chain <- trimws(strsplit(v[1L], "|", fixed = TRUE)[[1L]])
-  chain <- chain[nzchar(chain)]
+  steps <- .extends_cell_steps(v[1L])
+  if (!is.null(steps)) {
+    steps[["page"]] <- NULL
+    return(list(value = if (length(steps)) .extends_cell_text(steps) else NA_character_,
+                pattern = pattern))
+  }
+  chain <- .extends_cell_chain(v[1L])
   tok <- if (!is.na(pattern)) paste0("patterns/", pattern)
   at <- grep("^patterns/", chain)[1L]
   if (!is.na(at)) {
@@ -93,11 +104,40 @@ set_report_pattern <- function(x, output_id, pattern) {
   } else if (!is.null(tok)) {
     chain <- if (identical(chain, "none")) tok else c(tok, chain)
   }
-  alone <- c(tok, "defaults")
   first <- grep("^patterns/", chain, value = TRUE)[1L]
   pat <- if (is.na(first)) NA_character_ else substring(first, 10L)
+  alone <- c(tok, "defaults")
   if (!length(chain) || identical(chain, alone)) return(list(value = NA_character_, pattern = pat))
   list(value = paste(chain, collapse = " | "), pattern = pat)
+}
+
+# The page chain of a report whose cell names no `page` step: the page step
+# has no files any more, so the defaults
+.extends_cell_inherited <- function(x, output_id) {
+  o <- x$spec$outputs[[output_id]]
+  if (is.null(o)) "defaults" else .pgs_inherited_page(o)
+}
+
+# An `extends` cell's chain (`a | b`, `none`)
+.extends_cell_chain <- function(v) {
+  chain <- trimws(strsplit(v, "|", fixed = TRUE)[[1L]])
+  chain[nzchar(chain)]
+}
+
+# An `extends` cell by step (`content=none; page=a | b`) as a list of chains
+# by step; NULL for a plain chain
+.extends_cell_steps <- function(v) {
+  if (!grepl("=", v, fixed = TRUE)) return(NULL)
+  parts <- trimws(strsplit(v, ";", fixed = TRUE)[[1L]])
+  parts <- parts[nzchar(parts)]
+  out <- lapply(sub("^[^=]*= *", "", parts), .extends_cell_chain)
+  names(out) <- trimws(sub("=.*$", "", parts))
+  out
+}
+
+.extends_cell_text <- function(steps) {
+  paste(sprintf("%s=%s", names(steps), vapply(steps, paste, "", collapse = " | ")),
+        collapse = "; ")
 }
 
 # One cell of a one-row sheet (report, page): the row of `output_id` (NA:
@@ -335,14 +375,19 @@ rename_page_pattern <- function(x, name, new) {
   # (a report's `extends` chain names the pattern too: patterns/<name>)
   e <- x$sheets$report$extends
   if (!is.null(e)) {
-    tok <- function(v) trimws(strsplit(v, "|", fixed = TRUE)[[1L]])
-    ch <- which(!is.na(e))
-    ch <- ch[vapply(e[ch], function(v) paste0("patterns/", name) %in% tok(v), NA)]
-    e[ch] <- vapply(e[ch], function(v) {
-      t <- tok(v)
-      t[t == paste0("patterns/", name)] <- paste0("patterns/", new)
-      paste(t, collapse = " | ")
-    }, "", USE.NAMES = FALSE)
+    from <- paste0("patterns/", name)
+    to <- paste0("patterns/", new)
+    swap <- function(ch) {
+      ch[ch == from] <- to
+      ch
+    }
+    for (i in which(!is.na(e))) {
+      steps <- .extends_cell_steps(e[i])
+      ch <- if (is.null(steps)) .extends_cell_chain(e[i]) else unlist(steps)
+      if (!from %in% ch) next
+      e[i] <- if (is.null(steps)) paste(swap(ch), collapse = " | ") else
+        .extends_cell_text(lapply(steps, swap))
+    }
     x$sheets$report$extends <- e
   }
   x
@@ -378,8 +423,13 @@ pattern_reports <- function(x, name) {
     stop("A page pattern's name is a letter, then letters, digits or _ (Compact): not '",
          name, "'.", call. = FALSE)
   }
-  if (identical(tolower(name), "standard")) {
+  if (identical(name, "Standard")) {
     stop("Standard is the blank rows: give the pattern another name.", call. = FALSE)
+  }
+  # (a name tflspec's built-in page configurations have: its sheets write a
+  # pattern as a configuration of the pattern's name, which may not take one)
+  if (name %in% .pattern_reserved) {
+    stop(name, " is a built-in page configuration: give the pattern another name.", call. = FALSE)
   }
   if (name %in% page_patterns(x)) stop("There is a page pattern '", name, "' already.", call. = FALSE)
   name

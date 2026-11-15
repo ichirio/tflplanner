@@ -269,7 +269,6 @@ test_that("a figure's group is chosen among short text columns, with labels", {
 })
 
 test_that("the builder of a table with no definition yet writes one, and keeps the session", {
-  skip_if_not_installed("cards")
   local_home()
   p <- add_output(new_planner(), "T-DM", type = "table")
   s <- create_study("B1", planner = p)
@@ -593,8 +592,6 @@ test_that("a copy of the sample is listed at once; its run goes on in the backgr
     started <<- list(id = study$meta$study_id, parts = parts)
     px
   })
-  skip_if_not_installed("cards")
-  skip_if_not_installed("cardx")
   shiny::testServer(function(input, output, session)
     app_server(input, output, session, NULL), {
     rv <- session$userData$rv
@@ -629,7 +626,6 @@ test_that("step 3: the page's sheets on the left, Result first, SPEC read only",
 })
 
 test_that("an input left by an earlier session is not read as this form's (the Total switch, #331)", {
-  skip_if_not_installed("cards")
   local_home()
   p <- add_output(new_planner(), "T-DM", type = "table")
   s <- create_study("B2", planner = p)

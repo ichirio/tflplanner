@@ -62,7 +62,6 @@ test_that("the tokens are the table's", {
 
 test_that("the builder's header form writes the report's col_header", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   local_home()
   # the company defaults (the row-header column the preview's header needs)
   p <- add_standard_defaults(add_output(new_planner(), "T-DM", type = "table"), "H1")
@@ -293,7 +292,6 @@ test_that("what {n} counts: the ARD's populations, each with its values", {
 })
 
 test_that("what {n} counts, read from a page-split ARD as rtfreporter prints it", {
-  skip_if_not_installed("cards")
   set.seed(1)
   lb <- expand.grid(USUBJID = cards::ADSL$USUBJID, PARAM = c("ALT", "HGB"),
                     stringsAsFactors = FALSE)

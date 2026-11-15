@@ -1,7 +1,5 @@
 test_that("the study ARD's errors and warnings are listed, and a row opens its analysis", {
   skip_on_cran()
-  skip_if_not_installed("cards")
-  skip_if_not_installed("cardx")
   local_home()
   s <- create_study("CO")
   dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)

@@ -4,7 +4,12 @@
 \alias{study_setup_code}
 \title{The study's setup program}
 \usage{
-study_setup_code(meta, date = Sys.Date(), standards = company_standards())
+study_setup_code(
+  meta,
+  date = Sys.Date(),
+  standards = company_standards(),
+  study = NULL
+)
 }
 \arguments{
 \item{meta}{The study's fields (\code{study_id}, \code{title}, ...), as an
@@ -13,6 +18,10 @@ study_setup_code(meta, date = Sys.Date(), standards = company_standards())
 \item{date}{The date the marker of part 1 says it was copied.}
 
 \item{standards}{The standards to copy part 1 from.}
+
+\item{study}{The study's spec (\code{\link[tflspec:tfl_read_study_spec]{tflspec::tfl_read_study_spec()}}), or a
+table / report spec of the sheets, whose rounding part 2 sets; \code{NULL}
+(the default): none.}
 }
 \value{
 The program, one element per line.
@@ -31,8 +40,10 @@ this order:
 not change it after.
 \item the study: its folders (\code{\link[=study_layout]{study_layout()}}: \code{path_adam}, \code{path_sdtm}
 ...) and what it is (\code{study_id}, \code{study_title}, \code{study_short_title}, \code{study_compound},
-\code{study_phase}, \code{study_description} from \code{study.yml}).  tflplanner
-writes it again on every save.
+\code{study_phase}, \code{study_description} from \code{study.yml}), and the study's
+rounding (\code{options(rtfreporter.rounding = , cards.round_type = )},
+\code{\link[tflspec:tfl_study_setup_code]{tflspec::tfl_study_setup_code()}}), which the ARD and report setups
+then do not repeat.  tflplanner writes it again on every save.
 \item the study's own code: tflplanner never touches it.
 }
 

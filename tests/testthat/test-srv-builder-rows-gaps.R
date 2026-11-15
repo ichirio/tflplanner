@@ -77,7 +77,6 @@ rr_notes <- function(env = parent.frame()) {
 
 test_that("the Rows card: a row of one's own, a variable's own decimals; the Total column's switch", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   rr_home()
   rr_study("T-RR", rr_ard())
   notes <- rr_notes()
@@ -158,7 +157,6 @@ test_that("the Rows card: a row of one's own, a variable's own decimals; the Tot
 
 test_that("back to the ARD's order, and the variables' grid when its edit does not fit", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   rr_home()
   rr_study("T-RR", rr_ard())
   notes <- rr_notes()
@@ -222,7 +220,6 @@ test_that("back to the ARD's order, and the variables' grid when its edit does n
 
 test_that("plan_cells() of a variable edited on its card: own template, conditions added, ordered, taken away", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   rr_home()
   rr_study("T-RR", rr_ard())
   rr_notes()

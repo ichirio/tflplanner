@@ -63,7 +63,6 @@ test_that("a figure's design is kept, saved as YAML, and makes its plot", {
 
 test_that("a design is drawn on the study's data, as its program saves it", {
   skip_on_cran()
-  skip_if_not_installed("ggplot2")
   home <- withr_tempdir()
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)

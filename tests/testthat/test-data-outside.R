@@ -99,12 +99,15 @@ test_that("the programs read the path as written, and a save changes nothing (#4
   ref <- lapply(code(ref), gsub, pattern = 'file[.]path[(]path_adam, "([^"]+)"[)]',
                 replacement = paste0('"', st$adam, '/\\1"'))
   expect_identical(mine, ref)
-  expect_true(any(grepl(st$adam, unlist(mine), fixed = TRUE)))
+  # the data is read once, in the study's setup: the programs have no path
+  expect_false(any(grepl(st$adam, unlist(mine), fixed = TRUE)))
   ard <- ard_program_code(.ard_spec(p$ard), "T-14-1-1", date = d, dir = s$path,
                           codelists = .study_codelists(p))
-  expect_true(any(grepl(st$adam, ard, fixed = TRUE)))
+  expect_false(any(grepl(st$adam, ard, fixed = TRUE)))
   # a save with nothing changed: no file changes
   s2 <- suppressMessages(save_study(s))
+  setup <- readLines(file.path(st$path, "programs", "study_setup.R"), encoding = "UTF-8")
+  expect_true(any(grepl(paste0("adsl <- readRDS(\"", st$adam, "/adsl.rds\")"), setup, fixed = TRUE)))
   md5 <- function() {
     f <- list.files(st$path, recursive = TRUE, full.names = TRUE)
     tools::md5sum(f[!grepl("[.]tflplanner|/logs?/|draft", f)])

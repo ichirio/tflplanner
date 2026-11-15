@@ -21,7 +21,6 @@ dm_ard <- function() {
 }
 
 test_that("reading and writing back unchanged changes nothing", {
-  skip_if_not_installed("cards")
   p <- dm_study_planner()
   m <- ard_meta(dm_ard())
   st <- builder_read(p, "DM", m)
@@ -46,7 +45,6 @@ test_that("reading and writing back unchanged changes nothing", {
 })
 
 test_that("the builder's choices land in the sheets", {
-  skip_if_not_installed("cards")
   p <- dm_study_planner()
   m <- ard_meta(dm_ard())
   st <- builder_read(p, "DM", m)
@@ -92,7 +90,6 @@ test_that("the builder's choices land in the sheets", {
 })
 
 test_that("the preview is the table rtfreporter lays out", {
-  skip_if_not_installed("cards")
   p <- dm_study_planner()
   d <- rtfreporter::normalize_ard(dm_ard())
   pages <- preview_pages(p, "DM", d)
@@ -105,7 +102,6 @@ test_that("the preview is the table rtfreporter lays out", {
 })
 
 test_that("several column variables: written as tables$cols A | B, read back in order", {
-  skip_if_not_installed("cards")
   p <- dm_study_planner()
   m <- ard_meta(dm_ard())
   st <- builder_read(p, "DM", m)
@@ -136,7 +132,6 @@ test_that("a categorical format the standards do not have is the table's own", {
 
 test_that("one's own categorical format is written; left blank, nothing is", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   p <- dm_study_planner()
   m <- ard_meta(dm_ard())
   st <- builder_read(p, "DM", m)
@@ -154,7 +149,6 @@ test_that("one's own categorical format is written; left blank, nothing is", {
 })
 
 test_that("a variable's rows under a level of another: read, written, unchanged when untouched", {
-  skip_if_not_installed("cards")
   p <- dm_study_planner()
   m <- ard_meta(dm_ard())
   st <- builder_read(p, "DM", m)

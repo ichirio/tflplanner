@@ -59,7 +59,6 @@ test_that("a figure with no design reads its data; its content its code", {
 })
 
 test_that("listing and figure rows follow the report and are saved", {
-  skip_if_not_installed("cards")
   lf_home()
   p <- lf_planner()
   q <- copy_output(p, "L1", "L2")
