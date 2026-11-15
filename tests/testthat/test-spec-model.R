@@ -211,11 +211,18 @@ test_that("a planner with no spec is written whole, and gets one", {
   home <- getOption("tflplanner.home")
   s$planner <- .planner_body(s$planner)
   m0 <- spec_md5(s$path)
+  dflt <- file.path(s$path, "spec", "defaults.yml")
+  d0 <- yaml::read_yaml(dflt)
   s <- suppressMessages(save_study(s, home = home))
   expect_false(is.null(s$planner$spec))
   expect_setequal(names(s$planner$spec$outputs), s$planner$outputs$output_id)
-  # the sample's files are what the bridge writes of it
-  expect_identical(changed_files(m0, spec_md5(s$path)), character())
+  # the sample's files are what the bridge writes of it, but the study's
+  # code lists in defaults.yml: the sheets have no place for them yet, so a
+  # study written from the sheets has not got them (tflspec#689)
+  expect_true(all(changed_files(m0, spec_md5(s$path)) %in% "spec/defaults.yml"))
+  expect_true(length(d0$codelists) > 0L)
+  d0$codelists <- NULL
+  expect_identical(yaml::read_yaml(dflt), d0)
 })
 
 test_that("a report's items say where each argument comes from (#417)", {

@@ -34,11 +34,6 @@ content:
         .values: 18.0
   - plan_style:
       align_count_pct: true
-# The study's code lists, as read from its define.xml: each variable's
-# values as the ADaM data holds them, in the order of its N variable
-# (TRT01AN, TRT01PN, AGEGR1N) or, without one, the define's order, and the
-# words a table prints for each.  A report's own list for a variable takes
-# this one's place.
 codelists:
   TRT01A:
     - value: Drug X
