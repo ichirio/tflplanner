@@ -117,7 +117,7 @@ test_that("a study standard's card edited in a template report: the report's own
   skip_on_cran()
   # (summary: its plan_style is the study standard's card; its stub and the rest are the template's arguments now)
   p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
-  o <- tflspec::tfl_output("T-99", "table", population = "SAF",
+  o <- tflspec::tfl_output("T-99", "table", common = list(population = "SAF"),
                            template = list(name = "summary",
                                          args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   p <- .spec_add_output(p, o, population = "SAF")
@@ -150,7 +150,7 @@ test_that("plan_digits in a template report: a variable's decimals the report's 
   skip_on_cran()
   # (summary: its plan_digits is the study standard's card; demog has no rounding argument now)
   p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
-  o <- tflspec::tfl_output("T-99", "table", population = "SAF",
+  o <- tflspec::tfl_output("T-99", "table", common = list(population = "SAF"),
                            template = list(name = "summary",
                                          args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   p <- .spec_add_output(p, o, population = "SAF")
@@ -176,7 +176,7 @@ test_that("a template report converted to code: its items on the usual cards, it
   skip_on_cran()
   home <- local_home()
   s <- suppressMessages(create_sample_study(run = FALSE, home = home))
-  o <- tflspec::tfl_output("T-TPL", "table", label = "Demographics", population = "SAF",
+  o <- tflspec::tfl_output("T-TPL", "table", label = "Demographics", common = list(population = "SAF"),
                            template = list(name = "demog",
                                          args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   s$planner <- .spec_add_output(s$planner, o, label = "Demographics", population = "SAF")
@@ -313,7 +313,7 @@ test_that("a template report's preview is its content run on its ARD, not the st
                     after = i),
              file.path(s$path, "spec", "data.yml"))
   s <- suppressMessages(open_study("SAMPLE-01", home = home))
-  o <- tflspec::tfl_output("T-TPL", "table", label = "Shift", population = "SAF",
+  o <- tflspec::tfl_output("T-TPL", "table", label = "Shift", common = list(population = "SAF"),
                            template = list(name = "shift",
                                            args = list(population = "SAF",
                                                        post_header = "Worst: {col}")))

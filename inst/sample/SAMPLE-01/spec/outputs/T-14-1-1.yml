@@ -1,15 +1,15 @@
 id: T-14-1-1
 kind: table
 label: Demographic characteristics
-population: SAF
+common:
+  population: SAF
 extends:
   - defaults
+data:
+  - id: adsl_saf
+    label: Safety set
+    from: ADSL
 ard:
-  analysis_data:
-    - id: adsl_saf
-      label: Safety set
-      from: ADSL
-      population: SAF
   analyses:
     - id: GROUPN
       label: Subjects per group
@@ -49,9 +49,6 @@ ard:
         - 'n'
         - p
       purpose: PRIMARY OUTCOME MEASURE
-data:
-  source: ard
-  object: ard
 codelists:
   TRT01A:
     - value: Drug X

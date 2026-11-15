@@ -204,7 +204,7 @@ tpl_fig_study <- function(h, id = "F-9-1") {
                       intersect(c("population_id", "dataset", "where"), names(pops)), drop = FALSE])
   name <- "forest_hr"
   steps <- if (.tpl_own_data(tflspec::tfl_template_params(name))) .tpl_steps_from("ADTTE", saf, "PFS")
-  o <- tflspec::tfl_output(id, "figure", label = name, population = "SAF",
+  o <- tflspec::tfl_output(id, "figure", label = name, common = list(population = "SAF"),
                            template = list(name = name, args = list(param = "PFS", population = "SAF")),
                            data = if (length(steps)) list(steps = steps))
   s$planner <- .spec_add_output(p, o, label = name, population = "SAF")

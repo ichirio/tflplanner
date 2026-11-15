@@ -2,20 +2,20 @@ id: T-14-2-3
 kind: table
 label: 'Systolic blood pressure: mean change at week 24 (95% CI), p-value; the ARD
   also holds the test''s method and alternative as text'
-population: SAF
+common:
+  population: SAF
 extends:
   - defaults
+data:
+  - id: adsl_saf
+    label: Safety set
+    from: ADSL
+  - id: advs_saf_sysbp
+    label: Systolic blood pressure at week 24, safety set
+    from: ADVS
+    subjects: adsl_saf
+    where: !r PARAMCD == "SYSBP" & AVISIT == "CYCLE 9 DAY 1"
 ard:
-  analysis_data:
-    - id: adsl_saf
-      label: Safety set
-      from: ADSL
-      population: SAF
-    - id: advs_saf_sysbp
-      label: Systolic blood pressure at week 24, safety set
-      from: ADVS
-      subjects: adsl_saf
-      where: !r PARAMCD == "SYSBP" & AVISIT == "CYCLE 9 DAY 1"
   analyses:
     - id: GROUPN
       method: categorical
@@ -43,9 +43,6 @@ ard:
       variables:
         - CHG
       purpose: SECONDARY OUTCOME MEASURE
-data:
-  source: ard
-  object: ard
 codelists:
   TRTA:
     - value: Drug X

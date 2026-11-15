@@ -395,24 +395,25 @@
     id <- page_report_now()
     if (is.null(id)) {
       return(shiny::p(class = "small text-muted",
-                      t("Standard (every report's page) and the page patterns are the sheets' blank and @<name> rows: Details, below.")))
+                      t("Standard (the study's default page configuration) and the other page configurations (defaults.yml styles:): Details, below.")))
     }
     sp <- .pgs_spec(shiny::isolate(rv$p))
-    pats <- .pgs_patterns(sp)
     now <- .pgs_pattern_of(sp, id)
+    # (a built-in set the report names is a choice too)
+    pats <- union(.pgs_patterns(sp), if (!is.na(now)) now)
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-center mb-2 pg-bar",
       shiny::tags$label(`for` = "page_pattern", class = "small mb-0",
-                        with_tip(t("Page pattern"), t("The set of page defaults this report starts from: Standard (every report's) or a pattern of the study (Compact for the PK tables ...), which changes only what differs from Standard. What this report changes goes over it."))),
+                        with_tip(t("Page configuration"), t("The page configuration this report prints with (its style:): Standard (the study's default one) or another of the study's (Compact for the PK tables ...). A configuration is the whole page. What this report changes goes over it."))),
       shiny::div(style = "width: 14rem", .for_report(shiny::selectInput(
         "page_pattern", NULL, width = "100%", selectize = FALSE,
         choices = c(stats::setNames("Standard", t("Standard (study default)")), stats::setNames(pats, pats)),
         selected = if (is.na(now)) "Standard" else now), id)),
       shiny::span(class = "small text-muted", "extends: ",
                   shiny::code(.pgs_extends_label(sp$outputs[[id]]$extends))),
-      .btn("pat_edit", t("Edit the patterns..."), class = "btn-sm btn-outline-secondary"),
+      .btn("pat_edit", t("Edit page configuration..."), class = "btn-sm btn-outline-secondary"),
       if (!length(pats)) shiny::span(class = "small text-muted",
-        t("(no other pattern yet: Edit the patterns... makes one)")))
+        t("(no other page configuration yet: Edit page configuration... makes one)")))
   })
   # -- the pattern dialog: Standard and each pattern, on the same form
   pat_now <- shiny::reactiveVal("Standard")
@@ -421,7 +422,7 @@
     cur <- if (!is.null(id)) .pgs_pattern_of(.pgs_spec(rv$p), id) else NA
     pat_now(if (is.na(cur)) "Standard" else cur)
     shiny::showModal(shiny::modalDialog(
-      title = t("Page patterns"), size = "xl", easyClose = TRUE,
+      title = t("Page configurations"), size = "xl", easyClose = TRUE,
       shiny::uiOutput("pat_head"),
       shiny::uiOutput("pat_form"),
       footer = shiny::modalButton(t("Close"))))
@@ -434,18 +435,18 @@
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-end mb-2",
       shiny::div(style = "width: 14rem", shiny::selectInput(
-        "pat_pick", t("Pattern"), width = "100%", selected = now, selectize = FALSE,
+        "pat_pick", t("Page configuration"), width = "100%", selected = now, selectize = FALSE,
         choices = c(stats::setNames("Standard", t("Standard")), stats::setNames(pats, pats)))),
       shiny::textInput("pat_name", t("Name"), placeholder = "Compact", width = "12rem"),
-      .btn("pat_new", t("New pattern"), class = "btn-sm btn-outline-primary mb-3"),
+      .btn("pat_new", t("New page configuration"), class = "btn-sm btn-outline-primary mb-3"),
       if (!identical(now, "Standard")) shiny::tagList(
         .btn("pat_rename", t("Rename"), class = "btn-sm btn-outline-secondary mb-3"),
         .btn("pat_remove", t("Remove"), class = "btn-sm btn-outline-danger mb-3")),
       shiny::uiOutput("pat_count", inline = TRUE),
       shiny::p(class = "small text-muted w-100 mb-0",
-               if (identical(now, "Standard")) t("Standard: every report's page, unless its pattern or the report changes it.")
-               else sprintf(t("%s: only what differs from Standard; each value says where it comes from."), now),
-               " ", t("The paper is the page's first property: a pattern that changes it says so in its name (A4_Compact).")))
+               if (identical(now, "Standard")) t("Standard: the study's default page configuration, every report's page unless it chooses another or changes a value.")
+               else sprintf(t("%s: a page configuration of the study, the whole page; a report that chooses it prints this page."), now),
+               " ", t("The paper is the page's first property: a page configuration that changes it says so in its name (A4_Compact).")))
   })
   output$pat_count <- shiny::renderUI({
     page_sheets()
@@ -454,7 +455,7 @@
     n <- if (identical(now, "Standard")) {
       length(setdiff(names(sp$outputs), unlist(lapply(.pgs_patterns(sp), .pgs_pattern_reports, sp = sp))))
     } else length(.pgs_pattern_reports(sp, now))
-    shiny::span(class = "small text-muted mb-3", sprintf(t("Reports using it: %d"), n))
+    shiny::span(class = "small text-muted mb-3", sprintf(t("Reports using this page configuration: %d"), n))
   })
   shiny::observeEvent(input$pat_pick, {
     if (input$pat_pick %in% c("Standard", pat_names())) pat_now(input$pat_pick)
