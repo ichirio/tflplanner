@@ -48,7 +48,6 @@ data:
   object: ard
   steps:
     - !r |-
-      data <- normalize_ard(ard)
       # row labels: the median, and the event-free probability by day (day 0 left out)
       is_time <- data$variable == "time"
       data$.label[data$variable == "prob"] <- "Median (95% CI)"

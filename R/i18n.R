@@ -91,11 +91,16 @@ app_languages <- function() c(English = "en", "\u65e5\u672c\u8a9e" = "ja")
   "A study folder cannot go in %s: it is inside the study folder %s.",
   "Could not make the folder %s (%s).",
   "The home %s is inside %s, where new study folders go: tidying the studies would delete it.",
-  "The home %s is inside the study folder %s.")
+  "The home %s is inside the study folder %s.",
+  paste0("`%s` is a string that is not a neutral condition (column names, numbers, strings, ",
+         "== != < <= > >=, & | !, %%in%% c(...), is.na(), parentheses; refused: %s); ",
+         "write it as `!r <R>`."),
+  "`%s` is `!r` holding a string literal (\"%s\"); write the condition itself, without the quotes.")
 
 .error_view <- function(msg, t = identity) {
   for (tp in .error_templates) {
     rx <- gsub("([][{}()+*^$|\\\\?.])", "\\\\\\1", tp)
+    rx <- gsub("%%", "%", rx, fixed = TRUE)
     rx <- paste0("^", gsub("%s", "(.+?)", rx, fixed = TRUE), "(.*)$")
     m <- regmatches(msg, regexec(rx, msg))[[1L]]
     if (length(m)) {

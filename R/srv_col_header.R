@@ -351,7 +351,7 @@
   bstate <- shiny::reactive(builder_guard({
     bform_drawn()
     shiny::req(builder_case() %in% c("ok", "hierarchy"),
-               identical(bform$id, current()))
+               identical(bform$id, bcur()))
     st <- bform$st
     get <- function(x) input[[bid(x)]]
     hier <- length(st$hierarchy) > 0L
@@ -651,10 +651,23 @@
     norm_cache[[id]] <- list(key = key, d = d)
     d
   }
+  # (the last table made for each template report: shown dimmed while its
+  # ARD is outdated)
+  last_pv <- new.env(parent = emptyenv())
   preview <- shiny::reactive({
     id <- current()
     shiny::req(!is.null(id), identical(report_info(rv$p, id)$type, "table"))
     rv$ard_ver
+    # a template report whose ARD is outdated (the badge's idea of it,
+    # preview_state()): no new table from the old ARD -- an edit that needs a
+    # new ARD would only draw an error; Update preview makes it
+    if (!is.null(.tpl_of(rv$p, id)) && identical(preview_state(id), "outdated")) {
+      return(c(last_pv[[id]], list(id = id, stale = TRUE)))
+    }
+    keep <- function(r) {
+      if (!is.null(r$pages)) last_pv[[id]] <- list(pages = r$pages)
+      r
+    }
     # a table of records, or one with parts: its content on its records
     # and its ARD (.preview_content_pages())
     if (isTRUE(.preview_by_content(rv$p, id))) {
@@ -670,15 +683,21 @@
         if (!length(objs)) {
           return(list(id = id, error = t("No data to show yet: Update preview makes this table's ARD.")))
         }
-        list(id = id, pages = .preview_content_pages(rv$p, id, objs))
+        pages <- .preview_content_pages(rv$p, id, objs)
+        # (a part the table is shown without: said above it)
+        keep(list(id = id, pages = pages, note = .dropped_parts_note(pages, t)))
       }, error = function(e) list(id = id, error = conditionMessage(e))))
     }
     d <- tryCatch(preview_data(rv$p, id), error = function(e) e)
     if (inherits(d, "error")) {
       return(list(id = id, error = paste(t("normalize_ard() stopped:"), conditionMessage(d))))
     }
-    if (is.null(d)) return(list(id = id, error = t("No data to show yet: Update preview makes this table's ARD.")))
-    tryCatch(list(id = id, pages = preview_cached(rv$p, id, d)),
+    if (is.null(d)) {
+      # (the data step ran and left no data: its error, as the program says it)
+      return(list(id = id, error = ard_data_error(rv$study, id) %||%
+                    t("No data to show yet: Update preview makes this table's ARD.")))
+    }
+    tryCatch(keep(list(id = id, pages = preview_cached(rv$p, id, d))),
              error = function(e) list(id = id, error = conditionMessage(e)))
   })
   # a change typed in the builder: drawn once the typing stops; another
@@ -760,7 +779,7 @@
     } else if (identical(info$type, "figure")) {
       page_sample_figure(p, id)
     } else {
-      shiny::div(class = "text-muted small text-center py-4", t("(the listing: see step 2)"))
+      shiny::div(class = "text-muted small text-center py-4", sprintf(t("(the listing: see step %s)"), .step_no("content")))
     }
     .page_sample_html(p, id, rv$meta$study_id %||% "", body,
                       program = info$program)

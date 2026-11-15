@@ -4,6 +4,7 @@
 # (rv, input, session, guarded(), go(), ...), not the package's: said here,
 # for R CMD check.
 utils::globalVariables(c(
+  "bcur", "bpart", "bpart_name",
   ".stack_flag_words", "active_page", "adata_cols", "adata_count_words",
   "adata_counts", "adata_derive_now", "adata_edit", "adata_pick",
   "adata_root", "adata_where_now", "after_id_change", "an_data",

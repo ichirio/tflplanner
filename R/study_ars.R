@@ -49,8 +49,7 @@ export_ars <- function(study, dir, profile = c("cdisc", "siera")) {
   p <- study$planner
   id <- study$meta$study_id
   ars <- tflspec::tfl_ars(
-    .ard_spec(a), table_spec = .spec_object(p, table_sheets(),
-                                            .study_keys$table),
+    .ard_spec(a), table_spec = .ars_table_spec(p),
     report_spec = .spec_object(p, report_sheets(), .study_keys$report),
     profile = profile, study_id = id, dir = study$path,
     # a figure printing a table's analyses is an output that names them
@@ -73,6 +72,16 @@ export_ars <- function(study, dir, profile = c("cdisc", "siera")) {
                output_id = .ars_output_of(un$where, ids), where = un$where,
                item = un$item, note = un$reason, stringsAsFactors = FALSE))
   list(ars = ars, problems = problems, profile = profile, study_id = id)
+}
+
+# The table spec tfl_ars() reads the code lists from: the ARD is made with a
+# report's lists as its layers give them (.study_codelists()), so a group's
+# value is found from its label by those, not the sheet's own rows only
+.ars_table_spec <- function(p) {
+  ts <- .spec_object(p, table_sheets(), .study_keys$table)
+  cl <- .study_codelists(p)
+  if (!is.null(cl)) ts$codelists <- cl
+  ts
 }
 
 # Each dataset's columns, for tfl_ars(columns = ): the files of the data

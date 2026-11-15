@@ -138,7 +138,17 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
   spec$study <- spec$study %||% NULL
   r <- tflspec::tfl_review_spec(spec = spec, ard = p$ard, listings = p$lf,
                                 figures = p$fig_designs, facts = facts)
-  .review_bind(list(r, .rules_report_list(p), .rules_ard_list(p)))
+  .review_bind(list(.review_no_read_ard(r, p), .rules_report_list(p), .rules_ard_list(p)))
+}
+
+# tflspec's F02 "No dataset is read." is for a figure that reads nothing: not
+# for one whose data is an ARD (a template's forest_hr: the ARD step, no
+# read step), which is dropped here
+.review_no_read_ard <- function(r, p) {
+  if (!is.data.frame(r) || !nrow(r)) return(r)
+  ids <- names(p$fig_designs %||% list())
+  ard <- ids[vapply(ids, function(id) .fig_reads_ard(fig_design(p, id), id), NA)]
+  r[!(r$rule %in% "F02" & r$output_id %in% ard & r$message %in% "No dataset is read."), , drop = FALSE]
 }
 
 # rows of the review (tflspec's .rv() shape), with the catalog's level,

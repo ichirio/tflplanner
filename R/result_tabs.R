@@ -10,16 +10,24 @@
 # not a card: a card around the sheets' own card makes the inner one a fill
 # item of a box with no height, and every grid in it 0 px high
 #' @noRd
-result_tabs_ui <- function(id, spec, code, result, lang = "en", selected = "spec", ard = NULL) {
+result_tabs_ui <- function(id, spec, code, result, lang = "en", selected = "spec", ard = NULL,
+                           ard_code = NULL) {
+  # a template report's tabs are named for what they are (Template SPEC,
+  # Report code, Report result), shown while body.rp-tpl; a code report's
+  # keep SPEC | Code | Result
+  lab <- function(plain, tpl) if (is.null(ard)) plain else shiny::tagList(
+    shiny::span(class = "rp-lab-plain", plain), shiny::span(class = "rp-lab-tpl", tr(tpl, lang)))
   shiny::div(
-    class = "rp-tabs border rounded p-2",
+    class = paste("rp-tabs border rounded p-2", if (!is.null(ard)) "rp-tabs-ard"),
     bslib::navset_underline(
       id = id, selected = selected,
-      # (an ARD tab first: a template report's, its tab hidden for others)
-      if (!is.null(ard)) bslib::nav_panel("ARD", value = "ard", shiny::div(class = "pt-2", ard)),
-      bslib::nav_panel("SPEC", value = "spec", shiny::div(class = "pt-2", spec)),
-      bslib::nav_panel(tr("Code", lang), value = "code", shiny::div(class = "pt-2", code)),
-      bslib::nav_panel(tr("Result", lang), value = "result", shiny::div(class = "pt-2", result))))
+      bslib::nav_panel(lab("SPEC", "Template SPEC"), value = "spec", shiny::div(class = "pt-2", spec)),
+      # (a template report's ARD is made in steps of its own, code => result,
+      # after its SPEC and before the report's -- tabs shown only for such a report)
+      if (!is.null(ard_code)) bslib::nav_panel(tr("ARD code", lang), value = "ard_code", shiny::div(class = "pt-2", ard_code)),
+      if (!is.null(ard)) bslib::nav_panel(tr("ARD result", lang), value = "ard", shiny::div(class = "pt-2", ard)),
+      bslib::nav_panel(lab(tr("Code", lang), "Report code"), value = "code", shiny::div(class = "pt-2", code)),
+      bslib::nav_panel(lab(tr("Result", lang), "Report result"), value = "result", shiny::div(class = "pt-2", result))))
 }
 
 # Code to read: its lines numbered, a button to copy it.  No field to edit:
@@ -43,9 +51,41 @@ code_view <- function(output_id, lang = "en") {
      the table as it prints beside the row being changed */
   .rp-tabs { position: sticky; top: calc(var(--rp-top, 0px) + .5rem); align-self: start;
     max-height: calc(100vh - var(--rp-top, 0px) - 1rem); overflow-y: auto; }
+  /* in the table's pane (a flex column) the tabs fill its width, as the ARD card above does */
+  .rp-b-right > .rp-tabs { align-self: stretch; }
   .rp-split.rp-lay-stack > .rp-tabs, .rp-split.rp-lay-one > .rp-tabs {
     position: static; max-height: none; overflow-y: visible; }
 }
+/* the two ARD tabs belong to a template report (body.rp-tpl): shown for
+   it, greyed out and not selectable (.disabled) when it makes no ARD; a
+   code report has neither.  Five short tabs in one row */
+body:not(.rp-tpl) :is(#table_right, #fig_right, #lf_right) > .nav-item:has(> a[data-value^=\"ard\"]) { display: none; }
+body:not(.rp-tpl) :is(#table_right, #fig_right, #lf_right) .rp-lab-tpl,
+body.rp-tpl :is(#table_right, #fig_right, #lf_right) .rp-lab-plain { display: none; }
+:is(#table_right, #fig_right, #lf_right) { flex-wrap: nowrap; white-space: nowrap; }
+:is(#table_right, #fig_right, #lf_right) .nav-link.disabled { opacity: .4; }
+.rp-tpl-right { min-width: 0; max-width: 100%; }
+/* a template figure's and listing's pane: Update preview above the tabs,
+   both in view as the card beside them scrolls; in it only the tab shown
+   scrolls, so the tab row stays in view.  (No align-self: start: the grid
+   item is a flex column, and it would shrink the pane to its content --
+   the table's pane, .rp-b-right, fills its column) */
+@media (min-width: 992px) {
+  .rp-tpl-right { position: sticky; top: calc(var(--rp-top, 0px) + .5rem); }
+  .rp-tpl-right > .rp-tabs { position: static; max-height: calc(100vh - var(--rp-top, 0px) - 4rem);
+    display: flex; flex-direction: column; overflow: hidden; }
+  .rp-tpl-right > .rp-tabs > .tabbable { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+  .rp-tpl-right > .rp-tabs > .tabbable > .tab-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+}
+/* a template listing's five tabs need the table's 7 of 12 */
+@media (min-width: 992px) {
+  body.rp-tpl .rp-lf-split > :nth-child(1) { grid-column: span 5 !important; }
+  body.rp-tpl .rp-lf-split > :nth-child(2) { grid-column: span 7 !important; }
+}
+/* the ARD result's wide grid must not widen the pane past its column */
+.rp-tabs-ard, .rp-tabs-ard .tabbable,
+.rp-tabs-ard .tab-content, .rp-tabs-ard .tab-pane { min-width: 0; max-width: 100%; }
+:is(#table_right, #fig_right, #lf_right) .nav-link { padding-left: .6rem; padding-right: .6rem; }
 .rp-code-view { position: relative; }
 .rp-code-view .rp-code-tools { position: absolute; right: .5rem; top: .35rem; z-index: 2; }
 .rp-code-view pre { counter-reset: rp-line; padding-top: 1.8rem; }

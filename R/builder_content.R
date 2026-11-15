@@ -70,7 +70,9 @@
 # hierarchy step 1's (`meta`: ard_meta(), for the sheets' way).
 builder_items <- function(x, output_id, meta = NULL) {
   sp <- .spec_items(x, output_id)
-  items <- if (is.null(sp)) .builder_items_sheets(x, output_id, meta) else {
+  # (a part, not found in the spec: none -- never the sheets' bridge)
+  items <- if (is.null(sp) && !is.null(.part_of(output_id))) list() else
+    if (is.null(sp)) .builder_items_sheets(x, output_id, meta) else {
     own_fn <- vapply(sp$own, function(it) it$fn, "")
     seen <- character()
     lapply(sp$items, function(it) {

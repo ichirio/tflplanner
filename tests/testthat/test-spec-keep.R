@@ -71,6 +71,8 @@ test_that("the code lists' dialog and step 2: a grid edit changes that cell and 
       col <- setdiff(names(d), c("output_id", "note"))
       col <- col[length(col)]
       new <- "changed"
+      # (a band's row height, tflspec#568: a whole number, or the save refuses it)
+      if (identical(col, "row_height_twips")) new <- "300"
       if (sh == "page") { col <- "margin_bottom_in"; new <- "0.9" }
       if (sh == "report") { col <- "watermark"; new <- "FINAL" }
       grid_edit(session, output, grid_id, 1L, col, new)
@@ -223,7 +225,13 @@ test_that("step 2, the listing form: what it cannot show stays as written", {
     p0 <- rv$p
     session$setInputs(target = "L1", nav = "make", step = "content",
                       content_nav = "content", lf_right = "result")
-    expect_match(output$lf_form$html, "ADXX", fixed = TRUE)
+    expect_match(output$lf_data_form$html, "ADXX", fixed = TRUE)
+    # the dataset and the condition are the Analysis data step's; the rest
+    # (type, rows per page, order) the Content step's: each drawn once
+    expect_match(output$lf_data_form$html, "Condition (R)", fixed = TRUE)
+    expect_false(grepl("_dataset", output$lf_form$html, fixed = TRUE))
+    expect_false(grepl("_where", output$lf_form$html, fixed = TRUE))
+    expect_match(output$lf_form$html, "_max_rows", fixed = TRUE)
     id <- function(x) paste0("lf", env$n, "_", x)
     # shown: every field as drawn
     v <- list()

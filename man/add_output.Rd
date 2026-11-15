@@ -37,10 +37,12 @@ remove_output(x, output_id)
 \item{type}{The report's type, one of \code{report_types()}; anything but
 \code{"table"} is written on the \code{report} sheet.}
 
-\item{process_code}{A table's: R code that turns \code{ard} into \code{data},
-what \code{\link[rtfreporter:table_plan]{rtfreporter::table_plan()}} is given: \code{\link[rtfreporter:normalize_ard]{rtfreporter::normalize_ard()}}
-and any rework after it (\code{mutate()} ...); \code{NA}: none, the table's
-plan normalizes \code{ard} (\code{ard |> normalize_ard() |> table_plan()}).  A listing's: a rework of its \code{data}
+\item{process_code}{A table's: its Rework, optional R that runs after
+\code{\link[rtfreporter:normalize_ard]{rtfreporter::normalize_ard()}} and before \code{\link[rtfreporter:table_plan]{rtfreporter::table_plan()}}.
+It starts from \code{data}, the normalized ARD (\code{data <- ard |> normalize_ard()},
+with the table's arguments, is written before it), and leaves the
+result in \code{data}, what the plan is given (\code{mutate()} ...); \code{NA}: none,
+the table's plan normalizes \code{ard} (\code{ard |> normalize_ard() |> table_plan()}).  A listing's: a rework of its \code{data}
 before it is sorted.  (A step that is the report's own code instead:
 \code{\link[=set_step_code]{set_step_code()}}.)}
 

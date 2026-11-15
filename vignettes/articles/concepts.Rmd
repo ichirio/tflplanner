@@ -19,6 +19,39 @@ Official runs   autoexec_*.R  =>  runs/<date>_<time>_<what>/  (logs, results, co
 ```
 
 
+## The steps of a report
+
+The **Make a report** tab makes one report, in steps.
+
+| Report | Steps |
+|---|---|
+| A code report (table, listing or figure) | 1 Analysis data, 2 ARD, 3 Content, 4 Page and output |
+| A report made from a template | 1 Analysis data, 2 Template, 3 Page and output |
+
+- **1 Analysis data**: a table's population and analysis data; a listing's
+  dataset and condition, and its Rework (R that changes its data before it
+  is sorted).
+- **2 ARD**: the analyses that make the report's ARD. A listing has no ARD,
+  so this step is shut for it.
+- **3 Content**: the table's layout, the listing's rows and columns, the
+  figure's design. A table's Rework is at the top of this step, folded.
+  The program runs it after `normalize_ard()`: it starts from `data`, the
+  normalized ARD, and leaves its result in `data`.
+- **4 Page and output**: titles, footnotes, header, footer, section and
+  description.
+
+On each step of a code report the right-hand side has three tabs:
+**SPEC | Code | Result**.
+
+A table made from a template has five tabs on its Template step, in the
+order things are made:
+**Template SPEC | ARD code | ARD result | Report code | Report result**.
+Report result is the one shown first. When the template makes no ARD, the
+two ARD tabs are disabled. A listing made from a template is previewed, and its
+program written, from the template's content, so its `by`, `by_break` and
+`by_heading` arguments take effect.
+
+
 ## What it does
 
 - **The ARD and the reports are separate steps**, which different people
@@ -30,8 +63,8 @@ Official runs   autoexec_*.R  =>  runs/<date>_<time>_<what>/  (logs, results, co
   applied before it, the company's own ARD functions, and ARDs made
   elsewhere taken in, checked and compared.
 - **Three kinds of report, each step on screen or in your own R**: tables,
-  listings and figures (a plot designer); a report's data step and its
-  content step are each defined on screen or written as an R program
+  listings and figures (a plot designer); a report's data step (shown on
+  step 2 ARD) and its Content step are each defined on screen or written as an R program
   (checked against a few rules), and tflplanner adds the page, titles
   and footnotes.
 - **Company standards**: every default and code list the app offers --

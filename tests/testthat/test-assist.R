@@ -159,11 +159,19 @@ test_that("fetch_ard() runs the data part from the study folder", {
   expect_equal(m$variables$levels, "M | F")                # the factor
   expect_equal(m$variables$label, "Sex at birth")
 
-  s$planner$outputs$process_code <- "stop('rework failed')"
+  s$planner$outputs$process_code <- "data <- stop('rework failed')"
   m <- fetch_ard(s, "DM")
   expect_equal(m$source, "ard")
   expect_match(m$error, "rework failed")
   expect_equal(m$variables$variable, "SEX")
+  # a Rework that leaves no `data` is the error, as the program says it
+  s$planner$outputs$process_code <- "ard <- ard"
+  m <- fetch_ard(s, "DM")
+  expect_match(m$error, "the data.steps leave no `data`", fixed = TRUE)
+  expect_match(m$error, "tflplanner: the definition of DM does not hold: ", fixed = TRUE)
+  # (the builder's preview shows that, not "No data to show yet")
+  expect_null(ard_data(s, "DM"))
+  expect_match(ard_data_error(s, "DM"), "the data.steps leave no `data`", fixed = TRUE)
 
   s$planner <- set_step_code(s$planner, "DM", "data", "stop('no data')")
   expect_error(fetch_ard(s, "DM"), "no data")

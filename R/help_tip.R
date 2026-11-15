@@ -19,10 +19,12 @@
 #' @noRd
 help_tip <- function(text, placement = "auto") {
   if (is.null(text) || !length(text) || !nzchar(paste(text, collapse = ""))) return(NULL)
+  # several texts: a line each
+  tip <- if (is.character(text) && length(text) > 1L) lapply(text, shiny::tags$div) else text
   bslib::tooltip(
     shiny::tags$span(class = "rp-tip", tabindex = "0", role = "img",
                      `aria-label` = paste(text, collapse = " "), "\u24d8"),
-    text, placement = placement)
+    tip, placement = placement)
 }
 
 #' @noRd

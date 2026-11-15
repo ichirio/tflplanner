@@ -24,8 +24,12 @@ navbar:
       menu:
         - text: "How tflplanner works"
           href: articles/concepts.html
+        - text: "Drafting the SPEC with an AI agent"
+          href: articles/ai-flow.html
         - text: "tflplanner 利用ガイド（日本語）"
           href: articles/ja-guide.html
+        - text: "AI 連携の使い方（日本語）"
+          href: articles/ja-ai-flow.html
         - text: "プロットデザイナーで図を作る（日本語）"
           href: articles/ja-figures.html
 
@@ -34,7 +38,9 @@ articles:
     navbar: ~
     contents:
       - articles/concepts
+      - articles/ai-flow
       - articles/ja-guide
+      - articles/ja-ai-flow
       - articles/ja-figures
 
 reference:
@@ -63,6 +69,7 @@ reference:
     contents:
       - create_study
       - create_sample_study
+      - create_ai_sample_study
       - save_study
       - reload_from_spec
       - export_spec_files

@@ -36,3 +36,15 @@ test_that("a part's heading carries its help; a click or a tap pins the (i) open
   expect_match(html, "rp-pinned", fixed = TRUE)
   expect_match(html, ".rp-tip, .rp-hint", fixed = TRUE)
 })
+
+test_that("a tip's text is text: a <placeholder> in it shows as it is", {
+  h <- as.character(help_tip("runs/<date>_<time>/ and <b>x</b>"))
+  expect_match(h, "runs/&lt;date&gt;_&lt;time&gt;/", fixed = TRUE)
+  expect_match(h, "&lt;b&gt;x&lt;/b&gt;", fixed = TRUE)
+  expect_false(grepl("<b>x</b>", h, fixed = TRUE))
+  w <- as.character(with_tip("Heading", "(adsl_<set>)"))
+  expect_match(w, "adsl_&lt;set&gt;", fixed = TRUE)
+  # the app's own tip with one
+  html <- as.character(app_ui("ja"))
+  expect_match(html, "runs/&lt;", fixed = TRUE)
+})

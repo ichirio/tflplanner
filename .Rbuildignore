@@ -18,3 +18,6 @@
 ^.*\.Rcheck$
 ^\.git$
 ^CLAUDE\.md$
+^AGENTS\.md$
+^cran-comments\.md$
+^CRAN-SUBMISSION$

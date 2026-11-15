@@ -20,6 +20,17 @@
 }
 .pd_source_steps <- c("read", "join", "param", "flag", "time_unit")
 
+# The data steps that make a statistic (a KM fit, summary statistics, a
+# function's result, the ARD's numbers): step 2 (ARD) shows them, from the
+# first one on -- the steps after it go on in its object; the steps before
+# it are the records' (read, parameter, population, filter, derive, units),
+# step 1's.  Returns the index of the first, or length(x) + 1 when none.
+.pd_stat_steps <- c(names(.pd_named_steps), "ard_stats", "ard")
+.pd_stat_start <- function(x) {
+  k <- which(vapply(x, function(p) isTRUE(p$step %in% .pd_stat_steps), NA))
+  if (length(k)) k[1L] else length(x) + 1L
+}
+
 # A join's fields as its card shows them: its how named for what it does;
 # a semi join (only the subjects the dataset has) adds no variables, so
 # they are not asked (shown, not starred, while it still has some)

@@ -131,7 +131,7 @@ test_that("the check's messages are shown in the session's language", {
   expect_identical(v$message[1:3], c(
     "stat_name の列がありません（ARD ではありません）",
     "テンプレートが {mean} を読みますが、ARD にその統計量がありません",
-    "表の rows に AGEGR1 とありますが、ARD のグループにも変数にもありません"))
+    "Table の rows に AGEGR1 とありますが、ARD のグループにも変数にもありません"))
   expect_match(v$message[4], "^cards による ARD の形の確認: something else")
   # English: as tflspec wrote them
   expect_identical(.check_view(q)$message[1:3], q$message[1:3])

@@ -216,8 +216,7 @@
   out <- list()
   same <- function(fn, a, b) {
     identical(a, b) || (!length(a) && !length(b)) ||
-      identical(tflspec::tfl_args_to_r(fn, a %||% list()),
-                                 tflspec::tfl_args_to_r(fn, b %||% list()))
+      identical(args_to_r(fn, a %||% list()), args_to_r(fn, b %||% list()))
   }
   put <- function(fn, new, old) {
     if (!same(fn, new, old)) out[[length(out) + 1L]] <<- list(fn = fn, args = new,

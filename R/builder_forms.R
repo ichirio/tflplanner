@@ -94,7 +94,7 @@
                             options = list(create = TRUE, plugins = list("remove_button", "drag_drop"),
                                            placeholder = t("Choose or type a column's name"))),
       if (!length(st)) shiny::div(class = "small text-warning",
-                                  t("The ARD has no comparison records (a test, a difference): add one in step 1, then read the ARD again.")),
+                                  sprintf(t("The ARD has no comparison records (a test, a difference): add one in step %s, then read the ARD again."), .step_no("ard"))),
       if (length(rows)) shiny::tags$table(
         class = "rp-widths rp-dots-table",
         shiny::tags$thead(shiny::tags$tr(shiny::tags$th(t("Column")),

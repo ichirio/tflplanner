@@ -97,12 +97,12 @@ test_that("plan_cells() by variable in the browser: own template, condition, dec
   js("(() => { $('#nav a[data-value=\"make\"]').tab('show'); return true; })()")
   Sys.sleep(1)
   js("(() => { $('#step a[data-value=\"content\"]').tab('show'); return true; })()")
-  wait_for("$('.rp-cv').length > 0 || $('#fetch3').length > 0", 60)
+  wait_for("$('.rp-cv').length > 0 || $('.rp-pv-mark:contains(No ARD yet)').length > 0", 60)
   # (4) no ARD yet: prob / time said, read only
-  if (isTRUE(js("$('#fetch3').length > 0"))) {
+  if (isTRUE(js("$('.rp-pv-mark:contains(No ARD yet)').length > 0"))) {
     ro <- js("$('.rp-cv-sum').text()")
     check("(4) no ARD yet: the own templates read only", grepl("prob", ro %||% "") && grepl("time", ro %||% ""), ro %||% "")
-    click("#fetch3")
+    click("#b_preview")
   }
   check("the plan_cells() card's table", wait_for("$('.rp-cv-row[data-var=time]').length > 0", 240))
   idle()
@@ -176,8 +176,8 @@ test_that("plan_cells() by variable in the browser: own template, condition, dec
   # (they once took a variable's conditions away)
   js("(() => { $('#target')[0].selectize.setValue('T-14-1-1'); return true; })()")
   idle()
-  wait_for("$('.rp-cv-addsel').length > 0 || $('#fetch3').length > 0", 60)
-  if (isTRUE(js("$('#fetch3').length > 0"))) click("#fetch3")
+  wait_for("$('.rp-cv-addsel').length > 0 || $('.rp-pv-mark:contains(No ARD yet)').length > 0", 60)
+  if (isTRUE(js("$('.rp-pv-mark:contains(No ARD yet)').length > 0"))) click("#b_preview")
   wait_for("$('.rp-cv-addsel').length > 0", 240)
   idle()
   js("(() => { const s = document.querySelector('.rp-cv-addsel'); s.value = 'SEX';

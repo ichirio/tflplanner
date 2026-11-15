@@ -25,10 +25,20 @@
     v <- t(k)
     ifelse(v == k, note, v)
   }
-  notify <- function(msg, type = "message") {
-    shiny::showNotification(msg, type = type, duration = 6)
+  # An error stays until it is closed (a message gone before it could be
+  # read or copied is no help); the others go after 6 s.
+  # `note_id`, `duration`: an error note that replaces its earlier one and is
+  # taken away by its own id, and one that goes by itself (default: it stays
+  # until closed)
+  notify <- function(msg, type = "message", note_id = NULL, duration = NULL) {
+    if (identical(type, "error")) {
+      shiny::showNotification(.error_note_ui(msg, t), type = type, id = note_id,
+                              duration = duration, closeButton = TRUE)
+    } else {
+      shiny::showNotification(msg, type = type, duration = 6)
+    }
   }
-  guarded <- function(expr) {
+  guarded <- function(expr, note_id = NULL, duration = NULL) {
     # the detail (the calls) goes to the console / log; the screen gets
     # the message only
     tryCatch(
@@ -44,7 +54,7 @@
           message("tflplanner: the output of what failed:\n",
                   paste(e$detail, collapse = "\n"))
         }
-        notify(.error_view(conditionMessage(e), t), "error")
+        notify(.error_view(conditionMessage(e), t), "error", note_id, duration)
         NULL
       })
   }
@@ -208,7 +218,7 @@
     }
     # the variables' headings moved from the code lists: said once
     if (!is.null(attr(s$planner, "moved_headings"))) {
-      shiny::showNotification(t(.moved_headings_msg), type = "message", duration = NULL)
+      shiny::showNotification(sprintf(t(.moved_headings_msg), .step_no("content")), type = "message", duration = NULL)
     }
     # the definition files changed outside tflplanner (#274): taken in, or
     # not readable (the study open as last saved, no save until resolved)
@@ -406,6 +416,7 @@
       if (length(m$conflicts)) {
         mine2 <- m$study
         for (k in m$conflicts) mine2 <- .set_study_part(mine2, k, .study_parts(mine)[[k]])
+        mine2 <- .keep_mine_outputs(mine2, mine, m$study, m$conflicts)
         ask_conflict(m$conflicts, m$study, mine2)
         return()
       }
@@ -867,7 +878,8 @@
     rv$studies_ver
     shiny::p(class = "small text-muted mb-1",
              t("New study folders go to"), ": ",
-             shiny::code(tflplanner_config()$studies_root %||% ""))
+             # (the one in use: the default place when no setting is saved yet)
+             shiny::code(studies_root()))
   })
   # the study the list points at: the selected row, else the open study
   shown_study <- shiny::reactive({
@@ -941,7 +953,8 @@
         .btn("std_builtin", t("Back to the built-in draft"),
              class = "btn-sm btn-outline-secondary")),
       shiny::fileInput("std_upload", t("Install company standards (Excel)"),
-                       accept = ".xlsx", width = "100%"))
+                       accept = ".xlsx", width = "100%",
+                       buttonLabel = t("Browse..."), placeholder = t("No file selected")))
   })
   shiny::observeEvent(input$add_sample, {
     s <- NULL
@@ -1097,6 +1110,8 @@
     if (!is.null(s)) {
       set_study(s)
       notify(sprintf(t("Opened %s"), s$meta$study_id))
+      note <- .old_codelists_note(s$path)
+      if (!is.null(note)) notify(t(note), "warning")
       rv$studies_ver <- rv$studies_ver + 1L
       bslib::nav_select("nav", "outputs")
     }
@@ -1118,7 +1133,7 @@
           ch <- stats::setNames(
             c("sample", "ai_sample", "empty", "study"),
             c(t("The sample study: data, ARD definition, tables, listing and figures (made at once)"),
-              t("The sample for the AI tab: its TOC, shells, ADaM, ADaM spec and SAP, filled into the AI tab's step 1 (no answers)"),
+              t("The sample for the AI tab: a study made from its TOC, shells, ADaM, ADaM spec and SAP, filled into the AI tab's step 1 (no answers)"),
               t("Start empty"),
               t("Copy another study (definition and data code)")))
           # the AI sample needs the AI tab and a tflspec that writes it
@@ -1130,7 +1145,7 @@
       shiny::conditionalPanel(
         "input.ns_from == 'ai_sample'",
         shiny::p(class = "small text-muted",
-                 t("Writes the materials into the home's samples/ai-sample and opens the AI tab's step 1 with them filled in. The study itself is made there, from step 1."))),
+                 t("Makes the study now (its TOC and shells in docs/, the ADaM in data/adam, the SAP in ai/docs/) and opens it in the AI tab's step 1 with them filled in."))),
       shiny::conditionalPanel(
         "input.ns_from == 'study'",
         shiny::selectInput("ns_src", t("Copy from"),
@@ -1141,7 +1156,7 @@
                        value = switch(from, sample = next_sample_id(),
                                       ai_sample = next_sample_id("DMY-001"), "")),
       shiny::uiOutput("ns_id_check"),
-      # (the AI sample's study is made in the AI tab, in the studies folder)
+      # (not for the AI sample: its study takes the ID alone)
       shiny::conditionalPanel(
         "input.ns_from != 'ai_sample'",
         shiny::tags$details(
@@ -1199,19 +1214,24 @@
     if (dirty()) {
       return(notify(t("There are unsaved changes. Save first."), "warning"))
     }
-    # the AI sample: the materials written, the AI tab's step 1 filled with
-    # them; the study is made there, by step 1 (tfl_ai_study_init)
+    # the AI sample: the study made at once from its materials
+    # (tfl_ai_study_init) and opened; the AI tab's step 1 filled with them
     if (identical(input$ns_from, "ai_sample")) {
-      kit <- NULL
-      shiny::withProgress(
-        message = t("Writing the AI sample's materials ..."),
-        kit <- guarded(.ai_sample_kit(file.path(tflplanner_home(), "samples", "ai-sample"))))
-      if (is.null(kit)) return()
+      id <- trimws(input$ns_id)
+      root <- trimws(input$ns_root %||% "")
+      made <- NULL
+      shiny::withProgress(message = t("Making the study from the AI sample ..."), {
+        made <- guarded(create_ai_sample_study(
+          root = if (nzchar(root)) root else studies_root(), study_id = id))
+      })
+      if (is.null(made)) return()
       shiny::removeModal()
+      rv$studies_ver <- rv$studies_ver + 1L
+      set_study(made$study)
       bslib::nav_select("nav", "ai")
-      session$userData$ai$prefill(c(list(study_id = trimws(input$ns_id),
-                                         title = "Example Pharma DMY-001 (fictional)"), kit))
-      return(notify(t("The AI tab's step 1 is filled in from the AI sample: press Read and check, then go on.")))
+      session$userData$ai$prefill(c(list(mode = "open", path = made$study$path), made$kit))
+      return(notify(sprintf(t("Created %s from the AI sample; the AI tab's step 1 is filled in: press Read and check."),
+                            id)))
     }
     blank <- function(v) if (is.null(v) || !nzchar(trimws(v))) NA else v
     s <- if (identical(input$ns_from, "sample")) {
@@ -1389,8 +1409,14 @@
       shiny::h6(with_tip(t("Every report's font"),
                          t("The font and size every report is written in, set once here (the page sheet's study row; programs/tfl/report_setup.R says them as options()). Blank: rtfreporter's, Courier New 9 pt. The company standards give a new study theirs."))),
       shiny::div(class = "d-flex flex-wrap gap-2",
-        shiny::textInput(updateOn = "blur", "pg_font", t("Font"), v(study_page_value(rv$p, "font")),
-                         placeholder = "Courier New"),
+        shiny::textInput(updateOn = "blur", "pg_font",
+                         with_tip(t("Font"), t("A font for every script: Courier New. A font per script is written like this: latin = Times New Roman | east_asian = MS Mincho. Use it when the texts are in Japanese, and set the Font language field to east_asian = ja. Without it, the Japanese text is printed in a font Word chooses.")),
+                         v(study_page_value(rv$p, "font")),
+                         placeholder = "Courier New", width = "22em"),
+        shiny::textInput(updateOn = "blur", "pg_font_lang",
+                         with_tip(t("Font language"), t("The language of each script's font, written the same way. For the Font example (latin = Times New Roman | east_asian = MS Mincho), write east_asian = ja. Use it when the texts are in Japanese; without it, the Japanese text is printed in a font Word chooses. Other languages: zh-Hans, zh-Hant, ko. Blank: none.")),
+                         v(study_page_value(rv$p, "font_lang")),
+                         placeholder = "east_asian = ja", width = "13em"),
         shiny::textInput(updateOn = "blur", "pg_font_size", t("Size (pt)"),
                          .points(study_page_value(rv$p, "font_size_half_points")),
                          placeholder = "9", width = "8em")),
@@ -1445,7 +1471,7 @@
         shiny::fileInput(
           "spec_import", NULL, placeholder = t("(an edited copy: workbooks, .yml, .json or the zip)"),
           multiple = TRUE, accept = c(".xlsx", ".yml", ".yaml", ".json", ".zip"),
-          width = "100%")),
+          width = "100%", buttonLabel = t("Browse..."))),
       grp(t("Restore from a backup"), t("Every import keeps the files as they were in spec/.backup/. Choose one to bring the study back to it (the study as it is now is kept first): the way to undo a wrong edit."),
         .btn("restore_open", t("Restore from a backup ..."),
              class = "btn-sm btn-outline-secondary")),
@@ -1493,6 +1519,13 @@
     now <- study_page_value(rv$p, "font")
     if (!identical(if (is.na(now)) "" else now, v)) {
       rv$p <- set_study_page_value(rv$p, "font", v)
+    }
+  }, ignoreInit = TRUE)
+  shiny::observeEvent(input$pg_font_lang, {
+    v <- trimws(input$pg_font_lang)
+    now <- study_page_value(rv$p, "font_lang")
+    if (!identical(if (is.na(now)) "" else now, v)) {
+      rv$p <- set_study_page_value(rv$p, "font_lang", v)
     }
   }, ignoreInit = TRUE)
   shiny::observeEvent(input$pg_font_size, {
@@ -1755,3 +1788,47 @@
   })
   .srv_keep(environment())
 }
+
+# The body of an error notification: the message as text that can be
+# selected, and a button that copies exactly that text (the script is
+# .error_note_js, in the page header of app_ui()).
+.error_note_ui <- function(msg, t = identity) {
+  shiny::tagList(
+    shiny::div(class = "tp-error-text", msg),
+    shiny::tags$button(
+      type = "button", class = "btn btn-sm btn-outline-secondary tp-copy-error",
+      `data-copied` = t("Copied"), t("Copy the message")))
+}
+
+.error_note_css <- "
+.tp-error-text { white-space: pre-wrap; user-select: text; max-height: 40vh;
+  overflow-y: auto; margin-bottom: 6px; word-break: break-word; }
+"
+
+.error_note_js <- "
+$(document).on('click', '.tp-copy-error', function() {
+  var btn = this;
+  var txt = $(btn).siblings('.tp-error-text').text();
+  var done = function() {
+    var old = btn.getAttribute('data-label') || btn.textContent;
+    btn.setAttribute('data-label', old);
+    btn.textContent = btn.getAttribute('data-copied');
+    setTimeout(function() { btn.textContent = old; }, 1500);
+  };
+  var fallback = function() {
+    var ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) {}
+    document.body.removeChild(ta);
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(txt).then(done, fallback);
+  } else {
+    fallback();
+  }
+});
+"

@@ -8,7 +8,7 @@ new_planner(study = NULL)
 }
 \arguments{
 \item{study}{Named study keys (\code{rounding}, \code{output_path},
-\code{program_dir}, \code{treatment}).}
+\code{program_dir}, \code{treatment}, \code{sd_missing}).}
 }
 \value{
 An \code{tflplanner} object.

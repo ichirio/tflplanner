@@ -3,7 +3,7 @@
 # a study carries, in `p$spec`:
 #
 #   study    the study's spec, tflspec::tfl_read_study_spec() (study.yml,
-#            data, defaults, codelists, patterns, toc)
+#            data, defaults, patterns, toc)
 #   outputs  the reports as their files say them (not resolved), a named
 #            list of tfl_output, by id
 #   text     every file's text (its lines), by its path relative to the
@@ -72,11 +72,14 @@
 .planner_from_spec <- function(study, outputs) {
   back <- tflspec::tfl_sheets_from_spec(study, outputs)
   p <- .planner_from_sheets(back$table, back$planner)
-  # study.yml's settings no sheet holds (the treatment variable)
+  # study.yml's settings no sheet holds (the treatment variable, the missing SD)
   st <- study$study$settings %||% list()
   for (k in .study_own_settings) {
     v <- st[[k]]
-    if (length(v) == 1L && !is.na(v) && nzchar(as.character(v))) p$study[[k]] <- as.character(v)
+    if (length(v) == 1L && !is.na(v) &&
+        (k %in% .study_settings_blank_ok || nzchar(as.character(v)))) {
+      p$study[[k]] <- as.character(v)
+    }
   }
   old <- attr(p, "old_data_code")
   attr(p, "old_data_code") <- NULL
@@ -133,6 +136,13 @@
 .spec_attach <- function(s) {
   sp <- tryCatch(.spec_load(s$path), error = function(e) NULL)
   s$planner$spec <- sp
+  # (a state saved before the marker rows had none for a pattern with no
+  # page rows, and the report sheet then refuses the pattern)
+  for (nm in names(sp$study$patterns)) {
+    if (!.pattern_in_view(s$planner, paste0("@", nm))) {
+      s$planner <- .pattern_marker(s$planner, paste0("@", nm))
+    }
+  }
   s$planner <- .spec_rebase(s$planner, s$meta)
   s
 }
@@ -152,14 +162,17 @@
     readLines(file.path(tmp, r), encoding = "UTF-8", warn = FALSE)), rel))
 }
 
-# The study's own settings (.study_own_settings: the treatment variable)
+# The study's own settings (.study_own_settings: the treatment variable and
+# the missing-SD text)
 # put into study.yml's `settings:` as tflspec wrote it: each one set, a
 # line at the block's end (a block of its own when tflspec wrote none); none
 # set: the file as it is
 .study_yml_own_settings <- function(f, study) {
   v <- vapply(.study_own_settings, function(k) {
     x <- if (k %in% names(study)) study[[k]] else NA_character_
-    if (length(x) == 1L && !is.na(x) && nzchar(trimws(x))) trimws(x) else NA_character_
+    if (length(x) != 1L || is.na(x)) return(NA_character_)
+    if (k %in% .study_settings_blank_ok) return(as.character(x))
+    if (nzchar(trimws(x))) trimws(x) else NA_character_
   }, "")
   v <- v[!is.na(v)]
   if (!length(v) || !file.exists(f)) return(invisible(f))
@@ -177,7 +190,7 @@
   invisible(f)
 }
 
-# Which part of the spec a file is: study, data, defaults, codelists, toc,
+# Which part of the spec a file is: study, data, defaults, toc,
 # pattern (its name) or output
 .spec_part <- function(rel) {
   sp <- study_layout()[["spec"]]
@@ -228,6 +241,16 @@
       now$text[[.study_file]] <- readLines(sy, encoding = "UTF-8", warn = FALSE)
     }
     new <- .spec_load(now$dir)
+    # (the study as the bridge wrote it before the edits: read when a layer needs it)
+    was_study <- local({
+      st <- NULL
+      function() {
+        if (is.null(st) && !is.null(was)) {
+          st <<- tryCatch(tflspec::tfl_read_study_spec(was$dir), error = function(e) NULL)
+        }
+        st
+      }
+    })
     dir <- sp$study$dir
     if (is.null(sp)) sp <- list(study = NULL, outputs = list(), text = list(), where = character())
     if (is.null(sp$study)) sp$study <- new$study
@@ -247,8 +270,29 @@
           }
           if (!is.null(kept$text)) sp$text[[r]] <- kept$text
         },
-        pattern = sp$study$patterns[[part$name]] <- new$study$patterns[[part$name]],
-        sp$study[part$kind] <- list(new$study[[part$kind]]))
+        pattern = {
+          nm <- part$name
+          # (a pattern renamed in the view is new here, and the old one gone)
+          from <- .renamed_from(p$spec$study$patterns, was_study()$patterns, new$study$patterns, nm)
+          mine <- new$study$patterns[[nm]]
+          if (!is.null(from)) {
+            mine <- .keep_layer_keys(p$spec$study$patterns[[from]], was_study()$patterns[[from]], mine)
+          }
+          if (is.null(mine)) sp$study$patterns[[nm]] <- NULL else sp$study$patterns[[nm]] <- mine
+          if (!identical(mine, new$study$patterns[[nm]])) {
+            sp$text[[r]] <- .study_part_lines(sp$study, "patterns", nm)
+          }
+        },
+        {
+          mine <- new$study[[part$kind]]
+          if (identical(part$kind, "defaults")) {
+            mine <- .keep_layer_keys(sp$study$defaults, was_study()$defaults, mine)
+          }
+          sp$study[part$kind] <- list(mine)
+          if (!identical(mine, new$study[[part$kind]])) {
+            sp$text[[r]] <- .study_part_lines(sp$study, part$kind)
+          }
+        })
     }
     sp$study$dir <- dir %||% sp$study$dir
     # the files and the reports in the files' order (as read from a folder)
@@ -260,6 +304,31 @@
   p <- .spec_rebase(p, meta)
   attr(p, "changed") <- changed
   p
+}
+
+# The pattern of the spec that `name` is: itself, or (a name new here) the
+# one gone with the same page, when there is exactly one (rename_page_pattern()
+# changes the name in the sheets).  NULL: none.
+.renamed_from <- function(spec, was, now, name) {
+  if (!is.null(spec[[name]])) return(name)
+  gone <- setdiff(names(spec), names(now))
+  gone <- gone[vapply(gone, function(g) identical(was[[g]]$page, now[[name]]$page), NA)]
+  if (length(gone) == 1L && !is.null(now[[name]])) gone else NULL
+}
+
+# A layer (the defaults, a pattern) as the sheets give it (`now`) with what
+# the edits did not touch kept as the spec (`spec`) has it: the bridge gives
+# the page and little else (code lists, data ... empty; content as rows, and
+# an item the rows cannot say is lost), so a key whose bridge value is the
+# same before the edits (`was`) is the spec's.  Without `was` (no base): a
+# key the bridge gives empty.  A layer new or gone is the bridge's.
+.keep_layer_keys <- function(spec, was, now) {
+  if (is.null(spec) || is.null(now)) return(now)
+  for (k in setdiff(names(spec), "page")) {
+    same <- if (is.null(was)) !length(now[[k]]) else identical(was[[k]], now[[k]])
+    if (same) now[k] <- list(spec[[k]])
+  }
+  now
 }
 
 # A report file the edits change, part by part (#415): the bridge's value
@@ -382,6 +451,7 @@
 # program is then written from the sheets: .code_spec()), the spec has no
 # such report, or its content is R of its own.
 .spec_items <- function(p, output_id) {
+  if (!is.null(.part_of(output_id))) return(.spec_part_items(p, output_id))
   sp <- .code_spec(p)
   o <- sp$outputs[[output_id]]
   if (is.null(o) || inherits(o$content, "tfl_r")) return(NULL)
@@ -442,6 +512,7 @@
 # is taken away (a verb of named `...` emptied: plan_levels() of no
 # variable is no call).
 .spec_set_items <- function(p, output_id, items) {
+  if (!is.null(.part_of(output_id))) return(.spec_set_part_items(p, output_id, items))
   p <- .spec_ensure(p)
   p <- .spec_sync(p, p$spec$meta)
   attr(p, "changed") <- NULL
@@ -504,6 +575,7 @@
 # ... and the report's own `k`-th item of `fn` taken away: the layers' again
 # (none: the verb is gone from the report's plan)
 .spec_revert_item <- function(p, output_id, fn, k = 1L) {
+  if (!is.null(.part_of(output_id))) return(.spec_revert_part_item(p, output_id, fn, k))
   p <- .spec_ensure(p)
   o <- .spec_output(p, output_id)
   if (is.null(o) || inherits(o$content, "tfl_r")) return(p)
@@ -631,4 +703,55 @@
   if (!is.null(study$defaults)) study$defaults[c("content", "page")] <- list(NULL)
   study$patterns <- list()
   study
+}
+
+# A part's items (`part_id`: .part_id()): the plan_append() item's own
+# content, in the report's own content -- a part is nothing but the
+# report's own item (the layers' parts, if any, are the defaults'; not
+# for the cards), and its content is its own, with no layers.  Read from
+# the spec as it is: the sheets hold none of a part's, so an edit of them
+# not yet in the spec leaves it as it is.  NULL: no spec, no such part,
+# or the report's content is R of its own.
+.spec_part_items <- function(p, part_id) {
+  pt <- .part_of(part_id)
+  o <- p$spec$outputs[[pt$id]]
+  if (is.null(o) || inherits(o$content, "tfl_r")) return(NULL)
+  at <- .part_at(o$content, pt$name)
+  if (is.na(at)) return(NULL)
+  content <- o$content[[at]]$args$content %||% list()
+  list(items = lapply(content, function(it) c(it, list(from = "own"))), own = content)
+}
+
+# ... written: the items set in the part's content (as .spec_set_items()
+# does a report's, each whole), the part item put back in the report's own
+# content.  An error when the part is not the report's own.
+.spec_set_part_items <- function(p, part_id, items) {
+  pt <- .part_of(part_id)
+  p <- .spec_ensure(p)
+  p <- .spec_sync(p, p$spec$meta)
+  attr(p, "changed") <- NULL
+  o <- p$spec$outputs[[pt$id]]
+  if (is.null(o)) stop("The spec has no report ", pt$id, ".", call. = FALSE)
+  if (inherits(o$content, "tfl_r")) {
+    stop("The report ", pt$id, "'s content is R of its own.", call. = FALSE)
+  }
+  at <- .part_at(o$content, pt$name)
+  if (is.na(at)) {
+    stop("The report ", pt$id, " has no part of its own called ", pt$name, ".", call. = FALSE)
+  }
+  part <- o$content[[at]]
+  content <- part$args$content %||% list()
+  for (w in items) {
+    args <- Filter(Negate(is.null), w$args %||% list())
+    it <- if (isTRUE(w$drop_empty) && !length(args)) NULL else tflspec::tfl_item(w$fn, args)
+    content <- .content_put(content, w$fn, w$k %||% 1L, it)
+  }
+  part$args$content <- content
+  o$content[[at]] <- part
+  .spec_set_output(p, pt$id, o, content_only = TRUE)
+}
+
+# ... and a part's `k`-th item of `fn` taken away
+.spec_revert_part_item <- function(p, part_id, fn, k = 1L) {
+  .spec_set_part_items(p, part_id, list(list(fn = fn, args = list(), k = k, drop_empty = TRUE)))
 }

@@ -24,3 +24,16 @@ test_that("every lead has its Japanese", {
   leads <- vapply(.error_leads, `[[`, "", 2L)
   expect_true(all(vapply(leads, function(l) !identical(ja(l), l), TRUE)))
 })
+
+test_that("an error notification has its text and a copy button", {
+  ja <- function(x) tr(x, "ja")
+  m <- "Study 'S1' is already registered.\nSecond line"
+  h <- as.character(.error_note_ui(m, ja))
+  expect_match(h, "tp-error-text", fixed = TRUE)
+  expect_match(h, "Study 'S1' is already registered.", fixed = TRUE)
+  expect_match(h, "tp-copy-error", fixed = TRUE)
+  expect_match(h, ja("Copy the message"), fixed = TRUE)
+  expect_match(h, paste0('data-copied="', ja("Copied"), '"'), fixed = TRUE)
+  expect_false(identical(ja("Copied"), "Copied"))
+  expect_match(.error_note_js, "tp-copy-error", fixed = TRUE)
+})

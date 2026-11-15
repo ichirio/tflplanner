@@ -20,7 +20,21 @@ test_that("the list ticks at first the drafts not adopted yet", {
                   status = c("ok", "warning", "ok", "no answer", "error"),
                   adopted = c("no", "yes", "yes, draft newer", "no", "no"))
   expect_identical(.ai_adoptable(d), c(TRUE, TRUE, TRUE, FALSE, FALSE))
-  expect_identical(.ai_ticked_first(d), "A")
+  # (tflspec cannot say: the list's own `adopted` says it)
+  expect_identical(.ai_ticked_first(d, .ai_copy_state(d, NULL)), c("A", "C"))
+})
+
+test_that("a report's copy state is the plan's, or the list's adopted column when the plan is NULL", {
+  d <- data.frame(output_id = c("A", "B", "C", "D", "E", "F"),
+                  file = c("ai/spec/outputs/A.yml", "ai/spec/outputs/B.yml", "ai/spec/outputs/C.yml", NA,
+                           "ai/spec/outputs/E.yml", "ai/spec/outputs/F.yml"),
+                  status = c("ok", "warning", "ok", "no answer", "error", "ok"),
+                  adopted = c("no", "yes", "yes, draft newer", "no", "no", NA))
+  plan <- data.frame(output_id = c("C", "B", "A", "F"), status = c("replace", "same", "new", "no draft"))
+  expect_identical(.ai_copy_state(d, plan), c("new", "same", "replace", NA, NA, NA))
+  expect_identical(.ai_copy_state(d, NULL), c("new", "same", "replace", NA, NA, "new"))
+  # ticked at first: new and replace, not same
+  expect_identical(.ai_ticked_first(d, .ai_copy_state(d, plan)), c("A", "C"))
 })
 
 test_that("the reports adopted go into their TOC batches, as spec/toc.yml says them", {
@@ -90,5 +104,77 @@ test_that("step 4: Tick only those not in the study yet", {
     expect_match(output$list_ticked$html, "1 ticked", fixed = TRUE)
     session$setInputs(list_none = 1)
     expect_match(output$list_ticked$html, "0 ticked", fixed = TRUE)
+  })
+})
+
+# a study of four drafts: A new, B replace, C same, D no file (invented data)
+.copy_list <- function() {
+  data.frame(output_id = c("A", "B", "C", "D"),
+             file = c("ai/spec/outputs/A.yml", "ai/spec/outputs/B.yml", "ai/spec/outputs/C.yml", NA),
+             status = c("ok", "ok", "ok", "no answer"),
+             adopted = c("no", "yes, draft newer", "yes", "no"), title = "t", population = "SAF",
+             split = NA_character_, rtf = NA_character_, problem = NA_character_,
+             stringsAsFactors = FALSE)
+}
+.copy_plan <- function(dir, ids) {
+  data.frame(output_id = ids, status = c(A = "new", B = "replace", C = "same")[ids])
+}
+.copy_mocks <- function(env = parent.frame()) {
+  local_mocked_bindings(.ai_list = function(dir) .copy_list(), .ai_adopt_plan = .copy_plan,
+                        .ai_adopt_diff = function(dir, ids) NULL, .env = env)
+}
+.copy_app <- function(input, output, session) {
+  ai_list_server(input, output, session, function() tempdir(), shiny::reactiveVal(0L),
+                 function(...) TRUE, notify = function(...) NULL, guarded = function(x) x,
+                 t = function(x) x)
+}
+
+test_that("step 4: the buttons tick the new, the updated and the changed drafts", {
+  .copy_mocks()
+  shiny::testServer(.copy_app, {
+    # at first: new and replace, not the same
+    expect_match(output$list_ticked$html, "2 ticked", fixed = TRUE)
+    session$setInputs(list_new = 1)
+    expect_match(output$list_ticked$html, "1 ticked", fixed = TRUE)
+    session$setInputs(list_newer = 1)
+    expect_match(output$list_ticked$html, "1 ticked", fixed = TRUE)
+    session$setInputs(list_none = 1)
+    expect_match(output$list_ticked$html, "0 ticked", fixed = TRUE)
+    session$setInputs(list_changed = 1)
+    expect_match(output$list_ticked$html, "2 ticked", fixed = TRUE)
+    session$setInputs(list_all = 1)
+    expect_match(output$list_ticked$html, "3 ticked", fixed = TRUE)
+  })
+})
+
+test_that("step 4: one confirmation; overwrite copies both, the other button only the new ones", {
+  calls <- list()
+  shown <- list()
+  local_mocked_bindings(
+    tfl_ai_adopt = function(dir, outputs, overwrite = FALSE, ...) {
+      calls[[length(calls) + 1L]] <<- list(outputs = outputs, overwrite = overwrite)
+      invisible(data.frame(output_id = outputs))
+    },
+    .package = "tflspec")
+  local_mocked_bindings(showModal = function(ui, ...) shown[[length(shown) + 1L]] <<- as.character(ui),
+                        removeModal = function(...) NULL, .package = "shiny")
+  .copy_mocks()
+  shiny::testServer(.copy_app, {
+    session$setInputs(adopt = 1)
+    expect_length(shown, 1L)
+    expect_match(shown[[1]], "modal-xl", fixed = TRUE)
+    expect_match(shown[[1]], "Overwrite 1 and copy", fixed = TRUE)
+    expect_match(shown[[1]], "Copy the 1 not in the study yet", fixed = TRUE)
+    expect_false(grepl("adopt_sure", shown[[1]], fixed = TRUE))
+    # only the new ones
+    session$setInputs(adopt_fresh = 1)
+    expect_length(calls, 1L)
+    expect_identical(calls[[1]], list(outputs = "A", overwrite = FALSE))
+    # both: the new ones copied, the study's overwritten; no second dialog
+    session$setInputs(adopt_over = 1)
+    expect_length(calls, 3L)
+    expect_identical(calls[[2]], list(outputs = "A", overwrite = FALSE))
+    expect_identical(calls[[3]], list(outputs = "B", overwrite = TRUE))
+    expect_length(shown, 1L)
   })
 })

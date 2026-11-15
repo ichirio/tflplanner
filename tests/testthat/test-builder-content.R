@@ -345,7 +345,7 @@ test_that("the screen review's fixes: per-variable templates said, every argumen
   it <- list(fn = "plan_sort", args = list(keys = c(".overall", "label")), path = "plan_sort",
              present = TRUE, from = "own")
   h <- html(.special_more("c", "plan_sort", it))
-  expect_match(h, "Not in the code", fixed = TRUE)
+  expect_match(h, "Arguments not in the code", fixed = TRUE)
   expect_match(h, 'data-arg="keep"', fixed = TRUE)
   # ... read back onto the item's arguments as they are now
   # (keep's default TRUE: unticked is written, ticked again is none)

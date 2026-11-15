@@ -81,6 +81,31 @@ test_that("the list chooses the report; the tables search the same way", {
   expect_identical(.report_dt_search(""), "")
 })
 
+test_that("the folded chooser takes back the report it set itself (the switch was lost)", {
+  rows <- shiny::reactiveVal(data.frame(output_id = c("A", "B"), title = c("a", "b")))
+  now <- shiny::reactiveVal("A")
+  folded <- shiny::reactiveVal(FALSE)
+  picked <- character()
+  shiny::testServer(
+    report_picker_server,
+    args = list(rows = rows, now = now, pick = function(v) picked <<- c(picked, v),
+                fixed = list(), folded = folded),
+    {
+      # the chooser shows the report set for it; its echo arrives while the
+      # list is still shown
+      session$flushReact()
+      session$setInputs(compact = "A")
+      expect_identical(picked, character())
+      folded(TRUE)
+      session$setInputs(compact = "B")
+      now("B")
+      session$flushReact()
+      # and back to the first: not swallowed by an old mark
+      session$setInputs(compact = "A")
+      expect_identical(picked, c("B", "A"))
+    })
+})
+
 test_that("a section is the heading when there is one, else the ID's numbers", {
   expect_identical(.report_section(c("T-14-1-1", "T-14-2-1", "X"), c("table", "table", "listing"),
                                    c("14.1 Demographics", NA, NA)),

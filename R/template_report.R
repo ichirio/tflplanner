@@ -23,7 +23,22 @@
   orr = "Objective response",
   shift = "Shift table",
   summary = "Continuous and categorical variables by a column key",
-  vs_change = "A vital sign's change")
+  vs_change = "A vital sign's change",
+  ae_disc_soc_pt = "Adverse events leading to discontinuation by SOC and PT",
+  ae_eair = "Exposure-adjusted incidence rates by SOC and PT",
+  ae_ser_soc_pt = "Serious adverse events by SOC and PT",
+  lab_abnormal = "Laboratory abnormalities",
+  param_change = "Parameters' value and change",
+  pk_conc = "PK concentrations by time point",
+  stat_block = "Statistics from the study's ARD, a block a row",
+  forest_hr = "Hazard ratio by subgroup (forest plot)",
+  km = "Kaplan-Meier curves by group",
+  km_survival = "Kaplan-Meier survival curves with a risk table",
+  km_cumulative = "Cumulative incidence (1 - KM)",
+  mean_ci = "Mean by visit with its CI",
+  mean_se = "Mean by visit with its SE",
+  waterfall = "Waterfall plot",
+  ancova = "Analysis of covariance (ANCOVA) of a change")
 
 # The templates of a kind of report: name and kind
 .tpl_list <- function(kind) {
@@ -279,6 +294,29 @@
   args
 }
 
+# The text arguments that are a header over the columns: the soft warning on
+# an edit (the value is kept).  tflspec reads {col} {col1} ... by plain text
+# replacement (rtfreporter .plan_header_fill), so a typed header without one
+# gives every column the same text.
+.tpl_header_checked <- "post_header"
+
+# Which warning a header text earns: the English text (for t()), or NULL.
+# The braces are read in order -- a "}" with no "{" before it, or a "{" left
+# open, does not match; "{{col}}" matches (and holds a {col}).
+.tpl_header_problem <- function(value, name = "post_header") {
+  if (!name %in% .tpl_header_checked) return(NULL)
+  if (!is.character(value) || length(value) != 1L || is.na(value) || !nzchar(value)) return(NULL)
+  ch <- strsplit(value, "", fixed = TRUE)[[1L]]
+  depth <- 0L
+  for (x in ch[ch %in% c("{", "}")]) {
+    depth <- depth + if (identical(x, "{")) 1L else -1L
+    if (depth < 0L) break
+  }
+  if (depth != 0L) return("The header's braces don't match: it prints as typed.")
+  if (!grepl("[{]col[0-9]*[}]", value)) return("The header has no {col}: each category's column gets the same text.")
+  NULL
+}
+
 # The required arguments still empty
 .tpl_missing <- function(name, args, study = NULL) {
   prm <- .tpl_params(name)
@@ -290,6 +328,38 @@
     length(v) > 0L && any(nzchar(as.character(v)))
   }
   req[!vapply(req, given, NA)]
+}
+
+# The editor step a template's argument is drawn in (#514): "data" (the
+# analysis data: which records), "ard" (what is computed), "content" (how it
+# is shown) or "page" (the page's titles).  A tflplanner-side lookup, not a
+# part of the template: the table inst/extdata/template_arg_sections.csv
+# (the shipped templates' arguments), else the argument's name (the
+# company's templates, variants, a template not in the table), else "ard".
+# Where an argument is drawn only; it is saved as it was, in the report's
+# `template: {name, args}`.
+.tpl_sections <- c("data", "ard", "content", "page")
+.tpl_section_table <- local({
+  tab <- NULL
+  function() {
+    if (is.null(tab)) {
+      f <- system.file("extdata", "template_arg_sections.csv", package = "tflplanner")
+      tab <<- if (nzchar(f)) {
+        utils::read.csv(f, stringsAsFactors = FALSE, na.strings = character())
+      } else data.frame(template = character(), argument = character(), section = character())
+    }
+    tab
+  }
+})
+.tpl_arg_section <- function(template, argument) {
+  tab <- .tpl_section_table()
+  i <- which(tab$template == template & tab$argument == argument)
+  if (length(i)) return(tab$section[i[1L]])
+  if (argument %in% c("population", "subset", "where", "data", "param", "paramcd")) return("data")
+  if (argument %in% c("title", "param_page", "param_heading")) return("page")
+  if (argument %in% c("labels", "heading", "order", "sort", "formats") ||
+        grepl("_(label|order)$", argument)) return("content")
+  "ard"
 }
 
 # A template's parameters the card shows: not those it takes from the
@@ -403,16 +473,16 @@
 }
 
 # ---- the page: a template report's steps -----------------------------------------
-# A template report is made in two steps -- "1 Template (ARD and
-# content)" (the content step, the ARD step hidden) and "2 Page and
-# output" -- a code SPEC report in three; never by its kind.  The server
+# A template report is made in three steps -- "1 Analysis data", "2 Template"
+# (the content step, the ARD step hidden: its ARD and content arguments) and
+# "3 Page and output" -- a code SPEC report in four; never by its kind.  The server
 # says which at once when the report changes (rp-tpl-mode, a custom
 # message: sent before the flush that draws the report), and the page
 # shows "Loading ..." over the steps until that flush is done
 # (rp-report-ready): the report before it, or the code SPEC's builder, is
 # never seen in its place.  `.rp-tpl-only` / `.rp-code-only` are shown by
 # the mode.
-.tpl_step_labels <- c(content = "1 Template (data and content)", page = "2 Page and output")
+.tpl_step_labels <- c(data = "1 Analysis data", content = "2 Template", page = "3 Page and output")
 
 .tpl_css <- "
 body:not(.rp-tpl) .rp-tpl-only, body.rp-tpl .rp-code-only { display: none !important; }
@@ -487,7 +557,30 @@ $(document).on('shiny:connected', function() {
     $('#report_head').toggleClass('rp-stale', !!want && h.length > 0 && h.attr('data-rp-head') !== want);
   }
   $(document).on('shiny:value', function(e) { if (e.name === 'report_head') setTimeout(headCheck, 0); });
+  // (a card the server says is as drawn: left as it is, with the focus in it)
+  $(document).on('shiny:value', function(e) {
+    if (/^tpl_card/.test(e.name) && e.value && /rp-keep/.test(e.value.html || '')) e.preventDefault();
+  });
   document.body.setAttribute('data-loading', $('.rp-report-loading').first().text() || 'Loading ...');
+  // the two ARD tabs of a template report: greyed out and not selectable
+  // when it makes no ARD (a click, the keys, do nothing); one selected gives
+  // way to the report's Result, so no pane is left empty
+  function rpArdTabs(on, tip) {
+    $('body').toggleClass('rp-ard', !!on);
+    // (a table's, a figure's and a listing's tabs: the one of the report shown is the one that counts)
+    var tabs = $('#table_right, #fig_right, #lf_right');
+    tabs.find('a[data-value^=\"ard\"]').each(function() {
+      $(this).toggleClass('disabled', !on).attr('aria-disabled', on ? null : 'true')
+        .attr('tabindex', on ? null : '-1');
+      $(this).parent().attr('title', on ? null : (tip || ''));
+    });
+    if (!on) tabs.each(function() {
+      if ($(this).find('a.active[data-value^=\"ard\"]').length) {
+        $(this).find('a[data-value=\"result\"]').tab('show');
+      }
+    });
+  }
+  Shiny.addCustomMessageHandler('rp-ard-tabs', function(x) { rpArdTabs(x.on, x.tip); });
   Shiny.addCustomMessageHandler('rp-tpl-mode', function(x) {
     if (x.id) document.body.setAttribute('data-rp-id', x.id);
     headCheck();
@@ -505,10 +598,9 @@ $(document).on('shiny:connected', function() {
         if (x.names[k]) $(this).text(x.names[k]);
       });
     }
-    // (the right pane's ARD tab: a template report's)
-    var at = $('#table_right a[data-value=\"ard\"]');
-    at.parent().toggleClass('d-none', !x.tpl);
-    if (!x.tpl && at.hasClass('active')) $('#table_right a[data-value=\"result\"]').tab('show');
+    // (the right pane's ARD tabs: a template report's; rp-ard-tabs says
+    // whether it makes an ARD once the report is known)
+    if (!x.tpl) rpArdTabs(false);
     if (x.loading) {
       $('body').addClass('rp-switching');
       clearTimeout(timer);
@@ -720,4 +812,14 @@ $(document).on('shiny:connected', function() {
   if (is.null(o) || is.null(o$template)) stop(sprintf("%s is not a template report.", id), call. = FALSE)
   b <- tflspec::tfl_template_to_spec(o, sp$study)
   .spec_set_output(p, id, b)
+}
+
+# A value a field says that is not its current one but is one a write of it
+# replaced within `window` seconds: a field drawn from an older card saying
+# its old value back, not an edit.  `past`: data frame of v (the values) and
+# t (their times, seconds); `val`, `now` likewise.  (A write's say-back came
+# 2-6 s after it when measured; 15 s is the margin.)
+.tpl_stale_say <- function(val, past, now, window = 15) {
+  if (is.null(past) || !nrow(past)) return(FALSE)
+  any(past$v == val & now - past$t <= window)
 }

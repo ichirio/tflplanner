@@ -34,7 +34,8 @@
       title = t("Take in a TOC"), size = "xl",
       shiny::uiOutput(toc_id("prev")),
       shiny::fileInput(toc_id("file"), t("TOC files (xlsx, xls, csv): the TFL workbook, and the listing workbook when it is another"),
-                       accept = c(".xlsx", ".xls", ".csv"), multiple = TRUE, width = "100%"),
+                       accept = c(".xlsx", ".xls", ".csv"), multiple = TRUE, width = "100%",
+                       buttonLabel = t("Browse..."), placeholder = t("No file selected")),
       shiny::uiOutput(toc_id("same_file")),
       shiny::uiOutput(toc_id("where")),
       shiny::uiOutput(toc_id("map")),
@@ -440,7 +441,7 @@
     before <- any(ch$reports$status %in% c("changed", "same"))
     shiny::div(
       class = "mb-2",
-      shiny::checkboxInput(toc_id("make_data"), with_tip(t("Make the tables' analysis data from their datasets"), t("For each dataset of a table (the TOC's datasets column) that is not its population's own: <dataset>_<set>, kept to the subjects of adsl_<set> -- found, or made. Its first analysis starts from it; change or delete it in 1-1.")), TRUE,
+      shiny::checkboxInput(toc_id("make_data"), with_tip(t("Make the tables' analysis data from their datasets"), t("For each dataset of a table (the TOC's datasets column) that is not its population's own: <dataset>_<set>, kept to the subjects of adsl_<set> -- found, or made. Its first analysis starts from it; change or delete it in the analysis data.")), TRUE,
                            width = "100%"),
       if (before) shiny::conditionalPanel(
         sprintf("input['%s']", toc_id("make_data")),

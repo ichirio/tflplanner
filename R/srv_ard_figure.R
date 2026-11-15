@@ -23,7 +23,7 @@
       shiny::div(class = "d-flex flex-wrap gap-3 align-items-end",
         shiny::radioButtons(
           "fig_ard_kind", with_tip(t("This figure's ARD"),
-            t("Where the numbers it prints come from (step 3: \"A number from the ARD\", \"Statistics from the ARD\"). The program puts it in `ard`.")),
+            sprintf(t("Where the numbers it prints come from (step %s: \"A number from the ARD\", \"Statistics from the ARD\"). The program puts it in `ard`."), .step_no("content"))),
           inline = TRUE, selected = src$kind,
           choices = stats::setNames(c("none", "own", "table"),
                                     c(t("None: the figure reads its data"),
@@ -71,7 +71,7 @@
           shiny::tags$td(class = "text-break", tbl$statistics[i]),
           shiny::tags$td(class = "text-success text-nowrap", tbl$used[i]))))),
       shiny::div(class = "d-flex gap-2 align-items-center",
-        shiny::span(class = "text-muted", sprintf(t("The statistics are %s's: add one to its analysis (its step 2) to print it here."), tb)),
+        shiny::span(class = "text-muted", sprintf(t("The statistics are %s's: add one to its analysis (its step %s) to print it here."), tb, .step_no("ard"))),
         .btn("fig_ard_open", sprintf(t("Open %s"), tb), class = "btn-sm btn-outline-secondary py-0")))
   }
   shiny::observeEvent(input$fig_ard_kind, {
@@ -153,6 +153,8 @@
     # the study it is (a save gives rv$study anew: the same study)
     study_open()
     if (!has_study() || is.null(id)) return(NULL)
+    # (a builder part's: its report's ARD)
+    id <- .part_parent(id)
     .meta_with_hierarchy(ard_info(shiny::isolate(rv$study), id), shiny::isolate(rv$p), id)
   }
   meta_now <- shiny::reactive({
@@ -308,7 +310,7 @@
       open = adata_cl_part$open(), others = .codelist_others(cl, adata_cl_vars()))
   })
   # step 2's table: its code lists are where its data is made (1-1)
-  shiny::observeEvent(input$cl3_open, go("ard"))
+  shiny::observeEvent(input$cl3_open, go("adata"))
   output$type_note <- shiny::renderUI({
     id <- current()
     if (is.null(id)) return(NULL)
@@ -455,7 +457,7 @@
     bump()
     notify(if (is.null(n)) sprintf(t("%s: done"), what) else
       sprintf(t("%s: %d rows added or filled"), what, n))
-    if (identical(sheet, "codelists")) go("ard") else
+    if (identical(sheet, "codelists")) go("adata") else
       bslib::nav_select("table_sheet", sheet)
   }
   need_meta <- function() {

@@ -187,7 +187,7 @@
       ch <- .header_preset_choices(hier)
       if (!length(ch)) NULL else list(header = hp[[ch[[1L]]]])
     },
-    plan_stub = list(name = "row_label"),
+    plan_stub = list(name = "row_label", heading = ""),
     plan_blanks = list(where = "between_groups"),
     plan_paginate_rows = list(max_rows = 30L, split = "group_safe"),
     plan_style = list(align_count_pct = TRUE),
@@ -203,7 +203,7 @@
 # seen is a warning (check it).  A list: `text` (the sentences), `warn`.
 .level_order_words <- c(
   ard = "The ARD's order (its factor levels).",
-  codelist = "The code list's order (ARD step 1-1).",
+  codelist = "The code list's order (the Analysis data step).",
   seen = "Check this order: the data do not give one (no factor, no numeric twin such as TRT01AN), so it is the ARD's.",
   differs = "The ARD's order differs from the code list's; the table uses the code list's.")
 
@@ -286,7 +286,7 @@
 .card_mark <- function(it, id, lang = "en") {
   shiny::tagList(
     from_badge(.card_from(it), lang,
-               own = if (isTRUE(it$present) && identical(.card_from(it), "own")) "This table"),
+               own = if (isTRUE(it$present) && identical(.card_from(it), "own")) it$own_word %||% "This table"),
     if (isTRUE(it$revert)) .card_revert(id, lang))
 }
 
@@ -359,7 +359,7 @@
       # changed and the off: closed
       open = on && (pending || (!rare && (req || own_form || identical(it$from, "own")))),
       path = it$path, lang = lang,
-      own_label = if (isTRUE(it$present) && identical(from, "own")) "This table",
+      own_label = if (isTRUE(it$present) && identical(from, "own")) it$own_word %||% "This table",
       absent = absent, rare = rare, section = sec,
       tag = .plan_section_labels[[sec]],
       new = identical(it$path, new),

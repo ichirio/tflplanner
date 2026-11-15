@@ -14,7 +14,7 @@
 "The number","数値の変数"
 "Cut at (comma between)","区切り値（カンマ区切り）"
 "Groups' labels (| between)","区分のラベル（| 区切り）"
-"A cut point starts the group above it: 65 is in 65-74. Labels blank: R's own ([65,75) ...).","区切り値はその上の区分に入ります（65 は 65-74）。ラベルが空欄なら R の既定（[65,75) など）。"
+"A cut point starts the group above it: 65 is in 65-74. Labels blank: R's own ([65,75) ...).","区切り値はその上の区分に入ります（65 は 65-74）。ラベルが空欄なら R のデフォルト（[65,75) など）。"
 "The later date","後の日付"
 "The earlier date","前の日付"
 "+ 1 (the first day is day 1)","＋1（初日を 1 日目とする）"

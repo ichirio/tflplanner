@@ -45,6 +45,9 @@
 # changed / added / removed
 .spec_diff <- function(rec, now) {
   rec <- rec %||% list()
+  # (a record of the version before tflspec #659 lists spec/codelists.yml,
+  # which is no definition file now: its file, there or gone, is no change)
+  rec[[file.path(study_layout()[["spec"]], "codelists.yml")]] <- NULL
   files <- union(names(rec), names(now))
   status <- vapply(files, function(f) {
     if (is.null(rec[[f]])) "added" else if (is.null(now[[f]])) "removed" else
@@ -310,7 +313,55 @@
       conflicts <- c(conflicts, k)
     }
   }
+  out$planner <- .merge_spec_outputs(base$planner, mine$planner, out$planner)
   list(study = out, conflicts = conflicts)
+}
+
+# The reports' spec (a template, its arguments) is not one of the parts, so
+# the merge above leaves it as `now` has it -- and a report only `mine` made
+# or changed would be written on save from its sheets, its template lost.
+# A report whose spec `mine` changed and `now` did not takes `mine`'s (a
+# report `mine` took out stays out, one both changed stays as `now` has it,
+# the conflict the parts already say); its rows of the view are made again
+# from it.  `now` is the merged planner.
+.merge_spec_outputs <- function(base, mine, now) {
+  if (is.null(mine$spec) || is.null(now$spec)) return(now)
+  bo <- base$spec$outputs
+  no <- now$spec$outputs
+  for (id in intersect(names(mine$spec$outputs), now$outputs$output_id)) {
+    o <- mine$spec$outputs[[id]]
+    if (identical(o, bo[[id]]) || !identical(no[[id]], bo[[id]])) next
+    now <- tryCatch(.spec_set_output(now, id, o), error = function(e) {
+      warning("The report ", id, "'s unsaved spec could not be kept: ",
+              conditionMessage(e), call. = FALSE)
+      now
+    })
+  }
+  now
+}
+
+# "Keep my unsaved changes" over a conflict: `keep` is the study with the
+# session's value of each conflicting part, but the reports' spec is not a
+# part, so a template report whose sheets are the session's would be written
+# from them on the next save, its template and arguments lost.  Such a
+# report (in `mine` and in `now`, one of the conflicting `parts`' reports,
+# its spec different between the two) takes `mine`'s spec; a report that is
+# not a template report is left as it is.  `now` is the merged study.
+.keep_mine_outputs <- function(keep, mine, now, parts) {
+  p <- keep$planner
+  if (is.null(mine$planner$spec) || is.null(p$spec)) return(keep)
+  for (id in .changed_outputs(now, mine, parts)) {
+    o <- mine$planner$spec$outputs[[id]]
+    if (is.null(.tpl_of(mine$planner, id)) || is.null(now$planner$spec$outputs[[id]]) ||
+        identical(o, now$planner$spec$outputs[[id]])) next
+    p <- tryCatch(.spec_set_output(p, id, o), error = function(e) {
+      warning("The report ", id, "'s unsaved spec could not be kept: ",
+              conditionMessage(e), call. = FALSE)
+      p
+    })
+  }
+  keep$planner <- p
+  keep
 }
 
 # The parts named for people: "titles (sheet)", "report list", "figure F-1"
@@ -637,6 +688,8 @@ export_spec_files <- function(study, path, home = tflplanner_home()) {
       !grepl("(^|/)spec/", rel)) return(.study_file)
   m <- regmatches(rel, regexpr(paste0(sp, "/(outputs|patterns)/.+$|", sp, "/[^/]+$"), rel))
   if (length(m) && !grepl("_not_converted", m)) {
+    # (not spec/codelists.yml: a code list is a report's or a layer's)
+    if (identical(m, file.path(sp, "codelists.yml"))) return(NA_character_)
     # (an old figure design, spec/figures/<id>.yml)
     if (startsWith(m, file.path(sp, .fig_design_dir))) return("(old)")
     return(m)
@@ -653,7 +706,6 @@ export_spec_files <- function(study, path, home = tflplanner_home()) {
   if (!is.null(y$datasets) || !is.null(y$populations)) return(file.path(sp, "data.yml"))
   if (!is.null(y$layers) || !is.null(y$template)) return("(old)")
   if (!is.null(y$content) || !is.null(y$page)) return(file.path(sp, "defaults.yml"))
-  if (!is.null(y$codelists)) return(file.path(sp, "codelists.yml"))
   NA_character_
 }
 

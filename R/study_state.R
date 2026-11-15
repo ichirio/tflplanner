@@ -139,3 +139,18 @@
 .mtime <- function(f) {
   if (length(f) && file.exists(f)) file.mtime(f) else as.POSIXct(NA)
 }
+
+# The lines of a preview's log, or NULL when it cannot be read now.  While
+# the program runs, Windows keeps its log locked ("Permission denied"): that
+# is "not ready yet", read again when the run ends (the status is read again
+# then), not a warning in the R console.  Only this one read is quiet.
+.read_log_lines <- function(f) {
+  tryCatch(readLines(f, warn = FALSE, encoding = "UTF-8"),
+           warning = function(w) NULL, error = function(e) NULL)
+}
+
+# Did the log stop with an error (a log not readable yet: no)
+.log_failed <- function(f) {
+  x <- .read_log_lines(f)
+  !is.null(x) && any(grepl("^Error|Execution halted", x))
+}

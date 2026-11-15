@@ -22,6 +22,7 @@ content:
   - plan_stub:
       name: row_label
       before: true
+      heading: ''
   - plan_blanks:
       where: between_groups
       first: true
@@ -47,7 +48,7 @@ page:
     '5':
       center: '{OUTPUT_TITLE}'
     '6':
-      center: <{OUTPUT_POPULATION}>
+      center: ({OUTPUT_POPULATION})
   footer:
     '99':
       left: '{PROGRAM}       Generated on: {DATETIME}'

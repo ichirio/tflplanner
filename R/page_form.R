@@ -13,7 +13,7 @@
 # pattern's (in the pattern dialog), Standard's
 .pg_own_word <- function(id, t, kind = NULL) {
   if (is.na(id)) t("Standard") else if (.is_pattern_id(id)) t("this pattern") else
-    if (identical(kind, "figure")) t("This figure") else t("This table")
+    if (is.null(kind) || identical(kind, "table")) t("This table") else t("This report")
 }
 # what Revert goes back to, its tooltip
 .pg_back_word <- function(id, t) {
@@ -236,16 +236,16 @@ $(document).on('shiny:value', function(e) {
 
 # The paper card (rtf_document(page =)): on screen in two rows -- paper,
 # orientation, the font (rtf_document()) and its size
-# (rtf_default_format()); then the four margins -- and the paper's other
+# (rtf_style()); then the four margins -- and the paper's other
 # fields after them.  Only the screen's order: the YAML and the code keep
 # theirs.  Written fields above (in this order), the others folded below,
 # as every card, but for the two rows: always above.
 .page_paper_rows <- list(
   list(c("rtf_page", "paper_size"), c("rtf_page", "orientation"),
-       c("rtf_document", "font_table"), c("rtf_default_format", "font_size_half_points")),
+       c("rtf_document", "font_table"), c("rtf_style", "font_size_half_points")),
   list(c("rtf_page", "margin_top_in"), c("rtf_page", "margin_bottom_in"),
        c("rtf_page", "margin_left_in"), c("rtf_page", "margin_right_in")))
-.page_paper_moved <- list(rtf_document = "font_table", rtf_default_format = "font_size_half_points")
+.page_paper_moved <- list(rtf_document = "font_table", rtf_style = "font_size_half_points")
 
 .page_paper_ui <- function(sp, id, t, kind = NULL) {
   fld <- function(fa) {
@@ -489,12 +489,12 @@ $(document).on('shiny:value', function(e) {
         value = if (own) v else "",
         placeholder = switch(k,
           OUTPUT_LABEL = sprintf(t("(blank: the text made from the ID, %s)"), d),
-          OUTPUT_POPULATION = if (nzchar(d)) sprintf(t("(blank: step 1's analysis set, %s)"), d)
-                              else t("(blank: step 1's analysis set, none chosen)"),
+          OUTPUT_POPULATION = if (nzchar(d)) sprintf(t("(blank: step %s's analysis set, %s)"), .step_no("data"), d)
+                              else sprintf(t("(blank: step %s's analysis set, none chosen)"), .step_no("data")),
           if (nzchar(d)) d else ""),
         `data-kind` = "info", `data-name` = k, `data-key` = paste0("info:", k)),
       if (identical(k, "OUTPUT_POPULATION"))
-        shiny::div(class = "pg-from", go("ard", t("The analysis set: step 1"))))
+        shiny::div(class = "pg-from", go("ard", sprintf(t("The analysis set: step %s"), .step_no("data")))))
   }
   shiny::div(
     class = "pg-grid pg-info",
@@ -590,9 +590,9 @@ $(document).on('shiny:value', function(e) {
       .page_builtins_ui(t))
     else card(t("Tokens"), "(rtf_document(tokens =))", .page_tokens_ui(sp, id, t, kind), .page_builtins_ui(t)),
     .page_paper_ui(sp, id, t, kind),
-    .page_fn_ui(sp, id, "rtf_default_format", t, kind,
-                fields = Filter(function(f) !f$arg %in% .page_paper_moved$rtf_default_format,
-                                .pgs_fields$rtf_default_format)),
+    .page_fn_ui(sp, id, "rtf_style", t, kind,
+                fields = Filter(function(f) !f$arg %in% .page_paper_moved$rtf_style,
+                                .pgs_fields$rtf_style)),
     .page_fn_ui(sp, id, "rtf_document", t, kind,
                 fields = Filter(function(f) !f$arg %in% .page_paper_moved$rtf_document,
                                 .pgs_fields$rtf_document)),

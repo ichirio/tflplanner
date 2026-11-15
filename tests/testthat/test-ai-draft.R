@@ -532,7 +532,11 @@ test_that("Browse... opens in the study's folder: the path given, the study's, s
   expect_identical(.ai_browse_start("adam", ai_adam, study_dir = open, root = root), ai_adam)
   expect_identical(.ai_browse_start("adam", file.path(tempdir(), "no-such"), study_dir = open,
                                     root = root), norm(file.path(open, "data", "adam")))
-  expect_identical(.ai_browse_start("adam", "", root = file.path(tempdir(), "no-root")), "")
+  # no studies_root: the home; no home either, none
+  expect_identical(.ai_browse_start("adam", "", root = file.path(tempdir(), "no-root")),
+                   norm(tflplanner_home()))
+  expect_identical(.ai_browse_start("adam", "", root = file.path(tempdir(), "no-root"),
+                                    home = file.path(tempdir(), "no-home")), "")
   # what the Windows dialog is given: a folder's mask, a file itself
   expect_identical(.ai_file_default(root, windows = TRUE),
                    paste0(normalizePath(root, "\\"), "\\*.*"))
@@ -572,6 +576,73 @@ test_that("Browse... in the app: the dialog is given the study's folder", {
     expect_identical(got$files, got$file)
     session$setInputs(`ai-adam_dir` = ai_adam, `ai-adam_browse` = 2)
     expect_identical(got$dir, ai_adam)
+  })
+})
+
+test_that("Browse... for a file opens where step 1's other files are (the AI sample's inputs/)", {
+  local_home()
+  root <- studies_root()
+  dir.create(file.path(root, "NEW-1", "docs"), recursive = TRUE)
+  norm <- function(d) normalizePath(d, "/")
+  inputs <- file.path(tempdir(), "browse-sample", "inputs")
+  dir.create(inputs, recursive = TRUE, showWarnings = FALSE)
+  toc <- file.path(inputs, "toc.xlsx")
+  file.copy(ai_toc, toc, overwrite = TRUE)
+  other <- file.path(tempdir(), "browse-other")
+  dir.create(other, showWarnings = FALSE)
+  sap <- file.path(other, "SAP.pdf")
+  writeLines("x", sap)
+  # the references: no path of their own -- the TOC's folder, not R's own
+  expect_identical(.ai_browse_start("refs", "", root = root, new_id = "NEW-1", also = toc), norm(inputs))
+  # the file given last first (a reference chosen just before)
+  expect_identical(.ai_browse_start("refs", "", root = root, also = list(toc, "", sap)), norm(other))
+  # a path of its own before the others
+  expect_identical(.ai_browse_start("shells", toc, root = root, also = sap), norm(inputs))
+  # none of them there: the study's docs/
+  expect_identical(.ai_browse_start("refs", "", root = root, new_id = "NEW-1",
+                                    also = c("C:/none/a.pdf", NA)),
+                   norm(file.path(root, "NEW-1", "docs")))
+})
+
+test_that("Browse... for the references in the app: the dialog is given the TOC's folder", {
+  local_home()
+  ai_study()
+  inputs <- file.path(tempdir(), "browse-sample2", "inputs")
+  dir.create(inputs, recursive = TRUE, showWarnings = FALSE)
+  toc <- file.path(inputs, "toc.xlsx")
+  file.copy(ai_toc, toc, overwrite = TRUE)
+  got <- new.env()
+  old <- options(tflplanner.ai_drafts = TRUE,
+                 tflplanner.choose_refs = function(default) {
+                   got$refs <- default
+                   character()
+                 })
+  on.exit(options(old))
+  shiny::testServer(server_for("XYZ-1"), {
+    session$setInputs(`ai-study_mode` = "new", `ai-new_id` = "", `ai-toc_path` = toc,
+                      `ai-shell_paths` = "", `ai-adam_spec` = "", `ai-ref_path` = "")
+    session$setInputs(`ai-ref_browse` = 1)
+    expect_identical(got$refs, normalizePath(inputs, "/"))
+  })
+})
+
+test_that("New study > the AI sample: the study made at once, open in the AI tab, step 1 filled", {
+  skip_if_not("tfl_ai_sample_study" %in% getNamespaceExports("tflspec"))
+  local_home()
+  ai_study()
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  sent <- ai_catch_updates()
+  shiny::testServer(server_for("XYZ-1"), {
+    session$setInputs(ns_from = "ai_sample", ns_id = "aitest-02", ns_root = studies_root(), ns_ok = 1L)
+    dir <- normalizePath(file.path(studies_root(), "aitest-02"), "/")
+    expect_true("aitest-02" %in% list_studies()$study_id)
+    expect_true(file.exists(file.path(dir, "study.yml")))
+    expect_identical(sent$toc_path$value, file.path(dir, "docs", "toc.xlsx"))
+    expect_identical(sent$adam_dir$value, file.path(dir, "data", "adam"))
+    expect_identical(sent$adam_spec$value, file.path(dir, "docs", "adam_spec.xlsx"))
+    # (a new study's ID is not set: the study is open)
+    expect_null(sent$new_id)
   })
 })
 
@@ -1114,7 +1185,185 @@ test_that("the drafts' check: a level and what is to confirm a report, the fix t
     expect_true(all(c("T-1", "T-2") %in% names(cb$fix)))
   }
   # the fix text's language: the study's (study.yml's ai: language)
-  expect_identical(.ai_fix_language(path), "en")
+  expect_no_warning(l0 <- .ai_fix_language(path))
+  expect_identical(l0, "en")
   writeLines(c("study_id: X", "ai:", "  language: Japanese"), file.path(path, "study.yml"))
   expect_identical(.ai_fix_language(path), "ja")
+})
+
+# -- the review depth (study.yml's ai: review, tflspec#598) ----------------
+
+test_that("review depth: study.yml over defaults.yml over the default; a partial one keeps the rest", {
+  d <- withr_tempdir()
+  dir.create(file.path(d, "spec"))
+  # nothing said: the default
+  expect_identical(.ai_review_read(d), c(figure = "3", table = "2", listing = "1"))
+  expect_identical(.ai_review_read(NULL), c(figure = "3", table = "2", listing = "1"))
+  # defaults.yml (one value is every kind's, a list is per kind)
+  writeLines(c("ai:", "  review:", "    table: 3", "    listing: none"), file.path(d, "spec", "defaults.yml"))
+  expect_identical(.ai_review_read(d), c(figure = "3", table = "3", listing = "none"))
+  writeLines(c("ai:", "  review: 0"), file.path(d, "spec", "defaults.yml"))
+  expect_identical(.ai_review_read(d), c(figure = "0", table = "0", listing = "0"))
+  # study.yml wins, per kind
+  writeLines(c("study_id: X", "ai:", "  review:", "    figure: 1", "    listing: 2"), file.path(d, "study.yml"))
+  expect_identical(.ai_review_read(d), c(figure = "1", table = "0", listing = "2"))
+  # (YAML reads a bare no as FALSE: none)
+  writeLines(c("study_id: X", "ai:", "  review:", "    figure: no"), file.path(d, "study.yml"))
+  expect_identical(.ai_review_read(d)[["figure"]], "none")
+})
+
+test_that("review depth: the selects' choices and first values", {
+  h <- as.character(ai_ui("ai"))
+  for (k in c("figure", "table", "listing")) expect_match(h, paste0("ai-review_", k), fixed = TRUE)
+  expect_match(h, "Review depth", fixed = TRUE)
+  expect_match(h, "3 + output", fixed = TRUE)
+  expect_match(h, "<option value=\"none\">None</option>", fixed = TRUE)
+  ja <- as.character(ai_ui("ai", "ja"))
+  expect_match(ja, "確認の深さ", fixed = TRUE)
+  expect_match(ja, "0 確認のみ", fixed = TRUE)
+  expect_match(ja, ">Figure</label>", fixed = TRUE)
+  expect_match(h, ">Figures</label>", fixed = TRUE)
+  expect_match(ja, "3 ＋出力", fixed = TRUE)
+})
+
+test_that("review depth: a change is written into study.yml (its other keys kept) and AGENTS.md again", {
+  local_home()
+  path <- ai_study()
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  sy <- file.path(path, "study.yml")
+  y0 <- yaml::read_yaml(sy)
+  writeLines(c(readLines(sy, encoding = "UTF-8"), "ai:", "  language: Japanese"), sy, useBytes = TRUE)
+  ag <- file.path(path, "ai", "AGENTS.md")
+  expect_true(file.exists(ag))
+  expect_match(paste(readLines(ag, encoding = "UTF-8"), collapse = "\n"),
+               "Tables: level **2**", fixed = TRUE)
+  Sys.setFileTime(ag, Sys.time() - 3600)
+  before <- file.mtime(ag)
+  shiny::testServer(server_for("XYZ-1"), {
+    session$setInputs(`ai-study_mode` = "open")
+    # (the first values are what is there: nothing written)
+    session$setInputs(`ai-review_figure` = "3", `ai-review_table` = "2", `ai-review_listing` = "1")
+    expect_identical(file.mtime(ag), before)
+    # a change
+    session$setInputs(`ai-review_table` = "3")
+    y <- yaml::read_yaml(sy)
+    expect_identical(y$ai$review, list(figure = 3L, table = 3L, listing = 1L))
+    expect_identical(y$ai$language, "Japanese")
+    expect_identical(y$study_id, y0$study_id)
+    expect_identical(names(y), unique(c(names(y0), "ai")))
+    expect_gt(file.mtime(ag), before)
+    expect_match(paste(readLines(ag, encoding = "UTF-8"), collapse = "\n"),
+                 "Tables: level **3**", fixed = TRUE)
+    # none is the string
+    session$setInputs(`ai-review_listing` = "none")
+    expect_identical(yaml::read_yaml(sy)$ai$review$listing, "none")
+    expect_match(paste(readLines(ag, encoding = "UTF-8"), collapse = "\n"),
+                 "Listings: not built by you", fixed = TRUE)
+    expect_identical(.ai_review_read(path), c(figure = "3", table = "3", listing = "none"))
+    # unsaved changes: nothing written
+    session$userData$rv$meta$title <- "mine"
+    expect_true(isTRUE(session$userData$dirty()))
+    session$setInputs(`ai-review_figure` = "0")
+    expect_identical(yaml::read_yaml(sy)$ai$review$figure, 3L)
+  })
+})
+
+# -- how the agent works (study.yml's ai: run) -------------------------------
+
+test_that("run: study.yml over defaults.yml over the default; unknown values ignored", {
+  d <- withr_tempdir()
+  dir.create(file.path(d, "spec"))
+  expect_identical(.ai_run_read(d), "one")
+  expect_identical(.ai_run_read(NULL), "one")
+  writeLines(c("ai:", "  run: batch"), file.path(d, "spec", "defaults.yml"))
+  expect_identical(.ai_run_read(d), "batch")
+  writeLines(c("study_id: X", "ai:", "  run: one"), file.path(d, "study.yml"))
+  expect_identical(.ai_run_read(d), "one")
+  writeLines(c("study_id: X", "ai:", "  run: sometimes"), file.path(d, "study.yml"))
+  expect_identical(.ai_run_read(d), "batch")
+})
+
+test_that("run: the select's choices", {
+  h <- as.character(ai_ui("ai"))
+  expect_match(h, "ai-run", fixed = TRUE)
+  expect_match(h, "One request at a time", fixed = TRUE)
+  tt <- function(x) x
+  expect_identical(unname(.ai_run_choices(tt)), c("one", "batch"))
+  expect_identical(names(.ai_run_choices(tt)), c("One request at a time", "Everything together"))
+  ja <- as.character(ai_ui("ai", "ja"))
+  expect_match(ja, "1 依頼ずつ処理", fixed = TRUE)
+})
+
+test_that("run: a change is written into study.yml (other keys kept) and AGENTS.md again", {
+  local_home()
+  path <- ai_study()
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  sy <- file.path(path, "study.yml")
+  y0 <- yaml::read_yaml(sy)
+  writeLines(c(readLines(sy, encoding = "UTF-8"), "ai:", "  language: Japanese"), sy, useBytes = TRUE)
+  ag <- file.path(path, "ai", "AGENTS.md")
+  Sys.setFileTime(ag, Sys.time() - 3600)
+  before <- file.mtime(ag)
+  shiny::testServer(server_for("XYZ-1"), {
+    session$setInputs(`ai-study_mode` = "open")
+    session$setInputs(`ai-run` = "one")
+    expect_identical(file.mtime(ag), before)
+    session$setInputs(`ai-run` = "batch")
+    y <- yaml::read_yaml(sy)
+    expect_identical(y$ai$run, "batch")
+    expect_identical(y$ai$language, "Japanese")
+    expect_identical(y$study_id, y0$study_id)
+    expect_gt(file.mtime(ag), before)
+    # unsaved changes: nothing written
+    session$userData$rv$meta$title <- "mine"
+    session$setInputs(`ai-run` = "one")
+    expect_identical(yaml::read_yaml(sy)$ai$run, "batch")
+  })
+})
+
+test_that("review depth: the company standard is the start; the files override it", {
+  home <- local_home()
+  f <- file.path(withr_tempdir(), "acme.xlsx")
+  s <- .builtin_standards()
+  s$settings$value[s$settings$key == "ai_review_figure"] <- "none"
+  s$settings$value[s$settings$key == "ai_review_table"] <- "0"
+  s$settings$value[s$settings$key == "ai_review_listing"] <- "bad"
+  writexl::write_xlsx(s, f)
+  suppressMessages(setup_tflplanner(standards = f))
+  # (a wrong value: the built-in default of that kind)
+  expect_identical(.ai_review_company(), c(figure = "none", table = "0", listing = "1"))
+  d <- withr_tempdir()
+  dir.create(file.path(d, "spec"))
+  expect_identical(.ai_review_read(d), c(figure = "none", table = "0", listing = "1"))
+  expect_identical(.ai_review_read(NULL), c(figure = "none", table = "0", listing = "1"))
+  # defaults.yml over it, per kind; study.yml over that
+  writeLines(c("ai:", "  review:", "    table: 3"), file.path(d, "spec", "defaults.yml"))
+  expect_identical(.ai_review_read(d), c(figure = "none", table = "3", listing = "1"))
+  writeLines(c("study_id: X", "ai:", "  review:", "    figure: 2"), file.path(d, "study.yml"))
+  expect_identical(.ai_review_read(d), c(figure = "2", table = "3", listing = "1"))
+  # a new study's study.yml carries the company's levels
+  st <- create_study("NEW-AI")
+  y <- yaml::read_yaml(file.path(st$path, "study.yml"))
+  expect_identical(y$ai$review, list(figure = "none", table = 0L, listing = 1L))
+  expect_identical(.ai_review_read(st$path), c(figure = "none", table = "0", listing = "1"))
+  # the state knows the file as it is: the study opens and saves unchanged
+  st2 <- open_study("NEW-AI")
+  expect_false(identical(st2$planner$spec$status, "invalid"))
+  expect_no_error(save_study(st2))
+  expect_identical(.ai_review_read(st$path), c(figure = "none", table = "0", listing = "1"))
+  # a save that changes defaults.yml (the font) keeps study.yml's ai: review
+  st2$planner <- set_study_page_value(st2$planner, "font", "Arial")
+  save_study(st2)
+  expect_identical(yaml::read_yaml(file.path(st$path, "study.yml"))$ai$review,
+                   list(figure = "none", table = 0L, listing = 1L))
+})
+
+test_that("review depth: the built-in standards give the old defaults, a new study carries them", {
+  local_home()
+  expect_identical(.ai_review_company(), c(figure = "3", table = "2", listing = "1"))
+  st <- create_study("NEW-AI0")
+  y <- yaml::read_yaml(file.path(st$path, "study.yml"))
+  expect_identical(y$ai$review, list(figure = 3L, table = 2L, listing = 1L))
 })

@@ -219,12 +219,12 @@ test_that("normalize_ard(): a form card -- the hierarchy a field marked From the
   args <- gsub('data-arg="|"', "", regmatches(h, gregexpr('data-arg="[^"]+"', h))[[1L]])
   expect_identical(args, c("hierarchy", "overall", "keys", "drop_contexts", "drop_key_variables",
                            "stack", "stack_sep", "stack_nest"))
-  expect_match(h, "Not in the code (6)", fixed = TRUE)
+  expect_match(h, "Arguments not in the code (6)", fixed = TRUE)
   expect_false(grepl("rp-badge-unsaved", h, fixed = TRUE))
   # a summary table's (the study's defaults: none): every argument below
   i0 <- item(builder_items(p, "T-14-1-1"), "normalize_ard")
   h0 <- html(.plan_form_body("n", "normalize_ard", i0, ard = list(hierarchy = character())))
-  expect_match(h0, "Not in the code (8)", fixed = TRUE)
+  expect_match(h0, "Arguments not in the code (8)", fixed = TRUE)
   # its hierarchy an ordinary field below (the code does not write it)
   expect_false(grepl("data-ard=", h0, fixed = TRUE))
   expect_match(h0, 'id="n__hierarchy"', fixed = TRUE)
@@ -259,7 +259,7 @@ test_that("normalize_ard(): a form card -- the hierarchy a field marked From the
   expect_match(h, "group1 = TRT01A, group1_level = Drug X", fixed = TRUE)
   expect_match(h, ".label = F, stat_name = n", fixed = TRUE)
   hj <- html(.plan_card_note("normalize_ard", lang = "ja"))
-  expect_match(hj, "ARD を表を作りやすい形に整えます。", fixed = TRUE)
+  expect_match(hj, "ARD を Table を作りやすい形に整えます。", fixed = TRUE)
   expect_match(hj, "カテゴリの値は .label（行の文字）になります。", fixed = TRUE)
   # every argument's help under Other arguments is said in Japanese too
   helps <- unlist(lapply(names(.plan_meaning), function(fn)
@@ -287,7 +287,7 @@ test_that("the layout cards' forms: their fields, the study's defaults marked, e
     for (a in want[[fn]]) expect_match(h, sprintf('id="c__%s"', a), fixed = TRUE, info = paste(fn, a))
     # (the arguments the code does not write: below, when there are any)
     if (length(setdiff(.plan_form_schema(fn)$formals, c(names(it$args), .data_args)))) {
-      expect_match(h, "Not in the code", fixed = TRUE, info = fn)
+      expect_match(h, "Arguments not in the code", fixed = TRUE, info = fn)
     }
   }
   # the kinds of field: a choice, a number, a check
@@ -333,6 +333,13 @@ test_that("the layout cards' forms: their fields, the study's defaults marked, e
                                         "c", "plan_stub"), it, "plan_stub")
   expect_identical(own, utils::modifyList(it$args, list(indent = 3L)))
   q <- .builder_item_write(p, id, "plan_stub", own)
+  # (with its heading, "" the study's, the item is the row's content_more:
+  # the stub_* columns cannot say a heading)
+  expect_identical(item(builder_items(q, id), "plan_stub")$args$indent, 3L)
+  expect_identical(item(builder_items(q, id), "plan_stub")$args$heading, "")
+  expect_identical(item(builder_items(q, id), "plan_stub")$from, "own")
+  # (no heading: the stub_* columns)
+  q <- .builder_item_write(p, id, "plan_stub", utils::modifyList(own, list(heading = NULL)))
   expect_identical(sheet_rows(q, "layout", id)$stub_indent, "3")
   # the field parts the figures use too
   expect_match(html(arg_field("f", "n", "integer", value = 2)), 'step="1" min="0"', fixed = TRUE)
@@ -580,7 +587,7 @@ test_that("the values' order, data first: this table's, the code list's, the ARD
                    "ARD \u306e\u9806\uff08\u56e0\u5b50\u306e\u6c34\u6e96\u9806\uff09\u3067\u3059\u3002")
   w <- .level_order_text(list(source = "codelist", differs = TRUE), "ja")
   expect_true(w$warn)
-  expect_match(w$text, tr("The code list's order (ARD step 1-1).", "ja"), fixed = TRUE)
+  expect_match(w$text, tr("The code list's order (the Analysis data step).", "ja"), fixed = TRUE)
   expect_match(w$text, tr("The ARD's order differs from the code list's; the table uses the code list's.", "ja"),
                fixed = TRUE)
   expect_true(.level_order_text(list(source = "seen"))$warn)

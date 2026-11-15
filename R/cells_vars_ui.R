@@ -116,9 +116,9 @@
         title = .cells_chip_text(k, dg, pct), k)),
       lapply(lack, function(k) shiny::tags$a(
         href = "#", class = "badge text-bg-light text-decoration-none rp-cv-lack",
-        title = t("Not in the ARD: add it in step 1"),
+        title = sprintf(t("Not in the ARD: add it in step %s"), .step_no("ard")),
         onclick = "Shiny.setInputValue('b_rows_step1', Math.random()); return false;",
-        paste(k, "\u2192", t("step 1")))))
+        paste(k, "\u2192", sprintf(t("step %s"), .step_no("ard"))))))
     shiny::tags$tr(
       class = "rp-cv-row", `data-var` = v,
       shiny::tags$td(shiny::div(

@@ -468,7 +468,7 @@ sheets$header <- tbl(
   list(line = "3"),
   list(line = "4", center = "{OUTPUT_LABEL}"),
   list(line = "5", center = "{OUTPUT_TITLE}"),
-  list(line = "6", center = "<{OUTPUT_POPULATION}>"))
+  list(line = "6", center = "({OUTPUT_POPULATION})"))
 sheets$tokens <- do.call(tbl, c(
   title("T-14-1-1", "Demographic Characteristics"),
   title("T-14-1-1S", "Demographic Characteristics"),

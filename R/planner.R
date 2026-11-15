@@ -151,8 +151,14 @@ set_codelist <- function(x, output_id, rows) {
 
 # The study's settings no workbook sheet holds: written into study.yml's
 # `settings:` by the app itself (.spec_bridge()) -- `treatment`, the
-# treatment variable a template's by / group reads (settings.treatment)
-.study_own_settings <- "treatment"
+# treatment variable a template's by / group reads (settings.treatment),
+# and `sd_missing`, what a Mean (SD) cell prints for a group with no SD
+# (settings.sd_missing)
+.study_own_settings <- c("treatment", "sd_missing")
+
+# Of those, the ones for which "" is a value (sd_missing: "" prints the
+# mean alone); for the others blank is not set.  NA is not set for all.
+.study_settings_blank_ok <- "sd_missing"
 
 # A study key's value (NA: not set; a planner kept before the key was one)
 .study_setting <- function(p, key) {
@@ -267,7 +273,7 @@ sheet_columns <- function(sheet) {
 #' A new, empty study definition
 #'
 #' @param study Named study keys (`rounding`, `output_path`,
-#'   `program_dir`, `treatment`).
+#'   `program_dir`, `treatment`, `sd_missing`).
 #' @return An `tflplanner` object.
 #' @examples
 #' p <- new_planner(c(rounding = "sas"))
@@ -419,10 +425,12 @@ read_planner <- function(path) {
 #' @param x An `tflplanner`.
 #' @param output_id,from,to Report ids.
 #' @param description A short description shown in the report list.
-#' @param process_code A table's: R code that turns `ard` into `data`,
-#'   what [rtfreporter::table_plan()] is given: [rtfreporter::normalize_ard()]
-#'   and any rework after it (`mutate()` ...); `NA`: none, the table's
-#'   plan normalizes `ard` (`ard |> normalize_ard() |> table_plan()`).  A listing's: a rework of its `data`
+#' @param process_code A table's: its Rework, optional R that runs after
+#'   [rtfreporter::normalize_ard()] and before [rtfreporter::table_plan()].
+#'   It starts from `data`, the normalized ARD (`data <- ard |> normalize_ard()`,
+#'   with the table's arguments, is written before it), and leaves the
+#'   result in `data`, what the plan is given (`mutate()` ...); `NA`: none,
+#'   the table's plan normalizes `ard` (`ard |> normalize_ard() |> table_plan()`).  A listing's: a rework of its `data`
 #'   before it is sorted.  (A step that is the report's own code instead:
 #'   [set_step_code()].)
 #' @param type The report's type, one of `report_types()`; anything but
@@ -600,6 +608,9 @@ remove_output <- function(x, output_id) {
 # The rows of a sheet one filter shows: "" = every row, NA = the defaults,
 # an id = that report's own rows.
 sheet_rows <- function(x, sheet, output_id = "") {
+  # (a builder part's: the sheet rows its own items make, none of the
+  # report's -- R/builder_parts.R)
+  if (!is.null(.part_of(output_id))) return(.part_sheet_rows(x, sheet, output_id))
   d <- x$sheets[[sheet]]
   if (identical(output_id, "")) return(d)
   if (is.na(output_id)) return(d[is.na(d$output_id), , drop = FALSE])
@@ -623,6 +634,9 @@ sheet_rows <- function(x, sheet, output_id = "") {
 # Put back what the filter showed, edited: the rows outside the filter
 # stay, in place, and the edited ones go where the first shown one was.
 set_sheet_rows <- function(x, sheet, output_id = "", rows) {
+  if (!is.null(.part_of(output_id))) {
+    stop("A part has no rows in the sheets: its items are written into the report's spec.", call. = FALSE)
+  }
   d <- x$sheets[[sheet]]
   rows <- .drop_blank_rows(as.data.frame(rows, stringsAsFactors = FALSE))
   if (!identical(output_id, "")) rows$output_id <- rep(output_id, nrow(rows))
@@ -645,10 +659,23 @@ set_sheet_rows <- function(x, sheet, output_id = "", rows) {
 
 # ---------------------------------------------------------------- writing
 
+# The codelists sheet without the rows that have no report (NA output_id):
+# only an old workbook's (read_planner(); a YAML spec has none, tflspec
+# #659) and no report's.  tflspec's tfl_table_spec() refuses such a row (a
+# workbook's blank output_id must not be ignored), so every call that hands
+# the sheets to tflspec filters first.  NULL stays NULL.
+.codelists_of_reports <- function(cl) {
+  if (is.data.frame(cl) && nrow(cl) && "output_id" %in% names(cl)) {
+    cl <- cl[!is.na(cl$output_id), , drop = FALSE]
+  }
+  cl
+}
+
 .spec_object <- function(x, sheets, keys) {
   st <- x$study[keys]
   st <- st[!is.na(st)]
   args <- x$sheets[sheets]
+  if (!is.null(args$codelists)) args$codelists <- .codelists_of_reports(args$codelists)
   args <- lapply(args, function(d) {
     if (all(is.na(d$note))) d$note <- NULL
     d

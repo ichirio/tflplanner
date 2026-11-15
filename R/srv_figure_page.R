@@ -35,8 +35,8 @@
     }
     if (is.null(png)) {
       return(shiny::div(class = "text-muted small text-center py-4",
-                        if (.is_code_step(p, id, "content")) t("(the figure: [Run the code] in step 2 draws it here)")
-                        else t("(the figure: its design in step 2 draws it here)")))
+                        if (.is_code_step(p, id, "content")) sprintf(t("(the figure: [Run the code] in step %s draws it here)"), .step_no("content"))
+                        else sprintf(t("(the figure: its design in step %s draws it here)"), .step_no("content"))))
     }
     shiny::tagList(img(png), caption)
   }
@@ -50,7 +50,30 @@
     if (!is.null(pv$error)) {
       return(shiny::div(class = "small text-muted", pv$error))
     }
-    preview_html(pv$pages)
+    # an outdated ARD: one line, over the last table dimmed (if there is one)
+    if (isTRUE(pv$stale)) {
+      line <- shiny::div(class = "small text-warning mb-1", t("ARD outdated: Update preview"))
+      return(if (is.null(pv$pages)) line else
+        shiny::tagList(line, shiny::div(style = "opacity: .4", preview_html(pv$pages))))
+    }
+    # in part scope: the page the part's rows start on, said and shown
+    # (the pages are one under the other; the preview scrolls to it)
+    pn <- bpart_name()
+    # (a part the table is shown without: said above the pages)
+    note <- if (!is.null(pv$note)) shiny::div(class = "small text-danger mb-1 rp-pv-note", pv$note)
+    if (nzchar(pn) && identical(bpart()$id, current()) &&
+        !pn %in% attr(pv$pages, "dropped_parts")) {
+      at <- .part_start_page(pv$pages, pn)
+      return(shiny::tagList(note, .part_page_note(pv$pages, pn, lang),
+                            preview_html(pv$pages, max_pages = max(3L, at, na.rm = TRUE))))
+    }
+    shiny::tagList(note, preview_html(pv$pages))
+  })
+  output$part_spec_note <- shiny::renderUI({
+    pn <- bpart_name()
+    if (!nzchar(pn) || !identical(bpart()$id, current())) return(NULL)
+    shiny::div(class = "small text-muted mb-1",
+               t("The table's sheets; the part is in its plan_append content."))
   })
   output$builder_pages <- shiny::renderUI({
     pv <- preview_now()
@@ -221,7 +244,7 @@
   }
   study_key <- function() if (has_study()) rv$study$meta$study_id
 
-  editors <- c(description = "text", section = "text", process_code = "area",
+  editors <- c(description = "text", process_code = "area",
                dc_code = "area", cc_code = "area")
   # an editor and the field it edits: the report list's, or a step's own
   # code (the report sheet's, step_code())
@@ -231,6 +254,36 @@
     if (startsWith(field, "step:")) return(step_code(rv$p, id, sub("^step:", "", field)))
     rv$p$outputs[[field]][match(id, rv$p$outputs$output_id)]
   }
+  # the report's rework (process_code): where its `data` is made -- a table's
+  # from its ARD (the Content step), a listing's from its records (the Analysis
+  # data step); the editor is drawn in the one that fits the report's kind,
+  # folded, and so only once
+  # (the editor of the kind that left is taken out in one flush and the
+  # other's put in in the next: the id is never on the page twice)
+  rework_kind <- shiny::reactiveVal("")
+  shiny::observeEvent(report_kind(), {
+    rework_kind("")
+    session$onFlushed(function() rework_kind(shiny::isolate(report_kind())), once = TRUE)
+  })
+  rework_ui <- function(kind) shiny::renderUI({
+    if (!identical(rework_kind(), kind)) return(NULL)
+    id <- shiny::isolate(current())
+    v <- if (is.null(id)) NA else shiny::isolate(field_value(id, "process_code"))
+    shiny::tags$details(
+      class = "rp-help mt-2 rp-code",
+      shiny::tags$summary(t("Rework the data (R)")),
+      shiny::textAreaInput(
+        "process_code",
+        with_tip(t("Rework"),
+                 paste(t("Rework: usually blank (the standard one). Write code to change the data before the table is made."),
+                       sprintf(t("A table: optional R that runs after normalize_ard(), before table_plan(). It starts from `data`, the normalized ARD, and leaves the result in `data`. A listing: change `data` after its condition, before its order. (A whole step of your own code: R program at the top of step %s or %s.)"), .step_no("ard"), .step_no("content")))),
+        value = if (length(v) && !is.na(v)) v else "", rows = 5, width = "100%",
+        resize = "vertical", placeholder = "data <- data |> dplyr::mutate(...)"))
+  })
+  output$rework_table <- rework_ui("table")
+  output$rework_data <- rework_ui("listing")
+  shiny::outputOptions(output, "rework_table", suspendWhenHidden = FALSE)
+  shiny::outputOptions(output, "rework_data", suspendWhenHidden = FALSE)
   shiny::observeEvent(list(current(), rv$ver), {
     id <- current()
     val <- function(v) if (length(v) && !is.na(v)) v else ""
@@ -301,6 +354,7 @@
   output$program <- shiny::renderText(program_text())
   output$program_table <- shiny::renderText(program_text())
   output$program_lf <- shiny::renderText(program_text())
+  output$program_fig <- shiny::renderText(program_text())
   output$program_dc <- shiny::renderText(program_text())
   output$program_cc <- shiny::renderText(program_text())
   # Step 3: this report's font and size.  Blank: every report's (the study
@@ -499,9 +553,9 @@
   shiny::observeEvent(input$pg_act, {
     a <- input$pg_act
     # where a report list's token changes: the report list, step 1, the
-    # report's section (Data code)
+    # report's section (the Page step's)
     if (identical(a$act, "goto")) {
-      if (a$name %in% c("outputs", "ard", "code")) go(a$name)
+      if (a$name %in% c("outputs", "ard")) go(a$name)
       return()
     }
     id <- pg_id(a$target)
@@ -662,7 +716,11 @@
     rv$p <- p
     rv$want <- id
     tgt_sent$v <- id
-    tgt_sent$t <- Sys.time()
+    # (the 3 s of tgt_pick() are counted from the end of the flush that sends
+    # the choice: a slow flush -- a template report's -- must not use them up,
+    # or the list drawn at its end puts the old report back)
+    tgt_sent$t <- NULL
+    session$onFlushed(function() tgt_sent$t <- Sys.time(), once = TRUE)
     shiny::removeModal()
     bump()
   }

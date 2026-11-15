@@ -186,13 +186,57 @@ $(document).on('shiny:value', function(e) {
   if (e.name === 'builder_preview') {
     $('#builder_updating').addClass('d-none');
     $('#builder_preview').css('opacity', 1);
+    // in part scope the preview opens on the page the part's rows start on
+    // (the pages are one under the other, in the Result tab's own scroll)
+    setTimeout(function() {
+      var pre = document.getElementById('builder_preview');
+      var m = pre && pre.querySelector('[data-part-page]');
+      var right = pre && pre.closest('.tab-pane');
+      if (!right) return;
+      var pg = m ? pre.querySelectorAll('.rp-pv-page')[parseInt(m.getAttribute('data-part-page'), 10) - 1] : null;
+      // (the table again: back to the first page)
+      if (!m) {
+        if (right.getAttribute('data-rp-part-at')) { right.scrollTop = 0; right.removeAttribute('data-rp-part-at'); }
+        return;
+      }
+      if (!pg) { right.scrollTop = 0; return; }
+      right.setAttribute('data-rp-part-at', m.getAttribute('data-part-page'));
+      right.scrollTop += pg.getBoundingClientRect().top - right.getBoundingClientRect().top - m.offsetHeight - 4;
+    }, 60);
   }
 });
+// \"Open in cards\" on a part's card: the cards of the part are drawn again,
+// and the bar over them (Editing: ...) is brought into view, below the
+// page's sticky bar
+(function() {
+  var want = 0;
+  $(document).on('click', '[data-rp-scope-jump]', function() { want = Date.now(); });
+  $(document).on('shiny:value', function(e) {
+    if (e.name !== 'builder_form' || !want || Date.now() - want > 8000) return;
+    want = 0;
+    setTimeout(function() {
+      var el = document.querySelector('.rp-part-scope');
+      if (!el) return;
+      var bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rp-top')) || 0;
+      window.scrollTo({top: Math.max(0, window.scrollY + el.getBoundingClientRect().top - bar - 12),
+                       behavior: 'instant'});
+    }, 300);
+  });
+})();
 // The builder's form is drawn again after an edit that changes its
 // shape (a heading or the order in the code list of variable, a row of
 // one's own): the page keeps its place instead of jumping to the top.
 (function() {
   var y = null;
+  // A part card's Apply / Start: the cards come back shorter (the ones above
+  // are drawn again, their lazy parts not yet there), so the same scroll
+  // offset would leave the card off screen.  The card keeps its place on
+  // the screen instead, while the rest of the form fills in.
+  var keep = null;
+  $(document).on('click', '.rp-part button[data-path]', function() {
+    var c = $(this).closest('.rp-card')[0];
+    keep = c ? {path: c.getAttribute('data-path'), top: c.getBoundingClientRect().top, t: Date.now()} : null;
+  });
   $(document).on('shiny:outputinvalidated', function(e) {
     if (e.name === 'builder_form') y = window.scrollY;
   });
@@ -200,6 +244,17 @@ $(document).on('shiny:value', function(e) {
     if (e.name !== 'builder_form' || y === null) return;
     var at = y;
     y = null;
+    if (keep && Date.now() - keep.t < 30000) {
+      var k = keep;
+      keep = null;
+      [0, 150, 600, 1500, 3000].forEach(function(ms) {
+        setTimeout(function() {
+          var c = $('.rp-card').filter(function() { return this.getAttribute('data-path') === k.path; })[0];
+          if (c) window.scrollBy({top: c.getBoundingClientRect().top - k.top, behavior: 'instant'});
+        }, ms);
+      });
+      return;
+    }
     setTimeout(function() { window.scrollTo(0, at); }, 0);
     setTimeout(function() { window.scrollTo(0, at); }, 150);
   });
@@ -249,6 +304,21 @@ $(document).on('shiny:connected', function() {
       $(this).toggleClass('rp-idle', x.indexOf($(this).attr('data-value')) >= 0);
     });
   });
+  // a step the chosen report's kind has none of (a listing's ARD): shut,
+  // with its reason as the tab's title; open on the first step when it was
+  // the one shown
+  Shiny.addCustomMessageHandler('rp-step-disable', function(x) {
+    var a = $('#step a[data-value=' + x.step + ']');
+    a.toggleClass('disabled', !!x.disabled);
+    if (x.disabled) a.attr({'aria-disabled': 'true', title: x.title}); else a.removeAttr('aria-disabled title');
+    // the step's body, but its note (a listing's ARD step: the message only)
+    if (x.step === 'ard') $('#step_ard').children().not('#ard_kind_note').toggleClass('d-none', !!x.disabled);
+    if (x.disabled && a.hasClass('active')) {
+      var first = $('#step a[data-value]').first();
+      first.tab('show');
+      Shiny.setInputValue('step', first.attr('data-value'));
+    }
+  });
   // the ARD definition of the chosen report: hidden for a figure that has
   // none of its own (it reads none, or a table's)
   // the steps' names, the kind of report's own (a figure's 1 Data, 2 Figure)
@@ -275,6 +345,39 @@ $(document).on('click', '#save', function() {
   var b = $(this), saving = b.attr('data-saving');
   setTimeout(function() { b.prop('disabled', true).text(saving); }, 0);
   $('#save_state').html('<span class=\"text-muted me-2\">' + saving + '</span>');
+});
+"
+
+# A dialog shown over another (the code lists', then its copy) takes the page's
+# locked scroll as the page's own and puts it back on closing: the page would
+# never scroll again.  When the last dialog has gone, the lock goes.
+.modal_scroll_js <- "
+// a selectize list opened in a dialog is drawn in <body>: the dialog's body
+// scrolls and would clip it under the footer
+(function() {
+  var st = document.createElement('style');
+  st.textContent = 'body > .selectize-dropdown { z-index: 2000 !important; } ' +
+    'body > .selectize-dropdown .selectize-dropdown-content { max-height: 22vh; }';
+  document.head.appendChild(st);
+  function wrap() {
+    var f = jQuery.fn.selectize;
+    if (!f || f.tflBody) return;
+    jQuery.fn.selectize = function(opts) {
+      if (opts && typeof opts === 'object' && this.closest('.modal').length && !opts.dropdownParent)
+        opts.dropdownParent = 'body';
+      return f.apply(this, arguments);
+    };
+    jQuery.fn.selectize.tflBody = true;
+    for (var k in f) if (f.hasOwnProperty(k)) jQuery.fn.selectize[k] = f[k];
+  }
+  wrap();
+  jQuery(wrap);
+})();
+$(document).on('hidden.bs.modal', function() {
+  if (!document.querySelector('.modal.show')) {
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('padding-right');
+  }
 });
 "
 
@@ -323,12 +426,12 @@ $(document).on('click', '#save', function() {
 }
 
 .grid <- function(d, sheet, key, choices, closed = character(),
-                  select = FALSE, read_only = character()) {
+                  select = FALSE, read_only = character(), spare = 1L) {
   d <- .na_blank(d)
   if (!nrow(d)) d[1L, ] <- ""
   h <- rhandsontable::rhandsontable(
     d, rowHeaders = TRUE, useTypes = FALSE, stretchH = "all",
-    height = .grid_height(nrow(d)), minSpareRows = 1L, planner_key = key,
+    height = .grid_height(nrow(d)), minSpareRows = spare, planner_key = key,
     selectCallback = select)
   h <- rhandsontable::hot_context_menu(h, allowRowEdit = TRUE,
                                        allowColEdit = FALSE)

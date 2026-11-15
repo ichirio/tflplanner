@@ -42,13 +42,19 @@
     list(arg = "margin_right_in", label = "Right (in)", kind = "number"),
     list(arg = "header_dist_in", label = "Header distance (in)", kind = "number"),
     list(arg = "footer_dist_in", label = "Footer distance (in)", kind = "number")),
-  rtf_default_format = list(
+  # rtf_style()'s shared level (its sections, table: titles: ..., have no
+  # fields: kept as the YAML says them)
+  rtf_style = list(
+    list(arg = "font", label = "Font family", kind = "text", choices = c("Courier", "Courier New")),
     list(arg = "font_size_half_points", label = "Size (pt)", kind = "pt"),
     list(arg = "row_height_twips", label = "Row height (twips)", kind = "number"),
     list(arg = "cell_padding_left_twips", label = "Cell padding, left (twips)", kind = "number"),
     list(arg = "cell_padding_right_twips", label = "Cell padding, right (twips)", kind = "number"),
+    list(arg = "cell_padding_top_twips", label = "Cell padding, top (twips)", kind = "number"),
+    list(arg = "cell_padding_bottom_twips", label = "Cell padding, bottom (twips)", kind = "number"),
     list(arg = "markup", label = "Markup", kind = "choice",
          choices = c("script", "relational", "all", "none")),
+    list(arg = "color", label = "Text colour", kind = "text"),
     list(arg = "title_format", label = "Titles as", kind = "choice", choices = c("text", "table")),
     list(arg = "footnote_format", label = "Footnotes as", kind = "choice",
          choices = c("table", "text")),
@@ -59,6 +65,7 @@
   rtf_document = list(
     list(arg = "font_table", label = "Font", kind = "font",
          choices = c("Courier", "Courier New")),
+    list(arg = "font_lang", label = "Font language", kind = "slots"),
     list(arg = "watermark", label = "Watermark", kind = "text")),
   rtf_tables = list(
     list(arg = "auto_section", label = "Section from the table's name", kind = "logical"),
@@ -75,13 +82,13 @@
   rtf_footnotes = .pgs_band_fields)
 
 # a card's meaning, its title "meaning (function())"
-.pgs_cards <- c(rtf_page = "Paper and margins", rtf_default_format = "Text defaults",
+.pgs_cards <- c(rtf_page = "Paper and margins", rtf_style = "Text defaults",
                 rtf_document = "Document", rtf_tables = "Table on the page",
                 rtf_figures = "Figure size")
 
 # the call each card is in the program (tflspec writes rtf_page()'s
 # arguments as rtf_document(page = list(...)))
-.pgs_call_names <- c(rtf_page = "(rtf_document(page =))", rtf_default_format = "(rtf_default_format())",
+.pgs_call_names <- c(rtf_page = "(rtf_document(page =))", rtf_style = "(rtf_document(style = rtf_style()))",
                      rtf_document = "(rtf_document())", rtf_tables = "(rtf_tables())",
                      rtf_figures = "(rtf_figures())", rtf_titles = "(rtf_titles())",
                      rtf_footnotes = "(rtf_footnotes())")
@@ -103,6 +110,26 @@
 # The page maps a target's page is put together from, nearest first, named
 # by where they are: own, style:<name>, pattern:<name>, defaults
 .pgs_layers <- function(sp, target) {
+  lapply(.pgs_layers_as_said(sp, target), .pgs_style_norm)
+}
+
+# A page's old rtf_default_format (rtfreporter's, deprecated: rtf_style())
+# read as rtf_style's shared level, rtf_style's own keys winning, as
+# tflspec reads it (#537).  The own layer is written back so: rtf_style.
+.pgs_style_norm <- function(page) {
+  old <- if (is.list(page)) page$rtf_default_format
+  if (!is.list(old) || .pgs_unset(old) || !length(old)) return(page)
+  new <- page$rtf_style
+  if (!.pgs_unset(new)) {
+    if (!is.list(new)) new <- list()
+    for (k in setdiff(names(old), names(new))) new[k] <- list(old[[k]])
+    page["rtf_style"] <- list(if (length(new)) new)
+  }
+  page$rtf_default_format <- NULL
+  page
+}
+
+.pgs_layers_as_said <- function(sp, target) {
   st <- sp$study
   if (is.na(target)) return(list(own = st$defaults$page %||% list()))
   if (.is_pattern_id(target)) {
@@ -154,13 +181,41 @@
   now
 }
 
+# "latin = X | east_asian = Y" (the sheets' way to say a value per script slot)
+# as a named list (YAML's map); a text without "=" is as it is
+.slots_parse <- function(v) {
+  if (length(v) != 1L || !grepl("=", v, fixed = TRUE)) return(v)
+  parts <- trimws(strsplit(v, "|", fixed = TRUE)[[1L]])
+  parts <- parts[nzchar(parts)]
+  kv <- strsplit(parts, "=", fixed = TRUE)
+  ok <- vapply(kv, function(x) length(x) >= 2L && nzchar(trimws(x[1L])) &&
+                 nzchar(trimws(paste(x[-1L], collapse = "="))), NA)
+  if (!all(ok)) {
+    stop("A font per script is written latin = Courier New | east_asian = MS Mincho.",
+         call. = FALSE)
+  }
+  stats::setNames(lapply(kv, function(x) trimws(paste(x[-1L], collapse = "="))),
+                  vapply(kv, function(x) trimws(x[1L]), ""))
+}
+
+# ... and back: a map as "latin = X | east_asian = Y", a text as it is
+.slots_show <- function(v) {
+  if (is.null(v)) return("")
+  if (length(names(v)) && length(v) && all(nzchar(names(v)))) {
+    return(paste(names(v), vapply(as.list(v), function(x) as.character(x)[1L], ""),
+                 sep = " = ", collapse = " | "))
+  }
+  as.character(v)[1L]
+}
+
 # A value as the form shows it (text)
 .pgs_show <- function(v, kind) {
   if (is.null(v)) return("")
   if (identical(kind, "font")) {
-    v <- if (is.list(v) && length(v)) v[[1L]]$name %||% "" else as.character(v)
-    return(as.character(v %||% ""))
+    v <- if (is.list(v) && length(v)) v[[1L]]$name %||% "" else v
+    return(.slots_show(v))
   }
+  if (identical(kind, "slots")) return(.slots_show(v))
   if (identical(kind, "pt")) return(.points(as.character(v)))
   if (identical(kind, "inches")) {
     n <- suppressWarnings(as.numeric(v))
@@ -177,7 +232,9 @@
   v <- trimws(v %||% "")
   if (!nzchar(v)) return(NULL)
   if (identical(v, "(none)")) return(tflspec::tfl_unset())
-  if (identical(kind, "font")) return(list(list(name = v)))
+  # a family, or a family per script slot: latin = Courier New | east_asian = MS Mincho
+  if (identical(kind, "font")) return(list(list(name = .slots_parse(v))))
+  if (identical(kind, "slots")) return(.slots_parse(v))
   if (identical(kind, "pt")) {
     hp <- .half_points(v)
     if (is.na(hp)) stop("The size is a number of points (9, 10 ...).", call. = FALSE)
@@ -344,13 +401,18 @@
   rel <- if (identical(part, "patterns")) {
     file.path(study_layout()[["spec"]], "patterns", paste0(name, ".yml"))
   } else file.path(study_layout()[["spec"]], paste0(part, ".yml"))
-  f <- tempfile("tflplanner-part", fileext = ".yml")
-  on.exit(unlink(f), add = TRUE)
-  tflspec::tfl_write_study_part(sp$study, part, f, name = name)
-  sp$text[[rel]] <- readLines(f, encoding = "UTF-8", warn = FALSE)
+  sp$text[[rel]] <- .study_part_lines(sp$study, part, name)
   sp$text <- sp$text[sort(names(sp$text), method = "radix")]
   p$spec <- sp
   .spec_view_study_page(p)
+}
+
+# A study part's file text, as tflspec writes it from the study's spec
+.study_part_lines <- function(study, part, name = NULL) {
+  f <- tempfile("tflplanner-part", fileext = ".yml")
+  on.exit(unlink(f), add = TRUE)
+  tflspec::tfl_write_study_part(study, part, f, name = name)
+  readLines(f, encoding = "UTF-8", warn = FALSE)
 }
 
 # The view's study rows of the report sheets (the defaults' page: blank
@@ -370,6 +432,13 @@
     for (id in ids_s) {
       new <- sheet_rows(v, s, id)
       old <- sheet_rows(p, s, id)
+      # (a pattern with no page rows keeps its report row, the marker:
+      # set_sheet_rows() drops a row of nothing)
+      if (s == "report" && id %in% ids[-1L] && !nrow(.drop_blank_rows(no_id(new))) &&
+          !.pattern_in_view(v, id, setdiff(.pattern_sheets, "report"))) {
+        if (!nrow(old)) p <- .pattern_marker(p, id)
+        next
+      }
       if (!identical(no_id(old), no_id(new))) p <- set_sheet_rows(p, s, id, no_id(new))
     }
   }
@@ -447,7 +516,7 @@
 # ---- extends and the patterns ---------------------------------------------
 
 # A report's page pattern (NA or "Standard": none): its `extends:` with the
-# pattern put first, in place of the one it had
+# pattern in place of the one it had (put first when it had none)
 .pgs_set_pattern <- function(p, id, pattern) {
   if (!is.na(pattern) && identical(pattern, "Standard")) pattern <- NA_character_
   sp <- .pgs_spec(p)
@@ -459,8 +528,14 @@
   ch <- o$extends
   if (identical(ch, "none")) ch <- character()
   had <- grep("^patterns/", ch)
-  rest <- if (length(had)) ch[-had[1L]] else ch
-  new <- c(if (!is.na(pattern)) paste0("patterns/", pattern), rest)
+  # (the chain's pattern is replaced where it stands, so the order of the
+  # layers stays: [defaults, patterns/a] with b is [defaults, patterns/b])
+  new <- if (length(had) && !is.na(pattern)) {
+    replace(ch, had[1L], paste0("patterns/", pattern))
+  } else {
+    c(if (!is.na(pattern)) paste0("patterns/", pattern),
+      if (length(had)) ch[-had[1L]] else ch)
+  }
   if (!length(new)) new <- if (identical(o$extends, "none")) "none" else character()
   if (identical(as.character(o$extends %||% character()), new)) return(p)
   o["extends"] <- list(if (length(new)) new)

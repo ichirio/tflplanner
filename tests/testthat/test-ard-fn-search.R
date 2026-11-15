@@ -5,10 +5,21 @@
 # and locally with NOT_CRAN=true, not in CRAN's check)
 skip_on_cran()
 
+# Every keyword of the standards as an entry (a keyword and its function are
+# one entry, the keyword's)
 fn_find <- function(q, lang = "en") {
   m <- .std_ard_methods()
   f <- tflspec::tfl_ard_functions()
   .fn_search(q, .ard_fn_entries(m, f), .fn_keywords(m, f), lang = lang)
+}
+# As the ARD tab builds it: the entries hold the company's keywords only
+# (tflspec's own are offered as the functions they call), the dictionary
+# every keyword's words
+fn_find_app <- function(q, lang = "en") {
+  m <- .std_ard_methods()
+  f <- tflspec::tfl_ard_functions()
+  .fn_search(q, .ard_fn_entries(.company_keywords(), f), .fn_keywords(m, f),
+             lang = lang)
 }
 fn_first <- function(q) fn_find(q)$value[1L]
 
@@ -65,7 +76,7 @@ test_that("a query finds the function for it first", {
   skip_if_not_installed("cardx")
   # an abbreviation: SMD is the balance of the background, then the
   # effect sizes
-  s <- fn_find("SMD")
+  s <- fn_find_app("SMD")
   expect_identical(s$value[1:3], c("cardx::ard_smd_smd", "cardx::ard_effectsize_cohens_d",
                                    "cardx::ard_effectsize_hedges_g"))
   # one word, several functions: the model first, the tests related
@@ -158,7 +169,7 @@ test_that("a near spelling is found when little else is", {
   expect_identical(s$value[1L], "wilcox")
   expect_identical(s$near_to[1L], "wilcoxon")
   expect_identical(fn_find("logstic")$call[1L], "cardx::ard_regression")
-  expect_identical(fn_find("kaplan meir")$call, "cardx::ard_survival_survfit")
+  expect_identical(fn_find_app("kaplan meir")$call, "cardx::ard_survival_survfit")
   # a function found: no near spellings
   expect_false(any(fn_find("lsmeans")$tier == 4))
 })
@@ -477,7 +488,11 @@ test_that("the form starts from the setting a word means", {
     expect_match(output$ard_fn_preset$html, "Started from the setting", fixed = TRUE)
     h <- output$ard_an_args$html
     expect_match(h, 'value="glm"', fixed = TRUE)
-    expect_match(h, "exponentiate = TRUE", fixed = TRUE)
+    # exponentiate is a field of its own (tflspec's passed-on arguments), set
+    # to TRUE, and not left in the free R box
+    expect_match(h, sprintf('name="%s" value="TRUE" checked="checked"', id("a_exponentiate")),
+                 fixed = TRUE)
+    expect_false(grepl("exponentiate = TRUE", h, fixed = TRUE))
   })
 })
 

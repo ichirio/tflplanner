@@ -137,13 +137,103 @@ test_that("a table's normalization is what its definitions say: the hierarchy, t
   code <- program_code(q, "T1")
   expect_true("plan <- ard |>" %in% code)
   expect_true("  normalize_ard() |>" %in% code)
-  # a process code makes `data`: the plan is planned from it
-  q <- add_output(new_planner(), "T2", process_code = "data <- normalize_ard(ard) |> dplyr::mutate(x = 1)")
+  # a Rework (process code) starts from `data`, the normalized ARD: the
+  # table's normalize_ard() first, then the code, then the plan from `data`
+  q <- add_output(new_planner(), "T2", process_code = "data <- data |> dplyr::mutate(x = 1)")
   code <- program_code(q, "T2")
-  expect_true("data <- normalize_ard(ard) |> dplyr::mutate(x = 1)" %in% code)
-  expect_true("plan <- table_plan(data)" %in% code)
+  i <- match("data <- ard |> normalize_ard()", code)
+  expect_false(is.na(i))
+  expect_identical(code[i + 1L], "data <- data |> dplyr::mutate(x = 1)")
+  expect_true(match("plan <- table_plan(data)", code) > i + 1L)
   expect_false(any(startsWith(code, "saveRDS(")))
   expect_silent(parse(text = code))
+})
+
+test_that("a Rework follows the table's own normalize_ard() arguments", {
+  p <- add_output(new_planner(), "AE")
+  p$ard$datasets <- .normalize_ard_sheet(data.frame(dataset = "ADAE", path = "data/adam/adae.rds"), "datasets")
+  p <- set_ard_rows(p, "analyses", "AE", data.frame(
+    analysis_id = "TEAE", method = "hierarchical", dataset = "ADAE", by = "TRTA",
+    variables = "AEBODSYS | AEDECOD", args = "over_variables = TRUE"))
+  p <- set_sheet_rows(p, "tables", "AE", data.frame(
+    cols = "TRTA", rows = "group1 = AEBODSYS",
+    overall_label = "Subjects with at least one TEAE"))
+  p$outputs$process_code[p$outputs$output_id == "AE"] <- "data <- data[data$variable != \"AGE\", ]"
+  code <- program_code(p, "AE")
+  i <- match("# normalize and rework", code)
+  expect_identical(code[i + 1:6], c(
+    "data <- ard |>",
+    "  normalize_ard(",
+    "    hierarchy = c(\"AEBODSYS\", \"AEDECOD\"),",
+    "    overall = \"Subjects with at least one TEAE\"",
+    "  )",
+    "data <- data[data$variable != \"AGE\", ]"))
+  expect_true(which(startsWith(code, "plan <- table_plan(data, cols = \"TRTA\""))[1L] > i)
+  expect_silent(parse(text = code))
+  # the arguments the table's plan says when it has no Rework
+  q <- p
+  q$outputs$process_code[q$outputs$output_id == "AE"] <- NA_character_
+  expect_true(all(code[i + 2:4] %in% program_code(q, "AE")))
+})
+
+test_that("the sample's Rework is written as tflspec writes it: normalize_ard() first", {
+  skip_on_cran()
+  home <- withr_tempdir()
+  old <- options(tflplanner.home = home)
+  on.exit(options(old), add = TRUE)
+  suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
+  p <- suppressMessages(create_sample_study(run = FALSE))$planner
+  # (the Rework is one element, as it is written: split into lines)
+  code <- unlist(strsplit(program_code(p, "T-14-2-2"), "
+", fixed = TRUE))
+  i <- match("# normalize and rework", code)
+  expect_identical(code[i + 1L], "data <- ard |> normalize_ard()")
+  # the lines tflspec's content code has before the plan, the Rework as written
+  y <- .code_output(p, "T-14-2-2")
+  want <- tflspec::tfl_content_code(.code_content(y), pipe = "|>")
+  want <- want[seq_len(match("", want) - 1L)]
+  expect_identical(code[i + seq_along(want)], want)
+  expect_false("data <- normalize_ard(ard)" %in% code)
+  expect_true(any(startsWith(code, "plan <- table_plan(data")))
+})
+
+test_that("an old Rework that normalizes itself gives the data the new form gives", {
+  skip_if_not_installed("cards")
+  ard <- cards::ard_stack(cards::ADSL, .by = ARM, cards::ard_tabulate(variables = c(SEX, RACE)))
+  made <- function(proc) {
+    q <- add_output(new_planner(), "T2", process_code = proc)
+    code <- program_code(q, "T2")
+    expect_silent(parse(text = code))
+    # (from the table's normalization to its plan)
+    i <- match("# normalize and rework", code)
+    env <- new.env()
+    env$ard <- ard
+    eval(parse(text = c("library(rtfreporter)",
+                        code[(i + 1L):(match("plan <- table_plan(data)", code) - 1L)])), env)
+    env$data
+  }
+  new <- made("data <- data[data$variable != \"RACE\", ]")
+  old <- made("data <- normalize_ard(ard)\ndata <- data[data$variable != \"RACE\", ]")
+  expect_false("RACE" %in% new$variable)
+  expect_identical(old, new)
+  # (one spare line: written after the table's own, it overwrites it)
+  q <- add_output(new_planner(), "T2", process_code = "data <- normalize_ard(ard)")
+  code <- program_code(q, "T2")
+  i <- match("# normalize and rework", code)
+  expect_identical(code[i + 1:2], c("data <- ard |> normalize_ard()", "data <- normalize_ard(ard)"))
+})
+
+test_that("a Rework that leaves no `data` is a definition that does not hold, in the program", {
+  q <- add_output(new_planner(), "T2", process_code = "ard <- ard[ard$variable != \"RACE\", ]")
+  code <- program_code(q, "T2")
+  expect_silent(parse(text = code))
+  expect_true(any(grepl("the definition of T2 does not hold: the data.steps leave no `data`",
+                        code, fixed = TRUE)))
+  # `data` anywhere is enough; code that does not parse is R's to say
+  q$outputs$process_code <- "ard <- ard\ndata <- ard"
+  expect_false(any(grepl("does not hold", program_code(q, "T2"), fixed = TRUE)))
+  q$outputs$process_code <- "ard <- (ard"
+  expect_false(any(grepl("does not hold", program_code(q, "T2"), fixed = TRUE)))
 })
 
 test_that("a report's ARD read by its own name (data.object), ard by default", {

@@ -269,3 +269,252 @@ test_that("a report taken out in the app: the file the save wrote goes", {
   expect_true(file.exists(report_file(s, "T-1")))
   expect_identical(o$files$status[basename(o$files$file) == "T-2.yml"], "removed")
 })
+
+# ---- unsaved changes merged with reloaded files keep a report's spec ----------
+# (the app's "Load from the definition files" over unsaved changes: the study
+# as last saved `base`, the unsaved one `mine`, the files read again `now`,
+# then a save)
+
+merge_study <- function(home) {
+  suppressMessages(create_sample_study(run = FALSE, home = home))
+}
+# a person's edit of the data definition, outside the app
+edit_data_yml <- function(s) {
+  f <- file.path(s$path, "spec", "data.yml")
+  writeLines(sub("label: Screened Set", "label: Enrolled Set", readLines(f), fixed = TRUE), f)
+}
+template_report <- function(id = "T-TPL", args = list(population = "SAF")) {
+  tflspec::tfl_output(id, "table", label = "Demographics", population = "SAF",
+                      template = list(name = "demog", args = args))
+}
+# the app's reload: the files read, `mine` merged over them, then a save
+merge_and_save <- function(base, mine, home) {
+  now <- suppressMessages(reload_from_spec(base$meta$study_id, home))
+  m <- .merge_parts(base, mine, now)
+  if (length(m$conflicts)) return(list(m = m))
+  saved <- suppressMessages(save_study(m$study, base = now, fill_widths = TRUE, home = home))
+  list(m = m, saved = saved, now = now)
+}
+data_label <- function(s) {
+  grep("Enrolled Set", readLines(file.path(s$path, "spec", "data.yml")), fixed = TRUE, value = TRUE)
+}
+
+test_that("a new template report kept over an outside change to the files", {
+  home <- spec_home()
+  base <- merge_study(home)
+  mine <- base
+  mine$planner <- .spec_add_output(base$planner, template_report(), label = "Demographics",
+                                   population = "SAF")
+  edit_data_yml(base)
+  r <- merge_and_save(base, mine, home)
+  expect_length(r$m$conflicts, 0L)
+  o <- tflspec::tfl_read_output(report_file(base, "T-TPL"))
+  expect_identical(o$template$name, "demog")
+  expect_identical(o$template$args$population, "SAF")
+  expect_length(o$content, 0L)
+  expect_false(any(grepl("^content:\\s*$", readLines(report_file(base, "T-TPL")))))
+  # the outside change is in too, and the view still has the report
+  expect_length(data_label(base), 1L)
+  expect_false(is.null(.tpl_of(r$saved$planner, "T-TPL")))
+  expect_true("T-TPL" %in% r$saved$planner$outputs$output_id)
+})
+
+test_that("an existing template report's unsaved argument is kept over an outside change", {
+  home <- spec_home()
+  s <- merge_study(home)
+  s$planner <- .spec_add_output(s$planner, template_report(), label = "Demographics",
+                                population = "SAF")
+  base <- suppressMessages(save_study(s, home = home))
+  mine <- base
+  mine$planner <- .spec_set_output(base$planner, "T-TPL", .tpl_output(
+    base$planner, "T-TPL", list(population = "SAF", continuous = "AGE")))
+  edit_data_yml(base)
+  r <- merge_and_save(base, mine, home)
+  expect_length(r$m$conflicts, 0L)
+  o <- tflspec::tfl_read_output(report_file(base, "T-TPL"))
+  expect_identical(o$template$name, "demog")
+  expect_identical(o$template$args$continuous, "AGE")
+  expect_identical(o$template$args$population, "SAF")
+  expect_length(data_label(base), 1L)
+})
+
+test_that("a non-template report's unsaved cell edit is still kept", {
+  home <- spec_home()
+  base <- merge_study(home)
+  id <- "T-14-1-2"
+  mine <- base
+  mine$planner <- set_sheet_rows(mine$planner, "titles", id,
+                                 data.frame(line = "1", center = "Mine title"))
+  edit_data_yml(base)
+  r <- merge_and_save(base, mine, home)
+  expect_length(r$m$conflicts, 0L)
+  expect_identical(tflspec::tfl_read_output(report_file(base, id))$page$titles[["1"]]$center,
+                   "Mine title")
+  expect_length(data_label(base), 1L)
+})
+
+test_that("a report whose file changed outside, untouched in the app, takes the file's", {
+  home <- spec_home()
+  base <- merge_study(home)
+  s <- base
+  mine <- base
+  mine$planner <- .spec_add_output(base$planner, template_report(), label = "Demographics",
+                                   population = "SAF")
+  edit_title(s, "Outside title", id = "T-14-1-2")
+  r <- merge_and_save(base, mine, home)
+  expect_length(r$m$conflicts, 0L)
+  expect_identical(tflspec::tfl_read_output(report_file(base, "T-14-1-2"))$page$titles[["1"]]$center,
+                   "Outside title")
+  expect_identical(r$m$study$planner$spec$outputs[["T-14-1-2"]]$page$titles[["1"]]$center,
+                   "Outside title")
+  expect_identical(tflspec::tfl_read_output(report_file(base, "T-TPL"))$template$name, "demog")
+})
+
+test_that("a report changed in the files and in the app is still a conflict", {
+  home <- spec_home()
+  base <- merge_study(home)
+  id <- "T-14-1-2"
+  mine <- base
+  mine$planner <- set_sheet_rows(mine$planner, "titles", id,
+                                 data.frame(line = "1", center = "Mine title"))
+  edit_title(base, "Outside title", id = id)
+  r <- merge_and_save(base, mine, home)
+  expect_true("sheet:titles" %in% r$m$conflicts)
+  # (the files' spec of the report is not replaced by the app's)
+  expect_identical(r$m$study$planner$spec$outputs[[id]]$page$titles[["1"]]$center, "Outside title")
+})
+
+test_that("a report taken out in the app stays out over an outside change", {
+  home <- spec_home()
+  base <- merge_study(home)
+  mine <- base
+  mine$planner <- remove_output(base$planner, "T-14-1-2")
+  edit_data_yml(base)
+  r <- merge_and_save(base, mine, home)
+  expect_length(r$m$conflicts, 0L)
+  expect_false("T-14-1-2" %in% r$saved$planner$outputs$output_id)
+  expect_false(file.exists(report_file(base, "T-14-1-2")))
+  expect_true(file.exists(report_file(base, "T-14-1-3")))
+  expect_length(data_label(base), 1L)
+})
+
+test_that("a report the files added stays, with the unsaved report kept", {
+  home <- spec_home()
+  base <- merge_study(home)
+  mine <- base
+  mine$planner <- set_sheet_rows(base$planner, "titles", "T-14-1-3",
+                                 data.frame(line = "1", center = "Mine title"))
+  o <- tflspec::tfl_read_output(report_file(base, "T-14-1-3"))
+  o$id <- "T-NEW"
+  tflspec::tfl_write_output(o, report_file(base, "T-NEW"))
+  toc <- file.path(base$path, "spec", "toc.yml")
+  writeLines(sub("^outputs:", "outputs:
+  - id: T-NEW
+    kind: table", readLines(toc)), toc)
+  r <- merge_and_save(base, mine, home)
+  expect_length(r$m$conflicts, 0L)
+  expect_true("T-NEW" %in% r$saved$planner$outputs$output_id)
+  expect_true(file.exists(report_file(base, "T-NEW")))
+  expect_identical(tflspec::tfl_read_output(report_file(base, "T-14-1-3"))$page$titles[["1"]]$center,
+                   "Mine title")
+})
+
+# ---- "Keep my unsaved changes" in a conflict keeps a template report's spec ----
+# (do_reload(): the study of "keep mine" = the merge with the conflicting
+# parts taken from the session; .keep_mine_outputs() carries the spec too)
+
+# a template report saved, then changed in the app (a title and an argument)
+# and in its file (a title and another argument): the titles sheet conflicts
+conflict_setup <- function(home, id = "T-TPL") {
+  s <- merge_study(home)
+  s$planner <- .spec_add_output(s$planner, template_report(), label = "Demographics",
+                                population = "SAF")
+  base <- suppressMessages(save_study(s, home = home))
+  mine <- base
+  mine$planner <- .spec_set_output(base$planner, id, .tpl_output(
+    base$planner, id, list(population = "SAF", continuous = "AGE")))
+  mine$planner <- set_sheet_rows(mine$planner, "titles", id,
+                                 data.frame(line = "1", center = "Mine title"))
+  f <- report_file(base, id)
+  o <- tflspec::tfl_read_output(f)
+  o$page$titles[["1"]]$center <- "Outside title"
+  o$template$args$continuous <- "WEIGHT"
+  tflspec::tfl_write_output(o, f)
+  now <- suppressMessages(reload_from_spec(base$meta$study_id, home))
+  m <- .merge_parts(base, mine, now)
+  expect_true("sheet:titles" %in% m$conflicts)
+  mine2 <- m$study
+  for (k in m$conflicts) mine2 <- .set_study_part(mine2, k, .study_parts(mine)[[k]])
+  list(base = base, mine = mine, now = now, m = m, mine2 = mine2)
+}
+save_choice <- function(study, now, home) {
+  suppressMessages(save_study(study, base = now, fill_widths = TRUE, home = home))
+}
+
+test_that("keeping my changes in a conflict keeps the template report's template", {
+  home <- spec_home()
+  x <- conflict_setup(home)
+  # without the carry the spec is the files' (the bug)
+  keep <- .keep_mine_outputs(x$mine2, x$mine, x$m$study, x$m$conflicts)
+  expect_identical(.tpl_of(keep$planner, "T-TPL")$args$continuous, "AGE")
+  expect_identical(.tpl_of(keep$planner, "T-TPL")$name, "demog")
+  save_choice(keep, x$now, home)
+  o <- tflspec::tfl_read_output(report_file(x$base, "T-TPL"))
+  expect_identical(o$template$name, "demog")
+  expect_identical(o$template$args$continuous, "AGE")
+  expect_identical(o$template$args$population, "SAF")
+  expect_length(o$content, 0L)
+})
+
+test_that("keeping the files' version of a conflict has the file's arguments", {
+  home <- spec_home()
+  x <- conflict_setup(home)
+  save_choice(x$m$study, x$now, home)
+  o <- tflspec::tfl_read_output(report_file(x$base, "T-TPL"))
+  expect_identical(o$template$name, "demog")
+  expect_identical(o$template$args$continuous, "WEIGHT")
+  expect_identical(o$page$titles[["1"]]$center, "Outside title")
+})
+
+test_that("a plain report in a conflict is kept as before", {
+  home <- spec_home()
+  base <- merge_study(home)
+  id <- "T-14-1-2"
+  mine <- base
+  mine$planner <- set_sheet_rows(mine$planner, "titles", id,
+                                 data.frame(line = "1", center = "Mine title"))
+  edit_title(base, "Outside title", id = id)
+  now <- suppressMessages(reload_from_spec(base$meta$study_id, home))
+  m <- .merge_parts(base, mine, now)
+  mine2 <- m$study
+  for (k in m$conflicts) mine2 <- .set_study_part(mine2, k, .study_parts(mine)[[k]])
+  keep <- .keep_mine_outputs(mine2, mine, m$study, m$conflicts)
+  expect_identical(keep, mine2)
+})
+
+test_that("a report outside the conflict keeps what the merge gave it", {
+  home <- spec_home()
+  x <- conflict_setup(home)
+  # a second template report changed only in the app: .merge_spec_outputs() took it
+  s <- x$base
+  s$planner <- .spec_add_output(s$planner, template_report("T-TP2"), label = "Demographics",
+                                population = "SAF")
+  base <- suppressMessages(save_study(s, home = home))
+  mine <- base
+  mine$planner <- .spec_set_output(base$planner, "T-TP2", .tpl_output(
+    base$planner, "T-TP2", list(population = "SAF", continuous = "HEIGHT")))
+  mine$planner <- set_sheet_rows(mine$planner, "titles", "T-TPL",
+                                 data.frame(line = "1", center = "Mine title"))
+  f <- report_file(base, "T-TPL")
+  o <- tflspec::tfl_read_output(f)
+  o$page$titles[["1"]]$center <- "Outside title"
+  tflspec::tfl_write_output(o, f)
+  now <- suppressMessages(reload_from_spec(base$meta$study_id, home))
+  m <- .merge_parts(base, mine, now)
+  expect_identical(.tpl_of(m$study$planner, "T-TP2")$args$continuous, "HEIGHT")
+  mine2 <- m$study
+  for (k in m$conflicts) mine2 <- .set_study_part(mine2, k, .study_parts(mine)[[k]])
+  keep <- .keep_mine_outputs(mine2, mine, m$study, m$conflicts)
+  expect_identical(.tpl_of(keep$planner, "T-TP2")$args$continuous, "HEIGHT")
+  expect_identical(keep$planner$spec$outputs[["T-TP2"]], m$study$planner$spec$outputs[["T-TP2"]])
+})

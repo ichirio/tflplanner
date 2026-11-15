@@ -105,7 +105,12 @@ review_server <- function(id, review, rows, jump, apply_fix, run_light, run_data
       r <- shown()
       shiny::req(!is.null(r))
       where <- vapply(seq_len(nrow(r)), function(i) {
-        p <- c(r$sheet[i], r$row[i], r$field[i])
+        # (the scope word in the app's language: "review-scope:<word>" in the
+        # translations; as it is when there is none, as a sheet's name)
+        sc <- r$sheet[i]
+        k <- paste0("review-scope:", sc)
+        if (!identical(t(k), k)) sc <- t(k)
+        p <- c(sc, r$row[i], r$field[i])
         paste(p[nzchar(p)], collapse = " \u00b7 ")
       }, "")
       dot <- sprintf('<span class="%s" title="%s">\u25cf</span>',
@@ -128,7 +133,7 @@ review_server <- function(id, review, rows, jump, apply_fix, run_light, run_data
                                    autoWidth = FALSE,
                                    columnDefs = list(
                                      list(width = "1.2em", targets = 0),
-                                     list(width = "7em", targets = 1),
+                                     list(width = "9em", targets = 1),
                                      list(width = "16%", targets = 2),
                                      list(width = "38%", targets = 3),
                                      list(width = "28%", targets = 4),
@@ -228,7 +233,7 @@ review_server <- function(id, review, rows, jump, apply_fix, run_light, run_data
     out$grid <- paste0("hot_", sheet)
     out$keycols <- keys[[sheet]] %||% character()
   } else if (identical(sheet, "codelists")) {
-    out$go <- "ard"
+    out$go <- "adata"
     ad <- .adata_rows(p, id)
     v <- sub(" / .*$", "", key)
     if (nrow(ad)) out$inputs <- list(ard_adata_pick = ad$data_id[1L], adata_cl_pick = v)
@@ -241,7 +246,7 @@ review_server <- function(id, review, rows, jump, apply_fix, run_light, run_data
     out$grid <- paste0("hot_ard_", s)
     out$keycols <- keys[[s]]
   } else if (identical(sheet, "analysis_data")) {
-    out$go <- "ard"
+    out$go <- "adata"
     if (nzchar(key)) out$inputs <- list(ard_adata_pick = key)
   } else if (identical(sheet, "analyses")) {
     out$go <- "ard"
@@ -252,9 +257,10 @@ review_server <- function(id, review, rows, jump, apply_fix, run_light, run_data
     out$grid <- if (identical(sheet, "listings")) "hot_lf_listings" else "hot_lf_cols"
     out$row_index <- if (identical(sheet, "listing_cols")) suppressWarnings(as.integer(key)) else 1L
   } else if (identical(sheet, "design")) {
-    out$go <- "designer"
     m <- regmatches(key, regexec("^([a-z]+)\\[([0-9]+)\\]", key))[[1L]]
     sec <- if (length(m)) m[2L] else if (nzchar(key)) sub(" .*$", "", key) else "plot"
+    # (the data steps and code lists are the first step's)
+    out$go <- if (sec %in% .pd_step_secs$data) "adata" else "designer"
     i <- if (length(m)) as.integer(m[3L]) else 1L
     out$inputs <- list(pd_act = list(op = "sel", sec = sec, i = i))
   } else if (identical(sheet, "_tflplanner")) {

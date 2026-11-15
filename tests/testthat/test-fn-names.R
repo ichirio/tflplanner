@@ -5,9 +5,9 @@ test_that("a keyword's function stands for the keyword", {
   local_home()
   expect_identical(.method_kw(c("cards::ard_tabulate", "categorical",
                                 "cards::ard_total_n", "cardx::ard_stats_anova",
-                                "custom")),
+                                "own::fn", "custom")),
                    c("categorical", "categorical", "total_n",
-                     "cardx::ard_stats_anova", "custom"))
+                     "nested_models", "own::fn", "custom"))
 })
 
 test_that("the company's list holds what it added or changed", {

@@ -29,7 +29,7 @@ test_that("a new study's header is the package's, its words tokens", {
   h <- sheet_rows(x, "header", NA)
   expect_identical(h$left[1:2], c("{COMPANY}", "PROTOCOL: {STUDY_ID}"))
   expect_identical(h$center[4:6], c("{OUTPUT_LABEL}", "{OUTPUT_TITLE}",
-                                    "<{OUTPUT_POPULATION}>"))
+                                    "({OUTPUT_POPULATION})"))
   expect_identical(study_token(x, "STUDY_ID"), "ABC-1")
   expect_identical(study_token(x, "ANALYSIS_TYPE"), "Final Analysis")
   expect_true(.uses_report_setup(x))

@@ -219,6 +219,7 @@ ard_meta <- function(ard = NULL, data = NULL) {
 # ------------------------------------------------------------ fetching
 
 .meta_file <- function(study, output_id, home = tflplanner_home()) {
+  .stop_part(output_id)
   file.path(.store_dir(study$meta$study_id, home), "ard",
             paste0(output_id, ".rds"))
 }
@@ -320,8 +321,15 @@ fetch_ard <- function(study, output_id, timeout = 300,
                         .code_block(ard_code))), f_ard, useBytes = TRUE)
   # (the normalization its program has: a hierarchical analysis's terms
   # and the any-event row, so the builder sees the hierarchy)
-  proc <- if (!is.na(o$process_code)) .code_block(o$process_code) else
-    if (!.makes_data(ard_code)) .normalize_line(p, output_id) else ""
+  # (a Rework after the normalization, as the program has it; one that
+  # leaves no `data` is the error the builder shows, as a run's)
+  proc <- if (!is.na(o$process_code)) {
+    tryCatch({
+      .rework_need_data(o$process_code)
+      .rework_lines(p, output_id, ard_code, o$process_code)
+    }, error = function(e) sprintf("stop(%s)", .r_string(paste0(
+      "tflplanner: the definition of ", output_id, " does not hold: ", conditionMessage(e)))))
+  } else if (!.makes_data(ard_code)) .normalize_line(p, output_id) else ""
   writeLines(enc2utf8(proc), f_proc, useBytes = TRUE)
   # the functions the programs call (programs/study_helpers.R's)
   f_helpers <- file.path(tmp, "study_helpers.R")
@@ -371,9 +379,11 @@ fetch_ard <- function(study, output_id, timeout = 300,
   log <- px$stdout
   if (!file.exists(f_out)) {
     why <- .first_error(log)
+    # (a file that could not be opened: the datasets of data.yml with no file named)
+    why_shown <- .data_files_note(why, study)
     stop(.problem(
       paste0("The ARD code of '", output_id, "' did not run",
-             if (!is.na(why)) paste0(": ", why) else "", ".",
+             if (!is.na(why_shown)) paste0(": ", sub("\\.+$", "", why_shown)) else "", ".",
              .problem_hint(why)),
       detail = log))
   }
@@ -513,6 +523,13 @@ fetch_ard <- function(study, output_id, timeout = 300,
   m$hierarchy <- hier
   if (!is.null(v)) m$variables <- v[!v$variable %in% hier, , drop = FALSE]
   m
+}
+
+# Why a report's data step left no data, as the last fetch_ard() read it
+# (NULL: no error kept)
+ard_data_error <- function(study, output_id, home = tflplanner_home()) {
+  why <- tryCatch(ard_info(study, output_id, home)$error, error = function(e) NULL)
+  if (length(why) && !is.na(why[1L]) && nzchar(why[1L])) why[1L]
 }
 
 #' @rdname fetch_ard
@@ -828,6 +845,8 @@ grid_choices <- function(sheet, meta) {
 #' @noRd
 inherited_rows <- function(x, sheet, output_id) {
   d <- x$sheets[[sheet]]
+  # (a builder part has no layers under it: none of the defaults' rows)
+  if (!is.null(.part_of(output_id))) return(d[0L, , drop = FALSE])
   def <- d[is.na(d$output_id), , drop = FALSE]
   own <- d[!is.na(d$output_id) & d$output_id == output_id, , drop = FALSE]
   # a report's page pattern: its rows over Standard's are what it inherits

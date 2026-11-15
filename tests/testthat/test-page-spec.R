@@ -52,14 +52,47 @@ test_that("an argument written into the report's file only, and back; the same a
   expect_identical(texts_changed(p, .pgs_set_arg(p, "T-14-3-1", "rtf_page", "margin_top_in",
                                                  .pgs_value("0.5", "number"))), character())
   # an argument no sheet has a column for
-  q <- .pgs_set_arg(p, "T-14-1-1", "rtf_default_format", "row_height_twips", .pgs_value("300", "number"))
+  q <- .pgs_set_arg(p, "T-14-1-1", "rtf_style", "row_height_twips", .pgs_value("300", "number"))
   expect_identical(lines_new(p, q, "spec/outputs/T-14-1-1.yml"),
-                   c("  rtf_default_format:", "    row_height_twips: 300"))
+                   c("  rtf_style:", "    row_height_twips: 300"))
   expect_error(.pgs_value("big", "pt"), "number of points")
   expect_identical(.pgs_value("8", "pt"), 16L)
   expect_identical(.pgs_value("fit", "inches"), "fit")
   expect_identical(.pgs_value("6", "inches"), 8640L)
   expect_s3_class(.pgs_value("(none)", "text"), "tfl_unset")
+})
+
+test_that("an old rtf_default_format reads as rtf_style's shared level, and is written as rtf_style (#537)", {
+  skip_on_cran()
+  # rtf_style's own keys win; its sections stay as they are
+  pg <- list(rtf_default_format = list(font_size_half_points = 16L, row_height_twips = 300L),
+             rtf_style = list(row_height_twips = 260L, titles = list(align = "left")))
+  expect_identical(.pgs_style_norm(pg),
+                   list(rtf_style = list(row_height_twips = 260L, titles = list(align = "left"),
+                                         font_size_half_points = 16L)))
+  expect_identical(.pgs_style_norm(list(rtf_default_format = list(markup = "all"))),
+                   list(rtf_style = list(markup = "all")))
+  expect_identical(.pgs_style_norm(list(rtf_page = list(paper_size = "A4"))),
+                   list(rtf_page = list(paper_size = "A4")))
+  # a study saved with the old key: the form shows its values, a change writes rtf_style
+  p <- page_sample()
+  p <- .spec_ensure(p)
+  p$spec$study$patterns$Compact$page$rtf_style <- NULL
+  p$spec$study$patterns$Compact$page$rtf_default_format <-
+    list(font_size_half_points = 16L, markup = "all")
+  p$spec$study$patterns$Compact$page$rtf_style <- list(table = list(cell_valign = "center"))
+  sp <- .pgs_spec(p)
+  expect_identical(.pgs_arg(sp, "T-14-3-1", "rtf_style", "font_size_half_points")$from, "pattern:Compact")
+  expect_identical(.pgs_arg(sp, "@Compact", "rtf_style", "markup")$value, "all")
+  q <- .pgs_set_arg(p, "@Compact", "rtf_style", "row_height_twips", 300L)
+  pg <- q$spec$study$patterns$Compact$page
+  expect_null(pg$rtf_default_format)
+  expect_identical(pg$rtf_style[c("table", "font_size_half_points", "markup", "row_height_twips")],
+                   list(table = list(cell_valign = "center"), font_size_half_points = 16L,
+                        markup = "all", row_height_twips = 300L))
+  y <- q$spec$text[["spec/patterns/Compact.yml"]]
+  expect_false(any(grepl("rtf_default_format", y, fixed = TRUE)))
+  expect_true(any(grepl("rtf_style:", y, fixed = TRUE)))
 })
 
 test_that("!unset: a line, a token, a value left out; Revert takes it back", {

@@ -46,3 +46,42 @@ test_that("the report list's quick look agrees with study_status()", {
   expect_identical(light$status, full$status)
   expect_true(all(c("ok", "error", "not run") %in% light$status))
 })
+
+test_that("a log that cannot be read now is 'not ready yet', quietly", {
+  d <- withr::local_tempdir()
+  # a log not there; a folder where the log is (Windows says "Permission
+  # denied" for it, as for a log its program still holds)
+  expect_no_warning(x <- .read_log_lines(file.path(d, "none.log")))
+  expect_null(x)
+  expect_no_warning(x <- .read_log_lines(d))
+  expect_null(x)
+  expect_false(.log_failed(file.path(d, "none.log")))
+  expect_false(.log_failed(d))
+  # read for real once it can be: the lines, and an error in them
+  f <- file.path(d, "ok.log")
+  writeLines(c("a line", "done"), f)
+  expect_identical(.read_log_lines(f), c("a line", "done"))
+  expect_false(.log_failed(f))
+  g <- file.path(d, "bad.log")
+  writeLines(c("a line", "Error in f(): boom", "Execution halted"), g)
+  expect_true(.log_failed(g))
+})
+
+test_that("a preview log held open by its program is not read as failed, then is read", {
+  skip_on_os(c("mac", "linux", "solaris"))
+  d <- withr::local_tempdir()
+  f <- file.path(d, "held.log")
+  # the way a child R holds its log: opened for writing, exclusive
+  ps <- file.path(d, "hold.R")
+  writeLines(c(sprintf("con <- file(%s, 'w')", encodeString(f, quote = "\"")),
+               "writeLines(c('Error in f(): boom', 'Execution halted'), con)",
+               "flush(con)", "Sys.sleep(3)"), ps)
+  px <- processx::process$new(file.path(R.home("bin"), "Rscript"), ps,
+                              stdout = NULL, stderr = NULL, cleanup = TRUE)
+  on.exit(px$kill(), add = TRUE)
+  for (i in 1:40) if (file.exists(f) && file.size(f) > 0L || !px$is_alive()) break else Sys.sleep(0.25)
+  # (whatever the system does with a held file, no warning comes out)
+  expect_no_warning(.log_failed(f))
+  px$wait()
+  expect_true(.log_failed(f))
+})
