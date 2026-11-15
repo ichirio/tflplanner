@@ -279,7 +279,7 @@
         class = "mb-2", open = if (more || has_cl) NA,
         shiny::tags$summary(class = "small", with_tip(
           t("Column definitions"),
-          t("The columns of this analysis data, in the order its program makes them: \u2460 added from the subjects' data, \u2461 made or changed, \u2462 kept, \u2463 the code lists put on them."))),
+          t("The columns of this analysis data, in the order its program makes them: \u2460 added from the subjects' data, \u2461 made or changed, \u2462 kept, \u2463 the code lists put on them. Sorting runs after \u2461, and \"R added at the end\" runs last."))),
         shiny::div(class = "rp-num-part", shiny::span(class = "rp-num", "\u2460"), shiny::div(add_ui)),
         shiny::div(class = "rp-num-part", shiny::span(class = "rp-num", "\u2461"),
           .derive_editor_ui(t, with_tip(argl("Columns made or changed", "derive"),
@@ -290,7 +290,7 @@
         shiny::div(class = "rp-num-part", shiny::span(class = "rp-num", ""),
           shiny::selectizeInput("adata_arrange", with_tip(
             argl("Sort by", "arrange"),
-            t("The sort order of the rows (arrange()), after the columns made and before those kept; a variable not kept can still sort. Pick in order; desc(X) sorts X from the largest. The rows are not changed in number: with \"One row per\" the first row in this order is kept.")),
+            t("Sorts the rows (arrange()), in the order picked; desc(X) is descending. Runs after ② and before ③, so it can use columns not kept. With \"One row per\", the first row in this order is kept.")),
                                 choices = unique(c(bar(r$arrange), adata_cols(adata_root(r$from)),
                                                    sprintf("desc(%s)", adata_cols(adata_root(r$from))))),
                                 selected = bar(r$arrange), multiple = TRUE, width = "100%",
@@ -315,9 +315,10 @@
         shiny::div(class = "rp-num-part", shiny::span(class = "rp-num", ""),
           shiny::div(class = "w-100",
             shiny::tags$label(class = "form-label", `for` = "adata_then", with_tip(
-              argl("Add R", "then"),
-              t("R added at the end of this data's steps, after the columns above (a pipe of several steps is fine: dplyr::mutate(...) |> dplyr::filter(...)); the data is its first argument. Not together with \"Write this analysis data whole as R\"."))),
-            shiny::textAreaInput("adata_then", NULL, blank_na(r$then), width = "100%", rows = 3,
+              argl("R added at the end", "then"),
+              t("R joined with |> at the very end, after ①-④. Columns made here cannot be picked in ③. Not with \"Write this analysis data whole as R\"."))),
+            shiny::textAreaInput("adata_then", NULL, blank_na(r$then), width = "100%", rows = 2,
+                                 placeholder = "dplyr::mutate(...) |> dplyr::filter(...)",
                                  resize = "vertical"))))),
       # the way out: R that makes the data itself (the definition keeps it)
       shiny::tags$details(
@@ -587,11 +588,34 @@
                    shiny::tableOutput("adata_preview_tbl")))
     })
   })
+  # the sort's choices: the data's columns, the columns made (2) and those
+  # added from the subjects' data (1), each also as desc()
+  shiny::observe({
+    shiny::req(!is.null(adata_edit()), !is.null(input$adata_from))
+    made <- vapply(.drv_read_all(adata_derive_now()), function(x) x$name, "")
+    cols <- unique(c(adata_cols(adata_root(input$adata_from)), made, input$adata_add))
+    cols <- cols[nzchar(cols)]
+    cur <- shiny::isolate(input$adata_arrange)
+    shiny::updateSelectizeInput(session, "adata_arrange",
+                                choices = unique(c(cur, cols, sprintf("desc(%s)", cols))),
+                                selected = cur)
+  })
   shiny::observeEvent(input$adata_save, {
     p <- tryCatch(adata_planner(), error = function(e) e)
     if (inherits(p, "error")) return(notify(conditionMessage(p), "warning"))
     e <- adata_edit()
     id <- trimws(input$adata_id)
+    # a name kept (or the one row per) that only the "R added at the end"
+    # makes: it comes after the select, so the program would stop
+    after <- .adata_then_only(
+      one_of(input$adata_then), c(input$adata_keep, input$adata_distinct),
+      c(adata_cols(adata_root(input$adata_from %||% "")),
+        vapply(.drv_read_all(adata_derive_now()), function(x) x$name, ""),
+        input$adata_add))
+    if (length(after)) {
+      notify(sprintf(t("%s is made in 'R added at the end', after ③: it cannot be kept here."),
+                     paste(after, collapse = ", ")), "warning")
+    }
     kept <- character()
     if (is.null(e$old) && id %in% .adata_subject_level(p, ard_target())) {
       others <- setdiff(.adata_of_report(p, ard_target()), .adata_subject_level(p, ard_target()))

@@ -618,8 +618,23 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
   paste(c(src, if (!is.na(r$where)) r$where,
           if (!is.na(r$add)) sprintf(words$added, bar(r$add)),
           if (!is.na(r$derive)) bar(r$derive),
-          if (!is.na(r$distinct)) sprintf(words$per, bar(r$distinct))),
+          if (!is.na(r$distinct)) {
+            if (!is.na(r$arrange %||% NA) && !is.null(words$per_sorted)) {
+              sprintf(words$per_sorted, bar(r$distinct), bar(r$arrange))
+            } else sprintf(words$per, bar(r$distinct))
+          },
+          if (!is.na(r$then %||% NA)) words$then %||% "+ R"),
         collapse = ", ")
+}
+
+# The names among `names` that only the R added at the end (`then`) makes:
+# not a column the data has, one made, or one added (`known`).  The select
+# and the one row per come before it, so they cannot use them.
+.adata_then_only <- function(then, names, known) {
+  if (.is_blank(then)) return(character())
+  m <- regmatches(then, gregexpr("[A-Za-z.][A-Za-z0-9._]*[[:space:]]*=(?!=)", then, perl = TRUE))[[1]]
+  made <- trimws(sub("=$", "", m))
+  intersect(setdiff(unique(names), known), made)
 }
 
 #' @rdname set_analysis_data

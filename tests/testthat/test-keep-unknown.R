@@ -125,3 +125,41 @@ test_that("1-1: the card writes arrange and then into the spec and reads them ba
   expect_true(is.na(a3$then))
   expect_match(a3$code, "filter", fixed = TRUE)
 })
+
+test_that("1-1: the sort and the R added at the end: the data's line, the warning, the form", {
+  # the one-line words: + R, and the sort with the one row per
+  ad <- data.frame(data_id = "d", from = "ADAE", population_id = NA, where = NA,
+                   add = NA, derive = NA, distinct = "USUBJID",
+                   arrange = "USUBJID | desc(ASTDT)", then = "dplyr::mutate(N = 1)",
+                   stringsAsFactors = FALSE)
+  w <- list(added = "+ %s", per = "one row per %s",
+            per_sorted = "one row per %s (sorted: %s, the first)", then = "+ R")
+  expect_identical(.adata_words(ad, "d", w),
+                   "ADAE, one row per USUBJID (sorted: USUBJID, desc(ASTDT), the first), + R")
+  ad$then <- NA
+  ad$distinct <- NA
+  expect_identical(.adata_words(ad, "d", w), "ADAE")
+  # a name only the added R makes
+  th <- "dplyr::mutate(AESEQ2 = AESEQ + 1, N == 1)"
+  expect_identical(.adata_then_only(th, c("AEDECOD", "AESEQ2", "AESEQ"), c("AEDECOD", "AESEQ")),
+                   "AESEQ2")
+  expect_identical(.adata_then_only(th, "AESEQ2", c("AESEQ2")), character())
+  expect_identical(.adata_then_only(NA_character_, "AESEQ2", character()), character())
+  # the form: the label, the placeholder, two rows
+  local_home()
+  p <- add_output(new_planner(), "DM")
+  p$ard$datasets <- data.frame(dataset = c("ADSL", "ADAE"),
+                               path = c("data/adam/adsl.rds", "data/adam/adae.rds"))
+  for (s in names(p$ard)) p$ard[[s]] <- .normalize_ard_sheet(p$ard[[s]], s)
+  p <- set_analysis_data(p, "DM", "adae_s", from = "ADAE", arrange = "USUBJID")
+  s <- create_study("KU3", planner = p)
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  saveRDS(cards::ADAE, file.path(s$path, "data", "adam", "adae.rds"))
+  shiny::testServer(server_for("KU3"), {
+    session$setInputs(nav = "make", step = "ard", target = "DM")
+    session$setInputs(ard_adata_pick = "adae_s")
+    f <- output$adata_detail$html
+    expect_match(f, "R added at the end (then)", fixed = TRUE)
+    expect_match(f, "placeholder=\"dplyr::mutate(...) |&gt; dplyr::filter(...)\"", fixed = TRUE)
+  })
+})

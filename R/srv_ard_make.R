@@ -351,6 +351,8 @@
                                      alone = t("%s, no population (%s)"),
                                      none = t("(no data)"), count = t("%s: %s"),
                                      added = t("+ %s"), per = t("one row per %s"),
+                                     per_sorted = t("one row per %s (sorted: %s, the first)"),
+                                     then = t("+ R"),
                                      subj = t("%s's subjects"),
                                      named = t("%s (%s)"),
                                      groups = c(t("This report's analysis data"),
