@@ -335,9 +335,9 @@ test_that("the sheets path takes no inherited list a variable the ARD does not r
   expect_identical(cl_body(program_code(ahead, "DM")),
                    cl_body(cl_unlabel(program_code(p, "DM"))))
   expect_false(any(grepl("agegr1", program_code(ahead, "DM"), ignore.case = TRUE)))
-  # (the spec path's plan_labels() has the list of a variable the ARD does
-  # not read: a label no cell uses)
-  expect_true(any(grepl("Young", program_code(p, "DM"), fixed = TRUE)))
+  # (the spec path leaves it out too: a layer's list is a report's only for
+  # a variable its ARD reads, tflspec's tfl_resolve_output())
+  expect_false(any(grepl("Young", program_code(p, "DM"), fixed = TRUE)))
 })
 
 test_that("the ARS reads a report's inherited lists: a condition on a label stops", {
