@@ -11,6 +11,8 @@
 .pattern_sheets <- c("report", "page", "header", "footer", "titles",
                      "footnotes", "tokens")
 .pattern_rx <- "^[A-Za-z][A-Za-z0-9_]*$"
+# tflspec's built-in page configurations (a study's set may not take their names)
+.pattern_reserved <- c("tfl_standard", "tfl_small", "stf_t02")
 .is_pattern_id <- function(id) !is.na(id) & startsWith(id, "@")
 
 #' Page patterns
@@ -78,10 +80,10 @@ set_report_pattern <- function(x, output_id, pattern) {
 #    gets it first (what the pattern cell alone reads back as);
 #  - a chain that is what the `pattern` cell alone reads back as, or empty,
 #    is a blank cell (tflspec writes it blank).
-# A cell by step (`content=none; page=a | b`) is a chain only in its `page`
-# step: that step is rewritten and the others stay as they are (no `page`
-# step: its template's own, else the defaults'); `page` is left out once it is
-# what the report has without it.
+# A cell by step (`content=none; data=a | b`) keeps its steps as they are; the
+# pattern is the `pattern` cell's alone (tflspec's page step is gone: the
+# page is the report's configuration's, a `page` step in the cell is left
+# out).
 .extends_cell_for <- function(x, output_id, pattern) {
   d <- x$sheets$report
   if (is.null(d$extends)) return(NULL)
@@ -89,8 +91,12 @@ set_report_pattern <- function(x, output_id, pattern) {
   v <- v[!is.na(v) & nzchar(trimws(v))]
   if (!length(v)) return(NULL)
   steps <- .extends_cell_steps(v[1L])
-  inherited <- if (!is.null(steps)) .extends_cell_inherited(x, output_id)
-  chain <- if (is.null(steps)) .extends_cell_chain(v[1L]) else steps[["page"]] %||% inherited
+  if (!is.null(steps)) {
+    steps[["page"]] <- NULL
+    return(list(value = if (length(steps)) .extends_cell_text(steps) else NA_character_,
+                pattern = pattern))
+  }
+  chain <- .extends_cell_chain(v[1L])
   tok <- if (!is.na(pattern)) paste0("patterns/", pattern)
   at <- grep("^patterns/", chain)[1L]
   if (!is.na(at)) {
@@ -100,19 +106,13 @@ set_report_pattern <- function(x, output_id, pattern) {
   }
   first <- grep("^patterns/", chain, value = TRUE)[1L]
   pat <- if (is.na(first)) NA_character_ else substring(first, 10L)
-  if (!is.null(steps)) {
-    steps[["page"]] <- if (length(chain) && !identical(chain, inherited)) chain
-    if (!length(steps)) return(list(value = NA_character_, pattern = pat))
-    return(list(value = .extends_cell_text(steps), pattern = pat))
-  }
   alone <- c(tok, "defaults")
   if (!length(chain) || identical(chain, alone)) return(list(value = NA_character_, pattern = pat))
   list(value = paste(chain, collapse = " | "), pattern = pat)
 }
 
-# The page chain of a report whose cell names no `page` step: its template's
-# own (tflspec's tfl_output_extends() reads it from the report in the spec),
-# else the defaults
+# The page chain of a report whose cell names no `page` step: the page step
+# has no files any more, so the defaults
 .extends_cell_inherited <- function(x, output_id) {
   o <- x$spec$outputs[[output_id]]
   if (is.null(o)) "defaults" else .pgs_inherited_page(o)
@@ -423,8 +423,13 @@ pattern_reports <- function(x, name) {
     stop("A page pattern's name is a letter, then letters, digits or _ (Compact): not '",
          name, "'.", call. = FALSE)
   }
-  if (identical(tolower(name), "standard")) {
+  if (identical(name, "Standard")) {
     stop("Standard is the blank rows: give the pattern another name.", call. = FALSE)
+  }
+  # (a name tflspec's built-in page configurations have: its sheets write a
+  # pattern as a configuration of the pattern's name, which may not take one)
+  if (name %in% .pattern_reserved) {
+    stop(name, " is a built-in page configuration: give the pattern another name.", call. = FALSE)
   }
   if (name %in% page_patterns(x)) stop("There is a page pattern '", name, "' already.", call. = FALSE)
   name

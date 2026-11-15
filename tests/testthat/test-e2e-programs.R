@@ -108,7 +108,7 @@ test_that("the sample study's official run makes every report", {
 # button does it (tflspec::tfl_template_to_spec()); `population` the
 # report's (the argument's, for a template that still takes it)
 e2e_tpl_code <- function(p, id, name, args, kind = "table", population = args$population %||% NA_character_) {
-  o <- tflspec::tfl_output(id, kind, label = name, population = population,
+  o <- tflspec::tfl_output(id, kind, label = name, common = list(population = population),
                            template = list(name = name, args = args))
   b <- tflspec::tfl_template_to_spec(o, .code_spec(p)$study)
   expect_null(b$template)
@@ -225,7 +225,7 @@ test_that("every template of tflspec makes its report in an official run", {
       pop <- "SAF"
     }
     id <- paste0("X-", gsub("_", "-", n))
-    o <- tflspec::tfl_output(id, tp$kind[i], label = n, population = pop,
+    o <- tflspec::tfl_output(id, tp$kind[i], label = n, common = list(population = pop),
                              template = list(name = n, args = args),
                              data = if (length(steps)) list(steps = steps))
     p <- .spec_add_output(p, o, label = n, population = pop)

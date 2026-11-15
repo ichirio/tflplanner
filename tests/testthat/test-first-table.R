@@ -362,6 +362,8 @@ test_that(".tpl_stale_say: a value a write replaced a moment ago, not the curren
 
 test_that("a field saying the value a write just replaced is not an edit; the card is drawn again for it", {
   skip_on_cran()
+  old_win <- options(tflplanner.tpl_stale_window = 3600)
+  on.exit(options(old_win), add = TRUE)
   local_home()
   s <- create_study("L3")
   dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
