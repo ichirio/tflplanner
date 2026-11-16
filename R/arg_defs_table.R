@@ -314,11 +314,11 @@
       class = "rp-tbl-tools",
       if (isTRUE(spec$ordered)) shiny::tagList(
         shiny::tags$button(type = "button", class = "btn btn-link btn-sm rp-tbl-up", title = t("Move up"),
-                           `aria-label` = t("Move up"), "↑"),
+                           `aria-label` = t("Move up"), "\u2191"),
         shiny::tags$button(type = "button", class = "btn btn-link btn-sm rp-tbl-down", title = t("Move down"),
-                           `aria-label` = t("Move down"), "↓")),
+                           `aria-label` = t("Move down"), "\u2193")),
       shiny::tags$button(type = "button", class = "btn btn-link btn-sm rp-tbl-del", title = t("Remove the row"),
-                         `aria-label` = t("Remove the row"), "×")))
+                         `aria-label` = t("Remove the row"), "\u00d7")))
 }
 
 # The table field: a header of the columns, the fixed rows (read only, on
