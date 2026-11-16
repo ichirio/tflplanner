@@ -130,7 +130,6 @@ test_that("a card's label is the meaning and the verb; an argument's the meaning
 
 test_that("read and written back unchanged, the sheets stay as they are", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   p <- add_output(new_planner(), "DM")
   p$sheets$tables <- .normalize_sheet(data.frame(
     output_id = "DM", cols = "TRT01A", rows = "group = variable"), "tables")

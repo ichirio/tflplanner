@@ -157,7 +157,6 @@ test_that("added: a verb with usual values is written; one without waits, on, fo
 
 test_that("the Total card: on by default with overall rows; off and no switch without", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   with_ovr <- cards::ard_stack(cards::ADSL, .by = TRT01A, cards::ard_categorical(variables = SEX),
                                .overall = TRUE)
   without <- cards::ard_stack(cards::ADSL, .by = TRT01A, cards::ard_categorical(variables = SEX))
@@ -183,7 +182,6 @@ test_that("the Total card: on by default with overall rows; off and no switch wi
 })
 
 test_that("the ARD tells the order and the labels: a factor's levels, its labels", {
-  skip_if_not_installed("cards")
   adsl <- cards::ADSL
   adsl$SEX <- factor(adsl$SEX, levels = c("M", "F"))
   ard <- cards::ard_stack(adsl, .by = TRT01A, cards::ard_categorical(variables = c(SEX, RACE)))
@@ -218,13 +216,13 @@ test_that("normalize_ard(): a form card -- the hierarchy a field marked From the
   # function's order -- the same fields as any table's
   args <- gsub('data-arg="|"', "", regmatches(h, gregexpr('data-arg="[^"]+"', h))[[1L]])
   expect_identical(args, c("hierarchy", "overall", "keys", "drop_contexts", "drop_key_variables",
-                           "stack", "stack_sep", "stack_nest"))
-  expect_match(h, "Arguments not in the code (6)", fixed = TRUE)
+                           "stack", "stack_sep", "stack_nest", "combine"))
+  expect_match(h, "Arguments not in the code (7)", fixed = TRUE)
   expect_false(grepl("rp-badge-unsaved", h, fixed = TRUE))
   # a summary table's (the study's defaults: none): every argument below
   i0 <- item(builder_items(p, "T-14-1-1"), "normalize_ard")
   h0 <- html(.plan_form_body("n", "normalize_ard", i0, ard = list(hierarchy = character())))
-  expect_match(h0, "Arguments not in the code (8)", fixed = TRUE)
+  expect_match(h0, "Arguments not in the code (9)", fixed = TRUE)
   # its hierarchy an ordinary field below (the code does not write it)
   expect_false(grepl("data-ard=", h0, fixed = TRUE))
   expect_match(h0, 'id="n__hierarchy"', fixed = TRUE)
@@ -425,7 +423,6 @@ set_in <- function(session, name, value) {
 
 test_that("in the app: a switch writes and takes away; Add; the variables shown; Total on", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   local_home()
   ard <- cards::ard_stack(cards::ADSL, .by = TRT01A,
                           cards::ard_continuous(variables = AGE),
@@ -632,7 +629,6 @@ test_that("plan_levels()' variables: a line until opened, the ARD's order not wr
                                     under = c(NA, "RACE: Asian", NA)))
   expect_identical(.levels_block_order(st), c("RACE", "ETHNIC"))
   # a sample table: the ARD keeps SEX as a factor in its code list's order
-  skip_if_not_installed("cards")
   p <- sample_planner()
   m <- list(keys = list(TRT01A = c("Drug X", "Control")), by = "TRT01A",
             variables = data.frame(variable = c("AGE", "SEX"), kind = c("continuous", "categorical"),
@@ -646,7 +642,6 @@ test_that("plan_levels()' variables: a line until opened, the ARD's order not wr
 
 test_that("builder_read() tells where each order comes from; a key column's factor counts", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   p <- sample_planner()
   st <- builder_read(p, "T-14-1-1")
   # the sample's levels: its code list's order (#417: the report's

@@ -198,7 +198,6 @@ test_that("the sample's Rework is written as tflspec writes it: normalize_ard() 
 })
 
 test_that("an old Rework that normalizes itself gives the data the new form gives", {
-  skip_if_not_installed("cards")
   ard <- cards::ard_stack(cards::ADSL, .by = ARM, cards::ard_tabulate(variables = c(SEX, RACE)))
   made <- function(proc) {
     q <- add_output(new_planner(), "T2", process_code = proc)

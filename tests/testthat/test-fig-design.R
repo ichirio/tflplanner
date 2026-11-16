@@ -63,7 +63,6 @@ test_that("a figure's design is kept, saved as YAML, and makes its plot", {
 
 test_that("a design is drawn on the study's data, as its program saves it", {
   skip_on_cran()
-  skip_if_not_installed("ggplot2")
   home <- withr_tempdir()
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)
@@ -280,4 +279,18 @@ test_that("a join's card: its how named, a semi join's variables not asked (#444
   d <- list(data = list(list(step = "read", dataset = "ADTTE"),
                         list(step = "join", dataset = "ADSL", how = "semi", vars = "USUBJID")))
   expect_identical(.trim_join(d, data.frame(USUBJID = "1"))$data, d$data)
+})
+
+test_that("a forest's arms come in their order", {
+  adsl <- data.frame(TRT01A = c("Xan High", "Placebo", "Xan Low", "Placebo"),
+                     TRT01AN = c(3, 1, 2, 1), stringsAsFactors = FALSE)
+  dat <- list(ADSL = adsl)
+  # (by the number column, not the letters)
+  expect_identical(.group_levels(dat, "TRT01A"), c("Placebo", "Xan Low", "Xan High"))
+  # a factor's levels as they are; no number column: sorted
+  f <- list(ADSL = data.frame(TRT01A = factor(c("B", "A"), levels = c("B", "A"))))
+  expect_identical(.group_levels(f, "TRT01A"), c("B", "A"))
+  s <- list(ADSL = data.frame(ARM = c("b", "a", "c"), stringsAsFactors = FALSE))
+  expect_identical(.group_levels(s, "ARM"), c("a", "b", "c"))
+  expect_identical(.group_levels(list(), NULL), character())
 })

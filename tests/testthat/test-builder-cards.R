@@ -200,7 +200,6 @@ test_that("a group puts its fields on one row; the folded arguments are the rest
   # nothing left: nothing
   expect_null(arg_more("c1", "f", used = c("a", "b"), schema = list(formals = c("a", "b"))))
   # without `formals` in the schema: the installed function's
-  skip_if_not_installed("ggplot2")
   h <- html(arg_more("c1", "geom_errorbar", schema = list(package = "ggplot2", visible = "width")))
   expect_match(h, 'data-arg="na.rm"', fixed = TRUE)
   expect_false(grepl('data-arg="..."', h, fixed = TRUE))

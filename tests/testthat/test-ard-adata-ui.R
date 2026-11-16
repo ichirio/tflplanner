@@ -73,7 +73,6 @@ test_that("the form's data choice: an analysis data first, written as `data`", {
 })
 
 test_that("the ARD tab shows a report's analysis data and makes one", {
-  skip_if_not_installed("cards")
   local_home()
   s <- create_study("AD", planner = adata_planner())
   saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
@@ -176,7 +175,6 @@ test_that("a data of one row a subject made later: the others are kept to it, ab
 })
 
 test_that("1-1: one list, a new analysis data, kept to another's subjects", {
-  skip_if_not_installed("cards")
   local_home()
   p <- adata_planner()
   p$ard$analyses <- p$ard$analyses[0L, ]
@@ -252,7 +250,6 @@ test_that("1-1's sheet: the report's rows replaced as a whole; a `from` the form
   # a report with none yet: at the end
   out2 <- .adata_rows(.adata_set_rows(p, "D", d[1L, ]))
   expect_identical(out2$output_id, c("A", "B", "B", "C", "D"))
-  skip_if_not_installed("cards")
   local_home()
   p <- adata_planner()
   p <- set_analysis_data(p, "DM", "adsl_saf", from = "ADSL", where = "SAFFL == \"Y\"")
@@ -287,14 +284,15 @@ test_that("a data written as R: the code the program has as a start; saved, the 
   p <- set_analysis_data(p, "DM", "adae_teae", from = "ADAE", subjects = "adsl_saf",
                          where = "TRTEMFL == \"Y\"")
   v <- .adata_code_start(p, "DM", "adae_teae")
-  # (tflspec's pipe: the subjects by semi_join(), the condition after it)
-  expect_match(v, paste0("^adae_teae <- adae \\|>\n  semi_join\\(select\\(adsl_saf, USUBJID\\), ",
-                         "by = \"USUBJID\"\\) \\|>\n  filter\\(TRTEMFL == \"Y\"\\)\nadae_teae$"))
+  # (tflspec's pipe: the subjects by inner_join() on the id, one row per subject
+  # asserted, the condition after it)
+  expect_match(v, paste0("^adae_teae <- adae \\|>\n  inner_join\\(\n    select\\(adsl_saf, USUBJID\\),\n",
+                         "    by = \"USUBJID\",\n    relationship = \"many-to-one\"\n  \\) \\|>\n",
+                         "  filter\\(TRTEMFL == \"Y\"\\)\nadae_teae$"))
   q <- set_analysis_data(p, "DM", "adae_teae", from = "ADAE", code = v, old = "adae_teae")
   ad <- .adata_rows(q, "DM")
   expect_identical(ad$code[2L], v)
   expect_silent(suppressWarnings(.ard_spec(q$ard)))
-  skip_if_not_installed("cards")
   local_home()
   s <- create_study("CO", planner = p)
   saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
@@ -321,7 +319,6 @@ test_that("a data written as R: the code the program has as a start; saved, the 
 })
 
 test_that("1-2: an analysis written as code (custom) from what its fields make", {
-  skip_if_not_installed("cards")
   local_home()
   p <- adata_planner()
   s <- create_study("AC", planner = p)
@@ -346,7 +343,6 @@ test_that("1-2: an analysis written as code (custom) from what its fields make",
 })
 
 test_that("step 1 says the report's analyses and the study's; the Data tab explains its sheets", {
-  skip_if_not_installed("cards")
   local_home()
   p <- adata_planner()
   p$ard$analyses <- rbind(p$ard$analyses, transform(p$ard$analyses[1L, ], output_id = "OTHER"))
@@ -401,7 +397,6 @@ test_that("1-1's analysis set: the condition's first row, from the study's sets 
   expect_true(is.na(.cond_set_first('SAFFL == "Y"', NA, known)))
   expect_identical(.cond_set_first("not R (", 'SAFFL == "Y"', known), "not R (")
   expect_identical(.cond_first('SAFFL == "Y" & AGE >= 65'), 'SAFFL == "Y"')
-  skip_if_not_installed("cards")
   local_home()
   p <- adata_planner()
   s <- create_study("PO", planner = p)
@@ -489,7 +484,6 @@ test_that("an analysis set's condition taken out of a condition, and put in", {
 })
 
 test_that("1-1: a population_id the sheet has is the condition's first row", {
-  skip_if_not_installed("cards")
   local_home()
   p <- adata_planner()
   p <- set_analysis_data(p, "DM", "adsl_old", from = "ADSL", population_id = "SAF", where = "AGE >= 65")
@@ -513,7 +507,6 @@ test_that("1-1: a population_id the sheet has is the condition's first row", {
 
 
 test_that("1-1 lists only the analysis data the report's analyses read (every sample report)", {
-  skip_if_not_installed("cards")
   home <- local_home()
   s <- suppressMessages(create_sample_study(run = FALSE))
   p <- s$planner

@@ -28,7 +28,7 @@
 # check (an unticked check would say FALSE).
 .plan_cell_look <- "enum[TRUE|FALSE]|logical"
 .plan_form_types <- list(
-  normalize_ard = c(drop_contexts = "r", stack = "r"),
+  normalize_ard = c(drop_contexts = "r", stack = "r", combine = "r"),
   plan_cell_style = c(bold = .plan_cell_look, italic = .plan_cell_look,
                       underline = .plan_cell_look, color = "colour", background = "colour"),
   plan_columns = c(widths = "widths", row_title = "list<column>"))
@@ -40,6 +40,26 @@
   plan_columns = c("cell_format", "column_widths_twips"),
   plan_paginate_cols = "col_header",
   plan_row_group = "group_col")
+
+# The defaults of the plan verbs whose formals are NULL (rtfreporter#949: a
+# verb records only what its call says, the defaults are applied when the
+# layers are merged).  A form shows these, as it showed the formals before;
+# a value equal to its default is not written.  Here (not read from
+# rtfreporter's internals) for the arguments named.
+.plan_verb_defaults <- list(
+  plan_stub = list(before = FALSE),
+  plan_paginate_group = list(keep = TRUE),
+  plan_sort = list(keep = TRUE),
+  plan_total = list(label = "Total", position = "last", direction = "cols"),
+  plan_empty = list(when = "auto", position = "last"))
+
+# a formal's default: the function's own, else (a NULL formal) the verb's
+# documented default above
+.plan_formal_default <- function(fn, fl, a) {
+  # (a required argument's formal is the empty symbol: not evaluated here)
+  nul <- vapply(fl[a], function(d) !is.symbol(d) && is.null(d), NA)
+  if (length(nul) == 1L && nul) .plan_verb_defaults[[fn]][[a]] else fl[[a]]
+}
 
 # a form card's schema: tflspec's, with the types above, its formals the
 # function's own (not `plan`) and its visible arguments the main ones
@@ -60,7 +80,7 @@
   # a check's default the function's own (plan_paginate_group(keep = TRUE)):
   # the field ticked as the function would be
   for (a in intersect(fo, names(sch$args))) {
-    d <- fl[[a]]
+    d <- .plan_formal_default(fn, fl, a)
     if (identical(.arg_kind(sch$args[[a]]$type), "logical") && is.null(sch$args[[a]]$default) &&
         is.logical(d) && length(d) == 1L && !is.na(d)) {
       sch$args[[a]]$default <- d

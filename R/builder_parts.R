@@ -239,7 +239,7 @@
   if (!is.null(hit) && identical(hit$key, it$own)) return(hit$sheets)
   o <- tflspec::tfl_output("PART", "table", content = it$own)
   back <- tryCatch(
-    tflspec::tfl_sheets_from_spec(.spec_study_lean(x$spec$study), list(PART = o)),
+    .sheets_from_spec(.spec_study_lean(x$spec$study), list(PART = o)),
     error = function(e) NULL)
   out <- list()
   for (s in intersect(table_sheets(), names(back$table))) {

@@ -13,8 +13,6 @@ run_end_marks <- function(h) {
 
 test_that("a run this session did not start: the marks and the builder's ARD follow it", {
   skip_on_cran()
-  skip_if_not_installed("cards")
-  skip_if_not_installed("cardx")
   local_home()
   suppressMessages(create_sample_study(run = FALSE))
   shiny::testServer(run_end_server(), {
@@ -43,8 +41,6 @@ test_that("a run this session did not start: the marks and the builder's ARD fol
 
 test_that("a run in the background draws nothing again: the list, the report list's table, the step marks", {
   skip_on_cran()
-  skip_if_not_installed("cards")
-  skip_if_not_installed("cardx")
   local_home()
   suppressMessages(create_sample_study(run = FALSE))
   shiny::testServer(run_end_server(), {

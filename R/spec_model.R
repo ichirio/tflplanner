@@ -64,13 +64,28 @@
        where = where, base = NULL, meta = NULL)
 }
 
+# tflspec::tfl_sheets_from_spec() with the template reports expanded first
+# (tflspec::tfl_template_to_spec()): the sheets then hold each one's items
+# -- its ARD, preview and program -- whichever tflspec is installed (one
+# that writes a template report to its own `templates` sheet, by name and
+# args, leaves the expanding to the caller).  One that cannot be expanded
+# (a KM type with no `data:` steps) is passed as it is, for tflspec to say.
+.sheets_from_spec <- function(study, outputs) {
+  outputs <- lapply(outputs, function(o) {
+    t <- o$template
+    if (!is.list(t) || is.null(t$name)) return(o)
+    tryCatch(tflspec::tfl_template_to_spec(o, study), error = function(e) o)
+  })
+  tflspec::tfl_sheets_from_spec(study, outputs)
+}
+
 # The planner (the sheets' view) made from a spec in memory: the sheets,
 # the report list and setup, the ARD definition, the listing and figure
 # sheets and the figure designs, as read_planner() and the ARD and listing
 # readers give them.  What the spec holds that the sheets cannot is the
 # attribute `not_converted`.
 .planner_from_spec <- function(study, outputs) {
-  back <- tflspec::tfl_sheets_from_spec(study, outputs)
+  back <- .sheets_from_spec(study, outputs)
   p <- .planner_from_sheets(back$table, back$planner)
   # study.yml's settings no sheet holds (the treatment variable, the missing SD)
   st <- study$study$settings %||% list()
@@ -152,9 +167,9 @@
 # The files the bridge writes from a view: their text by path (study.yml
 # as tflspec writes it, without the study's own lines), and the folder
 # they are in (the caller removes it)
-.spec_bridge <- function(body, meta) {
+.spec_bridge <- function(body, meta, style = NULL) {
   tmp <- tempfile("tflplanner-yaml")
-  tflspec::tfl_yaml_from_sheets(.planner_sheets(body, meta), tmp, overwrite = TRUE)
+  tflspec::tfl_yaml_from_sheets(.planner_sheets(body, meta, style), tmp, overwrite = TRUE)
   .study_yml_own_settings(file.path(tmp, .study_file), body$study)
   rel <- list.files(tmp, recursive = TRUE)
   rel <- setdiff(rel, file.path(study_layout()[["spec"]], "_not_converted.yml"))
@@ -215,13 +230,15 @@
     attr(p, "changed") <- character()
     return(p)
   }
-  now <- .spec_bridge(body, meta)
+  # (the study's default page configuration travels with the sheets)
+  style <- sp$study$study$settings$style
+  now <- .spec_bridge(body, meta, style)
   on.exit(unlink(now$dir, recursive = TRUE), add = TRUE)
   was <- NULL
   if (is.null(sp) || is.null(sp$base)) {
     changed <- union(names(sp$text), names(now$text))
   } else {
-    was <- .spec_bridge(sp$base, sp$meta)
+    was <- .spec_bridge(sp$base, sp$meta, style)
     on.exit(unlink(was$dir, recursive = TRUE), add = TRUE)
     rels <- union(names(was$text), names(now$text))
     changed <- rels[!vapply(rels, function(r) identical(was$text[[r]], now$text[[r]]), NA)]
@@ -261,7 +278,8 @@
       switch(part$kind,
         output = {
           gone <- names(sp$where)[sp$where == r]
-          kept <- .spec_output_parts(sp$outputs[gone], was, r, new$outputs[names(new$where)[new$where == r]])
+          kept <- .spec_output_parts(sp$outputs[gone], was, r, new$outputs[names(new$where)[new$where == r]],
+                                     study = sp$study)
           sp$outputs[gone] <- NULL
           sp$where <- sp$where[!names(sp$where) %in% gone]
           for (id in names(kept$outputs)) {
@@ -285,11 +303,18 @@
         },
         {
           mine <- new$study[[part$kind]]
+          styles_kept <- FALSE
           if (identical(part$kind, "defaults")) {
             mine <- .keep_layer_keys(sp$study$defaults, was_study()$defaults, mine)
+            # (the page configurations: the sheets' blank rows are the
+            # study's default one, the bridge's `standard`; the others and the
+            # content halves are the spec's)
+            sty <- .keep_style_sets(sp$study$styles, was_study()$styles, new$study$styles)
+            styles_kept <- !identical(sty, new$study$styles)
+            sp$study$styles <- sty
           }
           sp$study[part$kind] <- list(mine)
-          if (!identical(mine, new$study[[part$kind]])) {
+          if (!identical(mine, new$study[[part$kind]]) || styles_kept) {
             sp$text[[r]] <- .study_part_lines(sp$study, part$kind)
           }
         })
@@ -331,6 +356,36 @@
   now
 }
 
+# The page configurations (defaults.yml styles:) after the sheets' edits: the
+# bridge gives the configurations the sheets' rows name (the blank rows' is
+# `standard`, a pattern's its own name), their page only.  `spec`: the spec's,
+# `was` the bridge's before the edits, `now` as it is.  A configuration the
+# bridge gives takes its page from it and keeps the spec's content half; one it
+# gave and no longer gives (its rows all taken away) has no page; the others
+# stay as the spec has them.
+.keep_style_sets <- function(spec, was, now) {
+  out <- spec %||% list()
+  # (a configuration renamed in the view is new here and the old one gone, as
+  # for a pattern: its set, content half and all, goes to the new name)
+  for (nm in setdiff(names(now), names(was))) {
+    from <- .renamed_from(out, was, now, nm)
+    if (is.null(from) || identical(from, nm)) next
+    out[[nm]] <- out[[from]]
+    out[[from]] <- NULL
+    was[[nm]] <- was[[from]]
+    was[[from]] <- NULL
+  }
+  for (nm in union(names(was), names(now))) {
+    cur <- out[[nm]] %||% list()
+    page <- if (nm %in% names(now)) now[[nm]]$page else list()
+    if (is.null(out[[nm]]) && !nm %in% names(now)) next
+    cur["page"] <- list(page %||% list())
+    if (is.null(cur$content)) cur$content <- now[[nm]]$content %||% list()
+    out[[nm]] <- cur
+  }
+  out
+}
+
 # A report file the edits change, part by part (#415): the bridge's value
 # of a part (label, population, ard, data, codelists, content, page, ...)
 # is taken only where the bridge's text of the view as it was (`was`) and
@@ -339,7 +394,7 @@
 # the bridge's.  The reports to put, and the file's text when it is not
 # the bridge's.  (A file of several reports, or a report new or gone, is
 # the bridge's.)
-.spec_output_parts <- function(spec, was, rel, now) {
+.spec_output_parts <- function(spec, was, rel, now, study = NULL) {
   whole <- list(outputs = now, text = NULL)
   if (is.null(was) || !rel %in% names(was$text) || length(spec) != 1L || length(now) != 1L) {
     return(whole)
@@ -350,13 +405,72 @@
       !identical(spec[[1L]]$id, now[[1L]]$id)) {
     return(whole)
   }
-  m <- .merge3(spec[[1L]], w[[1L]], now[[1L]])
+  w1 <- w[[1L]]
+  n1 <- now[[1L]]
+  # a template report: the sheets have its template's items expanded, its
+  # file the template and its own items -- only the items the edits
+  # change are written, each as the report's own after the template, with
+  # the arguments the edit changed (not the template's items all over again)
+  tc <- .spec_tpl_items(spec[[1L]], w1, n1, study)
+  if (!is.null(tc)) {
+    n1["content"] <- list(if (length(tc)) tc)
+    w1["content"] <- list(spec[[1L]]$content)
+  }
+  m <- .merge3(spec[[1L]], w1, n1)
   if (identical(m, now[[1L]])) return(whole)
   f <- tempfile("tflplanner-output", fileext = ".yml")
   on.exit(unlink(f), add = TRUE)
   tflspec::tfl_write_output(m, f)
   list(outputs = stats::setNames(list(m), m$id),
        text = readLines(f, encoding = "UTF-8", warn = FALSE))
+}
+
+# A template report's own items after an edit of its sheets: `was` and
+# `now` the bridge's report before and after (the template's items
+# expanded, in the same verbs), `spec` the file's.  Each item the edit
+# changed is put as the report's own (tflspec::tfl_item_own(): the
+# arguments it changes over what is below it -- the template's, the
+# study's), the rest of the file's own items as they are.  NULL: not a
+# template report, or an edit that adds or takes away a verb (the general
+# merge then).
+.spec_tpl_items <- function(spec, was, now, study = NULL) {
+  if (is.null(spec) || !is.list(spec$template) || is.null(spec$template$name)) return(NULL)
+  items <- function(x) is.null(x) || (is.list(x) && is.null(names(x)) &&
+                                         all(vapply(x, inherits, NA, "tfl_item")))
+  fns <- function(x) vapply(x, function(i) as.character(i$fn %||% ""), "")
+  wc <- was$content
+  nc <- now$content
+  if (inherits(spec$content, "tfl_r") || !items(wc) || !items(nc) ||
+      !identical(fns(wc), fns(nc))) {
+    return(NULL)
+  }
+  r <- tryCatch(tflspec::tfl_resolve_output(spec, study, provenance = TRUE),
+                error = function(e) NULL)
+  if (is.null(r) || inherits(r$content, "tfl_r")) return(NULL)
+  rf <- fns(r$content)
+  content <- spec$content %||% list()
+  seen <- list()
+  for (i in seq_along(nc)) {
+    fn <- fns(nc)[[i]]
+    k <- (seen[[fn]] %||% 0L) + 1L
+    seen[[fn]] <- k
+    if (identical(wc[[i]], nc[[i]])) next
+    at <- which(rf == fn)
+    if (length(at) < k) next
+    below <- r$content[[at[k]]]$below
+    # the item as it is in effect (the template's, with the report's own),
+    # with only the arguments the edit changed (the sheets' view of an item
+    # may not hold every argument: one it lacks is not taken away)
+    args <- r$content[[at[k]]]$args %||% list()
+    wa <- wc[[i]]$args %||% list()
+    na <- nc[[i]]$args %||% list()
+    for (a in union(names(wa), names(na))) {
+      if (!identical(wa[[a]], na[[a]])) args[a] <- list(na[[a]])
+    }
+    args <- Filter(Negate(is.null), args)
+    content <- .content_put(content, fn, k, tflspec::tfl_item_own(tflspec::tfl_item(fn, args), below))
+  }
+  content
 }
 
 # A three-way merge of a value of the spec: `was` and `now` are the
@@ -632,7 +746,7 @@
     o <- sp$outputs[[output_id]]
     o["ard"] <- list(NULL)
     if (!inherits(o$content, "tfl_r")) o["content"] <- list(NULL)
-    v <- .planner_from_spec(.spec_study_lean(sp$study), stats::setNames(list(o), output_id))
+    v <- .planner_from_spec(.spec_study_lean(sp$study, list(o)), stats::setNames(list(o), output_id))
     no_id <- function(d) { d$output_id <- NULL; rownames(d) <- NULL; d }
     for (s in intersect(report_sheets(), names(p$sheets))) {
       new <- no_id(sheet_rows(v, s, output_id))
@@ -646,7 +760,7 @@
   if (content_only && !is.null(sp$outputs[[output_id]])) {
     o <- sp$outputs[[output_id]]
     o[c("ard", "data", "page")] <- list(NULL)
-    back <- tflspec::tfl_sheets_from_spec(.spec_study_lean(sp$study), stats::setNames(list(o), output_id))
+    back <- .sheets_from_spec(.spec_study_lean(sp$study, list(o)), stats::setNames(list(o), output_id))
     for (s in intersect(table_sheets(), names(p$sheets))) {
       d <- .normalize_sheet(back$table[[s]], s)
       new <- d[!is.na(d$output_id) & d$output_id == output_id, , drop = FALSE]
@@ -658,7 +772,8 @@
     if (!is.null(p$spec$base)) p$spec$base <- .planner_body(p)
     return(p)
   }
-  v <- .planner_from_spec(.spec_study_lean(sp$study), sp$outputs[intersect(output_id, names(sp$outputs))])
+  outs <- sp$outputs[intersect(output_id, names(sp$outputs))]
+  v <- .planner_from_spec(.spec_study_lean(sp$study, outs), outs)
   nc <- attr(p, "not_converted")
   no_id <- function(d) { d$output_id <- NULL; d }
   same_rows <- function(a, b) identical(no_id(a), no_id(b))
@@ -697,10 +812,14 @@
 }
 
 # The study's spec with no rows of its own for the bridge to make: its
-# defaults' and patterns' content and page (a report's rows are its own)
-.spec_study_lean <- function(study) {
+# defaults' and patterns' content and page (a report's rows are its own).
+# A template report among `outputs` keeps the defaults: its template
+# extends them (tflspec#779), so they give rows of the report's own -- left
+# out, its rows would differ from the ones the files give.
+.spec_study_lean <- function(study, outputs = list()) {
   if (is.null(study)) return(study)
-  if (!is.null(study$defaults)) study$defaults[c("content", "page")] <- list(NULL)
+  tpl <- any(vapply(outputs, function(o) !is.null(o$template), logical(1L)))
+  if (!tpl && !is.null(study$defaults)) study$defaults[c("content", "page")] <- list(NULL)
   study$patterns <- list()
   study
 }

@@ -193,7 +193,9 @@
       if (!identical(h$params$planner_key, key())) return()
       d <- read_grid(h)
       if (is.null(d)) return()
-      guarded(rv$p <- set_sheet_rows(rv$p, sh, target(), d))
+      cand <- guarded(set_sheet_rows(rv$p, sh, target(), d))
+      # (a grid drawn again sends its rows back with no edit: no write then)
+      if (!is.null(cand) && !identical(cand$sheets[[sh]], rv$p$sheets[[sh]])) rv$p <- cand
       # the table's builder shows the sheets: drawn again from them
       if (sh %in% table_sheets() && identical(active_page(), "builder")) {
         rv$bver <- rv$bver + 1L
@@ -512,6 +514,15 @@
     if (!has_an && !is_report) {
       return(notify(sprintf(t("%s has no analyses in the ARD definition."), id),
                     "warning"))
+    }
+    # (a template report with a required value empty -- demog with no
+    # population: its card's alert says it; no ARD run that can only fail
+    # with an error note that stays)
+    miss <- if (is_report) .tpl_missing_report(rv$p, id) else character()
+    if (length(miss)) {
+      notify(sprintf(t("Required arguments are empty: %s. The preview waits for them."),
+                     paste(miss, collapse = ", ")), "warning")
+      return(invisible(FALSE))
     }
     if (has_an && !is.null(ard_valid())) {
       notify(t("Correct the ARD definition first."), "warning")

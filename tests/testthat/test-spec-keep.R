@@ -135,7 +135,6 @@ builder_show <- function(session, bform) {
 
 test_that("step 2, the table builder: what it cannot show stays as written", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   local_home()
   p <- add_output(new_planner(), "T-DM", type = "table")
   p <- set_sheet_rows(p, "tables", "T-DM", data.frame(
@@ -322,7 +321,6 @@ test_that("a form keeps the spaces typed: quoted in the sheet, shown without", {
 
 test_that("the builder's header form: spaces typed are saved, quoted, and reach the program", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   local_home()
   p <- add_output(new_planner(), "T-DM", type = "table")
   p <- set_sheet_rows(p, "col_header", "T-DM", data.frame(

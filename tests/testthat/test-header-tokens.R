@@ -38,10 +38,10 @@ test_that("a new study's header is the package's, its words tokens", {
   set <- paste(report_setup_code(x), collapse = "\n")
   expect_match(set, "rtfreporter.tokens", fixed = TRUE)
   expect_match(set, "STUDY_ID = \"ABC-1\"", fixed = TRUE)
-  expect_match(set, "study_header <- rtf_header(", fixed = TRUE)
+  expect_match(set, "header_standard <- rtf_header(", fixed = TRUE)
   prog <- paste(program_code(x, "T-14-1-1"), collapse = "\n")
   expect_match(prog, "source(\"programs/tfl/report_setup.R\")", fixed = TRUE)
-  expect_match(prog, "header = study_header", fixed = TRUE)
+  expect_match(prog, "header = header_standard", fixed = TRUE)
   expect_match(prog, "OUTPUT_LABEL = \"Table 14.1.1\"", fixed = TRUE)
   expect_false(grepl("ABC-1", sub("^.*report_id <-", "", prog), fixed = TRUE))
   # a study with no tokens of its own: its header in each program, and

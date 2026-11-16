@@ -58,6 +58,33 @@
   p
 }
 
+# A parameter marked "key" (tflspec's tier: a default that stays on top of
+# the card); a tflspec with no such tier, or a parameter with no tier: no
+.tpl_is_key <- function(x) identical(x$tier, "key")
+
+# The small "key" marker beside a key argument's label (tip: why it is on top);
+# `t` the translator
+.tpl_key_tag <- function(x, t) if (.tpl_is_key(x)) shiny::span(
+  class = "badge rounded-pill rp-tpl-badge rp-tpl-badge-key",
+  title = t("A setting often changed in this report; shown on top even at its default."),
+  t("Main"))
+
+# A required parameter (tier "required" or required = TRUE) that has no default
+.tpl_required_empty <- function(x) {
+  (isTRUE(x$required) || identical(x$tier, "required")) && is.null(x$default)
+}
+
+# The card's arguments of a section in two groups: `up`, kept on top -- the
+# required, the report's own (in `args`) and the key ones, whatever their
+# value -- and `low`, the others, folded away (their order kept).  `prm`: the
+# section's parameters, named.
+.tpl_card_groups <- function(prm, args) {
+  nm <- names(prm)
+  on_top <- vapply(nm, function(a) isTRUE(prm[[a]]$required) || a %in% names(args) ||
+                     .tpl_is_key(prm[[a]]), NA)
+  list(up = nm[on_top], low = nm[!on_top])
+}
+
 # A report's template, as its file says it (NULL: none; a figure
 # designer's `template: km_simple`, a name, is no template SPEC)
 .tpl_of <- function(p, output_id) {
@@ -249,14 +276,167 @@
   vals <- vapply(cells, function(cs) if (length(cs) > 1L) paste(cs[-1L], collapse = " | ") else "", "")
   keep <- nzchar(keys)
   if (!any(keep)) return(NULL)
+  # (a map whose value is several, fields `values`: a line's comma-separated
+  # values as a vector -- RACE | ASIAN, WHITE)
+  if (identical(.tpl_list_fields(prm)[2L], "values")) {
+    return(stats::setNames(lapply(vals[keep], function(v) trimws(strsplit(v, ",", fixed = TRUE)[[1L]])), keys[keep]))
+  }
+  # (a rule a side, fields `edge`, `line`: TRUE / FALSE as a flag, a width as a number)
+  if (identical(.tpl_list_fields(prm)[2L], "line")) {
+    return(stats::setNames(lapply(vals[keep], val), keys[keep]))
+  }
   stats::setNames(vals[keep], keys[keep])
 }
 
-# A value as one line to read (a default; a list's value)
+# A value as one line to read (a default; a list's value): a plain string as
+# itself, anything else in YAML flow form (`[a, b]`, `{k: v}`, `!r code` for
+# raw R) -- what .tpl_text_parse() reads back
 .tpl_show <- function(x) {
   if (is.null(x)) return("NULL")
-  if (is.character(x) && length(x) == 1L && is.null(names(x))) return(x)
-  paste(deparse(x, width.cutoff = 500L), collapse = " ")
+  if (is.character(x) && length(x) == 1L && is.null(names(x)) && !inherits(x, "tfl_r")) return(x)
+  .tpl_yaml_flow(x)
+}
+
+# The YAML handlers the card reads text with (`!r` is raw R: a tfl_r)
+# (a sequence holding an `!r` or a map stays a list, as in tflspec's reader, so a
+# guard's R keeps its class; one of plain scalars of one kind is a vector)
+.tpl_yaml_handlers <- function() {
+  seq <- function(x) {
+    if (!length(x)) return(list())
+    if (any(vapply(x, function(e) inherits(e, "tfl_r") || is.list(e), NA))) return(x)
+    if (all(vapply(x, function(e) is.atomic(e) && length(e) == 1L, NA)) &&
+          length(unique(vapply(x, function(e) class(e)[1L], ""))) == 1L) return(unlist(x))
+    x
+  }
+  list(r = function(x) tflspec::tfl_r(as.character(x)), seq = seq)
+}
+
+# A value in YAML flow form (one line).  A string is quoted only when its
+# plain form would not read back as itself.
+.tpl_yaml_flow <- function(x) {
+  back <- function(txt) tryCatch(yaml::yaml.load(paste0("[", txt, "]"), handlers = .tpl_yaml_handlers())[[1L]],
+                                 error = function(e) structure(list(), failed = TRUE))
+  quote_it <- function(s) {
+    s <- gsub("\\", "\\\\", s, fixed = TRUE)
+    s <- gsub("\"", "\\\"", s, fixed = TRUE)
+    s <- gsub("\n", "\n", s, fixed = TRUE)
+    s <- gsub("\t", "\t", s, fixed = TRUE)
+    paste0("\"", s, "\"")
+  }
+  str <- function(s) {
+    if (is.na(s)) return("null")
+    if (!nzchar(s)) return("\"\"")
+    if (identical(back(s), s)) s else quote_it(s)
+  }
+  scalar <- function(v) {
+    if (inherits(v, "tfl_r")) {
+      s <- as.character(unclass(v))[1L]
+      plain <- paste0("!r ", s)
+      if (identical(back(plain), v)) plain else paste0("!r ", quote_it(s))
+    } else if (is.null(v)) "null"
+    else if (is.logical(v)) if (is.na(v)) "null" else if (v) "true" else "false"
+    else if (is.numeric(v)) {
+      if (is.na(v)) ".nan" else if (is.infinite(v)) (if (v > 0) ".inf" else "-.inf") else
+        format(v, scientific = FALSE, drop0trailing = TRUE, trim = TRUE, digits = 15)
+    } else str(as.character(v))
+  }
+  key <- function(k) if (nzchar(k)) str(k) else "\"\""
+  go <- function(v) {
+    if (inherits(v, "tfl_r") || is.null(v)) return(scalar(v))
+    if (is.list(v)) {
+      nm <- names(v)
+      items <- vapply(v, go, "")
+      if (!is.null(nm) && all(nzchar(nm))) {
+        return(paste0("{", paste(paste0(vapply(nm, key, ""), ": ", items), collapse = ", "), "}"))
+      }
+      return(paste0("[", paste(items, collapse = ", "), "]"))
+    }
+    if (length(v) == 1L && is.null(names(v))) return(scalar(v))
+    nm <- names(v)
+    items <- vapply(seq_along(v), function(i) scalar(v[[i]]), "")
+    if (!is.null(nm) && all(nzchar(nm))) {
+      return(paste0("{", paste(paste0(vapply(nm, key, ""), ": ", items), collapse = ", "), "}"))
+    }
+    paste0("[", paste(items, collapse = ", "), "]")
+  }
+  go(x)
+}
+
+# A list value in YAML block form (several lines), for a list the rows box
+# cannot show: a map's key on a line, its value after it, or indented below;
+# a sequence's entry a `- ` line.  A leaf is written as .tpl_yaml_flow() does
+# (`!r code` for raw R; numbers as typed digits), so .tpl_yaml_read() reads it back.
+.tpl_yaml_block <- function(x) {
+  leaf <- function(v) inherits(v, "tfl_r") || is.null(v) || (!is.list(v) && length(v) <= 1L) ||
+    (is.list(v) && !length(v))
+  # (raw R plain, as a person writes it in a block, when that reads back as itself)
+  one <- function(e) {
+    if (inherits(e, "tfl_r")) {
+      s <- as.character(unclass(e))[1L]
+      plain <- paste0("!r ", s)
+      ok <- !grepl("[\r\n]", s) && identical(tryCatch(yaml::yaml.load(paste0("- ", plain), handlers = .tpl_yaml_handlers())[[1L]],
+                                                       error = function(err) NULL), e)
+      if (ok) return(plain)
+    }
+    .tpl_yaml_flow(e)
+  }
+  go <- function(v, pad) {
+    if (is.list(v) || (is.atomic(v) && length(v) > 1L && is.null(names(v)))) {
+      items <- as.list(v)
+      nm <- names(items)
+      if (!is.null(nm) && all(nzchar(nm))) {
+        return(unlist(lapply(seq_along(items), function(i) {
+          k <- .tpl_yaml_flow(nm[[i]])
+          if (leaf(items[[i]]) || !is.null(names(items[[i]])) && is.atomic(items[[i]])) {
+            paste0(pad, k, ": ", one(items[[i]]))
+          } else c(paste0(pad, k, ":"), go(items[[i]], paste0(pad, "  ")))
+        }), use.names = FALSE))
+      }
+      return(unlist(lapply(items, function(e) paste0(pad, "- ", one(e))), use.names = FALSE))
+    }
+    paste0(pad, one(v))
+  }
+  if (is.null(x) || (is.list(x) && !length(x))) return("")
+  paste(go(x, ""), collapse = "\n")
+}
+
+# ... and the YAML text of a list read back (NULL: empty).  An error (not YAML,
+# or not a map / sequence) is raised for the caller to say.
+.tpl_yaml_read <- function(text) {
+  text <- paste(as.character(text %||% ""), collapse = "\n")
+  if (!nzchar(trimws(text))) return(NULL)
+  r <- yaml::yaml.load(text, handlers = .tpl_yaml_handlers())
+  if (is.null(r) || (is.list(r) && !length(r))) return(NULL)
+  if (!is.list(r) && is.null(names(r)) && length(r) == 1L) {
+    stop("a map (`name: value` lines) or a list (`- value` lines) is expected", call. = FALSE)
+  }
+  r
+}
+
+# Text in the card's box read as a value.  One starting with `[` or `!r ` is
+# YAML (`!r` raw R, as .tpl_show() writes it): an error (not YAML) is raised
+# for the caller to say.  One starting with `{` is a map only when it parses
+# to a named list with no empty value; otherwise (`{n} ({p:.1f%})`, `{n}`: a
+# format) it is the string as typed, with no error.  Any other text is a string.
+.tpl_text_parse <- function(v) {
+  if (!is.character(v) || length(v) != 1L) return(v)
+  if (grepl("^([[]|!r )", v)) return(yaml::yaml.load(v, handlers = .tpl_yaml_handlers()))
+  if (!startsWith(v, "{")) return(v)
+  r <- tryCatch(yaml::yaml.load(v, handlers = .tpl_yaml_handlers()), error = function(e) NULL)
+  if (is.list(r) && length(r) && !is.null(names(r)) && all(nzchar(names(r))) &&
+        !any(vapply(r, is.null, NA))) r else v
+}
+
+# An edit of a list shown as YAML text: `same` (the text it was drawn with, no
+# edit), `bad` (not YAML, or not a map / list: the value stays; `msg` says why)
+# or `edit` (`value`, the list read back).  `shown`: the value drawn.
+.tpl_yaml_edit <- function(text, shown) {
+  if (identical(trimws(paste(as.character(text), collapse = "\n")), trimws(.tpl_yaml_block(shown)))) {
+    return(list(kind = "same"))
+  }
+  r <- tryCatch(list(value = .tpl_yaml_read(text)), error = function(e) conditionMessage(e))
+  if (is.character(r)) return(list(kind = "bad", msg = r))
+  list(kind = "edit", value = r$value)
 }
 
 # What an input gives, as the argument's value (NULL: none -- the default)
@@ -275,9 +455,29 @@
     },
     list = , columns = .tpl_list_parse(v, prm),
     {
-      v <- trimws(paste(as.character(v), collapse = ""))
-      if (nzchar(v)) v else NULL
+      v <- trimws(paste(as.character(v), collapse = "\n"))
+      # (YAML flow or `!r`: what .tpl_show() writes; a text that does not parse is kept as typed --
+      # the card checks it first with .tpl_text_parse())
+      if (nzchar(v)) tryCatch(.tpl_text_parse(v), error = function(e) v) else NULL
     })
+}
+
+# What a field drawn with `shown` (tpl_widget()) sends before anyone touches
+# it, read back as .tpl_value() reads it: the value an untouched field
+# gives -- not always `shown` itself (a FALSE text says "false", a list's
+# vectors come back as its lines say them, NULL a flag is FALSE)
+.tpl_untouched <- function(shown, type, prm = NULL) {
+  raw <- tryCatch(switch(type,
+    flag = isTRUE(shown),
+    number = .num_or_null(shown),
+    text = if (is.null(shown)) "" else .tpl_show(shown),
+    list = , columns = .tpl_list_text(shown, prm),
+    vars = , chips = , choices = as.character(shown %||% character()),
+    levels = if (isTRUE(prm$multiple)) as.character(shown %||% character()) else
+      as.character(shown %||% "")[1L],
+    as.character(shown %||% "")[1L]), error = function(e) NULL)
+  if (is.null(raw)) return(NULL)
+  tryCatch(.tpl_value(raw, type, prm), error = function(e) NULL)
 }
 
 # The args with one argument set (NULL, or the default itself: taken away)
@@ -317,9 +517,10 @@
   NULL
 }
 
-# The required arguments still empty
+# The required arguments still empty: those the card shows (a hidden one is
+# not the report's argument: demog's `population` is its `population:` field)
 .tpl_missing <- function(name, args, study = NULL) {
-  prm <- .tpl_params(name)
+  prm <- .tpl_shown(.tpl_params(name))
   req <- names(prm)[vapply(prm, function(x) isTRUE(x$required), NA)]
   # (a required argument the study gives -- its treatment for `by` -- is
   # not empty: tflspec fills it)
@@ -328,6 +529,21 @@
     length(v) > 0L && any(nzchar(as.character(v)))
   }
   req[!vapply(req, given, NA)]
+}
+
+# A template report's required values still empty, as its card says them:
+# .tpl_missing()'s, and "population" first when the template takes the
+# report's population (demog) and the report has none (character(): none,
+# or not a template report)
+.tpl_missing_report <- function(p, output_id) {
+  tp <- .tpl_of(p, output_id)
+  if (is.null(tp)) return(character())
+  miss <- .tpl_missing(tp$name, tp$args, p$spec$study)
+  if (.tpl_pop_of_report(.tpl_params(tp$name))) {
+    pid <- as.character(p$spec$outputs[[output_id]]$common$population %||% "")[1L]
+    if (is.na(pid) || !nzchar(pid)) miss <- c("population", miss)
+  }
+  miss
 }
 
 # The editor step a template's argument is drawn in (#514): "data" (the
@@ -356,7 +572,7 @@
   i <- which(tab$template == template & tab$argument == argument)
   if (length(i)) return(tab$section[i[1L]])
   if (argument %in% c("population", "subset", "where", "data", "param", "paramcd")) return("data")
-  if (argument %in% c("title", "param_page", "param_heading")) return("page")
+  if (argument %in% c("title", "page_by", "page_heading")) return("page")
   if (argument %in% c("labels", "heading", "order", "sort", "formats") ||
         grepl("_(label|order)$", argument)) return("content")
   "ard"
@@ -369,7 +585,25 @@
 # Whether the report says the template's data in its own `data:` steps
 # (the template hides its data stage: km_survival, km_cumulative)
 .tpl_own_data <- function(prm) {
-  any(vapply(prm, function(x) isTRUE(x$hidden) && identical(x$stage, "data"), NA))
+  any(vapply(prm, function(x) isTRUE(x$hidden) && identical(x$step, "data"), NA))
+}
+
+# Whether the template's analysis set is the report's `population:` field
+# alone: its `population` hidden, required, and not part of the report's own
+# data steps (demog, stf_t02_demog).  The add-report dialog asks for it, and
+# writes it as the report's population, not as an argument.
+.tpl_pop_of_report <- function(prm) {
+  p <- prm[["population"]]
+  !is.null(p) && isTRUE(p$hidden) && isTRUE(p$required) && !.tpl_own_data(prm)
+}
+
+# Whether the template's analysis set is the report's `population:` field
+# alone: its `population` hidden, required, and not part of the report's own
+# data steps (demog, stf_t02_demog).  The add-report dialog asks for it, and
+# writes it as the report's population, not as an argument.
+.tpl_pop_of_report <- function(prm) {
+  p <- prm[["population"]]
+  !is.null(p) && isTRUE(p$hidden) && isTRUE(p$required) && !.tpl_own_data(prm)
 }
 
 # A report's `data:` steps as the card's fields say them: the dataset
@@ -451,8 +685,11 @@
   if (!is.null(name)) o$template$name <- name
   prm <- .tpl_params(o$template$name)
   args <- args[c(intersect(names(prm), names(args)), setdiff(names(args), names(prm)))]
+  if (!is.null(args$population)) o$common$population <- as.character(args$population)
+  # (a template whose analysis set is the report's population (demog) holds
+  # it in `common:`, not in its arguments)
+  if (.tpl_pop_of_report(prm)) args$population <- NULL
   o$template$args <- args
-  if (!is.null(args$population)) o$population <- as.character(args$population)
   o
 }
 
@@ -493,11 +730,17 @@ body.rp-adding::before { content: attr(data-loading); position: fixed; inset: 0;
 body.rp-switching .rp-report-loading { display: block; }
 body.rp-switching #step ~ .tab-content, body.rp-switching #report_head, #report_head.rp-stale {
   visibility: hidden; }
-.rp-tpl-default .form-control, .rp-tpl-default .selectize-input,
-.rp-tpl-default .form-select, .rp-tpl-default .selectize-input .item {
-  color: #8a8f98 !important; background-color: #f4f5f7; }
-.rp-tpl-default .form-label { color: #6c757d; }
+/* an argument at its default reads like any other: its tag says so, no fading;
+   only a choice left empty ('(default)', '(not chosen)': no value) stays light */
+.selectize-input .item[data-value=''] {
+  color: #8a8f98; }
 .rp-tpl-arg-from { font-size: .75rem; color: #6b7280; }
+.rp-tpl-badge { font-size: .7rem; font-weight: 500; vertical-align: middle; }
+.rp-tpl-badge-own { background-color: #0d6efd; color: #fff; }
+.rp-tpl-badge-study { background-color: #198754; color: #fff; }
+.rp-tpl-badge-fallback { background-color: #ffc107; color: #000; }
+.rp-tpl-badge-default { background-color: transparent; color: #495057; border: 1px solid #adb5bd; }
+.rp-tpl-badge-key { background-color: #e9ecef; color: #495057; border: none; }
 .rp-code pre.rp-flow { max-height: none !important; overflow-y: visible; min-height: 0; }
 @keyframes rp-card-flash { 0%, 60% { outline-color: rgba(13,110,253,.85); }
   100% { outline-color: rgba(13,110,253,0); } }
@@ -684,6 +927,81 @@ $(document).on('shiny:connected', function() {
   list(from = if (!is.null(sv)) "study" else "default", study = sv, source = src)
 }
 
+# One row per shown argument of a template, in its order, from tflspec's
+# own account of where each value comes from (tfl_tpl_args(): type, layer,
+# study_key, effective, fallback ...).  `study` the study's spec,
+# `population` the report's.  NULL when tflspec cannot say (an older
+# tflspec, a study spec it cannot read): the card then says it as before
+# (.tpl_arg_origin()).
+.tpl_args_rows <- function(name, study, population = NULL) {
+  pop <- as.character(population %||% "")[1L]
+  if (is.na(pop) || !nzchar(pop)) pop <- NULL
+  r <- tryCatch(tflspec::tfl_tpl_args(name, study = study, population = pop),
+                error = function(e) NULL)
+  if (is.data.frame(r) && nrow(r) && all(c("param", "layer") %in% names(r))) r
+}
+
+# The badge of one argument: list(kind = "own" | "study" | "fallback" |
+# "default", key = the study's key, for "study"), or NULL (no row: the old
+# text).  The report's own value first (tfl_tpl_args() has no report
+# arguments); then the layer tflspec names: "study: <key>" the study
+# standard, "report" the report's analysis set (output.population, kept as
+# "study" with no key), "fallback" the default for when the study standard
+# is undefined, "default" with a study key a study reference with no value
+# (kind "none": no badge, the field says "(none)"), the rest (template,
+# default with no key, variant:<name>) the template's own.
+.tpl_badge_of <- function(a, args, rows) {
+  if (is.null(rows)) return(NULL)
+  r <- rows[rows$param == a, , drop = FALSE]
+  if (!nrow(r)) return(NULL)
+  ly <- as.character(r$layer[1L])
+  if (a %in% names(args)) {
+    # (the report's value over a study's: the study's key and value kept for the note)
+    if (startsWith(ly, "study:"))
+      return(list(kind = "own", key = as.character(r$study_key[1L]), study = r$effective[[1L]]))
+    return(list(kind = "own", key = NA_character_))
+  }
+  if (startsWith(ly, "study:")) return(list(kind = "study", key = as.character(r$study_key[1L])))
+  if (identical(ly, "report")) return(list(kind = "report", key = NA_character_))
+  if (identical(ly, "fallback")) return(list(kind = "fallback", key = as.character(r$study_key[1L])))
+  if (identical(ly, "default")) {
+    sk <- if ("study_key" %in% names(r)) as.character(r$study_key[1L]) else NA_character_
+    if (length(sk) && !is.na(sk) && nzchar(sk)) return(list(kind = "none", key = sk))
+  }
+  list(kind = "default", key = NA_character_)
+}
+
+# The study key of a field that is a study reference with no value (kind
+# "none"), else NULL: its placeholder says "(none)" and its (i) names the key
+.tpl_none_key <- function(a, args, rows) {
+  b <- .tpl_badge_of(a, args, rows)
+  if (!is.null(b) && identical(b$kind, "none")) b$key
+}
+
+# The (i) text of a field: the doc, and for a study reference with no value
+# (`key`) the sentence that says where it would come from
+.tpl_info_text <- function(doc, key, t) {
+  if (is.null(key) || is.na(key) || !nzchar(key)) return(doc)
+  paste(c(if (nzchar(doc)) t(doc), sprintf(t("Uses the study standard's %s when it is defined."), key)),
+        collapse = " ")
+}
+
+# The badge itself, a small pill after the label; `t` the translator,
+# `kind` the report's kind ("table": "This table", else "This report")
+.tpl_badge_tag <- function(b, t, kind = "table") {
+  if (identical(b$kind, "none")) return(NULL)
+  txt <- switch(b$kind,
+    own = t(if (identical(kind, "table")) "This table" else "This report"),
+    study = sprintf(t("Study standard (%s)"), b$key),
+    report = t("This report's analysis set"),
+    fallback = if (!length(b$key) || is.na(b$key[1L])) t("Default when the study standard is undefined") else
+      sprintf(t("Default when the study standard (%s) is undefined"), b$key),
+    t("Template default"))
+  cls <- c(own = "own", study = "study", report = "study", fallback = "fallback")[b$kind]
+  shiny::span(class = paste0("badge rounded-pill rp-tpl-badge rp-tpl-badge-",
+                             if (is.na(cls)) "default" else cls), txt)
+}
+
 # What tflspec filled in from the study for a template report: the
 # template attribute of its resolved output (NULL: none, or an older
 # tflspec)
@@ -783,7 +1101,7 @@ $(document).on('shiny:connected', function() {
   if (is.null(o) || is.null(.tpl_spec_name(o))) return(character())
   code <- tryCatch(tflspec::tfl_content_code(tflspec::tfl_resolve_output(o, sp$study)),
                    error = function(e) character())
-  at <- grep("tpl_[A-Za-z0-9_]+\\(", code)
+  at <- grep("(tpl_[A-Za-z0-9_]+|tfl_tpl)\\(", code)
   if (!length(at)) return(character())
   rest <- code[seq_along(code) > at[1L]]
   m <- regmatches(rest, regexpr("^\\s*(plan_[A-Za-z0-9_]+)\\(", rest))
@@ -794,7 +1112,7 @@ $(document).on('shiny:connected', function() {
   if (is.list(t) && !is.null(t$name)) t$name else NULL
 }
 
-# A template's call as its program has it: tpl_demog() (a template with no
+# A template's call as its program has it: tfl_tpl() (a template with no
 # call of its own -- a figure's -- tfl_template(<name>))
 .tpl_call_name <- function(name) {
   x <- tryCatch(tflspec::tfl_templates(), error = function(e) NULL)
@@ -818,8 +1136,11 @@ $(document).on('shiny:connected', function() {
 # replaced within `window` seconds: a field drawn from an older card saying
 # its old value back, not an edit.  `past`: data frame of v (the values) and
 # t (their times, seconds); `val`, `now` likewise.  (A write's say-back came
-# 2-6 s after it when measured; 15 s is the margin.)
-.tpl_stale_say <- function(val, past, now, window = 15) {
+# 2-6 s after it when measured; 15 s is the margin; the tests, which run on
+# machines that take longer, widen it with option tflplanner.tpl_stale_window.)
+.tpl_stale_say <- function(val, past, now,
+                           window = getOption("tflplanner.tpl_stale_window",
+                                              15)) {
   if (is.null(past) || !nrow(past)) return(FALSE)
   any(past$v == val & now - past$t <= window)
 }

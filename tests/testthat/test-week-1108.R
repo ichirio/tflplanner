@@ -204,7 +204,7 @@ tpl_fig_study <- function(h, id = "F-9-1") {
                       intersect(c("population_id", "dataset", "where"), names(pops)), drop = FALSE])
   name <- "forest_hr"
   steps <- if (.tpl_own_data(tflspec::tfl_template_params(name))) .tpl_steps_from("ADTTE", saf, "PFS")
-  o <- tflspec::tfl_output(id, "figure", label = name, population = "SAF",
+  o <- tflspec::tfl_output(id, "figure", label = name, common = list(population = "SAF"),
                            template = list(name = name, args = list(param = "PFS", population = "SAF")),
                            data = if (length(steps)) list(steps = steps))
   s$planner <- .spec_add_output(p, o, label = name, population = "SAF")
@@ -212,8 +212,6 @@ tpl_fig_study <- function(h, id = "F-9-1") {
 }
 
 test_that("a forest_hr template figure's program makes and reads its ARD, and its RTF has the figure", {
-  skip_if_not_installed("cardx")
-  skip_if_not_installed("ggplot2")
   h <- sample_in_home()
   s <- tpl_fig_study(h)
   expect_true(file.exists(file.path(s$path, "programs", "ard", "F-9-1.R")))

@@ -705,7 +705,7 @@ export_spec_files <- function(study, path, home = tflplanner_home()) {
   if (!is.null(y$outputs)) return(file.path(sp, "toc.yml"))
   if (!is.null(y$datasets) || !is.null(y$populations)) return(file.path(sp, "data.yml"))
   if (!is.null(y$layers) || !is.null(y$template)) return("(old)")
-  if (!is.null(y$content) || !is.null(y$page)) return(file.path(sp, "defaults.yml"))
+  if (!is.null(y$content) || !is.null(y$page) || !is.null(y$styles)) return(file.path(sp, "defaults.yml"))
   NA_character_
 }
 

@@ -135,7 +135,9 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
     first <- .ai_ticked_first(d, copy_state())
     ticked(if (is.null(seen$ids)) first
            else union(intersect(ticked(), d$output_id[.ai_adoptable(d)]), setdiff(first, seen$ids)))
-    seen$ids <- d$output_id
+    # (a report with no draft yet -- "not answered" -- is not seen: its draft,
+    # when it comes, is ticked)
+    seen$ids <- d$output_id[.ai_adoptable(d)]
   }, ignoreNULL = FALSE)
   shiny::observeEvent(path(), seen$ids <- NULL, ignoreInit = TRUE)
   shiny::observeEvent(input$ck_toggle, {
@@ -296,14 +298,24 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
     if (unsaved()) return()
     p <- path()
     # (each call NULL when it failed: guarded() said why)
-    done_fresh <- if (length(fresh)) !is.null(guarded(tflspec::tfl_ai_adopt(p, outputs = fresh, overwrite = FALSE)))
-    done_over <- if (length(over)) !is.null(guarded(tflspec::tfl_ai_adopt(p, outputs = over, overwrite = TRUE)))
+    r_fresh <- if (length(fresh)) guarded(tflspec::tfl_ai_adopt(p, outputs = fresh, overwrite = FALSE))
+    r_over <- if (length(over)) guarded(tflspec::tfl_ai_adopt(p, outputs = over, overwrite = TRUE))
     again(again() + 1L)
-    n_fresh <- if (isTRUE(done_fresh)) length(fresh) else 0L
-    n_over <- if (isTRUE(done_over)) length(over) else 0L
+    # (a draft with an ERROR is not copied: tflspec says which, and why)
+    skipped <- c(.ai_adopt_skipped(r_fresh), .ai_adopt_skipped(r_over))
+    if (length(skipped)) {
+      notify(paste0(sprintf(t("%d drafts were not copied: they have an ERROR (fix them in step 3 and check again)."),
+                            length(skipped)), " ",
+                    paste0(names(skipped), ": ", skipped, collapse = "; ")),
+             "error")
+    }
+    fresh <- setdiff(if (!is.null(r_fresh)) fresh, names(skipped))
+    over <- setdiff(if (!is.null(r_over)) over, names(skipped))
+    n_fresh <- length(fresh)
+    n_over <- length(over)
     if (!(n_fresh + n_over)) return()
     # (saved too: their programs and batch.R written, for a run)
-    adopted <- c(if (isTRUE(done_fresh)) fresh, if (isTRUE(done_over)) over)
+    adopted <- c(fresh, over)
     saved <- isTRUE(reload_now(save = TRUE, after = function(x) .ai_apply_toc_batches(x, p, adopted)))
     notify(if (saved) sprintf(t("%d reports adopted (copied) into the study, %d of them replaced: on the Report list."),
                               n_fresh + n_over, n_over)
@@ -320,6 +332,18 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
     if (!is.null(s) && length(s$over)) do_adopt(s$fresh, s$over)
   })
   invisible(listed)
+}
+
+# The drafts tflspec::tfl_ai_adopt() did not copy because they have an
+# ERROR (status "skipped (error)"), each its first problem, named by the
+# report; none: character()
+.ai_adopt_skipped <- function(res) {
+  if (!is.data.frame(res) || !all(c("output_id", "status") %in% names(res))) return(character())
+  i <- res$status %in% "skipped (error)"
+  if (!any(i)) return(character())
+  why <- if ("problem" %in% names(res)) as.character(res$problem[i]) else rep(NA_character_, sum(i))
+  why[is.na(why) | !nzchar(why)] <- "ERROR"
+  stats::setNames(why, as.character(res$output_id[i]))
 }
 
 # Whether a report's file (from the study folder) is the study's own,

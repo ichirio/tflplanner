@@ -21,7 +21,6 @@ imp_planner <- function() {
 }
 
 test_that("an ARD made elsewhere is taken in, checked, recorded and used", {
-  skip_if_not_installed("cards")
   skip_on_cran()
   imp_home()
   s <- create_study("IMP1", planner = imp_planner())
@@ -67,7 +66,6 @@ test_that("an ARD made elsewhere is taken in, checked, recorded and used", {
 })
 
 test_that("the check of an ARD taken in is on the record", {
-  skip_if_not_installed("cards")
   skip_on_cran()
   imp_home()
   s <- create_study("IMP2", planner = imp_planner())
@@ -83,7 +81,6 @@ test_that("the check of an ARD taken in is on the record", {
 })
 
 test_that("a company's own ARD function is used by a study, as a copy", {
-  skip_if_not_installed("cards")
   skip_on_cran()
   home <- imp_home()
   dir.create(file.path(home, "standards", "ard_functions"), recursive = TRUE)

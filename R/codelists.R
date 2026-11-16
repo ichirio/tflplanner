@@ -212,8 +212,17 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
     keep <- old[!shown(old), , drop = FALSE]
     keep$output_id <- NULL
     d <- .drop_blank_rows(as.data.frame(d, stringsAsFactors = FALSE))
-    guarded(rv$p <- set_sheet_rows(rv$p, "codelists", id,
+    # the grid drawn again (another report) sends its rows back with no edit:
+    # rows the sheet already has are not written -- a write puts the planner
+    # out of step with its spec, and the next sync converts the whole spec
+    shown_now <- old[shown(old), , drop = FALSE]
+    shown_now$output_id <- NULL
+    if (identical(.normalize_sheet(d, "codelists")[names(shown_now)],
+                  .normalize_sheet(shown_now, "codelists")[names(shown_now)])) return()
+    cand <- guarded(set_sheet_rows(rv$p, "codelists", id,
                                    rbind(keep, d[names(keep)])))
+    if (!is.null(cand) &&
+        !identical(cand$sheets$codelists, rv$p$sheets$codelists)) rv$p <- cand
   })
   output[[p("help")]] <- DT::renderDT(
     .help_table("codelists"), rownames = FALSE,
@@ -648,7 +657,9 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
     n_before <- if (length(at)) at[1L] - 1L else nrow(keep)
     rows <- rbind(keep[seq_len(n_before), , drop = FALSE], mine[names(keep)],
                   keep[setdiff(seq_len(nrow(keep)), seq_len(n_before)), , drop = FALSE])
-    guarded(rv$p <- set_sheet_rows(rv$p, "codelists", id, rows))
+    cand <- guarded(set_sheet_rows(rv$p, "codelists", id, rows))
+    if (!is.null(cand) &&
+        !identical(cand$sheets$codelists, rv$p$sheets$codelists)) rv$p <- cand
   })
   shiny::observeEvent(input[[ids[["add"]]]], {
     v <- input[[ids[["add"]]]]

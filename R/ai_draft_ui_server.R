@@ -129,7 +129,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       }
       n <- .ai_counts(r, collected())
       st <- if (is.null(collected())) NULL else
-        paste(sprintf("%s %d", t(names(n$status)), n$status), collapse = ", ")
+        paste(sprintf("%s %d", t(.ai_check_level(names(n$status))), n$status), collapse = ", ")
       shiny::tagList(
         shiny::tags$b(sid),
         paste(c(sprintf(t("%d reports, %d requests"), n$reports, n$requests),
@@ -238,7 +238,14 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     # the last check's reports, said on the page until the next check: how
     # many were taken in, and that step 4 adopts (copies) them into the study
     taken <- shiny::reactiveVal(NULL)
-    shiny::observeEvent(path(), taken(NULL), ignoreNULL = FALSE)
+    # (cleared when the study's folder really changes, not when a check
+    # reloads the study and path() recomputes the same value)
+    taken_for <- NULL
+    shiny::observeEvent(path(), {
+      p <- path()
+      if (!identical(p, taken_for)) taken(NULL)
+      taken_for <<- p
+    }, ignoreNULL = FALSE)
     output$taken_note <- shiny::renderUI({
       k <- taken()
       if (is.null(k)) return(NULL)
@@ -973,12 +980,12 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
                       ifelse(tc$shell_found, paste("\u2713", col(tc$shell)), "\u2014"),
                       col(tc$request), col(tc$book), col(tc$info),
                       stringsAsFactors = FALSE)
-      names(d) <- c(t("TOC item"), t("title"), t("type"), "shell", t("request"), t("Workbook"),
+      names(d) <- c(t("TOC item"), t("title"), t("type"), t("shell"), t("request"), t("Workbook"),
                     t("Other information"))
       dt <- DT::datatable(d, rownames = FALSE, selection = "none",
                           options = list(dom = "t", paging = FALSE, ordering = FALSE, scrollX = TRUE))
       # (a TOC item with no shell: its shell cell in red)
-      DT::formatStyle(dt, "shell", backgroundColor = DT::styleEqual("\u2014", "#f8d7da"),
+      DT::formatStyle(dt, t("shell"), backgroundColor = DT::styleEqual("\u2014", "#f8d7da"),
                       color = DT::styleEqual("\u2014", "#842029"))
     }, server = FALSE)
     # (the heading drawn also while its tab is hidden: an Apply on another
@@ -1029,6 +1036,10 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       if (length(keep)) v <- v[v$dataset %in% keep, , drop = FALSE] else v <- v[0, , drop = FALSE]
       d <- v[intersect(c("dataset", "variable", "label", "kind", "levels"), names(v))]
       d[is.na(d)] <- ""
+      # (the headers and a variable's kind in the app's words; a kind not
+      # listed stays as it is)
+      if ("kind" %in% names(d)) d$kind <- vapply(d$kind, t, "", USE.NAMES = FALSE)
+      names(d) <- vapply(names(d), t, "", USE.NAMES = FALSE)
       DT::datatable(d, rownames = FALSE, selection = "none",
                     options = list(dom = "tp", pageLength = 50, ordering = FALSE, scrollX = TRUE))
     }, server = FALSE)
@@ -1074,7 +1085,12 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     output$sheets_table <- DT::renderDT({
       p <- prepared()
       shiny::req(p)
-      DT::datatable(p$sheets, rownames = FALSE, selection = "none",
+      d <- p$sheets
+      # (the roles and the hidden mark in the app's words, the headers too)
+      if ("role" %in% names(d)) d$role <- vapply(as.character(d$role), t, "", USE.NAMES = FALSE)
+      if ("hidden" %in% names(d)) d$hidden <- ifelse(d$hidden %in% TRUE, t("hidden"), "")
+      names(d) <- vapply(names(d), t, "", USE.NAMES = FALSE)
+      DT::datatable(d, rownames = FALSE, selection = "none",
                     options = list(dom = "t", paging = FALSE, ordering = FALSE))
     }, server = FALSE)
 

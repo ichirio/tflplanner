@@ -658,6 +658,12 @@
     id <- current()
     shiny::req(!is.null(id), identical(report_info(rv$p, id)$type, "table"))
     rv$ard_ver
+    # (a template report with a required value empty: said, not tried)
+    miss <- .tpl_missing_report(rv$p, id)
+    if (length(miss)) {
+      return(list(id = id, error = sprintf(t("Required arguments are empty: %s. The preview waits for them."),
+                                           paste(miss, collapse = ", "))))
+    }
     # a template report whose ARD is outdated (the badge's idea of it,
     # preview_state()): no new table from the old ARD -- an edit that needs a
     # new ARD would only draw an error; Update preview makes it
