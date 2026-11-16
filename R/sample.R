@@ -106,11 +106,12 @@ create_sample_study <- function(root = studies_root(home), run = TRUE,
 
 # The packages the sample's ARD programs need beyond tflplanner's own:
 # cards and cardx, and broom.helpers for cardx::ard_regression() (T-14-2-2's
-# hazard ratios, #311); the ones not installed
-.sample_pkgs <- c("cards", "cardx", "broom", "broom.helpers")
+# hazard ratios, #311), and purrr for the generated code's purrr::pmap();
+# the ones not installed
+.sample_pkgs <- c("cards", "cardx", "broom", "broom.helpers", "purrr")
 # the versions cardx's models need (an older broom from a system's package
 # manager stops the sample's ARD programs with no other message)
-.sample_min <- c(broom = "1.0.8", broom.helpers = "1.17.0")
+.sample_min <- c(broom = "1.0.8", broom.helpers = "1.17.0", purrr = "1.0.0")
 .sample_missing <- function() {
   ok <- vapply(.sample_pkgs, function(p) {
     if (!requireNamespace(p, quietly = TRUE)) return(FALSE)

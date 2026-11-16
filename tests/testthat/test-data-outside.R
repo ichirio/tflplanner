@@ -107,7 +107,7 @@ test_that("the programs read the path as written, and a save changes nothing (#4
   # a save with nothing changed: no file changes
   s2 <- suppressMessages(save_study(s))
   setup <- readLines(file.path(st$path, "programs", "study_setup.R"), encoding = "UTF-8")
-  expect_true(any(grepl(paste0("adsl <- readRDS(\"", st$adam, "/adsl.rds\")"), setup, fixed = TRUE)))
+  expect_true(any(grepl(paste0("readRDS(\"", st$adam, "/adsl.rds\")"), setup, fixed = TRUE)))
   md5 <- function() {
     f <- list.files(st$path, recursive = TRUE, full.names = TRUE)
     tools::md5sum(f[!grepl("[.]tflplanner|/logs?/|draft", f)])

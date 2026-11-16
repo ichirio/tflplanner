@@ -191,10 +191,20 @@
   }
   shiny::observeEvent(input$adopt_ok, adopt_done(input$adopt_parts %||% character()))
   shiny::observeEvent(input$adopt_leave, adopt_done(character()))
+  # No study open (unregistered, or none to start with): the app's study
+  # and the programs' code context cleared, in this one place (#680)
+  close_study <- function() {
+    rv$study <- rv$p <- rv$saved <- rv$meta <- rv$saved_meta <- NULL
+    .use_study(NULL)
+    bump()
+  }
   set_study <- function(s) {
     rv$adopting <- FALSE
     s$planner <- .study_spec_keys(s$planner)
     rv$study <- s
+    # its programs as its setup has it (a study registered or made here
+    # too, not only one opened: #680)
+    .use_study(s$path)
     rv$p <- rv$saved <- s$planner
     # a dataset delivered in another form than data.yml says (.xpt for .rds):
     # its path set to the file that is there, shown as an unsaved change and
@@ -540,7 +550,8 @@
       start <- tryCatch(open_study(last), error = function(e) NULL)
     }
   }
-  if (!is.null(start)) shiny::isolate(set_study(start))
+  # (no study: none's code context left from before in this R session, #680)
+  if (!is.null(start)) shiny::isolate(set_study(start)) else .use_study(NULL)
 
   shiny::observe({
     for (tb in .study_tabs) {
@@ -1078,10 +1089,7 @@
     shiny::removeModal()
     to_unregister(NULL)
     if (length(id) != 1L || is.na(id) || !nzchar(id)) return()
-    if (has_study() && identical(rv$study$meta$study_id, id)) {
-      rv$study <- rv$p <- rv$saved <- rv$meta <- rv$saved_meta <- NULL
-      bump()
-    }
+    if (has_study() && identical(rv$study$meta$study_id, id)) close_study()
     if (is.null(guarded(unregister_study(id)))) return()
     rv$studies_ver <- rv$studies_ver + 1L
     notify(sprintf(t("Unregistered %s"), id))
@@ -1261,13 +1269,15 @@
       # "empty": no reports, but the company's study defaults, analysis
       # sets and data catalog (create_study() with no planner)
       src <- if (identical(input$ns_from, "study")) guarded(open_study(input$ns_src))
-      if (identical(input$ns_from, "study") && is.null(src)) return()
+      if (identical(input$ns_from, "study") && is.null(src)) return(.use_study(rv$study$path))
       made <- guarded(create_study(
         trimws(input$ns_id),
         title = blank(input$ns_title), compound = blank(input$ns_compound),
         phase = blank(input$ns_phase),
         description = blank(input$ns_description), planner = src$planner,
         root = trimws(input$ns_root)))
+      # (not made: the study open in the app keeps its code context, #680)
+      if (is.null(made)) .use_study(rv$study$path)
       # a copy: how the study reads its TOC comes too (input/toc/profile.yml),
       # not the TOCs it took in (the copy's TOC is its own)
       if (!is.null(made) && !is.null(src)) toc_copy_profile(src, made)
