@@ -133,6 +133,25 @@
       choices = shiny::selectizeInput(
         input_id, lab, union(as.character(shown), as.character(prm$choices)),
         selected = as.character(shown), multiple = TRUE, width = "100%", options = rm_btn),
+      # (a pick from the def's source words: report_data, study_data, ...;
+      # a value it does not offer kept, and one typed where the def allows)
+      pick = ,
+      picks = {
+        several <- identical(type, "picks")
+        ctx <- .tpl_table_ctx(data, dataset, args, params, populations = pop_choices())
+        ch <- tryCatch(.choice_values(prm$sources, ctx, tflplanner_language(), values = prm$choices),
+                       error = function(e) character())
+        cur <- as.character(shown %||% character())
+        miss <- setdiff(cur, unlist(ch))
+        if (length(miss)) ch <- if (is.list(ch)) c(as.list(stats::setNames(miss, miss)), ch) else c(miss, ch)
+        shiny::selectizeInput(
+          input_id, lab,
+          if (several) ch else c(stats::setNames("", ph(if (is.null(prm$default)) "(not chosen)" else "(default)")),
+                                 ch),
+          selected = if (several) cur else if (length(cur)) cur[1L] else "",
+          multiple = several, width = "100%",
+          options = c(if (several) rm_btn, list(create = !isFALSE(prm$free))))
+      },
       # (a listing's columns: the data's, in order, each its heading and
       # width -- the template's `data` field beside it, by its id)
       columns = .tpl_columns_widget(input_id, lab, shown, data,

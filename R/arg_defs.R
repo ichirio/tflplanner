@@ -247,6 +247,10 @@
   if (grepl("^enum\\[", type)) return("choice")
   if (grepl("^(list<)?column>?$", type)) return("vars")
   if (grepl("^(list<)?level>?$", type)) return("levels")
+  # (a pick of names its source words give -- report_data, study_data,
+  # populations, ...: chosen from them, tflspec#821)
+  if (identical(d$input, "pick") && grepl("^(list<)?string>?$", type) &&
+      length(.choice_words(d$choices))) return("pick")
   if (identical(type, "logical")) return("flag")
   if (type %in% c("number", "integer")) return("number")
   if (grepl("^list<", type)) return("list")

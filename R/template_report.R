@@ -196,7 +196,7 @@
 # The input a parameter gets: population, data, var (one column), vars
 # (columns, in order), levels (a variable's values), flag, number, text,
 # chips (several texts), choice (one of tfl_param(choices = )), choices
-# (several of them), list (a small table of lines, "a | b"), columns (a
+# (several of them), pick / picks (from a def's source words), list (a small table of lines, "a | b"), columns (a
 # listing's: R/tpl_columns_ui.R).  By the type
 # tflspec declares (tfl_param(type = )); guessed from the default and the
 # doc only when it declares none.
@@ -216,6 +216,7 @@
       number = "number",
       text = if (several) "chips" else "text",
       choice = if (several) "choices" else "choice",
+      pick = if (several) "picks" else "pick",
       list = "list",
       "text"))
   }
@@ -512,7 +513,7 @@
       v <- suppressWarnings(as.numeric(v))
       if (!length(v) || is.na(v)) NULL else v
     },
-    vars = , chips = , choices = , levels = {
+    vars = , chips = , choices = , picks = , levels = {
       v <- as.character(v)
       v <- v[nzchar(trimws(v))]
       if (!length(v)) NULL else if (identical(type, "levels") && !isTRUE(prm$multiple)) v[1L] else v
@@ -538,7 +539,7 @@
     text = if (is.null(shown)) "" else .tpl_show(shown),
     list = , columns = .tpl_list_text(shown, prm),
     table = .tpl_table_state(shown, prm),
-    vars = , chips = , choices = as.character(shown %||% character()),
+    vars = , chips = , choices = , picks = as.character(shown %||% character()),
     levels = if (isTRUE(prm$multiple)) as.character(shown %||% character()) else
       as.character(shown %||% "")[1L],
     as.character(shown %||% "")[1L]), error = function(e) NULL)
@@ -581,8 +582,18 @@
 # dataset when it names none or one the study lacks -- a template's own
 # data id, adsl_sub), a variable's values, the card's arguments and the
 # template's params
-.tpl_table_ctx <- function(data, dataset = NULL, args = list(), params = list()) {
+.tpl_table_ctx <- function(data, dataset = NULL, args = list(), params = list(),
+                           populations = NULL) {
+  ds <- function(x) {
+    x <- toupper(as.character(unlist(x)))
+    unique(x[!is.na(x) & nzchar(x)])
+  }
   list(
+    # (the source words of a pick: the study's data, the report's -- its
+    # `data` argument, else its dataset -- and the study's analysis sets)
+    study_data = ds(names(data)),
+    report_data = ds(c(args$data, if (is.null(args$data)) dataset)),
+    populations = populations,
     vars = function(what = NULL) {
       w <- toupper(as.character(what %||% "")[1L])
       if (!is.na(w) && nzchar(w) && is.data.frame(data[[w]])) names(data[[w]]) else

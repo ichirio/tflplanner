@@ -374,3 +374,32 @@ test_that("a series template's table params (conditions, formats): the table fie
   expect_identical(.tpl_table_key(list(mean = 1, pct = "xx.x"), p$formats),
                    .tpl_table_key(.tpl_value(st, "table", p$formats), p$formats))
 })
+
+test_that("a series template's pick of source words: chosen from them (report_data, study_data)", {
+  defs <- mk_defs(
+    list(name = "from", input = "pick", choices = "report_data, study_data", free = FALSE),
+    list(name = "population", input = "pick", choices = "populations"),
+    list(name = "tags", input = "pick", type = "list<string>", choices = "report_data"),
+    list(name = "note", input = "text"))
+  prm <- .tpl_params_from_defs(defs)
+  expect_identical(vapply(prm, function(x) x$type, ""),
+                   c(from = "pick", population = "pick", tags = "pick", note = "text"))
+  expect_identical(.tpl_type(prm$from), "pick")
+  expect_identical(.tpl_type(prm$tags), "picks")
+  # the choices: the report's data and the study's, in two groups
+  data <- list(ADSL = data.frame(USUBJID = "1"), ADAE = data.frame(AEDECOD = "x"))
+  ctx <- .tpl_table_ctx(data, "ADAE", args = list(), populations = c(SAF = "SAFFL"))
+  ch <- .choice_values(prm$from$sources, ctx)
+  expect_identical(unname(unlist(ch[[1L]])), "ADAE")
+  expect_identical(unname(unlist(ch[[2L]])), c("ADSL", "ADAE"))
+  # (the report's `data` argument before its dataset)
+  ctx <- .tpl_table_ctx(data, "ADAE", args = list(data = "adsl"))
+  expect_identical(unname(.choice_values("report_data", ctx)), "ADSL")
+  expect_identical(unname(.choice_values(prm$population$sources,
+                                         .tpl_table_ctx(data, populations = c(SAF = "SAFFL")))), "SAFFL")
+  # the value read back: one a text, several a vector, none NULL
+  expect_identical(.tpl_value("ADSL", "pick", prm$from), "ADSL")
+  expect_null(.tpl_value("", "pick", prm$from))
+  expect_identical(.tpl_value(c("ADSL", "ADAE"), "picks", prm$tags), c("ADSL", "ADAE"))
+  expect_identical(.tpl_untouched(c("ADSL", "ADAE"), "picks", prm$tags), c("ADSL", "ADAE"))
+})
