@@ -321,6 +321,14 @@
                          `aria-label` = t("Remove the row"), "×")))
 }
 
+# The light line an empty table's body shows ("(none)"), one cell across
+# the columns and the tools; no row of the value (no .rp-tbl-row: never read
+# back), gone when a row is added and back when the last one goes (the JS)
+.tbl_empty_row <- function(n, lang = "en") {
+  shiny::tags$tr(class = "rp-tbl-empty",
+                 shiny::tags$td(class = "rp-tbl-none", colspan = n + 1L, tr("(none)", lang)))
+}
+
 # The template's rows with an R column's text as its R (tflspec gives a
 # fixed row's values as text, `!r` its code)
 .tbl_fixed_as_r <- function(spec, x) {
@@ -335,7 +343,8 @@
 }
 
 # The table field: a header of the columns, the fixed rows (read only, before
-# or after them), the rows of the value, a blank row's template and Add a row.  Its
+# or after them), the rows of the value ("(none)" when it has none), a
+# blank row's template and Add a row.  Its
 # state as it is drawn rides in data-state (the input's first value is the
 # same, read from the cells).
 .field_table <- function(fid, spec, value, fixed_rows = NULL, lang = "en") {
@@ -377,6 +386,7 @@
     `data-cols` = as.character(jsonlite::toJSON(spec$cols)),
     `data-kinds` = as.character(jsonlite::toJSON(spec$kinds)),
     `data-state` = as.character(jsonlite::toJSON(st)),
+    `data-none` = t("(none)"),
     shiny::tags$table(
       class = "table table-sm rp-tbl-table",
       shiny::tags$thead(shiny::tags$tr(
@@ -387,6 +397,7 @@
         shiny::tags$th(class = "rp-tbl-tools"))),
       fixed_body(!after),
       shiny::tags$tbody(class = "rp-tbl-body",
+                        if (!length(rows)) .tbl_empty_row(n, lang),
                         lapply(rows, function(cells) .tbl_row(spec, cells, dls, lang))),
       fixed_body(after)),
     shiny::tags$template(class = "rp-tbl-tpl", .tbl_row(spec, rep("", n), dls, lang)),
