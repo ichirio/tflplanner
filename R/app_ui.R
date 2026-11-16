@@ -815,6 +815,10 @@ app_ui <- function(lang = "en") {
                 t("Setup code every report runs first (library(), common data)"),
                 rows = 4, width = "100%", resize = "vertical"))),
           shiny::uiOutput("study_actions"))),
+      # the template series and the open study's values for them (R/srv_series.R)
+      bslib::card(
+        bslib::card_header(with_tip(t("Template series"), t("tflspec's template series: their shared values (series.yml), this study's own values for them (study.yml series_settings) and the pins (spec/series.lock)."))),
+        shiny::uiOutput("series_card")),
       bslib::card(
           bslib::card_header(with_tip(t("Own ARD functions"), t("Your own ARD functions: the company's (every study) and this study's (programs/ard/functions/; it wins over the company's). They are R files, edited outside the app; try one after a change."))),
           shiny::uiOutput("own_counts"),
