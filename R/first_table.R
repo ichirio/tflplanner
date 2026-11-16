@@ -155,7 +155,7 @@ catalog_name_clashes <- function(x, files) {
 #' @param stack Run the analyses together, with `cards::ard_stack()` (a
 #'   `STACK` analysis with the data, analysis set and group, the numeric and
 #'   the other variables inside it; it counts the subjects per group and in
-#'   all), rather than one by one (`GROUPN`, `CONT`, `CAT`).  Not when a
+#'   all), rather than one by one (`BIGN`, `CONT`, `CAT`).  Not when a
 #'   subject of the analysis set has no group: `ard_stack()` leaves them
 #'   out (the result's attribute `group_missing` says how many).
 #' @return The `tflplanner`.
@@ -228,7 +228,7 @@ first_table <- function(x, output_id, path, data, population, group,
       stringsAsFactors = FALSE, row.names = NULL)
   } else {
     data.frame(
-      analysis_id = c("GROUPN", names(groups)),
+      analysis_id = c("BIGN", names(groups)),
       label = c("Subjects per group", rep(NA, length(groups))),
       method = c("cards::ard_tabulate", methods),
       dataset = dsn, population_id = pop,
@@ -559,7 +559,7 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
 #' Count the subjects per group for a report's column headers
 #'
 #' Adds to the report's ARD analyses the subjects per group, which clinical
-#' reporting calls big N (`GROUPN`: the group counted, by nothing) -- what
+#' reporting calls big N (`BIGN`: the group counted, by nothing) -- what
 #' the column headers' `(N={n})` read --
 #' with the data and analysis set of its first analysis.
 #'
@@ -583,7 +583,7 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
 add_group_n <- function(x, output_id, group) {
   a <- ard_rows(x, "analyses", output_id)
   if (!nrow(a)) stop("'", output_id, "' has no analyses.", call. = FALSE)
-  id <- "GROUPN"
+  id <- "BIGN"
   while (id %in% a$analysis_id) id <- paste0(id, "_")
   first <- a[1L, , drop = FALSE]
   new <- a[0L, , drop = FALSE]
