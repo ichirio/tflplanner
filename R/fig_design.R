@@ -352,11 +352,16 @@ preview_figure <- function(study, output_id,
     dpi <- as.numeric(design$plot$dpi %||% 300)
     if (inches * dpi > max_px) design$plot$dpi <- max(72, floor(max_px / inches))
   }
-  code <- .fig_design_script(design, output_id,
-                             codelists = .study_codelists(study$planner), size = sz)
   ds <- .fig_design_datasets(design, output_id)
   # ADSL too: the advice counts the groups, which may be joined from it
   data <- .study_data(study, union(ds, "ADSL"))
+  # a join of ADSL gives only what the dataset has not: a dataset that holds
+  # TRT01A itself would get TRT01A.x and TRT01A.y
+  rd <- Find(function(s) identical(s$step, "read"), design$data)$dataset
+  x0 <- if (!is.null(rd)) data[[toupper(rd)]]
+  if (!is.null(x0)) design <- .trim_join(design, x0)
+  code <- .fig_design_script(design, output_id,
+                             codelists = .study_codelists(study$planner), size = sz)
   problems <- tflspec::tfl_check_fig_design(saved, data)
   # its ARD (#293): the rows of its source, in `ard`; their problems
   reads_ard <- isTRUE(attr(tflspec::tfl_fig_design_code(saved, output_id, setup = TRUE,
