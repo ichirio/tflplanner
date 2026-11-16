@@ -233,7 +233,7 @@ test_that("the Study tab has the card, and its texts have their Japanese", {
   expect_gt(length(lits), 20L)
   s <- .strings()
   expect_identical(setdiff(lits, s$en), character())
-  expect_false(any(grepl("水準", s$ja[s$en %in% lits])))
+  expect_false(any(grepl("\u6c34\u6e96", s$ja[s$en %in% lits])))
 })
 
 test_that("the app's server starts the card on the open study", {
