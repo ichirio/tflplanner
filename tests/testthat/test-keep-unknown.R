@@ -62,3 +62,22 @@ test_that("1-1: an analysis data the form cannot show is saved back unchanged", 
     expect_identical(a1, b1)
   })
 })
+
+test_that("1-1: the preview's dummy analysis adds no column to select() when keep is set", {
+  local_home()
+  p <- add_output(new_planner(), "DM")
+  p$ard$datasets <- data.frame(dataset = c("ADSL", "ADAE"),
+                               path = c("data/adam/adsl.rds", "data/adam/adae.rds"))
+  for (s in names(p$ard)) p$ard[[s]] <- .normalize_ard_sheet(p$ard[[s]], s)
+  p <- set_analysis_data(p, "DM", "adae_s", from = "ADAE",
+                         keep = "USUBJID | AEDECOD | AESEV")
+  code <- .adata_code_start(p, "DM", "adae_s")
+  expect_match(code, "select(adae, USUBJID, AEDECOD, AESEV)", fixed = TRUE)
+  expect_false(grepl("TRY_", code, fixed = TRUE))
+  s <- create_study("KU4", planner = p)
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  saveRDS(cards::ADAE, file.path(s$path, "data", "adam", "adae.rds"))
+  d <- .adata_make(p, s$path, "DM", "adae_s")
+  expect_null(attr(d, "error"))
+  expect_identical(names(d), c("USUBJID", "AEDECOD", "AESEV"))
+})

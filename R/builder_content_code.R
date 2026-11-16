@@ -34,7 +34,8 @@
 
 # The lines of a report's program that each item wrote: the plan's pipe
 # (`plan <- table_plan(...) |> plan_*() ...`), an item's lines from the one
-# its verb starts to the next one's, and the code lists at its head
+# its verb starts to the next one's (a template's study items: `plan_x = list(`
+# in its `study = list(`), and the code lists at its head
 # (`cl_<variable> <- c(...)`, plan_levels()'s).  The k-th call of a verb is
 # its k-th item.  A data frame: `line`, `path`.
 builder_code_map <- function(lines, items) {
@@ -55,6 +56,12 @@ builder_code_map <- function(lines, items) {
     if (!nzchar(trimws(s))) break
     m <- regmatches(s, regexec("^(plan <- [A-Za-z_.]+ \\|> |plan <- |\\s+)([A-Za-z_.]+)\\(", s))[[1L]]
     fn <- if (length(m)) m[3L] else NA_character_
+    # (a template's study items inside its call, tflspec #780:
+    # `study = list(` and in it `plan_x = list(...)`, one a verb)
+    if (is.na(fn)) {
+      ms <- regmatches(s, regexec("^\\s+(plan_[A-Za-z0-9_]+) = list\\(", s))[[1L]]
+      if (length(ms)) fn <- ms[2L]
+    }
     if (!is.na(fn) && fn %in% fns) {
       seen <- c(seen, fn)
       k <- sum(seen == fn)

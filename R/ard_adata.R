@@ -532,7 +532,7 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
   a$analysis_data$output_id <- rep(".try", nrow(a$analysis_data))
   a$analyses <- .normalize_ard_sheet(data.frame(
     output_id = ".try", analysis_id = "TRY", method = "cards::ard_summary",
-    data = id, variables = "TRY_", stringsAsFactors = FALSE), "analyses")
+    data = id, variables = .adata_subject_key(x), stringsAsFactors = FALSE), "analyses")
   code <- tryCatch(tflspec::tfl_ard_code(structure(a, class = "tfl_ard_spec"),
                                          part = "body"),
                    error = function(e) NULL)
@@ -573,7 +573,7 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
   a$analysis_data$output_id <- rep(".try", nrow(a$analysis_data))
   a$analyses <- .normalize_ard_sheet(data.frame(
     output_id = ".try", analysis_id = "TRY", method = "cards::ard_summary",
-    data = id, variables = "TRY_", stringsAsFactors = FALSE), "analyses")
+    data = id, variables = .adata_subject_key(x), stringsAsFactors = FALSE), "analyses")
   code <- tryCatch(tflspec::tfl_ard_code(structure(a, class = "tfl_ard_spec"),
                                          part = "body"),
                    error = function(e) NULL)
