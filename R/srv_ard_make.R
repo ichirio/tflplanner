@@ -138,7 +138,7 @@
   for (sheet in setdiff(names(.ard_sheets()), c("analysis_data", "datasets"))) local({
     sh <- sheet
     out_id <- paste0("hot_ard_", sh)
-    by_report <- sh == "analyses"
+    by_report <- sh %in% .ard_report_sheets
     # the analyses of the report chosen, or of every report (an analysis
     # several reports use, GROUPN, seen at once): then the grid is the whole
     # sheet with its output_id column, edited as such
