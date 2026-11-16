@@ -1805,6 +1805,8 @@
         if (length(ids)) ids[1L] else .default_rows
     shiny::updateSelectInput(session, "target", choices = ch, selected = sel)
   })
+  # the Template series card (R/srv_series.R)
+  .srv_part(.srv_series, environment())
   .srv_keep(environment())
 }
 
