@@ -2,7 +2,7 @@
 # tfl_arg_defs()): a map<K,V> a table of two columns (key, value), a
 # rows<map<string,V>> a table whose columns are the record's keys.  Rows
 # are added, removed and (a rows<...>, an ordered map) moved; the rows given
-# as fixed (the template's ALL row) show on top, read only, and are not
+# as fixed (the template's ALL row) show above (or below) the report's, read only, and are not
 # read back.  The whole table is one input (`<card id>__<arg>`): its state as
 # JSON, the binding in .builder_cards_js; builder_card_read() reads it back
 # as the type says (.tbl_read()).
@@ -321,8 +321,8 @@
                          `aria-label` = t("Remove the row"), "×")))
 }
 
-# The table field: a header of the columns, the fixed rows (read only, on
-# top), the rows of the value, a blank row's template and Add a row.  Its
+# The table field: a header of the columns, the fixed rows (read only, before
+# or after them), the rows of the value, a blank row's template and Add a row.  Its
 # state as it is drawn rides in data-state (the input's first value is the
 # same, read from the cells).
 .field_table <- function(fid, spec, value, fixed_rows = NULL, lang = "en") {
@@ -339,6 +339,21 @@
   })
   rows <- .tbl_rows(spec, value)
   fixed <- .tbl_rows(spec, fixed_rows)
+  # (the template's rows: before the report's, or after them -- tflspec's
+  # attribute "position")
+  after <- identical(attr(fixed_rows, "position", exact = TRUE), "after")
+  fixed_body <- if (length(fixed)) shiny::tags$tbody(
+    class = "rp-tbl-fixed",
+    lapply(fixed, function(cells) {
+      shiny::tags$tr(class = "rp-tbl-ro", title = t("From the template"),
+                     lapply(seq_len(n), function(j) {
+                       shiny::tags$td(class = paste("rp-tbl-td", if (spec$kinds[[j]] == "r") "rp-mono"),
+                                      cells[[j]])
+                     }),
+                     shiny::tags$td(class = "rp-tbl-tools",
+                                    shiny::tags$span(class = "rp-badge rp-badge-template",
+                                                     t("From the template"))))
+    }))
   st <- .tbl_state(spec, value)
   shiny::div(
     class = paste("rp-tbl", paste0("rp-tbl-", spec$shape)), id = fid,
@@ -354,20 +369,10 @@
                          spec$heads[[j]])
         }),
         shiny::tags$th(class = "rp-tbl-tools"))),
-      if (length(fixed)) shiny::tags$tbody(
-        class = "rp-tbl-fixed",
-        lapply(fixed, function(cells) {
-          shiny::tags$tr(class = "rp-tbl-ro", title = t("From the template"),
-                         lapply(seq_len(n), function(j) {
-                           shiny::tags$td(class = paste("rp-tbl-td", if (spec$kinds[[j]] == "r") "rp-mono"),
-                                          cells[[j]])
-                         }),
-                         shiny::tags$td(class = "rp-tbl-tools",
-                                        shiny::tags$span(class = "rp-badge rp-badge-template",
-                                                         t("From the template"))))
-        })),
+      if (!after) fixed_body,
       shiny::tags$tbody(class = "rp-tbl-body",
-                        lapply(rows, function(cells) .tbl_row(spec, cells, dls, lang)))),
+                        lapply(rows, function(cells) .tbl_row(spec, cells, dls, lang))),
+      if (after) fixed_body),
     shiny::tags$template(class = "rp-tbl-tpl", .tbl_row(spec, rep("", n), dls, lang)),
     lists,
     shiny::tags$button(type = "button", class = "btn btn-link btn-sm rp-tbl-addrow",

@@ -157,6 +157,7 @@
   if (identical(n, "data")) return("data")
   several <- isTRUE(prm$multiple)
   ty <- prm$type
+  if (identical(ty, "table") && !is.null(.tpl_table_spec(prm))) return("table")
   if (.tpl_is_columns(prm)) return("columns")
   if (length(ty) == 1L && nzchar(ty)) {
     return(switch(ty,
@@ -468,6 +469,7 @@
       if (!length(v)) NULL else if (identical(type, "levels") && !isTRUE(prm$multiple)) v[1L] else v
     },
     list = , columns = .tpl_list_parse(v, prm),
+    table = if (.tbl_is_state(v)) .tbl_read(v),
     {
       v <- trimws(paste(as.character(v), collapse = "\n"))
       # (YAML flow or `!r`: what .tpl_show() writes; a text that does not parse is kept as typed --
@@ -486,12 +488,60 @@
     number = .num_or_null(shown),
     text = if (is.null(shown)) "" else .tpl_show(shown),
     list = , columns = .tpl_list_text(shown, prm),
+    table = .tpl_table_state(shown, prm),
     vars = , chips = , choices = as.character(shown %||% character()),
     levels = if (isTRUE(prm$multiple)) as.character(shown %||% character()) else
       as.character(shown %||% "")[1L],
     as.character(shown %||% "")[1L]), error = function(e) NULL)
   if (is.null(raw)) return(NULL)
   tryCatch(.tpl_value(raw, type, prm), error = function(e) NULL)
+}
+
+# A table parameter (a def's input "table": a map<K,V> or a rows<...>,
+# R/arg_defs_table.R): its table's columns (NULL: its type is no table, or
+# it has no columns to show); `ctx` what the card knows (.tpl_table_ctx())
+.tpl_table_spec <- function(prm, ctx = NULL, value = NULL, lang = "en") {
+  d <- prm$def
+  if (!is.list(d) || is.null(d$type)) return(NULL)
+  .tbl_spec(d$type, def = d, ctx = ctx, value = value, lang = lang)
+}
+
+# The state an untouched table field holds (NULL: no table)
+.tpl_table_state <- function(shown, prm) {
+  spec <- .tpl_table_spec(prm, value = shown)
+  if (!is.null(spec)) .tbl_state(spec, shown)
+}
+
+# A table's value as one text to compare (a data frame and its records, read
+# back from the field, say the same): each row its non-blank cells by name,
+# the rows in order
+.tpl_table_key <- function(x, prm) {
+  spec <- .tpl_table_spec(prm, value = x)
+  if (is.null(spec)) return("")
+  rows <- lapply(.tbl_rows(spec, x), function(r) {
+    names(r) <- spec$cols
+    r <- r[nzchar(r)]
+    if (identical(spec$shape, "rows")) r[order(names(r))] else r
+  })
+  rows <- Filter(length, rows)
+  as.character(jsonlite::toJSON(lapply(rows, as.list), auto_unbox = TRUE))
+}
+
+# What a template card knows for a table's choices (the ctx of
+# .choice_values()): the columns of a dataset (vars(<data>); the report's
+# dataset when it names none or one the study lacks -- a template's own
+# data id, adsl_sub), a variable's values, the card's arguments and the
+# template's params
+.tpl_table_ctx <- function(data, dataset = NULL, args = list(), params = list()) {
+  list(
+    vars = function(what = NULL) {
+      w <- toupper(as.character(what %||% "")[1L])
+      if (!is.na(w) && nzchar(w) && is.data.frame(data[[w]])) names(data[[w]]) else
+        .tpl_columns(data, dataset)
+    },
+    levels = function(what = NULL) .tpl_levels(data, as.character(what %||% NA_character_)[1L], dataset),
+    args = args,
+    params = names(params))
 }
 
 # The args with one argument set (NULL, or the default itself: taken away)

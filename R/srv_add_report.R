@@ -151,6 +151,15 @@
                            placeholder = if (none) t("(none)") else if (is.null(prm$default)) t("(default)"))
         }
       },
+      # (a def's table, a map or rows: the table field -- a row a line, the
+      # template's own rows read only on top; its value the report's rows)
+      table = {
+        ctx <- .tpl_table_ctx(data, dataset, args, params)
+        spec <- .tpl_table_spec(prm, ctx, shown, tflplanner_language())
+        shiny::div(class = "form-group shiny-input-container w-100",
+                   shiny::tags$label(class = "control-label", `for` = input_id, lab),
+                   .field_table(input_id, spec, shown, fixed_rows = prm$fixed_rows, lang = tflplanner_language()))
+      },
       list = {
         txt <- .tpl_list_text(shown, prm)
         if (is.null(txt)) {
@@ -614,7 +623,9 @@
     # (a field drawn again says its value back: what it shows already --
     # the report's, the study's or the default -- is no edit)
     list_key <- function(z) .tpl_list_text(z, prm) %||% .tpl_yaml_block(z)
-    same <- if (type %in% c("list", "columns")) {
+    same <- if (identical(type, "table")) {
+      identical(.tpl_table_key(val, prm), .tpl_table_key(shown, prm))
+    } else if (type %in% c("list", "columns")) {
       identical(list_key(val), list_key(shown))
     } else !is.null(val) && identical(as.character(unlist(val)), as.character(unlist(shown)))
     if (same) return()
@@ -624,7 +635,8 @@
     # go back and types it once more)
     key <- paste(id, name, a)
     now <- as.numeric(Sys.time())
-    as_key <- function(z) if (type %in% c("list", "columns")) list_key(z) else
+    as_key <- function(z) if (identical(type, "table")) .tpl_table_key(z, prm) else
+      if (type %in% c("list", "columns")) list_key(z) else
       paste(as.character(unlist(z)), collapse = "\n")
     if (.tpl_stale_say(as_key(val), tpl_past[[key]], now)) {
       tpl_ver(tpl_ver() + 1L)
@@ -635,7 +647,7 @@
     # (the columns field shows its edit already, and a redraw takes the focus
     # from its table: the card is drawn again only when what it shows around
     # the field changes -- the field given or not, the required ones missing)
-    redraw <- !identical(type, "columns") || is.null(tp$args[[a]]) != is.null(args[[a]]) ||
+    redraw <- !type %in% c("columns", "table") || is.null(tp$args[[a]]) != is.null(args[[a]]) ||
       !identical(.tpl_missing(name, tp$args, rv$p$spec$study), .tpl_missing(name, args, rv$p$spec$study))
     if (isTRUE(tpl_write(id, args, redraw = redraw))) {
       keep <- tpl_past[[key]] %||% data.frame(v = character(), t = numeric())

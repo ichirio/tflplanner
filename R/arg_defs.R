@@ -241,6 +241,8 @@
 # A def's type as a template parameter's (tfl_param()'s type)
 .tpl_param_type <- function(d) {
   type <- d$type %||% "string"
+  # (a table of a map or rows: the table field, R/arg_defs_table.R)
+  if (identical(d$input, "table") && !is.null(.tbl_type(type))) return("table")
   if (length(d$values) && identical(d$input, "pick") && !grepl("^list<", type)) return("choice")
   if (grepl("^enum\\[", type)) return("choice")
   if (grepl("^(list<)?column>?$", type)) return("vars")
@@ -276,9 +278,24 @@
          step = if (identical(d$step, "data")) "data" else "call",
          hidden = identical(kind, "fixed"),
          arg_step = d$step, input = d$input, sources = d$choices,
-         free = d$free, ordered = d$ordered, default_kind = if (kind != "none") kind)
+         free = d$free, ordered = d$ordered, default_kind = if (kind != "none") kind,
+         # (the def itself: a table's type, columns and choices)
+         def = d,
+         # (a table's rows the template writes itself -- forest_hr's ALL row
+         # before its conditions: tfl_arg_defs()'s fixed_rows, tflspec#824;
+         # shown read only, never written)
+         fixed_rows = .tpl_fixed_rows(d))
   })
   stats::setNames(out, defs$name)
+}
+
+# A def's fixed rows (a data frame, its attribute "position" "before" or
+# "after" the report's rows); NULL for none, or a tflspec that has no such
+# column yet
+.tpl_fixed_rows <- function(d) {
+  x <- d$fixed_rows
+  if (is.list(x) && !is.data.frame(x) && length(x) == 1L && is.data.frame(x[[1L]])) x <- x[[1L]]
+  if (is.data.frame(x) && nrow(x)) x
 }
 
 # the editor section of a def's step

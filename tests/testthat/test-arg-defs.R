@@ -22,6 +22,7 @@ mk_defs <- function(...) {
   d$free <- vapply(rows, get, NA, k = "free", d = NA)
   d$ordered <- vapply(rows, get, NA, k = "ordered", d = NA)
   d$columns <- I(lapply(rows, function(r) r$columns))
+  d$fixed_rows <- I(lapply(rows, function(r) r$fixed_rows))
   d$tier <- vapply(rows, get, "", k = "tier", d = "usual")
   d$description <- vapply(rows, get, "", k = "description", d = "")
   d
@@ -301,4 +302,71 @@ test_that("a series template's params and sections come from its defs", {
   expect_identical(.tpl_arg_section("s1/t1", "title"), "page")
   # (an argument the defs lack: today's lookup)
   expect_identical(.tpl_arg_section("s1/t1", "population"), "data")
+})
+
+test_that("a series template's table params (conditions, formats): the table field, read back as records", {
+  local_defs_reset()
+  # (the template's ALL row before the report's: tfl_arg_defs()'s fixed_rows, tflspec#824)
+  all_row <- data.frame(subgroup = "ALL", subgroup_lvl = "ALL", stringsAsFactors = FALSE)
+  all_row$where <- list(tflspec::tfl_r("TRUE"))
+  attr(all_row, "position") <- "before"
+  testthat::local_mocked_bindings(
+    tfl_arg_defs = function(fn = NULL, template = NULL) {
+      mk_defs(
+        list(name = "conditions", step = "analysis", input = "table",
+             type = "rows<subgroup,subgroup_lvl,where>", columns = "params", default = list(),
+             default_kind = "value", fixed_rows = all_row),
+        list(name = "formats", step = "analysis", input = "table", type = "map<string,number|string>",
+             choices = "stats", free = TRUE),
+        list(name = "odd", step = "analysis", input = "table", type = "call<rtf_col_header>"))
+    },
+    .package = "tflspec")
+  p <- .tpl_params("s1/fh")
+  expect_identical(p$conditions$type, "table")
+  expect_identical(p$formats$type, "table")
+  expect_identical(.tpl_type(p$conditions), "table")
+  expect_identical(.tpl_type(p$formats), "table")
+  # (a table input whose type is no table: as before)
+  expect_identical(.tpl_type(p$odd), "text")
+  # (the template's own rows: the def's; none for a def without them)
+  expect_identical(p$conditions$fixed_rows$subgroup, "ALL")
+  expect_null(p$formats$fixed_rows)
+  # the field: the type's fields its columns, where an R cell offered the dataset's columns
+  data <- list(ADSL = data.frame(USUBJID = "1", SEX = "F", AGEGR1 = "<65"))
+  ctx <- .tpl_table_ctx(data, "ADSL", args = list(), params = p)
+  expect_identical(ctx$vars("adsl_sub"), c("USUBJID", "SEX", "AGEGR1"))
+  df <- data.frame(subgroup = c("SEX", "SEX"), subgroup_lvl = c("F", "M"),
+                   where = c("SEX == \"F\"", "SEX == \"M\""), stringsAsFactors = FALSE)
+  df$where <- lapply(df$where, tflspec::tfl_r)
+  spec <- .tpl_table_spec(p$conditions, ctx, df)
+  expect_identical(spec$cols, c("subgroup", "subgroup_lvl", "where"))
+  expect_identical(spec$kinds[[3L]], "r")
+  expect_true("AGEGR1" %in% spec$choices[[3L]])
+  h <- as.character(.field_table("tpl_x__conditions", spec, df, fixed_rows = p$conditions$fixed_rows))
+  expect_match(h, "value=\"M\"", fixed = TRUE)
+  # (the ALL row read only, before the report's rows; "after": after them)
+  expect_match(h, "rp-tbl-fixed[^$]*rp-tbl-body")
+  expect_match(h, "<td class=\"rp-tbl-td rp-mono\">TRUE</td>", fixed = TRUE)
+  attr(all_row, "position") <- "after"
+  h <- as.character(.field_table("tpl_x__conditions", spec, df, fixed_rows = all_row))
+  expect_match(h, "rp-tbl-body[^$]*rp-tbl-fixed")
+  expect_false(grepl("rp-tbl-fixed[^$]*rp-tbl-body", h))
+  # read back: the field's state -> records; untouched it says the value it shows
+  st <- as.character(jsonlite::toJSON(.tbl_state(spec, df), auto_unbox = TRUE))
+  got <- .tpl_value(st, "table", p$conditions)
+  expect_length(got, 2L)
+  expect_identical(got[[2L]]$subgroup_lvl, "M")
+  expect_s3_class(got[[2L]]$where, "tfl_r")
+  expect_identical(.tpl_untouched(df, "table", p$conditions), got)
+  # (the data frame and its records read back compare the same; a row more does not)
+  expect_identical(.tpl_table_key(got, p$conditions), .tpl_table_key(df, p$conditions))
+  expect_false(identical(.tpl_table_key(got[1L], p$conditions), .tpl_table_key(df, p$conditions)))
+  expect_null(.tpl_value("not a state", "table", p$conditions))
+  # a map: its key and value; a number kept a number
+  st <- as.character(jsonlite::toJSON(list(shape = "map", cols = c("key", "value"),
+                                           kinds = c("text", "number_text"),
+                                           rows = list(c("mean", "1"), c("pct", "xx.x"))), auto_unbox = TRUE))
+  expect_identical(.tpl_value(st, "table", p$formats), list(mean = 1, pct = "xx.x"))
+  expect_identical(.tpl_table_key(list(mean = 1, pct = "xx.x"), p$formats),
+                   .tpl_table_key(.tpl_value(st, "table", p$formats), p$formats))
 })
