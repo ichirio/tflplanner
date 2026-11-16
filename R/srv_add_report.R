@@ -186,7 +186,8 @@
   # -- all drawn with the dialog (shown by the choice in the page itself:
   # nothing is waited for from the server)
   tpl_input <- function(kind) paste0("modal_tpl_", kind)
-  tpl_arg_id <- function(nm, a) paste0("mtpl_", nm, "__", gsub("[^A-Za-z0-9_]", "_", a))
+  # (a series template's name has a "/": an id of letters, digits and _)
+  tpl_arg_id <- function(nm, a) paste0("mtpl_", .tpl_id_part(nm), "__", .tpl_id_part(a))
   tpl_chosen <- function() {
     kind <- input$modal_type %||% "table"
     nm <- input[[tpl_input(kind)]]
@@ -195,6 +196,7 @@
   tpl_modal_ui <- function() {
     shiny::tagList(lapply(report_types(), function(kind) {
       tp <- .tpl_list(kind)
+      ser <- .tpl_series_templates()
       shiny::conditionalPanel(
         sprintf("input.modal_type == '%s'", kind),
         if (!nrow(tp)) {
@@ -204,8 +206,8 @@
           shiny::selectizeInput(
             tpl_input(kind), t("Template"),
             stats::setNames(tp$name, vapply(tp$name, function(n) {
-              d <- if (!is.na(.tpl_desc[n])) t(.tpl_desc[[n]]) else ""
-              if (nzchar(d)) paste0(n, " \u2014 ", d) else n
+              d <- .tpl_desc_of(n, ser)
+              if (nzchar(d)) paste0(n, " \u2014 ", t(d)) else n
             }, "")),
             selected = tp$name[1L], width = "100%",
             options = list(searchField = list("label", "value"))),
@@ -573,7 +575,7 @@
   tpl_obs <- new.env()
   # (per report, template and argument: the values its writes replaced, and when)
   tpl_past <- new.env()
-  tpl_iid <- function(name, a) paste0("tpl_", name, "__", gsub("[^A-Za-z0-9_]", "_", a))
+  tpl_iid <- function(name, a) paste0("tpl_", .tpl_id_part(name), "__", .tpl_id_part(a))
   tpl_write <- function(id, args, name = NULL, steps = NULL, redraw = TRUE) {
     o <- .tpl_output(rv$p, id, args, name = name)
     if (length(steps)) o$data$steps <- steps
@@ -1086,7 +1088,8 @@
                                          t("Save as a template ..."))),
             shiny::tags$li(shiny::tags$a(class = "dropdown-item disabled", href = "#",
                                          t("Make a variant ..."))))),
-        if (!is.na(.tpl_desc[tp$name])) shiny::div(class = "small text-muted w-100", t(.tpl_desc[[tp$name]])))),
+        if (nzchar(.tpl_desc_of(tp$name))) shiny::div(class = "small text-muted w-100",
+                                                      t(.tpl_desc_of(tp$name))))),
       bslib::card_body(
         missing_alert,
         block("ard", t("Analysis (ARD)")),

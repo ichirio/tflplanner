@@ -43,10 +43,59 @@
 # The templates of a kind of report: name and kind
 .tpl_list <- function(kind) {
   x <- tryCatch(tflspec::tfl_templates(), error = function(e) NULL)
-  if (is.null(x) || !nrow(x)) return(data.frame(name = character(), kind = character()))
-  x <- x[x$kind %in% kind, c("name", "kind"), drop = FALSE]
+  x <- if (is.null(x) || !nrow(x)) data.frame(name = character(), kind = character()) else
+    x[, c("name", "kind"), drop = FALSE]
+  # (the series' templates first: "<series>/<template>")
+  s <- .tpl_series_templates()
+  x <- rbind(s[, c("name", "kind"), drop = FALSE], x)
+  x <- x[x$kind %in% kind, , drop = FALSE]
   rownames(x) <- NULL
   x
+}
+
+# The templates of tflspec's series (tflspec#819/#824: tfl_series_list(), each
+# series' templates/<t>.yml): name "<series>/<t>", kind (a `figure:` a
+# figure, a listing's style a listing, else a table) and its label.  None
+# for a tflspec with no series.
+.tpl_series_templates <- function(lister = .tpl_series_lister()) {
+  none <- data.frame(name = character(), kind = character(), label = character())
+  s <- if (is.function(lister)) tryCatch(lister(), error = function(e) NULL)
+  if (!is.data.frame(s) || !nrow(s)) return(none)
+  # (a series found in two folders: the first, as tflspec reads it)
+  s <- s[!duplicated(s$name), , drop = FALSE]
+  out <- lapply(seq_len(nrow(s)), function(i) {
+    files <- sort(list.files(file.path(s$path[[i]], "templates"), "\\.yml$", full.names = TRUE))
+    if (!length(files)) return(NULL)
+    rows <- lapply(files, function(fl) {
+      top <- readLines(fl, n = 80L, warn = FALSE, encoding = "UTF-8")
+      lab <- sub("^label:\\s*", "", grep("^label:", top, value = TRUE)[1L])
+      kind <- if (any(grepl("^figure:", top))) "figure" else
+        if (any(grepl("^style:.*listing", top))) "listing" else "table"
+      data.frame(name = paste0(s$name[[i]], "/", sub("\\.yml$", "", basename(fl))), kind = kind,
+                 label = if (is.na(lab)) "" else trimws(lab))
+    })
+    do.call(rbind, rows)
+  })
+  out <- do.call(rbind, out)
+  if (is.null(out)) none else out
+}
+
+# a name as a part of an input's id (letters, digits and _)
+.tpl_id_part <- function(x) gsub("[^A-Za-z0-9_]", "_", x)
+
+# tflspec's tfl_series_list(), NULL for a tflspec that has none
+.tpl_series_lister <- function() {
+  if (requireNamespace("tflspec", quietly = TRUE)) {
+    get0("tfl_series_list", envir = asNamespace("tflspec"), inherits = FALSE)
+  }
+}
+
+# A template's one line for the list: the app's own (.tpl_desc), else a
+# series template's label; "" for none
+.tpl_desc_of <- function(name, series = .tpl_series_templates()) {
+  if (!is.na(.tpl_desc[name])) return(.tpl_desc[[name]])
+  lab <- series$label[match(name, series$name)]
+  if (length(lab) && !is.na(lab)) lab else ""
 }
 
 # A template's parameters, named, in its order (none: a template unknown).
