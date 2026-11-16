@@ -274,18 +274,19 @@ test_that("the verbs after a template's call: the ones its program has", {
 
 # demog's study items: in its call with tflspec#780 (tfl_tpl(study = )), none with #764
 .demog_study_fns <- if ("study" %in% names(formals(tflspec::tfl_tpl))) {
-  c("plan_cells", "plan_stub", "plan_style")
+  c("plan_cells", "plan_digits", "plan_stub", "plan_style")
 } else character()
 
 test_that("the verbs after a template's call in the program tflspec writes now", {
   skip_on_cran()
   # (demog and summary take the study standard's verbs as their arguments,
-  # tflspec#764 / #785, and their programs have none after the call)
+  # tflspec#764 / #785, in their call's `study = list(` (tflspec#780), and
+  # their programs have none after the call)
   o <- tflspec::tfl_output("T-99", "table", common = list(population = "SAF"),
                            template = list(name = "summary",
                                          args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   p <- .spec_add_output(tpl_sample_planner(), o, population = "SAF")
-  expect_identical(.tpl_code_fns(p, "T-99"), character())
+  expect_identical(.tpl_code_fns(p, "T-99"), .demog_study_fns)
   q <- .spec_add_output(tpl_sample_planner(), tpl_demog_output(), population = "SAF")
   # (demog's study items are in its call, `study = list(`, tflspec#780: the
   # verbs of those, from the template record; none with tflspec#764)

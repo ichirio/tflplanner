@@ -584,7 +584,7 @@ test_that("demog's study items (inside tfl_tpl(study =), tflspec #780) still map
   skip_on_cran()
   skip_if_not("study" %in% names(formals(tflspec::tfl_tpl)), "tflspec without tfl_tpl(study =)")
   p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
-  o <- tflspec::tfl_output("T-99", "table", population = "SAF",
+  o <- tflspec::tfl_output("T-99", "table", common = list(population = "SAF"),
                            template = list(name = "demog",
                                          args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   p <- .spec_add_output(p, o, population = "SAF")
