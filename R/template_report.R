@@ -49,13 +49,27 @@
   x
 }
 
-# A template's parameters, named, in its order (none: a template unknown)
+# A template's parameters, named, in its order (none: a template unknown).
+# A series template ("<series>/<template>") whose file tfl_arg_defs() reads:
+# its params from those defs (.tpl_params_from_defs()); else tflspec's
+# registered template's.
 .tpl_params <- function(name) {
+  defs <- .tpl_defs(name)
+  if (!is.null(defs)) return(.tpl_params_from_defs(defs))
+  # TODO(P1a-2): drop when series templates exist
   p <- tryCatch(tflspec::tfl_template_params(name), error = function(e) list())
   if (length(p) && is.null(names(p))) {
     names(p) <- vapply(p, function(x) x$name, "")
   }
   p
+}
+
+# A series template's argument definitions ("<series>/<template>": a
+# name with a series), NULL for a template of no series or no file yet
+.tpl_defs <- function(name) {
+  if (!is.character(name) || length(name) != 1L || !grepl("^[^/]+/[^/]+$", name)) return(NULL)
+  d <- .arg_defs(template = name)
+  if (is.data.frame(d) && nrow(d)) d
 }
 
 # A parameter marked "key" (tflspec's tier: a default that stays on top of
@@ -568,6 +582,13 @@
   }
 })
 .tpl_arg_section <- function(template, argument) {
+  # (a series template's def: its step)
+  st <- .arg_def(.tpl_defs(template), argument)$step
+  if (length(st) == 1L && !is.na(st) && st %in% names(.tpl_step_section)) {
+    return(.tpl_step_section[[st]])
+  }
+  # TODO(P1a-2): drop when series templates exist (and the table
+  # inst/extdata/template_arg_sections.csv with it)
   tab <- .tpl_section_table()
   i <- which(tab$template == template & tab$argument == argument)
   if (length(i)) return(tab$section[i[1L]])
