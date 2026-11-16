@@ -45,9 +45,13 @@
 #' options(old)
 #' @export
 study_status <- function(study) {
+  # (another study than the open one: the open one's context kept, #680)
+  .with_study_context(study$path, .study_status(study))
+}
+
+.study_status <- function(study) {
   p <- study$planner
   root <- study$path
-  .use_study(root)
   lay <- study_layout()
   setup <- .report_setup_recorded(root, p$outputs$output_id)
   now <- .report_setup_hash(root)
