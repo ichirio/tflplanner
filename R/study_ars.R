@@ -93,6 +93,8 @@ export_ars <- function(study, dir, profile = c("cdisc", "siera")) {
     f <- .data_file(study$path, ds$path[i])
     if (is.na(f) || !file.exists(f)) next
     ext <- tolower(tools::file_ext(f))
+    # haven missing: said, not taken for a file that cannot be read (#682)
+    if (ext %in% c("xpt", "sas7bdat")) .need_pkg("haven", sprintf(tr("Reading .%s files"), ext))
     d <- tryCatch(switch(ext,
       rds = readRDS(f),
       xpt = haven::read_xpt(f, n_max = 0L),

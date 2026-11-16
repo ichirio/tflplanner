@@ -62,6 +62,7 @@ Suggests:
     httpuv,
     logrx,
     patchwork,
+    purrr (>= 1.0.0),
     survival,
     tcltk,
     testthat (>= 3.2.1),

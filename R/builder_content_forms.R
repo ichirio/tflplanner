@@ -65,10 +65,15 @@
 # function's own (not `plan`) and its visible arguments the main ones
 .plan_form_schema <- function(fn) {
   sch <- .schema_of(fn) %||% list()
+  # (a type of the form's own: the field the type says, not the def's input)
   for (a in names(.plan_form_types[[fn]])) {
     sch$args[[a]]$type <- .plan_form_types[[fn]][[a]]
+    sch$args[[a]]$input <- NULL
   }
-  for (a in .plan_form_r[[fn]]) sch$args[[a]]$type <- "r"
+  for (a in .plan_form_r[[fn]]) {
+    sch$args[[a]]$type <- "r"
+    sch$args[[a]]$input <- NULL
+  }
   fl <- tryCatch(formals(utils::getFromNamespace(fn, "rtfreporter")), error = function(e) NULL)
   fo <- names(fl)
   # (an argument the schema only names -- a label, no type -- passed by
@@ -146,7 +151,7 @@
       f <- arg_field(cid, k, sch$args[[k]]$type, label = .arg_meaning(fn, k), value = value,
                      default = paste(ak, collapse = ", "), choices = unique(c(ak, choices)),
                      from = if (same) "ard" else from, own = if (!same) own,
-                     help = .arg_help(fn, k, sch, lang), lang = lang)
+                     help = .arg_help(fn, k, sch, lang), lang = lang, def = sch$args[[k]])
       return(.ard_checked(f, ak, same, fixed_link, lang))
     }
     if (identical(sch$args[[k]]$type, "widths")) {
@@ -156,7 +161,8 @@
     }
     arg_field(cid, k, sch$args[[k]]$type, label = .arg_meaning(fn, k), value = value,
               default = sch$args[[k]]$default, choices = choices,
-              from = from, own = own, help = .arg_help(fn, k, sch, lang), lang = lang)
+              from = from, own = own, help = .arg_help(fn, k, sch, lang), lang = lang,
+              def = sch$args[[k]])
   }
   shiny::div(
     class = "rp-plan-args", `data-card` = cid,
@@ -189,7 +195,7 @@
               default = sch$args[[k]]$default,
               from = if (k %in% names(a)) .arg_from(it, k) else "own",
               own = if (k %in% names(it$own_args %||% list())) it$own_word %||% "This table",
-              help = .arg_help(fn, k, sch, lang), lang = lang)
+              help = .arg_help(fn, k, sch, lang), lang = lang, def = sch$args[[k]])
   }
   shiny::div(
     class = "rp-plan-args rp-special-more", `data-card` = cid,
