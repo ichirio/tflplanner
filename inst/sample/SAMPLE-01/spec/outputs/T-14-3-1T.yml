@@ -1,7 +1,7 @@
 # T-14-3-1 written as a template SPEC: tflspec_v1/ae_soc_pt, whose ARD is
 # the code SPEC's (T-14-3-1C: tflplanner's SAMPLE-01 T-14-3-1 with the
-# canon ids).  The template has no content: block yet, so the report's
-# content is its own: the code SPEC's cards as they are.
+# canon ids).  The content is the template's, its defaults the code
+# SPEC's cards; the report gives only max_rows (22, the series' 30).
 id: T-14-3-1T
 kind: table
 label: TEAEs by SOC / PT
@@ -15,46 +15,8 @@ template:
   name: tflspec_v1/ae_soc_pt
   analysis:
     by: [TRT01A]
-content:
-  - normalize_ard:
-      hierarchy:
-        - AEBODSYS
-        - AEDECOD
-      overall: Any TEAE
-  - table_plan:
-      cols: TRT01A
-      rows:
-        group1: AEBODSYS
-      label:
-        label: AEDECOD
-  - plan_sort:
-      keys:
-        - .overall
-        - group1
-        - .depth
-        - -n
-        - label
-  - plan_col_header:
-      header:
-        - line: '1'
-          cols: row_label
-        - line: '1'
-          cols: .values
-          span: each
-          text: |-
-            {col}
-            (N={n})
-            n (%)
-        - line: '2'
-          cols: row_label
-          text: |-
-            System Organ Class
-               Preferred Term
-        - line: '2'
-          cols: .values
-  - plan_paginate_rows:
-      max_rows: 22
-      split: group_force
+  content:
+    max_rows: 22
 page:
   footer:
     '1':
