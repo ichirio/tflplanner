@@ -44,7 +44,7 @@ test_that("the schema's arguments gain their defs; label, help and the function'
   testthat::local_mocked_bindings(
     tfl_schema = function(fn = NULL) if (identical(fn, "plan_x")) fake_schema,
     tfl_arg_defs = function(fn = NULL, template = NULL) mk_defs(
-      list(name = "cols", input = "pick", type = "list<column>", choices = "vars(data)",
+      list(name = "cols", input = "pick", type = "list<column>", choices = "vars(from_args(data))",
            ordered = TRUE, free = FALSE, description = "Def's cols"),
       list(name = "note", input = "text", description = "Def's note", tier = "other"),
       list(name = "how", input = "pick", type = "enum[a|b]", choices = "fixed",
@@ -57,7 +57,7 @@ test_that("the schema's arguments gain their defs; label, help and the function'
   expect_identical(s$args$cols$label, "Columns kept")
   expect_identical(s$args$cols$help, "The columns.")
   expect_identical(s$args$cols$input, "pick")
-  expect_identical(s$args$cols$choices, "vars(data)")
+  expect_identical(s$args$cols$choices, "vars(from_args(data))")
   expect_true(s$args$cols$ordered)
   expect_false(s$args$cols$free)
   expect_identical(s$args$cols$step, "content")
@@ -120,7 +120,7 @@ test_that("each input form draws its field", {
   expect_match(h, "\"create\":true", fixed = TRUE)
   expect_match(h, "categorical", fixed = TRUE)
   # pick of a list: several, the order hint when ordered
-  d <- list(input = "pick", choices = "vars(data)", ordered = TRUE, free = FALSE)
+  d <- list(input = "pick", choices = "vars(from_args(data))", ordered = TRUE, free = FALSE)
   h <- html(arg_field("c", "keep", "list<column>", def = d,
                       ctx = list(vars = list(adsl = c("AGE", "SEX")), args = list(data = "adsl"))))
   expect_match(h, "multiple=\"multiple\"", fixed = TRUE)
@@ -196,10 +196,15 @@ test_that("the 14 source words give their choices", {
     styles = c("bold", "italic"),
     args = list(data = "adsl", var = "SEX", variables = c("AGE", "SEX"), by = "TRT01A"))
   v <- function(w, ...) .choice_values(w, ctx, ...)
-  expect_identical(unname(v("vars(data)")), c("AGE", "SEX"))
+  # (a name in the brackets is itself, the data; from_args(<arg>) the value of
+  # the card's argument: data is adsl, var is SEX)
   expect_identical(unname(v("vars(adae)")), "AEDECOD")
-  # (a word's name read through the card's arguments: var is SEX)
-  expect_identical(v("levels(var)"), v("levels(SEX)"))
+  expect_identical(unname(v("vars(from_args(data))")), c("AGE", "SEX"))
+  expect_length(v("vars(data)"), 0L)
+  expect_identical(v("levels(from_args(var))"), v("levels(SEX)"))
+  # (an argument with no single value: nothing)
+  expect_length(v("vars(from_args(variables))"), 0L)
+  expect_length(v("vars(from_args(nothing))"), 0L)
   expect_identical(unname(v("levels(SEX)")), c("Female", "Male"))
   expect_identical(names(v("levels(SEX)")), c("F", "M"))
   expect_identical(unname(v("codelist(NY)")), c("N", "Y"))
@@ -217,6 +222,12 @@ test_that("the 14 source words give their choices", {
   expect_identical(unname(v("from_args(variables, by)")), c("AGE", "SEX", "TRT01A"))
   expect_identical(unname(v("from_args")), c("data", "var", "variables", "by"))
   expect_identical(unname(.choice_values("from_args", list(arg_names = c("a", "b")))), c("a", "b"))
+  # (from_args(params): the template's params' names)
+  expect_identical(unname(.choice_values("from_args(params)", list(params = c("p1", "p2")))),
+                   c("p1", "p2"))
+  expect_identical(unlist(unname(.choice_values("vars(from_args(from)), fixed",
+                                         list(vars = list(adsl = "AGE"), args = list(from = "adsl")),
+                                                values = "none")[[1L]])), "AGE")
   # several: the groups in the words' order, each named
   g <- v("report_data, study_data")
   expect_identical(names(g), c("This report's data", "Study data"))
@@ -259,7 +270,7 @@ test_that("a series template's params and sections come from its defs", {
         list(name = "data", step = "data", input = "pick", choices = "study_data", required = TRUE,
              tier = "required"),
         list(name = "by", step = "analysis", input = "pick", type = "list<column>",
-             choices = "vars(data)", ordered = TRUE,
+             choices = "vars(from_args(data))", ordered = TRUE,
              default = structure(list(value = "settings.treatment"), class = "tfl_tagged", tag = "study"),
              default_kind = "study"),
         list(name = "cells", step = "content", input = "pick", type = "string", choices = "fixed",

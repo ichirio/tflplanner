@@ -6,6 +6,7 @@
 #   .arg_defs(fn = , template = )    the table, NULL when tflspec has none
 #   .arg_def(defs, name)             one row as a list
 #   .choice_values(sources, ctx)     the source words -> the choices offered
+#                                    (ctx: vars, levels, ..., args, arg_names, params)
 #   .tpl_params_from_defs(defs)      a template's defs as its card's params
 
 # ---- the table, cached -------------------------------------------------------
@@ -120,11 +121,13 @@
   parts[nzchar(parts)]
 }
 
-# a word's name and the names in its brackets: "vars(from)" -> list("vars", "from")
+# a word's name and what is in its brackets: "vars(adsl)" -> list("vars",
+# "adsl"); "vars(from_args(from))" -> list("vars", "from_args(from)") (a
+# comma inside inner brackets kept with its part)
 .choice_word_parse <- function(w) {
   name <- trimws(sub("[(].*$", "", w))
   inner <- if (grepl("(", w, fixed = TRUE)) sub("^[^(]*[(](.*)[)]\\s*$", "\\1", w) else ""
-  args <- trimws(strsplit(inner, ",", fixed = TRUE)[[1L]])
+  args <- .choice_words(inner)
   list(name = name, args = args[nzchar(args)])
 }
 
@@ -143,11 +146,15 @@
   x
 }
 
-# `name` read through the card's arguments: vars(from) is the columns of
-# the data the argument `from` names (a name of no argument: itself)
+# What a word's brackets name (tflspec#821's rule): a name is itself (the
+# data in vars(adsl), the variable in levels(SEX)); from_args(<arg>) is the
+# value of the card's argument <arg> (vars(from_args(from)): the columns of
+# the data `from` names).  NULL when that argument has no single value.
 .choice_ref <- function(ctx, name) {
-  v <- ctx$args[[name]]
-  if (is.atomic(v) && length(v) == 1L && !is.na(v) && nzchar(v)) as.character(v) else name
+  if (!grepl("^from_args\\s*[(].*[)]\\s*$", name)) return(name)
+  a <- .choice_word_parse(name)$args
+  v <- if (length(a)) ctx$args[[a[[1L]]]]
+  if (is.atomic(v) && length(v) == 1L && !is.na(v) && nzchar(v)) as.character(v)
 }
 
 # a vector of choices (names its labels), the blanks out
@@ -168,13 +175,10 @@
   ref <- function() if (length(p$args)) .choice_ref(ctx, p$args[[1L]])
   x <- switch(
     p$name,
-    vars = {
+    vars = if (length(p$args)) {
       what <- ref()
-      v <- .choice_ctx(ctx, "vars", what)
-      # (the ctx's columns by data, else under the argument's own name)
-      if (is.null(v) && length(p$args)) v <- .choice_ctx(ctx, "vars", p$args[[1L]])
-      v
-    },
+      if (!is.null(what)) .choice_ctx(ctx, "vars", what)
+    } else .choice_ctx(ctx, "vars"),
     levels = .choice_ctx(ctx, "levels", ref()),
     codelist = .choice_ctx(ctx, "codelist", if (length(p$args)) p$args[[1L]]),
     columns = .choice_ctx(ctx, "columns", ref()),
@@ -182,7 +186,10 @@
     stats = , styles = .choice_ctx(ctx, p$name),
     fixed = values,
     from_args = {
-      if (length(p$args)) {
+      # (from_args(params): the names of the template's params)
+      if (identical(p$args, "params")) {
+        ctx$params %||% ctx$arg_names %||% names(ctx$args)
+      } else if (length(p$args)) {
         unique(unlist(lapply(ctx$args[p$args], function(v) if (is.atomic(v)) as.character(v))))
       } else {
         ctx$arg_names %||% names(ctx$args)
