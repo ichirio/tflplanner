@@ -158,16 +158,62 @@ test_that("an optional column (\"params, analysis_id?\"): hidden until a row has
   expect_match(h, "<th class=\"rp-mono\">analysis_id</th>", fixed = TRUE)
   expect_false(grepl("rp-tbl-addcol", h, fixed = TRUE))
   expect_identical(round_trip("rows<map<string,string|r>>", d, v2, ctx = ctx), v2)
-  # (a list of columns: optional = TRUE)
-  d3 <- list(input = "table", columns = list(subgroup = list(type = "string"),
-                                             analysis_id = list(type = "string", optional = TRUE)))
-  h <- html(arg_field("c", "conditions", "rows<map<string,string|r>>", def = d3, ctx = ctx,
-                      value = list(list(subgroup = "SEX"))))
-  expect_match(h, "data-col=\"analysis_id\"", fixed = TRUE)
+  # (a list of columns, as tflspec#822 writes analysis.conditions: "params"
+  # the params' columns there, where a condition, analysis_id required = FALSE)
+  d3 <- list(input = "table", columns = list("params", where = list(type = "r", input = "condition"),
+                                             analysis_id = list(type = "string", input = "text",
+                                                                required = FALSE)))
+  h <- html(arg_field("c", "conditions", "rows<map<string,string|r>>", def = d3, ctx = ctx, value = v))
+  for (k in c("subgroup", "subgroup_lvl", "where")) {
+    expect_match(h, paste0("<th class=\"rp-mono\">", k, "</th>"), fixed = TRUE)
+  }
+  expect_match(h, "rp-tbl-r\" value=\"SEX == &quot;M&quot;\"", fixed = TRUE)
+  expect_match(h, "data-col=\"analysis_id\" data-kind=\"text\"", fixed = TRUE)
+  expect_false(grepl("<th class=\"rp-mono\">analysis_id</th>", h, fixed = TRUE))
+  expect_false(grepl("<th class=\"rp-mono\">params</th>", h, fixed = TRUE))
+  # (a list without "params": its own columns only, the params not added)
+  d4 <- list(input = "table", columns = list(id = list(type = "string"),
+                                             note = list(type = "string", required = FALSE)))
+  h <- html(arg_field("c", "x", "rows<map<string,string>>", def = d4, ctx = ctx,
+                      value = list(list(id = "A"))))
+  expect_match(h, "<th class=\"rp-mono\">id</th>", fixed = TRUE)
+  expect_false(grepl("<th class=\"rp-mono\">subgroup</th>", h, fixed = TRUE))
+  expect_match(h, "data-col=\"note\"", fixed = TRUE)
+  # (optional = TRUE is read the same)
+  d5 <- list(input = "table", columns = list(id = list(type = "string"),
+                                             note = list(type = "string", optional = TRUE)))
+  h <- html(arg_field("c", "x", "rows<map<string,string>>", def = d5, value = list(list(id = "A"))))
+  expect_match(h, "data-col=\"note\"", fixed = TRUE)
   # (without optional columns: no button)
   h <- html(arg_field("c", "conditions", "rows<map<string,string|r>>", def = list(input = "table", columns = "params"),
                       ctx = ctx, value = v))
   expect_false(grepl("rp-tbl-addcol", h, fixed = TRUE))
+})
+
+test_that("a rows<f1, f2, ...> (a template's conditions, tflspec#823): its fields the columns, a data frame its rows", {
+  ty <- "rows<tox_dir,param,worst,base,where>"
+  d <- list(input = "table", columns = "params")
+  df <- data.frame(tox_dir = c("high", "low"), param = c("ALT", "GLUC"), worst = "ATOXGR",
+                   base = "BTOXGR", where = c("PARAMCD == \"ALT\"", NA), stringsAsFactors = FALSE)
+  h <- html(arg_field("c", "conditions", ty, def = d, ctx = ctx, value = df))
+  expect_match(h, "class=\"rp-tbl rp-tbl-rows\"", fixed = TRUE)
+  for (k in c("tox_dir", "param", "worst", "base", "where")) {
+    expect_match(h, paste0("<th class=\"rp-mono\">", k, "</th>"), fixed = TRUE)
+  }
+  # (the template's fields, not the ctx's params)
+  expect_false(grepl("<th class=\"rp-mono\">subgroup</th>", h, fixed = TRUE))
+  expect_match(h, "value=\"GLUC\"", fixed = TRUE)
+  got <- .tbl_read(tbl_state_of(h))
+  expect_length(got, 2L)
+  expect_identical(got[[1L]]$param, "ALT")
+  expect_s3_class(got[[1L]]$where, "tfl_r")
+  expect_null(got[[2L]]$where)
+  # (no columns in the def: the fields)
+  h <- html(arg_field("c", "conditions", "rows<subgroup, subgroup_lvl, where>", def = list(input = "table")))
+  expect_match(h, "<th class=\"rp-mono\">subgroup_lvl</th>", fixed = TRUE)
+  # (a type of alternatives: its table)
+  expect_identical(.tbl_type("rows<line, cols, text>|call<rtf_col_header>")$fields, c("line", "cols", "text"))
+  expect_null(.tbl_type("call<rtf_col_header>"))
 })
 
 test_that("a rows<map<string,list<column>>> (ards): each column's own def, its choices to add", {

@@ -22,19 +22,40 @@
 
 # "map<column,r>" -> list(shape = "map", key = "column", value = "r");
 # "rows<map<string,string|r>>" -> list(shape = "rows", key = "string",
-# value = "string|r"); NULL for any other type
+# value = "string|r"); "rows<subgroup, subgroup_lvl, where>" (a data frame
+# of those fields, tflspec's schema notation) -> list(shape = "rows", key =
+# "string", value = "string|r", fields = c("subgroup", ...)); of a type of
+# alternatives ("rows<...>|call<...>") the first that is a table; NULL for
+# any other type
 .tbl_type <- function(type) {
   if (is.null(type) || length(type) != 1L || is.na(type)) return(NULL)
-  ty <- trimws(type)
+  alts <- trimws(.type_split(trimws(type), "|"))
+  ty <- alts[grepl("^(rows|map)<.*>$", alts)][1L]
+  if (is.na(ty)) return(NULL)
   shape <- "map"
   if (grepl("^rows<.*>$", ty)) {
     shape <- "rows"
     ty <- trimws(sub("^rows<(.*)>$", "\\1", ty))
+    if (!grepl("^map<.*>$", ty)) {
+      f <- trimws(.type_split(ty, ","))
+      f <- f[nzchar(f)]
+      if (!length(f) || !all(grepl("^[A-Za-z.][A-Za-z0-9._]*$", f))) return(NULL)
+      return(list(shape = "rows", key = "string", value = "string|r", fields = f))
+    }
   }
   if (!grepl("^map<.*>$", ty)) return(NULL)
   kv <- .type_split(sub("^map<(.*)>$", "\\1", ty), ",")
   if (length(kv) != 2L) return(NULL)
   list(shape = shape, key = kv[[1L]], value = kv[[2L]])
+}
+
+# a rows<...> value as its records: a data frame by row, a list as it is
+.tbl_records <- function(value) {
+  if (!is.data.frame(value)) return(value)
+  lapply(seq_len(nrow(value)), function(i) {
+    r <- lapply(value, function(col) if (is.list(col)) col[[i]] else col[i])
+    r[!vapply(r, function(x) length(x) == 1L && is.atomic(x) && is.na(x), NA)]
+  })
 }
 
 # the kind of a cell of type `ty` (its first alternative decides, r last)
@@ -83,24 +104,35 @@
   }
   vk <- .tbl_cell_kind(tt$value)
   cdefs <- def$columns
+  value <- .tbl_records(value)
   # (the columns' words: "params" the template's params; "name?" a column
   # the table may have, shown when a row has it, else added by its button
   # -- e.g. "params, analysis_id?" (canon b5db722); a list by name: each
-  # column's def, `optional = TRUE` one the table may have)
+  # column's def, `required = FALSE` one the table may have (tflspec#822:
+  # analysis.conditions' where and analysis_id); an entry that is the word
+  # "params" the params' columns there; the value's own keys after them)
+  # ("params" of a rows<f1, f2, ...>: its fields, a template's param's own)
   params <- function() {
+    if (length(tt$fields)) return(tt$fields)
     p <- ctx$params
     if (is.list(p) && !is.null(names(p))) names(p) else as.character(unlist(p))
   }
   opt <- character()
   cols <- if (is.list(cdefs) && length(names(cdefs))) {
-    opt <- names(cdefs)[vapply(cdefs, function(x) is.list(x) && isTRUE(x$optional), NA)]
-    names(cdefs)
+    is_col <- vapply(cdefs, is.list, NA)
+    opt <- names(cdefs)[is_col][vapply(cdefs[is_col], function(x) {
+      identical(x$required, FALSE) || isTRUE(x$optional)
+    }, NA)]
+    nm <- unlist(lapply(seq_along(cdefs), function(i) {
+      if (is_col[[i]]) names(cdefs)[[i]] else if (identical(cdefs[[i]], "params")) params()
+    }))
+    c(nm, unlist(lapply(value, names)))
   } else if (length(cdefs)) {
     w <- .choice_words(cdefs)
     opt <- sub("[?]$", "", w[grepl("[?]$", w)])
     unlist(lapply(sub("[?]$", "", w), function(x) if (identical(x, "params")) params() else x))
   } else {
-    unique(unlist(lapply(value, names)))
+    unique(c(tt$fields, unlist(lapply(value, names))))
   }
   cols <- unique(cols[!is.na(cols) & nzchar(cols)])
   # (an optional column no row has: not shown, its button adds it)
@@ -149,6 +181,7 @@
 # The rows of a value as cell texts (a list of character vectors, one a
 # row): a map's entries in order, a rows<...>'s records
 .tbl_rows <- function(spec, value) {
+  if (identical(spec$shape, "rows")) value <- .tbl_records(value)
   if (is.null(value) || inherits(value, c("tfl_r", "tfl_unset")) || !length(value)) return(list())
   if (identical(spec$shape, "map")) {
     nm <- names(value)
