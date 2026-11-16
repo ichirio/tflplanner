@@ -746,6 +746,27 @@ test_that("settings: sd_missing survives open, an unchanged save and a change of
   }
 })
 
+test_that("settings: adam_levels (canon 32449ac): none survives open and save; codelists, the default, is no line", {
+  skip_on_cran()
+  s <- model_sample()
+  home <- getOption("tflplanner.home")
+  s <- suppressMessages(open_study("SAMPLE-01", home = home))
+  expect_identical(.study_adam_levels(s$planner), "codelists")
+  # none: written into settings:, read back on open
+  s$planner$study[["adam_levels"]] <- "none"
+  s <- suppressMessages(save_study(s, home = home))
+  y <- yaml::read_yaml(file.path(s$path, "study.yml"))
+  expect_identical(y$settings$adam_levels, "none")
+  s2 <- suppressMessages(open_study("SAMPLE-01", home = home))
+  expect_identical(s2$planner$study[["adam_levels"]], "none")
+  expect_identical(.study_adam_levels(s2$planner), "none")
+  # back to codelists (not set): no line
+  s2$planner$study[["adam_levels"]] <- NA_character_
+  s2 <- suppressMessages(save_study(s2, home = home))
+  expect_false(any(grepl("adam_levels", readLines(file.path(s2$path, "study.yml")))))
+  expect_identical(.study_adam_levels(s2$planner), "codelists")
+})
+
 test_that("a study without settings: sd_missing keeps no such line", {
   skip_on_cran()
   s <- model_sample()
