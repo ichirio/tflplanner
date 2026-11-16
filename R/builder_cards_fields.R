@@ -74,23 +74,34 @@
 # visible arguments (or R), r a monospace field, map<aes, ...> a row of
 # aes fields each with a column / value switch.  Beside every field: the
 # `R` switch (the value as R) and the (i) of its help (what the argument
-# means).
+# means).  A def (tfl_arg_defs()'s row) and `ctx` (what the card knows,
+# .choice_values()) choose the field by its input form; `fixed_rows`: a
+# table's rows shown read only on top (the template's ALL row), not read
+# back.
 #' @noRd
 arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default = NULL,
                       choices = NULL, from = "own", help = NULL, required = FALSE,
                       lang = "en", fn = NULL, aes = NULL, nav = NULL, help_link = NULL,
-                      own = NULL, def = NULL, ctx = NULL) {
+                      own = NULL, def = NULL, ctx = NULL, fixed_rows = NULL) {
   t <- function(x) tr(x, lang)
   kind <- .arg_kind(type)
   fid <- paste0(id, "__", arg)
   # (a def's input form: the field it says; .def_kind() the kind it draws)
   form <- .def_input(def)
+  tbl <- NULL
   if (!is.null(form)) {
     if (is.null(choices) && length(def$choices)) {
       choices <- .choice_values(def$choices, ctx, lang, values = def$values)
     }
     kind0 <- kind
     kind <- .def_kind(form, kind, type, def)
+    # (a table: the table field of a map<K,V> or a rows<map<..>>, else the
+    # field its type has)
+    tbl <- if (identical(form, "table")) {
+      .tbl_spec(type, def, ctx, value = if (!inherits(value, "tfl_r")) value, lang = lang,
+                choices = choices)
+    }
+    if (!is.null(tbl)) kind <- "table"
     # (a pick of text with nothing to choose from: the text field)
     if (identical(kind, "pick_one") && identical(kind0, "string") && !length(choices) &&
           !isTRUE(def$free)) {
@@ -131,6 +142,7 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
     pick_many = .field_select(fid, choices, value, multiple = TRUE, lang = lang,
                               placeholder = default, create = isTRUE(def$free)),
     condition = .field_condition(fid, value, default, choices),
+    table = .field_table(fid, tbl, value, fixed_rows, lang),
     .field_r(fid, value, default))
   r_input <- shiny::tags$input(type = "text", id = paste0(fid, "__r"), class = "form-control form-control-sm rp-mono rp-r-input",
                                value = r_text, placeholder = "R", spellcheck = "false")
@@ -176,8 +188,9 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
 # pick of one a select ("pick_one"); a switch, a number field, a colour,
 # a shape, a call, a map, R: as the type says (the type decides).  A
 # condition of type r its R field with the columns as candidates.  A table:
-# the field its type has today (a map the aes map, else R; P1b builds the
-# table editor).  A text: as the type says.  The kind stays one that
+# the field its type has here; arg_field() draws the table field
+# (R/arg_defs_table.R) where the type is a map<K,V> or a rows<map<..>>.  A
+# text: as the type says.  The kind stays one that
 # builder_card_read() reads back as the type says.
 .def_kind <- function(form, kind, type, def) {
   switch(

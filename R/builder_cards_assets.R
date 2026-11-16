@@ -93,6 +93,16 @@ button[onclick*='tpl_revert'] { white-space: nowrap; flex-shrink: 0; }
 .rp-map-switch input { display: none; }
 .rp-map-switch .rp-map-val-lab, .rp-map-row.rp-map-val .rp-map-switch .rp-map-col-lab { display: none; }
 .rp-map-row.rp-map-val .rp-map-switch .rp-map-val-lab { display: inline; }
+.rp-tbl-table { margin-bottom: .1rem; font-size: 13px; }
+.rp-tbl-table th { font-size: 11.5px; font-weight: 600; color: #4b5563; padding: .1rem .25rem; }
+.rp-tbl-table td { padding: .1rem .25rem; vertical-align: top; }
+.rp-tbl-table td.rp-tbl-tools, .rp-tbl-table th.rp-tbl-tools { width: 1%; white-space: nowrap; }
+.rp-tbl-tools .btn { padding: 0 .2rem; text-decoration: none; color: #6b7280; }
+.rp-tbl-k-r .rp-tbl-cell { font-family: Consolas, 'Courier New', monospace; }
+.rp-tbl-list { resize: vertical; min-height: 2.2em; }
+.rp-tbl-add { margin-top: .15rem; font-size: 12px; padding: 0 .3rem; color: #6b7280; }
+.rp-tbl-ro td { color: #6b7280; background: var(--bs-tertiary-bg, #f6f7f9); }
+.rp-tbl-addrow { padding: 0; font-size: 12.5px; text-decoration: none; }
 .rp-group { margin-bottom: .35rem; }
 .rp-group-label { font-size: 12.5px; font-weight: 600; color: #4b5563; margin-bottom: .1rem; }
 .rp-group-row { display: flex; gap: .6rem; flex-wrap: wrap; }
@@ -181,6 +191,61 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
   });
   $(document).on('change', '.rp-isval', function() {
     $(this).closest('.rp-map-row').toggleClass('rp-map-val', this.checked);
+  });
+  // a table field (R/arg_defs_table.R): the whole table one input, its
+  // state as JSON -- the shape, the columns, their kinds and the rows'
+  // cells (the fixed rows on top are not in it)
+  function tblValue(el) {
+    var rows = [];
+    $(el).find('tbody.rp-tbl-body > tr.rp-tbl-row').each(function() {
+      var r = [];
+      $(this).find('.rp-tbl-cell').each(function() { r.push(String($(this).val() || '')); });
+      rows.push(r);
+    });
+    var parse = function(k) { try { return JSON.parse(el.getAttribute(k) || '[]'); } catch (e) { return []; } };
+    return JSON.stringify({shape: el.getAttribute('data-shape'), cols: parse('data-cols'),
+                           kinds: parse('data-kinds'), rows: rows});
+  }
+  if (window.Shiny && Shiny.InputBinding) {
+    var tblBinding = new Shiny.InputBinding();
+    $.extend(tblBinding, {
+      find: function(scope) { return $(scope).find('.rp-tbl'); },
+      getValue: function(el) { return tblValue(el); },
+      subscribe: function(el, cb) {
+        $(el).on('input.rpTbl change.rpTbl rp-tbl-change.rpTbl', function() { cb(true); });
+      },
+      unsubscribe: function(el) { $(el).off('.rpTbl'); },
+      getRatePolicy: function() { return {policy: 'debounce', delay: 300}; }
+    });
+    Shiny.inputBindings.register(tblBinding, 'tflplanner.table');
+  }
+  $(document).on('click', '.rp-tbl-addrow', function() {
+    var box = $(this).closest('.rp-tbl'), tpl = box.children('template.rp-tbl-tpl')[0];
+    if (!tpl) return;
+    var body = box.find('tbody.rp-tbl-body').first();
+    body.append(document.importNode(tpl.content, true));
+    body.children('tr').last().find('.rp-tbl-cell').first().trigger('focus');
+    box.trigger('rp-tbl-change');
+  });
+  $(document).on('click', '.rp-tbl-del', function() {
+    var box = $(this).closest('.rp-tbl');
+    $(this).closest('tr').remove();
+    box.trigger('rp-tbl-change');
+  });
+  $(document).on('click', '.rp-tbl-up, .rp-tbl-down', function() {
+    var tr = $(this).closest('tr');
+    if ($(this).hasClass('rp-tbl-up')) tr.prev('.rp-tbl-row').before(tr); else tr.next('.rp-tbl-row').after(tr);
+    tr.closest('.rp-tbl').trigger('rp-tbl-change');
+  });
+  // a list cell's Add a value: the choice one more line
+  $(document).on('change', '.rp-tbl-add', function() {
+    var v = $(this).val();
+    if (!v) return;
+    var ta = $(this).siblings('textarea.rp-tbl-list');
+    var old = String(ta.val() || '').replace(/\\s+$/, '');
+    ta.val(old.length ? old + String.fromCharCode(10) + v : v);
+    $(this).val('');
+    ta.trigger('input');
   });
   $(document).on('click', '.rp-more-toggle', function() {
     $(this).closest('.rp-more').toggleClass('rp-open');

@@ -1,0 +1,263 @@
+# The table field of a def whose input is "table" (R/arg_defs_table.R): each
+# map<K,V> and rows<map<..>> tflspec's tfl_arg_defs() gives draws its table,
+# offers its choices, shows the fixed rows read only, and reads back as the
+# type says; without a def the field and its reading are today's.
+
+html <- function(...) as.character(htmltools::tagList(...))
+
+# the state a drawn table field carries (data-state), as its input sends it
+tbl_state_of <- function(h) {
+  m <- regmatches(h, regexpr("data-state=\"[^\"]*\"", h))
+  x <- sub("^data-state=\"(.*)\"$", "\\1", m)
+  for (p in list(c("&quot;", "\""), c("&#39;", "'"), c("&lt;", "<"), c("&gt;", ">"),
+                 c("&#10;", "\n"), c("&#13;", "\r"), c("&#9;", "\t"), c("&amp;", "&"))) {
+    x <- gsub(p[[1L]], p[[2L]], x, fixed = TRUE)
+  }
+  x
+}
+
+# value -> field -> its input -> builder_card_read()
+round_trip <- function(type, def, value, ctx = NULL, fixed_rows = NULL) {
+  h <- html(arg_field("c", "a", type, value = value, def = def, ctx = ctx, fixed_rows = fixed_rows))
+  input <- stats::setNames(list(tbl_state_of(h)), "c__a")
+  builder_card_read(input, "c", schema = list(args = list(a = c(def, list(type = type)))), args = "a")$a
+}
+
+ctx <- list(vars = list(adsl = c("AGE", "SEX", "TRT01A"), adae = c("AETERM", "AESEV")),
+            args = list(from = "adsl", data = "adsl", variables = c("AGE", "SEX")),
+            stats = c("n", "mean", "sd"),
+            params = c("subgroup", "subgroup_lvl", "where"))
+
+test_that("a map<column,r> (derive): a new column's name = R, the columns offered in the R", {
+  d <- list(input = "table", choices = "vars(from_args(from))")
+  h <- html(arg_field("c", "derive", "map<column,r>", def = d, ctx = ctx,
+                      value = list(AGE2 = tflspec::tfl_r("AGE * 2"))))
+  expect_match(h, "class=\"rp-tbl rp-tbl-map\"", fixed = TRUE)
+  expect_match(h, "id=\"c__derive\"", fixed = TRUE)
+  expect_match(h, "rp-field-table", fixed = TRUE)
+  expect_match(h, "<th>New column</th>", fixed = TRUE)
+  expect_match(h, "<th class=\"rp-mono\">R</th>", fixed = TRUE)
+  # (the key typed, the value R with the data's columns as a datalist)
+  expect_match(h, "value=\"AGE2\"", fixed = TRUE)
+  expect_match(h, "rp-tbl-r\" value=\"AGE * 2\"", fixed = TRUE)
+  expect_match(h, "<datalist id=\"c__derive__dl2\">", fixed = TRUE)
+  expect_match(h, "<option value=\"TRT01A\"></option>", fixed = TRUE)
+  expect_false(grepl("AETERM", h, fixed = TRUE))
+  # (add and remove; a map not ordered has no up / down)
+  expect_match(h, "rp-tbl-addrow", fixed = TRUE)
+  expect_match(h, "+ Add a row", fixed = TRUE)
+  expect_match(h, "rp-tbl-del", fixed = TRUE)
+  expect_match(h, "<template class=\"rp-tbl-tpl\">", fixed = TRUE)
+  expect_false(grepl("rp-tbl-up", h, fixed = TRUE))
+  # (ordered: the rows move)
+  expect_match(html(arg_field("c", "derive", "map<column,r>", def = c(d, ordered = TRUE), ctx = ctx)),
+               "rp-tbl-up", fixed = TRUE)
+  # (no R field of the whole value is lost: the R switch stays)
+  expect_match(h, "c__derive__isr", fixed = TRUE)
+})
+
+test_that("a map<column,list<level>> (levels): a column picked, its values one a line", {
+  d <- list(input = "table", choices = "vars(from_args(data))")
+  h <- html(arg_field("c", "levels", "map<column,list<level>>", def = d, ctx = ctx,
+                      value = list(SEX = c("M", "F"))))
+  expect_match(h, "<th>Column</th>", fixed = TRUE)
+  expect_match(h, "<th>Values</th>", fixed = TRUE)
+  expect_match(h, "<select class=\"form-select form-select-sm rp-tbl-cell\">", fixed = TRUE)
+  expect_match(h, "<option value=\"SEX\" selected>SEX</option>", fixed = TRUE)
+  expect_match(h, "rp-tbl-list\" rows=\"2\" placeholder=\"One per line\" spellcheck=\"false\">M\nF</textarea>",
+               fixed = TRUE)
+  # (free: the key typed, the columns offered)
+  h <- html(arg_field("c", "levels", "map<column,list<level>>", def = c(d, free = TRUE), ctx = ctx))
+  expect_false(grepl("<select class=\"form-select form-select-sm rp-tbl-cell\"", h, fixed = TRUE))
+  expect_match(h, "<datalist id=\"c__levels__dl1\">", fixed = TRUE)
+  # (a key the choices lack is kept)
+  h <- html(arg_field("c", "levels", "map<column,list<level>>", def = d, ctx = ctx,
+                      value = list(RACE = "WHITE")))
+  expect_match(h, "<option value=\"RACE\" selected>RACE</option>", fixed = TRUE)
+})
+
+test_that("a map<string,number|string> (formats) and a map<column,string> (analysis_ids)", {
+  h <- html(arg_field("c", "formats", "map<string,number|string>",
+                      def = list(input = "table", choices = "stats"), ctx = ctx,
+                      value = list(mean = 1, sd = "xx.xx")))
+  expect_match(h, "<th>Key</th>", fixed = TRUE)
+  expect_match(h, "<option value=\"mean\" selected>mean</option>", fixed = TRUE)
+  expect_match(h, "<option value=\"n\">n</option>", fixed = TRUE)
+  expect_match(h, "rp-tbl-num\" value=\"xx.xx\"", fixed = TRUE)
+  h <- html(arg_field("c", "analysis_ids", "map<column,string>",
+                      def = list(input = "table", choices = "from_args(variables)"), ctx = ctx))
+  expect_match(h, "<option value=\"AGE\">AGE</option>", fixed = TRUE)
+  expect_false(grepl("TRT01A", h, fixed = TRUE))
+  expect_match(h, "<th>Value</th>", fixed = TRUE)
+})
+
+test_that("a map<string, list<column>|string> (stack): the key typed, the value a list", {
+  h <- html(arg_field("c", "stack", "map<string, list<column>|string>", def = list(input = "table"),
+                      value = list(subgroup = c("SEX", "AGEGR1"))))
+  expect_match(h, "<th>Key</th>", fixed = TRUE)
+  expect_match(h, "value=\"subgroup\"", fixed = TRUE)
+  expect_match(h, ">SEX\nAGEGR1</textarea>", fixed = TRUE)
+  # (no choices: no Add a value)
+  expect_false(grepl("rp-tbl-add\"", h, fixed = TRUE))
+})
+
+test_that("a rows<map<string,string|r>> (conditions): the params as columns, where as R, the ALL row read only", {
+  d <- list(input = "table", columns = "params")
+  v <- list(list(subgroup = "SEX", subgroup_lvl = "M", where = tflspec::tfl_r("SEX == \"M\"")))
+  all <- list(list(subgroup = "ALL", subgroup_lvl = "ALL", where = tflspec::tfl_r("TRUE")))
+  h <- html(arg_field("c", "conditions", "rows<map<string,string|r>>", def = d,
+                      ctx = c(ctx["params"], list(vars = c("SEX", "AGE"))), value = v, fixed_rows = all))
+  expect_match(h, "class=\"rp-tbl rp-tbl-rows\"", fixed = TRUE)
+  for (k in c("subgroup", "subgroup_lvl", "where")) {
+    expect_match(h, paste0("<th class=\"rp-mono\">", k, "</th>"), fixed = TRUE)
+  }
+  expect_match(h, "rp-tbl-k-text", fixed = TRUE)
+  expect_match(h, "rp-tbl-r\" value=\"SEX == &quot;M&quot;\"", fixed = TRUE)
+  expect_match(h, "<option value=\"AGE\"></option>", fixed = TRUE)
+  # (rows move)
+  expect_match(h, "rp-tbl-up", fixed = TRUE)
+  expect_match(h, "rp-tbl-down", fixed = TRUE)
+  # (the ALL row: on top, read only, not in the state read back)
+  expect_match(h, "<tbody class=\"rp-tbl-fixed\">", fixed = TRUE)
+  expect_match(h, "From the template", fixed = TRUE)
+  expect_lt(regexpr("rp-tbl-fixed", h), regexpr("rp-tbl-body", h))
+  ro <- regmatches(h, regexpr("(?s)<tbody class=\"rp-tbl-fixed\">.*?</tbody>", h, perl = TRUE))
+  expect_false(grepl("<input", ro, fixed = TRUE))
+  expect_false(grepl("ALL", tbl_state_of(h), fixed = TRUE))
+  # (the columns from the value when the def names none)
+  h <- html(arg_field("c", "conditions", "rows<map<string,string|r>>", def = list(input = "table"),
+                      value = v))
+  expect_match(h, "<th class=\"rp-mono\">subgroup_lvl</th>", fixed = TRUE)
+  # (a column whose value is R stays R)
+  h <- html(arg_field("c", "conditions", "rows<map<string,string|r>>", def = list(input = "table"),
+                      value = list(list(subgroup = tflspec::tfl_r("paste0(\"A\", 1)")))))
+  expect_match(h, "rp-tbl-k-r", fixed = TRUE)
+})
+
+test_that("a rows<map<string,list<column>>> (ards): each column's own def, its choices to add", {
+  col <- list(type = "list<column>", input = "pick", choices = "vars(from_args(data))")
+  d <- list(input = "table", columns = list(by = col, variables = col))
+  h <- html(arg_field("c", "ards", "rows<map<string,list<column>>>", def = d, ctx = ctx,
+                      value = list(list(by = "TRT01A", variables = c("AGE", "SEX")))))
+  expect_match(h, "<th class=\"rp-mono\">by</th>", fixed = TRUE)
+  expect_match(h, "<th class=\"rp-mono\">variables</th>", fixed = TRUE)
+  expect_match(h, ">AGE\nSEX</textarea>", fixed = TRUE)
+  expect_match(h, "rp-tbl-add", fixed = TRUE)
+  expect_match(h, "+ Add a value", fixed = TRUE)
+  expect_match(h, "<option value=\"TRT01A\">TRT01A</option>", fixed = TRUE)
+})
+
+test_that("the table's words in Japanese", {
+  h <- html(arg_field("c", "derive", "map<column,r>", def = list(input = "table"), lang = "ja"))
+  expect_match(h, "新しい列", fixed = TRUE)
+  expect_match(h, "行を足す", fixed = TRUE)
+  expect_match(h, "行を消す", fixed = TRUE)
+  h <- html(arg_field("c", "ards", "rows<map<string,list<column>>>", lang = "ja",
+                      def = list(input = "table", columns = list(by = list(type = "list<column>"))),
+                      fixed_rows = list(list(by = "X"))))
+  expect_match(h, "1 行に 1 つ", fixed = TRUE)
+  expect_match(h, "テンプレートから", fixed = TRUE)
+})
+
+test_that("each table reads back the value it shows", {
+  expect_identical(round_trip("map<column,r>", list(input = "table", choices = "vars(from_args(from))"),
+                              list(AGE2 = tflspec::tfl_r("AGE * 2"), BMI = tflspec::tfl_r("WT / (HT / 100)^2")),
+                              ctx),
+                   list(AGE2 = tflspec::tfl_r("AGE * 2"), BMI = tflspec::tfl_r("WT / (HT / 100)^2")))
+  expect_identical(round_trip("map<column,list<level>>", list(input = "table", choices = "vars(from_args(data))"),
+                              list(SEX = c("M", "F"), RACE = "WHITE"), ctx),
+                   list(SEX = c("M", "F"), RACE = "WHITE"))
+  expect_identical(round_trip("map<string,number|string>", list(input = "table", choices = "stats"),
+                              list(mean = 1, sd = "xx.xx", "AGE:n" = 0), ctx),
+                   list(mean = 1, sd = "xx.xx", "AGE:n" = 0))
+  expect_identical(round_trip("map<column,string>", list(input = "table", choices = "from_args(variables)"),
+                              list(AGE = "age_id"), ctx),
+                   list(AGE = "age_id"))
+  expect_identical(round_trip("map<string, list<column>>", list(input = "table"),
+                              list(grade = c("BTOXGRL", "BTOXGRH"))),
+                   list(grade = c("BTOXGRL", "BTOXGRH")))
+  v <- list(list(subgroup = "SEX", subgroup_lvl = "M", where = tflspec::tfl_r("SEX == \"M\"")),
+            list(subgroup = "SEX", subgroup_lvl = "F", where = tflspec::tfl_r("SEX == 'F'")))
+  expect_identical(round_trip("rows<map<string,string|r>>", list(input = "table", columns = "params"), v, ctx,
+                              fixed_rows = list(list(subgroup = "ALL", subgroup_lvl = "ALL"))),
+                   v)
+  ards <- list(list(by = "TRT01A", variables = c("AGE", "SEX")), list(variables = "BMI"))
+  expect_identical(round_trip("rows<map<string,list<column>>>",
+                              list(input = "table",
+                                   columns = list(by = list(type = "list<column>"),
+                                                  variables = list(type = "list<column>"))),
+                              ards, ctx),
+                   ards)
+  # (nothing in the table: nothing written)
+  expect_null(round_trip("map<column,r>", list(input = "table"), NULL))
+})
+
+test_that("the state as the browser sends it: blank rows and cells left out, rows in their order", {
+  def <- list(input = "table", type = "map<column,r>")
+  rd <- function(json, d = def) builder_card_read(list(c__a = json), "c", schema = list(args = list(a = d)),
+                                                  args = "a")$a
+  j <- paste0("{\"shape\":\"map\",\"cols\":[\"key\",\"value\"],\"kinds\":[\"text\",\"r\"],",
+              "\"rows\":[[\"B\",\" x + 1 \"],[\"\",\"y\"],[\"C\",\"\"],[\"A\",\"z\"]]}")
+  expect_identical(rd(j), list(B = tflspec::tfl_r("x + 1"), A = tflspec::tfl_r("z")))
+  d2 <- list(input = "table", type = "rows<map<string,string|r>>")
+  j <- paste0("{\"shape\":\"rows\",\"cols\":[\"subgroup\",\"where\"],\"kinds\":[\"text\",\"r\"],",
+              "\"rows\":[[\"\",\"\"],[\"\",\"AGE > 65\"],[\"SEX\",\"\"]]}")
+  expect_identical(rd(j, d2), list(list(where = tflspec::tfl_r("AGE > 65")), list(subgroup = "SEX")))
+  expect_null(rd("{\"shape\":\"map\",\"cols\":[\"key\",\"value\"],\"kinds\":[\"text\",\"r\"],\"rows\":[]}"))
+  # (the R switch on: the whole value as R)
+  input <- list(c__a = "{}", c__a__isr = TRUE, c__a__r = "list(A = quote(x))")
+  expect_identical(builder_card_read(input, "c", schema = list(args = list(a = def)), args = "a")$a,
+                   tflspec::tfl_r("list(A = quote(x))"))
+})
+
+test_that("without a def, or a table it cannot draw, the field and its reading are today's", {
+  for (ty in c("map<column,r>", "rows<map<string,string|r>>", "map<string,number|string>")) {
+    expect_false(grepl("rp-tbl", html(arg_field("c", "a", ty)), fixed = TRUE), info = ty)
+    expect_identical(html(arg_field("c", "a", ty, def = list(input = "text"))), html(arg_field("c", "a", ty)),
+                     info = ty)
+  }
+  # (a rows<...> with no columns to show: its R field, read as R)
+  d <- list(input = "table", type = "rows<map<string,string|r>>")
+  expect_identical(html(arg_field("c", "a", d$type, def = d)), html(arg_field("c", "a", d$type)))
+  r <- builder_card_read(list(c__a = "list(list(a = 1))"), "c", schema = list(args = list(a = d)), args = "a")
+  expect_identical(r$a, tflspec::tfl_r("list(list(a = 1))"))
+  r0 <- builder_card_read(list(c__a = "list(list(a = 1))"), "c",
+                          schema = list(args = list(a = list(type = d$type))), args = "a")
+  expect_identical(r, r0)
+  # (a map with no def: the aes map, read as before)
+  sch <- list(args = list(mapping = list(type = "map<aes, column|r>")), aes = c("x", "y"))
+  expect_identical(builder_card_read(list(c__mapping__x = "AGE"), "c", schema = sch, args = "mapping"),
+                   list(mapping = list(x = "AGE")))
+})
+
+test_that("a schema function's table argument draws and reads through its tfl_arg_defs() row", {
+  .arg_defs_reset()
+  on.exit(.arg_defs_reset(), add = TRUE)
+  sch <- list(label = "A function", args = list(derive = list(label = "Derived", type = "map<column,r>")))
+  testthat::local_mocked_bindings(
+    tfl_schema = function(fn = NULL) if (identical(fn, "plan_x")) sch,
+    tfl_arg_defs = function(fn = NULL, template = NULL) {
+      d <- data.frame(name = "derive", label_key = "x.derive", step = "data", input = "table",
+                      type = "map<column,r>", required = FALSE, stringsAsFactors = FALSE)
+      d$default <- I(list(NULL))
+      d$default_kind <- NA_character_
+      d$choices <- I(list("vars(from_args(from))"))
+      d$values <- I(list(NULL))
+      d$free <- NA
+      d$ordered <- NA
+      d$columns <- I(list(NULL))
+      d$tier <- "usual"
+      d$description <- "Columns made: name = R."
+      d
+    },
+    .package = "tflspec")
+  s <- .schema_of("plan_x")
+  expect_identical(s$args$derive$input, "table")
+  v <- list(AGE2 = tflspec::tfl_r("AGE * 2"))
+  h <- html(arg_field("c", "derive", s$args$derive$type, value = v, def = s$args$derive,
+                      ctx = list(vars = list(adsl = "AGE"), args = list(from = "adsl"))))
+  expect_match(h, "rp-tbl-map", fixed = TRUE)
+  expect_match(h, "<option value=\"AGE\"></option>", fixed = TRUE)
+  input <- stats::setNames(list(tbl_state_of(h)), "c__derive")
+  expect_identical(builder_card_read(input, "c", schema = s, args = "derive"), list(derive = v))
+})
