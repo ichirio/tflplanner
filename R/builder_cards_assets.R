@@ -227,6 +227,33 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
     body.children('tr').last().find('.rp-tbl-cell').first().trigger('focus');
     box.trigger('rp-tbl-change');
   });
+  // an optional column's button (\"params, analysis_id?\"): its cell in every
+  // row and in the new row's template, its heading, its name and kind in
+  // the state; a fixed row gets a blank cell
+  $(document).on('click', '.rp-tbl-addcol', function() {
+    var btn = $(this), box = btn.closest('.rp-tbl'), col = String(btn.data('col'));
+    var ctpl = box.children('template.rp-tbl-coltpl').filter(function() {
+      return this.getAttribute('data-col') === col; })[0];
+    if (!ctpl) return;
+    var cell = function() { return document.importNode(ctpl.content, true); };
+    box.find('thead tr').first().children('th.rp-tbl-tools').before($('<th class=\"rp-mono\"></th>').text(col));
+    box.find('tbody.rp-tbl-body > tr.rp-tbl-row').each(function() {
+      $(this).children('td.rp-tbl-tools').before(cell());
+    });
+    box.find('tbody.rp-tbl-fixed > tr').each(function() {
+      $(this).children('td.rp-tbl-tools').before('<td class=\"rp-tbl-td\"></td>');
+    });
+    var rtpl = box.children('template.rp-tbl-tpl')[0];
+    if (rtpl) $(rtpl.content).find('tr').children('td.rp-tbl-tools').before(cell());
+    var add = function(k, v) {
+      var a = []; try { a = JSON.parse(box.attr(k) || '[]'); } catch (e) { a = []; }
+      a.push(v); box.attr(k, JSON.stringify(a));
+    };
+    add('data-cols', col);
+    add('data-kinds', String(btn.data('kind')));
+    btn.remove();
+    box.trigger('rp-tbl-change');
+  });
   $(document).on('click', '.rp-tbl-del', function() {
     var box = $(this).closest('.rp-tbl');
     $(this).closest('tr').remove();

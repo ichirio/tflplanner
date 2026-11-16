@@ -134,6 +134,42 @@ test_that("a rows<map<string,string|r>> (conditions): the params as columns, whe
   expect_match(h, "rp-tbl-k-r", fixed = TRUE)
 })
 
+test_that("an optional column (\"params, analysis_id?\"): hidden until a row has it, its button adds it", {
+  d <- list(input = "table", columns = "params, analysis_id?")
+  v <- list(list(subgroup = "SEX", subgroup_lvl = "M", where = tflspec::tfl_r("SEX == \"M\"")))
+  h <- html(arg_field("c", "conditions", "rows<map<string,string|r>>", def = d, ctx = ctx, value = v))
+  # (no row has analysis_id: not a column, its button and cell template there)
+  expect_false(grepl("<th class=\"rp-mono\">analysis_id</th>", h, fixed = TRUE))
+  expect_match(h, "class=\"btn btn-link btn-sm rp-tbl-addcol\" data-col=\"analysis_id\" data-kind=\"text\"",
+               fixed = TRUE)
+  expect_match(h, "+ Add the column: analysis_id", fixed = TRUE)
+  expect_match(h, "<template class=\"rp-tbl-coltpl\" data-col=\"analysis_id\">", fixed = TRUE)
+  expect_false(grepl("analysis_id", tbl_state_of(h), fixed = TRUE))
+  # (the browser added it: the state with the column reads back with the id)
+  st <- list(shape = "rows", cols = list("subgroup", "subgroup_lvl", "where", "analysis_id"),
+             kinds = list("text", "text", "r", "text"),
+             rows = list(list("SEX", "M", "SEX == \"M\"", "ORR_SEX_M"), list("AGEGR1", "<65", "", "")))
+  got <- .tbl_read(st)
+  expect_identical(got[[1L]]$analysis_id, "ORR_SEX_M")
+  expect_null(got[[2L]]$analysis_id)
+  # (a row that has it: a column like the others, no button)
+  v2 <- list(list(subgroup = "SEX", subgroup_lvl = "F", analysis_id = "ORR_SEX_F"))
+  h <- html(arg_field("c", "conditions", "rows<map<string,string|r>>", def = d, ctx = ctx, value = v2))
+  expect_match(h, "<th class=\"rp-mono\">analysis_id</th>", fixed = TRUE)
+  expect_false(grepl("rp-tbl-addcol", h, fixed = TRUE))
+  expect_identical(round_trip("rows<map<string,string|r>>", d, v2, ctx = ctx), v2)
+  # (a list of columns: optional = TRUE)
+  d3 <- list(input = "table", columns = list(subgroup = list(type = "string"),
+                                             analysis_id = list(type = "string", optional = TRUE)))
+  h <- html(arg_field("c", "conditions", "rows<map<string,string|r>>", def = d3, ctx = ctx,
+                      value = list(list(subgroup = "SEX"))))
+  expect_match(h, "data-col=\"analysis_id\"", fixed = TRUE)
+  # (without optional columns: no button)
+  h <- html(arg_field("c", "conditions", "rows<map<string,string|r>>", def = list(input = "table", columns = "params"),
+                      ctx = ctx, value = v))
+  expect_false(grepl("rp-tbl-addcol", h, fixed = TRUE))
+})
+
 test_that("a rows<map<string,list<column>>> (ards): each column's own def, its choices to add", {
   col <- list(type = "list<column>", input = "pick", choices = "vars(from_args(data))")
   d <- list(input = "table", columns = list(by = col, variables = col))

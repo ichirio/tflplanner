@@ -83,15 +83,31 @@
   }
   vk <- .tbl_cell_kind(tt$value)
   cdefs <- def$columns
-  cols <- if (identical(cdefs, "params") || identical(unlist(cdefs), "params")) {
+  # (the columns' words: "params" the template's params; "name?" a column
+  # the table may have, shown when a row has it, else added by its button
+  # -- e.g. "params, analysis_id?" (canon b5db722); a list by name: each
+  # column's def, `optional = TRUE` one the table may have)
+  params <- function() {
     p <- ctx$params
     if (is.list(p) && !is.null(names(p))) names(p) else as.character(unlist(p))
-  } else if (is.list(cdefs) && length(names(cdefs))) {
+  }
+  opt <- character()
+  cols <- if (is.list(cdefs) && length(names(cdefs))) {
+    opt <- names(cdefs)[vapply(cdefs, function(x) is.list(x) && isTRUE(x$optional), NA)]
     names(cdefs)
+  } else if (length(cdefs)) {
+    w <- .choice_words(cdefs)
+    opt <- sub("[?]$", "", w[grepl("[?]$", w)])
+    unlist(lapply(sub("[?]$", "", w), function(x) if (identical(x, "params")) params() else x))
   } else {
     unique(unlist(lapply(value, names)))
   }
-  cols <- cols[!is.na(cols) & nzchar(cols)]
+  cols <- unique(cols[!is.na(cols) & nzchar(cols)])
+  # (an optional column no row has: not shown, its button adds it)
+  in_value <- unique(unlist(lapply(value, function(r) if (is.list(r)) names(r))))
+  hidden <- setdiff(opt, in_value)
+  all_cols <- cols
+  cols <- setdiff(cols, hidden)
   if (!length(cols)) return(NULL)
   cd <- if (is.list(cdefs) && length(names(cdefs))) cdefs else list()
   # (the columns a condition's R takes, for a where-like cell)
@@ -100,20 +116,22 @@
     if (!length(x)) x <- .tbl_choices("vars", ctx, lang)
     x
   }
-  kinds <- character()
-  chs <- list()
-  for (k in cols) {
-    c1 <- cd[[k]] %||% list()
+  kind_of <- function(k) {
+    c1 <- if (is.list(cd[[k]])) cd[[k]] else list()
     ck <- if (!is.null(c1$type)) .tbl_cell_kind(c1$type) else vk
     has_r <- any(vapply(value, function(r) inherits(r[[k]], "tfl_r"), NA))
     is_cond <- identical(k, "where") || identical(c1$input, "condition")
     if (is_cond || (has_r && grepl("(^|\\|)\\s*r\\s*($|\\|)", c1$type %||% tt$value))) ck <- "r"
     ch <- if (identical(ck, "r")) cond_choices(c1$choices) else .tbl_choices(c1$choices, ctx, lang)
     if (identical(ck, "text") && length(ch) && identical(c1$input, "pick") && !isTRUE(c1$free)) ck <- "pick"
-    kinds <- c(kinds, ck)
-    chs[[length(chs) + 1L]] <- ch
+    list(kind = ck, choices = ch)
   }
-  list(shape = "rows", cols = cols, heads = cols, kinds = kinds, choices = chs, ordered = TRUE)
+  ks <- lapply(cols, kind_of)
+  # (the optional columns not shown, in the columns' order, each with its kind)
+  extra <- lapply(intersect(all_cols, hidden), function(k) c(list(col = k), kind_of(k)))
+  list(shape = "rows", cols = cols, heads = cols,
+       kinds = vapply(ks, function(x) x$kind, ""), choices = lapply(ks, function(x) x$choices),
+       ordered = TRUE, extra = extra)
 }
 
 # ---- the value <-> the state -------------------------------------------------------
@@ -320,5 +338,20 @@
     shiny::tags$template(class = "rp-tbl-tpl", .tbl_row(spec, rep("", n), dls, lang)),
     lists,
     shiny::tags$button(type = "button", class = "btn btn-link btn-sm rp-tbl-addrow",
-                       paste0("+ ", t("Add a row"))))
+                       paste0("+ ", t("Add a row"))),
+    # (an optional column no row has: its cell's template and the button
+    # that adds it to every row)
+    lapply(seq_along(spec$extra), function(i) {
+      x <- spec$extra[[i]]
+      dl <- if (x$kind %in% c("text", "r") && length(x$choices)) paste0(fid, "__dlx", i)
+      shiny::tagList(
+        if (!is.null(dl)) shiny::tags$datalist(id = dl, lapply(unique(as.character(unlist(x$choices))),
+                                                               function(v) shiny::tags$option(value = v))),
+        shiny::tags$template(class = "rp-tbl-coltpl", `data-col` = x$col,
+                             shiny::tags$td(class = paste0("rp-tbl-td rp-tbl-k-", x$kind),
+                                            .tbl_cell(x$kind, "", dl, x$choices, lang))),
+        shiny::tags$button(type = "button", class = "btn btn-link btn-sm rp-tbl-addcol",
+                           `data-col` = x$col, `data-kind` = x$kind,
+                           paste0("+ ", t("Add the column:"), " ", x$col)))
+    }))
 }
