@@ -321,6 +321,19 @@
                          `aria-label` = t("Remove the row"), "×")))
 }
 
+# The template's rows with an R column's text as its R (tflspec gives a
+# fixed row's values as text, `!r` its code)
+.tbl_fixed_as_r <- function(spec, x) {
+  if (!is.data.frame(x) || !nrow(x)) return(x)
+  for (j in which(spec$kinds == "r")) {
+    k <- spec$cols[[j]]
+    if (is.character(x[[k]])) {
+      x[[k]] <- lapply(x[[k]], function(v) if (!is.na(v) && nzchar(v)) tflspec::tfl_r(v))
+    }
+  }
+  x
+}
+
 # The table field: a header of the columns, the fixed rows (read only, before
 # or after them), the rows of the value, a blank row's template and Add a row.  Its
 # state as it is drawn rides in data-state (the input's first value is the
@@ -338,13 +351,16 @@
                                                function(x) shiny::tags$option(value = x)))
   })
   rows <- .tbl_rows(spec, value)
-  fixed <- .tbl_rows(spec, fixed_rows)
-  # (the template's rows: before the report's, or after them -- tflspec's
-  # attribute "position")
-  after <- identical(attr(fixed_rows, "position", exact = TRUE), "after")
-  fixed_body <- if (length(fixed)) shiny::tags$tbody(
+  # (the template's rows, read only: before the report's or after them, a
+  # row as its "position" says -- tflspec's tfl_arg_defs() fixed_rows, their
+  # values text, an R column's its code)
+  fixed <- .tbl_rows(spec, .tbl_fixed_as_r(spec, fixed_rows))
+  pos <- as.character(attr(fixed_rows, "position", exact = TRUE) %||% character())
+  after <- rep_len(if (length(pos)) pos == "after" else FALSE, length(fixed))
+  after[is.na(after)] <- FALSE
+  fixed_body <- function(which) if (any(which)) shiny::tags$tbody(
     class = "rp-tbl-fixed",
-    lapply(fixed, function(cells) {
+    lapply(fixed[which], function(cells) {
       shiny::tags$tr(class = "rp-tbl-ro", title = t("From the template"),
                      lapply(seq_len(n), function(j) {
                        shiny::tags$td(class = paste("rp-tbl-td", if (spec$kinds[[j]] == "r") "rp-mono"),
@@ -369,10 +385,10 @@
                          spec$heads[[j]])
         }),
         shiny::tags$th(class = "rp-tbl-tools"))),
-      if (!after) fixed_body,
+      fixed_body(!after),
       shiny::tags$tbody(class = "rp-tbl-body",
                         lapply(rows, function(cells) .tbl_row(spec, cells, dls, lang))),
-      if (after) fixed_body),
+      fixed_body(after)),
     shiny::tags$template(class = "rp-tbl-tpl", .tbl_row(spec, rep("", n), dls, lang)),
     lists,
     shiny::tags$button(type = "button", class = "btn btn-link btn-sm rp-tbl-addrow",

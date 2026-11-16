@@ -306,9 +306,9 @@ test_that("a series template's params and sections come from its defs", {
 
 test_that("a series template's table params (conditions, formats): the table field, read back as records", {
   local_defs_reset()
-  # (the template's ALL row before the report's: tfl_arg_defs()'s fixed_rows, tflspec#824)
-  all_row <- data.frame(subgroup = "ALL", subgroup_lvl = "ALL", stringsAsFactors = FALSE)
-  all_row$where <- list(tflspec::tfl_r("TRUE"))
+  # (the template's ALL row before the report's: tfl_arg_defs()'s fixed_rows,
+  # tflspec#824 -- text values, `!r` its code, a position a row)
+  all_row <- data.frame(subgroup = "ALL", subgroup_lvl = "ALL", where = "TRUE", stringsAsFactors = FALSE)
   attr(all_row, "position") <- "before"
   testthat::local_mocked_bindings(
     tfl_arg_defs = function(fn = NULL, template = NULL) {
@@ -347,10 +347,14 @@ test_that("a series template's table params (conditions, formats): the table fie
   # (the ALL row read only, before the report's rows; "after": after them)
   expect_match(h, "rp-tbl-fixed[^$]*rp-tbl-body")
   expect_match(h, "<td class=\"rp-tbl-td rp-mono\">TRUE</td>", fixed = TRUE)
-  attr(all_row, "position") <- "after"
-  h <- as.character(.field_table("tpl_x__conditions", spec, df, fixed_rows = all_row))
-  expect_match(h, "rp-tbl-body[^$]*rp-tbl-fixed")
-  expect_false(grepl("rp-tbl-fixed[^$]*rp-tbl-body", h))
+  # (a row before, a row after: each where its position says)
+  two <- data.frame(subgroup = c("ALL", "OTHER"), subgroup_lvl = c("ALL", "OTHER"),
+                    where = c("TRUE", "is.na(SEX)"), stringsAsFactors = FALSE)
+  attr(two, "position") <- c("before", "after")
+  h <- as.character(.field_table("tpl_x__conditions", spec, df, fixed_rows = two))
+  expect_match(h, "rp-tbl-fixed[^$]*>TRUE<[^$]*rp-tbl-body[^$]*rp-tbl-fixed[^$]*is.na\\(SEX\\)")
+  # (the R code as written, not quoted as a string)
+  expect_false(grepl("&quot;TRUE&quot;", h, fixed = TRUE))
   # read back: the field's state -> records; untouched it says the value it shows
   st <- as.character(jsonlite::toJSON(.tbl_state(spec, df), auto_unbox = TRUE))
   got <- .tpl_value(st, "table", p$conditions)
