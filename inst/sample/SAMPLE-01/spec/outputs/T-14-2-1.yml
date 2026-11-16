@@ -20,14 +20,14 @@ ard:
       method: categorical
       data: adsl_saf
       variables:
-        - TRTA
+        - TRT01A
       purpose: PRIMARY OUTCOME MEASURE
     - id: SYSBP
       label: SYSBP at week 24
       method: continuous
       data: advs_saf_sysbp
       by:
-        - TRTA
+        - TRT01A
       variables:
         - BASE
         - AVAL
@@ -44,12 +44,12 @@ ard:
         - max
       purpose: PRIMARY OUTCOME MEASURE
 codelists:
-  TRTA:
+  TRT01A:
     - value: Drug X
     - value: Control
 content:
   - table_plan:
-      cols: TRTA
+      cols: TRT01A
       rows:
         group: variable
   - plan_cells:

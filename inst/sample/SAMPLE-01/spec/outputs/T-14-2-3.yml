@@ -21,14 +21,14 @@ ard:
       method: categorical
       data: adsl_saf
       variables:
-        - TRTA
+        - TRT01A
       purpose: PRIMARY OUTCOME MEASURE
     - id: 'N'
       label: Subjects
       method: continuous
       data: advs_saf_sysbp
       by:
-        - TRTA
+        - TRT01A
       variables:
         - CHG
       statistics:
@@ -39,17 +39,17 @@ ard:
       method: mean_ci
       data: advs_saf_sysbp
       by:
-        - TRTA
+        - TRT01A
       variables:
         - CHG
       purpose: SECONDARY OUTCOME MEASURE
 codelists:
-  TRTA:
+  TRT01A:
     - value: Drug X
     - value: Control
 content:
   - table_plan:
-      cols: TRTA
+      cols: TRT01A
       rows:
         group: variable
   - plan_cells:
@@ -59,7 +59,7 @@ content:
         p-value: '{p.value:.3f}'
   - plan_levels:
       variable: CHG
-      TRTA:
+      TRT01A:
         - Drug X
         - Control
   - plan_labels:
