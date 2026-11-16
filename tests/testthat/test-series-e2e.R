@@ -22,6 +22,12 @@ series_skip <- function() {
   skip_on_cran()
   skip_if_not_installed("cards")
   skip_if_not_installed("dplyr")
+  # (the series files came with tflspec#818, the resolver and the settings
+  # helpers with #824: a tflspec between the two has the one, not the other)
+  need <- c("tfl_arg_defs", "tfl_template_resolve", "tfl_series_settings_set")
+  have <- need %in% getNamespaceExports("tflspec")
+  skip_if_not(all(have), paste0("this tflspec has no ", paste(need[!have], collapse = ", "),
+                                " (tflspec#824)"))
   ok <- tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/demog")),
                  error = function(e) FALSE)
   skip_if_not(ok, "this tflspec has no series templates (tflspec#824)")
