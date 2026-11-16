@@ -1204,7 +1204,26 @@
   output$ard_spec_pane <- shiny::renderUI({
     shiny::tagList(
       shiny::checkboxInput("ard_all", t("Every report's analyses (with output_id)"), FALSE),
-      rhandsontable::rHandsontableOutput("hot_ard_analyses"))
+      rhandsontable::rHandsontableOutput("hot_ard_analyses"),
+      shiny::uiOutput("ard_item_sheets"))
+  })
+  # (a template item's condition rows and calls, tflspec#827: shown where
+  # the report has them, or an analysis takes params)
+  output$ard_item_sheets <- shiny::renderUI({
+    p <- rv$p
+    tg <- if (isTRUE(input$ard_all)) "" else ard_target()
+    an <- ard_rows(p, "analyses", tg)
+    has <- function(s) !is.null(p$ard[[s]]) && nrow(ard_rows(p, s, tg)) > 0L
+    show_cond <- has("conditions") || ("params" %in% names(an) && any(!is.na(an$params)))
+    show_ards <- has("ards")
+    if (!show_cond && !show_ards) return(NULL)
+    shiny::tagList(
+      if (show_cond) shiny::tagList(
+        shiny::h6(class = "mt-3", with_tip("conditions", t(.ard_sheet_help("conditions")))),
+        rhandsontable::rHandsontableOutput("hot_ard_conditions")),
+      if (show_ards) shiny::tagList(
+        shiny::h6(class = "mt-3", with_tip("ards", t(.ard_sheet_help("ards")))),
+        rhandsontable::rHandsontableOutput("hot_ard_ards")))
   })
   output$ard_result_pane <- shiny::renderUI({
     shiny::tagList(

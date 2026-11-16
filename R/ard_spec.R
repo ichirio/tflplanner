@@ -177,6 +177,9 @@
 .normalize_ard_sheet <- function(d, sheet) {
   cols <- .ard_sheets()[[sheet]]
   d <- as.data.frame(d, stringsAsFactors = FALSE)
+  # (a sheet of open columns -- conditions: a column a param; ards: a call's
+  # keys, tflspec#827 -- keeps its own after the fixed ones)
+  if (sheet %in% .ard_open_sheets) cols <- c(cols, setdiff(names(d), cols))
   out <- lapply(cols, function(c) {
     v <- if (c %in% names(d)) as.character(d[[c]]) else
       rep(NA_character_, nrow(d))
@@ -195,14 +198,37 @@
   if (length(v) && !is.na(v)) v else default
 }
 
+# The ARD sheets whose columns are not fixed: after output_id, analysis_id
+# and row, conditions has a column a param and ards a call's keys
+# (tflspec#827)
+.ard_open_sheets <- c("conditions", "ards")
+
+# a sheet's rows with the columns given, in their order (NA where it had none)
+.ard_with_cols <- function(d, cols) {
+  for (k in setdiff(cols, names(d))) d[[k]] <- rep(NA_character_, nrow(d))
+  d[, cols, drop = FALSE]
+}
+
+# a sheet's own help (tflspec's, English; "" for none)
+.ard_sheet_help <- function(sheet) {
+  d <- tryCatch(tflspec::tfl_spec_columns(sheet), error = function(e) NULL)
+  h <- if (is.data.frame(d)) d$description[is.na(d$column)] else character()
+  if (length(h)) h[[1L]] else ""
+}
+
+# The ARD sheets whose rows are a report's (output_id)
+.ard_report_sheets <- c("analyses", "conditions", "ards")
+
 #' A report's rows of the ARD definition
 #'
 #' `ard_rows()` gives the rows of an ARD definition sheet the app shows for
-#' a report (`analyses`: that report's; the other sheets are the study's);
+#' a report (`analyses`, `conditions`, `ards`: that report's; the other
+#' sheets are the study's);
 #' `set_ard_rows()` puts them back, edited.
 #'
 #' @param x A `tflplanner`.
-#' @param sheet `analyses`, `datasets`, `populations` or `study`.
+#' @param sheet `analyses`, `conditions`, `ards`, `datasets`, `populations`
+#'   or `study`.
 #' @param output_id A report, or `""` / `NA` for every row.
 #' @param rows The rows, edited.
 #' @return `ard_rows()`: a data frame; `set_ard_rows()`: the `tflplanner`.
@@ -213,7 +239,7 @@
 #' @export
 ard_rows <- function(x, sheet, output_id = "") {
   d <- x$ard[[sheet]]
-  if (sheet != "analyses" || identical(output_id, "") || is.na(output_id)) {
+  if (!sheet %in% .ard_report_sheets || identical(output_id, "") || is.na(output_id)) {
     return(d)
   }
   d[!is.na(d$output_id) & d$output_id == output_id, , drop = FALSE]
@@ -223,7 +249,7 @@ ard_rows <- function(x, sheet, output_id = "") {
 #' @export
 set_ard_rows <- function(x, sheet, output_id = "", rows) {
   rows <- .drop_blank_rows(as.data.frame(rows, stringsAsFactors = FALSE))
-  whole <- !sheet %in% c("analyses", "analysis_data") || identical(output_id, "") ||
+  whole <- !sheet %in% c(.ard_report_sheets, "analysis_data") || identical(output_id, "") ||
     is.na(output_id)
   if (!whole) rows$output_id <- rep(output_id, nrow(rows))
   rows <- .normalize_ard_sheet(rows, sheet)
@@ -232,6 +258,13 @@ set_ard_rows <- function(x, sheet, output_id = "", rows) {
     return(x)
   }
   d <- x$ard[[sheet]]
+  # (a sheet of open columns: the report's and the others' columns together,
+  # blank where a row has none)
+  if (sheet %in% .ard_open_sheets) {
+    cols <- union(names(d), names(rows))
+    d <- .ard_with_cols(d, cols)
+    rows <- .ard_with_cols(rows, cols)
+  }
   mine <- !is.na(d$output_id) & d$output_id == output_id
   at <- if (any(mine)) which(mine)[1L] - 1L else nrow(d)
   rest <- d[!mine, , drop = FALSE]
