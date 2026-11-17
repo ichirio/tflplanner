@@ -83,6 +83,10 @@
     b <- if (!is.null(s) && !is.null(dir)) {
       tryCatch(.series_fn("tfl_series_settings")(dir, s), error = fail)
     }
+    # (tflspec gives the series' values with the study's over them, and
+    # says which are the study's: only those are this study's own)
+    o <- attr(b, "origins")
+    if (!is.null(o)) b <- b[names(b) %in% names(o)[o == "study"]]
     b <- as.list(b %||% list())
     rv$saved <- lapply(b, .series_flow)
     rv$draft <- rv$saved
@@ -126,7 +130,9 @@
     d <- rv$draft
     vals <- tryCatch({
       out <- lapply(d, .series_yaml_load)
-      if (length(out)) out else NULL
+      # a key taken back to the series: NULL, which takes it out of the block
+      for (k in setdiff(names(rv$saved), names(d))) out[k] <- list(NULL)
+      if (length(out)) out else stats::setNames(list(), character())
     }, error = function(e) {
       notify(paste0(t("A value is not YAML:"), " ", conditionMessage(e)), "error")
       FALSE

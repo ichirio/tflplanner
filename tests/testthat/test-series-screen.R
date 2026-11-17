@@ -39,14 +39,28 @@ fake_series <- function(dir) {
       list(name = series, label = series, released = "2026-11-17", needs = NULL,
            fixes = list(), values = vals[[series]], path = paste0("/x/", series))
     },
+    # as tflspec: a series' values with the study's over them, `origins`
+    # saying which are the study's
     tfl_series_settings = function(study, series = NULL) {
-      if (is.null(series)) st$block else st$block[[series]]
+      if (is.null(series)) return(st$block)
+      out <- vals[[series]]
+      own <- st$block[[series]] %||% list()
+      for (k in names(own)) out[k] <- list(own[[k]])
+      o <- stats::setNames(rep("series", length(out)), names(out))
+      o[names(own)] <- "study"
+      attr(out, "origins") <- o
+      out
     },
     tfl_series_settings_set = function(study_dir, series, values) {
       st$calls <- c(st$calls, list(list(series = series, values = values)))
       bad <- setdiff(names(values), names(vals[[series]]))
       if (length(bad)) stop("series_settings.", series, ": unknown key '", bad[1L], "'.", call. = FALSE)
-      st$block[[series]] <- values
+      # as tflspec: the values given go into the study's block, a NULL takes
+      # its key out, an empty block goes
+      own <- st$block[[series]] %||% list()
+      for (k in names(values)) own[k] <- list(values[[k]])
+      own <- own[!vapply(own, is.null, NA)]
+      if (length(own)) st$block[[series]] <- own else st$block[[series]] <- NULL
       invisible(study_dir)
     },
     tfl_pin_series = function(study_dir, reports = NULL) {
@@ -175,8 +189,31 @@ test_that("change, edit, back and save go through tfl_series_settings_set()", {
     session$setInputs(series_back = list(key = "population_safety", n = 3))
     expect_identical(rv$draft, stats::setNames(list(), character()))
     session$setInputs(series_save = 2L)
-    expect_null(f$st$calls[[2L]]$values)
+    got <- f$st$calls[[2L]]$values
+    expect_setequal(names(got), c("population_safety", "formats"))
+    expect_true(all(vapply(got, is.null, NA)))
     expect_null(f$st$block$tflspec_v1)
+  })
+})
+
+test_that("only the study's own values are its draft: one change saves one key", {
+  f <- fake_series(withr::local_tempdir())
+  local_series(f$fns)
+  notes <- new.env()
+  shiny::testServer(series_app(f$dir, notes), {
+    session$flushReact()
+    # the series' other values are not the study's: no box for them
+    expect_identical(names(rv$saved), "population_safety")
+    session$setInputs(series_change = list(key = "total", n = 1))
+    session$setInputs(series_edit_4 = "true")
+    session$setInputs(series_save = 1L)
+    expect_identical(f$st$calls[[1L]]$values, list(population_safety = "SAF2", total = TRUE))
+    expect_identical(f$st$block$tflspec_v1, list(population_safety = "SAF2", total = TRUE))
+    # one taken back: only it goes out of the block
+    session$setInputs(series_back = list(key = "population_safety", n = 2))
+    session$setInputs(series_save = 2L)
+    expect_identical(f$st$block$tflspec_v1, list(total = TRUE))
+    expect_identical(names(rv$saved), "total")
   })
 })
 

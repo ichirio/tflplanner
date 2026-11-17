@@ -188,6 +188,19 @@
   unique(unlist(lapply(data, names)))
 }
 
+# The dataset a series template's parameter takes its columns from: its
+# choices say `vars(adsl_sub)`, the data row the template reads -- named by
+# its dataset (adsl_sub: ADSL).  NULL when it says none of the datasets there are.
+.tpl_vars_dataset <- function(prm, data) {
+  for (w in tryCatch(.choice_words(prm$sources), error = function(e) character())) {
+    q <- .choice_word_parse(w)
+    if (!identical(q$name, "vars") || !length(q$args)) next
+    ds <- toupper(sub("_.*$", "", as.character(q$args[[1L]])))
+    if (ds %in% names(data)) return(ds)
+  }
+  NULL
+}
+
 .tpl_is_varlike <- function(x) {
   is.character(x) && length(x) > 0L && is.null(names(x)) &&
     all(grepl("^[A-Z][A-Z0-9_]*$", x))

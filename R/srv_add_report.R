@@ -71,7 +71,7 @@
                          none = FALSE) {
     data <- tpl_data()
     type <- .tpl_type(prm, tpl_all_cols())
-    cols <- .tpl_columns(data, dataset)
+    cols <- .tpl_columns(data, dataset %||% .tpl_vars_dataset(prm, data))
     shown <- if (is.null(value)) prm$default else value
     lab <- label
     # (a study reference with no value: its light placeholder says "(none)")
@@ -617,6 +617,9 @@
     prm <- .tpl_params(name)[[a]]
     type <- .tpl_type(prm, tpl_all_cols())
     shown <- tp$args[[a]] %||% .tpl_study_value(rv$p$spec$study, prm) %||% prm$default
+    # (a switch with no default -- a series template's, from the series -- is drawn
+    # off: its first FALSE is what it showed, no edit)
+    if (is.null(shown) && identical(type, "flag")) shown <- FALSE
     if (identical(type, "columns") && is.null(.tpl_list_text(shown, prm))) return()
     # (a list the rows cannot show: its YAML text; not YAML, said and the value stays)
     yaml_box <- identical(type, "list") && is.null(.tpl_list_text(shown, prm))

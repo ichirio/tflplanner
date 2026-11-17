@@ -36,3 +36,8 @@
 "Mean by visit with its SE","来院別の平均と標準誤差"
 "Waterfall plot","ウォーターフォールプロット"
 "Analysis of covariance (ANCOVA) of a change","変化量の共分散分析（ANCOVA）"
+"An analysis id for each variable; empty for the variable's name.","変数ごとの analysis id。空欄なら変数名。"
+"Forest plot, hazard ratio by subgroup","フォレストプロット（部分集団別のハザード比）"
+"Shift in toxicity grade, baseline to worst, in each direction","毒性グレードのシフト（ベースラインから最悪値まで、両方向）"
+"Listing of records","記録の Listing"
+"Response rate with its CI, overall and in each subgroup level","奏効率とその信頼区間（全体と部分集団の各水準）"
