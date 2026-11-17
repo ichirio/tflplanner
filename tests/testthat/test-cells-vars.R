@@ -169,7 +169,10 @@ test_that("the company standard is copied into the study's, the chosen items onl
   skip_on_cran()
   s <- cells_sample()
   p <- s$planner
-  co <- list(default = "{n:.0f} ({p:.1f%})",
+  # (the sample standard's default: the zero guard, then the template)
+  zero_default <- list(tflspec::tfl_r("n == 0 ~ \"0\""), "{n:.0f} ({p:.1f%})")
+  # (the company standard's cells are text: the entry as .cells_entry_text() shows it)
+  co <- list(default = "n == 0 ~ \"0\"; {n:.0f} ({p:.1f%})",
              continuous = list(n = "{N:.0f}", `Mean (SD)` = "{mean:.1f} ({sd:.2f})"))
   d <- .cells_company_diff(p, co)
   # the sample's study standard has the same default, no continuous rows:
@@ -190,7 +193,7 @@ test_that("the company standard is copied into the study's, the chosen items onl
   expect_identical(d$differs, c(TRUE, FALSE))
   q <- .spec_set_study_cells(p1, .cells_company_apply(.cells_study(p1), "continuous:Mean (SD)", co))
   got <- .cells_study(q)
-  expect_identical(got$default, "{n:.0f} ({p:.1f%})")
+  expect_identical(got$default, zero_default)
   expect_identical(got$continuous, list(n = "{N}", `Mean (SD)` = "{mean:.1f} ({sd:.2f})"))
   expect_identical(.cells_company_diff(q, co)$key, "continuous:n")
   # a value of its own: differs

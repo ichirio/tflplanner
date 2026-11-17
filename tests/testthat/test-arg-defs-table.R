@@ -343,3 +343,38 @@ test_that("a schema function's table argument draws and reads through its tfl_ar
   input <- stats::setNames(list(tbl_state_of(h)), "c__derive")
   expect_identical(builder_card_read(input, "c", schema = s, args = "derive"), list(derive = v))
 })
+
+test_that("a map of maps (tflspec_summary's nest, value_labels): a row each inner entry, read back nested", {
+  d <- list(input = "table", choices = "vars(from_args(data))")
+  # nest: map<column,map<column,string>> -- the nested variable, the variable over it, its level
+  v <- list(AGE = list(SEX = "Female"), TRT01A = list(SEX = "Male"))
+  h <- html(arg_field("c", "nest", "map<column,map<column,string>>", def = d, ctx = ctx, value = v))
+  expect_match(h, "data-shape=\"map2\"", fixed = TRUE)
+  expect_match(h, "<th>Column</th>", fixed = TRUE)
+  expect_match(h, "<th>Second column</th>", fixed = TRUE)
+  expect_match(h, "<option value=\"SEX\" selected>SEX</option>", fixed = TRUE)
+  expect_identical(round_trip("map<column,map<column,string>>", d, v, ctx = ctx), v)
+  # value_labels: map<column,map<string,string>> -- the code typed, its label
+  v <- list(SEX = list(F = "Female", M = "Male"))
+  h <- html(arg_field("c", "value_labels", "map<column,map<string,string>>", def = d, ctx = ctx, value = v))
+  expect_match(h, "<th>Key</th>", fixed = TRUE)
+  expect_identical(round_trip("map<column,map<string,string>>", d, v, ctx = ctx), v)
+  # (a row with a blank key or value is left out; none left: nothing)
+  st <- list(shape = "map2", cols = c("key", "key2", "value"), kinds = c("pick", "text", "text"),
+             rows = list(c("SEX", "F", "Female"), c("SEX", "", "x"), c("", "M", "Male")))
+  expect_identical(.tbl_read(st), list(SEX = list(F = "Female")))
+  st$rows <- list(c("SEX", "", ""))
+  expect_null(.tbl_read(st))
+})
+
+test_that("a list<map<string,string>> (tflspec_summary's col_header): its maps in order, a row each", {
+  d <- list(input = "table")
+  v <- list(list(row_label = "", .values = "{col}"), list(row_label = "", .values = "(N={n})"))
+  h <- html(arg_field("c", "col_header", "list<map<string,string>>", def = d, ctx = ctx, value = v))
+  expect_match(h, "data-shape=\"rows\"", fixed = TRUE)
+  expect_match(h, "row_label</th>", fixed = TRUE)
+  expect_match(h, ".values</th>", fixed = TRUE)
+  # (a blank cell is left out, as a rows<...>'s is)
+  expect_identical(round_trip("list<map<string,string>>", d, v, ctx = ctx),
+                   list(list(.values = "{col}"), list(.values = "(N={n})")))
+})
