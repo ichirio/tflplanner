@@ -29,7 +29,7 @@ test_that("1-1: an analysis data the form cannot show is saved back unchanged", 
   # written by hand in the sheet: a condition rows cannot hold, columns not
   # in the data, a derive
   odd <- "AESER == \"Y\" | (AETOXGR %in% c(\"3\", \"4\") & !is.na(AEACN))"
-  p <- set_analysis_data(p, "DM", "adae_odd", from = "ADAE", subjects = "adsl_saf",
+  p <- set_analysis_data(p, "DM", "adae_odd", from = "ADAE", subjects_in = "adsl_saf",
                          where = odd, add = "TRT01A | NOT_A_COLUMN",
                          derive = "Q = 1 | R = Q + 1", keep = "AEDECOD | ODD",
                          distinct = "USUBJID | AEDECOD")
