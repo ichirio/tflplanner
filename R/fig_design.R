@@ -283,7 +283,8 @@ set_fig_design <- function(x, output_id, design) {
   x <- study$planner
   owd <- setwd(study$path)
   on.exit(setwd(owd), add = TRUE)
-  e <- new.env(parent = globalenv())
+  # (the read lines use the study's helpers: blank_as_na())
+  e <- new.env(parent = .helpers_env(globalenv()))
   out <- list()
   for (d in datasets) {
     code <- .read_dataset_lines(x, d)
@@ -362,7 +363,7 @@ preview_figure <- function(study, output_id,
   if (!is.null(x0)) design <- .trim_join(design, x0)
   code <- .fig_design_script(design, output_id,
                              codelists = .study_codelists(study$planner), size = sz)
-  problems <- tflspec::tfl_check_fig_design(saved, data)
+  problems <- tflspec::tfl_check_fig_design(saved, if (length(data)) data)
   # its ARD (#293): the rows of its source, in `ard`; their problems
   reads_ard <- isTRUE(attr(tflspec::tfl_fig_design_code(saved, output_id, setup = TRUE,
                                                          save = FALSE), "ard"))
