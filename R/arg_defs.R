@@ -244,6 +244,8 @@
   # (a table of a map or rows: the table field, R/arg_defs_table.R)
   if (identical(d$input, "table") && !is.null(.tbl_type(type))) return("table")
   if (length(d$values) && identical(d$input, "pick") && !grepl("^list<", type)) return("choice")
+  # (a condition, or any R: the R field -- its text kept as R, never read as YAML)
+  if (identical(d$input, "condition") || identical(type, "r")) return("r")
   if (grepl("^enum\\[", type)) return("choice")
   if (grepl("^(list<)?column>?$", type)) return("vars")
   if (grepl("^(list<)?level>?$", type)) return("levels")

@@ -449,3 +449,43 @@ test_that("a map keyed by columns (demog analysis_ids) offers the data's columns
   expect_identical(spec$kinds[[1L]], "pick")
   expect_identical(unname(spec$choices[[1L]]), c("AGE", "SEX"))
 })
+
+test_that("a condition / R param (lab_tox_shift record_where) is the R field: its text kept as R, not YAML", {
+  defs <- mk_defs(list(name = "record_where", step = "data", input = "condition", type = "r"),
+                  list(name = "other", step = "data", input = "text", type = "r"))
+  prm <- .tpl_params_from_defs(defs)
+  expect_identical(.tpl_type(prm$record_where), "r")
+  expect_identical(.tpl_type(prm$other), "r")
+  for (txt in c('AVAL > 2 & PARAMCD == "ALT"', "TRUE", "x: y")) {
+    v <- .tpl_value(txt, "r", prm$record_where)
+    expect_s3_class(v, "tfl_r")
+    expect_identical(as.character(unclass(v)), txt)
+    # (read back as the shown text, and untouched it is no edit)
+    expect_identical(.tpl_r_text(v), txt)
+    expect_identical(.tpl_untouched(v, "r", prm$record_where), v)
+  }
+  expect_null(.tpl_value("  ", "r", prm$record_where))
+  expect_identical(.tpl_r_text(TRUE), "TRUE")
+  html <- as.character(.tpl_r_field("a", "lab", tflspec::tfl_r("TRUE"), c("AVAL", "PARAMCD")))
+  expect_match(html, "rp-condition", fixed = TRUE)
+  expect_match(html, "<option value=\"AVAL\"", fixed = TRUE)
+  expect_match(html, "value=\"TRUE\"", fixed = TRUE)
+})
+
+test_that("every series template's condition / R params get the R field", {
+  skip_if_not("tfl_arg_defs" %in% getNamespaceExports("tflspec"))
+  ok <- tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/lab_tox_shift")),
+                 error = function(e) FALSE)
+  skip_if_not(ok, "this tflspec has no series templates")
+  n <- 0L
+  for (tp in c("ae_soc_pt", "demog", "forest_hr", "km_simple", "lab_tox_shift", "orr_subgroup", "stf_t02_demog")) {
+    prm <- tryCatch(.tpl_params(paste0("tflspec_v1/", tp)), error = function(e) list())
+    for (x in prm) {
+      isr <- identical(x$def$input, "condition") || identical(x$def$type, "r")
+      if (isr) n <- n + 1L
+      expect_identical(.tpl_type(x) == "r", isr, info = paste(tp, x$name))
+    }
+  }
+  expect_gte(n, 1L)
+  expect_identical(.tpl_type(.tpl_params("tflspec_v1/lab_tox_shift")$record_where), "r")
+})
