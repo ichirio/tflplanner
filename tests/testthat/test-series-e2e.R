@@ -60,7 +60,8 @@ series_card_type <- function(input, type, choices = NULL) {
     return(if (startsWith(type, "list<")) "picks" else "pick")
   if (startsWith(type, "enum[")) return("choice")
   switch(type, logical = "flag", number = "number", `list<column>` = "vars",
-         column = "var", level = "levels", "text")
+         column = "var", level = "levels", `list<level>` = "levels",
+         if (startsWith(type, "list<")) "list" else "text")
 }
 
 # The report's YAML file as the app wrote it (one text)
