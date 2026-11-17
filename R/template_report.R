@@ -243,8 +243,7 @@
 # string as it is, a logical or number as R writes it); "" for none
 .tpl_r_text <- function(x) {
   if (is.null(x) || !length(x)) return("")
-  if (inherits(x, "tfl_r") || is.character(x)) return(paste(as.character(unclass(x)), collapse = "
-"))
+  if (inherits(x, "tfl_r") || is.character(x)) return(paste(as.character(unclass(x)), collapse = "\n"))
   paste(deparse(x, width.cutoff = 500L), collapse = " ")
 }
 
@@ -544,8 +543,7 @@
     table = if (.tbl_is_state(v)) .tbl_read(v),
     # (R as typed, never YAML: TRUE stays the text TRUE, `x: y` stays that text)
     r = {
-      v <- trimws(paste(as.character(v), collapse = "
-"))
+      v <- trimws(paste(as.character(v), collapse = "\n"))
       if (nzchar(v)) tflspec::tfl_r(v)
     },
     {
