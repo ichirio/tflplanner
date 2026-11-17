@@ -468,7 +468,7 @@ $(document).on('hidden.bs.modal', function() {
 # datasets, populations and analysis data).  `method` stays open: besides
 # the keywords it takes any pkg::function.
 .ard_closed_columns <- c("data", "dataset", "population_id", "denominator",
-                         "from", "subjects")
+                         "from", "subjects_in")
 
 # tflspec's column help is English; the app shows it in its language
 .help_table <- function(sheet) {

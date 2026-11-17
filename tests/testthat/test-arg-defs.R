@@ -158,9 +158,10 @@ test_that("each input form draws its field", {
   expect_match(h, "rp-field-condition", fixed = TRUE)
   expect_match(h, "<option value=\"SAFFL\"></option>", fixed = TRUE)
   expect_match(h, "rp-r-fixed", fixed = TRUE)
-  # table: today's field of its type (P1b builds the table editor)
+  # table: the table field (test-arg-defs-table.R); a rows<...> with no
+  # columns to show stays today's field of its type
   h <- html(arg_field("c", "derive", "map<column,r>", def = list(input = "table", choices = "vars(from)")))
-  expect_identical(h, html(arg_field("c", "derive", "map<column,r>")))
+  expect_match(h, "rp-tbl", fixed = TRUE)
   h <- html(arg_field("c", "conditions", "rows<map<string,string|r>>", def = list(input = "table")))
   expect_identical(h, html(arg_field("c", "conditions", "rows<map<string,string|r>>")))
   # text: as the type says, the same as without a def
