@@ -26,7 +26,7 @@ test_that("a figure's design is kept, saved as YAML, and makes its plot", {
   expect_true(any(startsWith(lines, "plot <- ggplot(")))
   expect_false(any(grepl("^plot <- fig$|^fig <- p$|^library[(]", lines)))
   expect_identical(sum(startsWith(lines, "# ---- data ")), 1L)
-  expect_lt(which(startsWith(lines, "advs <- ")), which(startsWith(lines, "# ---- plot ")))
+  expect_lt(which(startsWith(lines, "advs <- "))[[1L]], which(startsWith(lines, "# ---- plot ")))
   expect_true("tfl_check(plot)" %in% lines)
   # then drawn at its size on the page (step 3), the design's dpi
   last <- lines[[length(lines)]]
@@ -63,7 +63,6 @@ test_that("a figure's design is kept, saved as YAML, and makes its plot", {
 
 test_that("a design is drawn on the study's data, as its program saves it", {
   skip_on_cran()
-  skip_if_not_installed("ggplot2")
   home <- withr_tempdir()
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)

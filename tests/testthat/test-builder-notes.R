@@ -33,7 +33,6 @@ open_builder <- function(session, id) {
 
 test_that("a categorical-only table: no continuous rows, no warning about them", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   local_home()
   ard <- cards::ard_stack(cards::ADSL, .by = TRT01A,
                           cards::ard_categorical(variables = c(SEX, RACE)))
@@ -56,7 +55,6 @@ test_that("a categorical-only table: no continuous rows, no warning about them",
 
 test_that("a table with a continuous variable still has its rows", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   local_home()
   ard <- cards::ard_stack(cards::ADSL, .by = TRT01A,
                           cards::ard_continuous(variables = AGE),
@@ -73,7 +71,6 @@ test_that("a table with a continuous variable still has its rows", {
 
 test_that("the column order: the code list's when the report has one, else 'check'", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   local_home()
   ard <- cards::ard_stack(cards::ADSL, .by = TRT01A,
                           cards::ard_categorical(variables = SEX))
@@ -102,7 +99,6 @@ test_that("the column order: the code list's when the report has one, else 'chec
 
 test_that("the builder's form: the Layers bar, the groups, the pages as fields, an example as placeholder", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   local_home()
   ard <- cards::ard_stack(cards::ADSL, .by = TRT01A,
                           cards::ard_continuous(variables = AGE),
@@ -155,7 +151,6 @@ test_that("the builder's form: the Layers bar, the groups, the pages as fields, 
 
 test_that("a new table only drawn in the builder is no change: nothing saved until one is made (#417)", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   local_home()
   ard <- cards::ard_stack(cards::ADSL, .by = TRT01A, cards::ard_categorical(variables = SEX))
   s <- builder_study("T-NEW", ard)

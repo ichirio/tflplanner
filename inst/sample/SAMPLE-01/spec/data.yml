@@ -15,7 +15,6 @@ populations:
   - id: SAF
     dataset: ADSL
     where: !r SAFFL == "Y"
-    derive: !r TRTA = TRT01A
     label: Safety Analysis Set
   - id: SCRF
     dataset: ADSL

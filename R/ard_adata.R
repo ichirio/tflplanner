@@ -59,7 +59,7 @@
     if (!f %in% ad$data_id) out <- c(out, f)
     p <- ad$population_id[i]
     if (!is.na(p) && !is.null(po)) out <- c(out, po$dataset[match(p, po$population_id)])
-    s <- ad$subjects[i] %||% NA
+    s <- ad$subjects_in[i] %||% NA
     if (!is.na(s) && !s %in% c(seen, d)) out <- c(out, .adata_datasets(ad, s, po, c(seen, d)))
   }
   unique(out[!is.na(out)])
@@ -72,7 +72,7 @@
     i <- match(d, ad$data_id)
     p <- ad$population_id[i]
     if (!is.na(p)) return(p)
-    s <- ad$subjects[i] %||% NA
+    s <- ad$subjects_in[i] %||% NA
     if (!is.na(s) && !s %in% c(seen, d)) return(.adata_pop(ad, s, c(seen, d)))
   }
   NA_character_
@@ -97,7 +97,7 @@
 
 # Keeps the analysis data `ids` to the subjects of `subj`: those kept to no
 # subjects nor analysis set yet (themselves or the data they are made from).
-# `subj` moves above the first of them (`subjects` names a data above),
+# `subj` moves above the first of them (`subjects_in` names a data above),
 # unless what it is made from is below: then only those below it.  The ids
 # kept are in attribute "kept".
 .adata_keep_to <- function(x, output_id, subj, ids) {
@@ -117,7 +117,7 @@
       first <- if (length(ids)) min(match(ids, ad$data_id)) else k
     }
     if (length(ids)) {
-      ad$subjects[match(ids, ad$data_id)] <- subj
+      ad$subjects_in[match(ids, ad$data_id)] <- subj
       if (k > first) {
         ord <- c(setdiff(seq_len(first - 1L), k), k, setdiff(first:nrow(ad), k))
         ad <- ad[ord, , drop = FALSE]
@@ -246,7 +246,7 @@
     if (any(vapply(intersect(other, names(ad)), function(cn) !.is_blank(ad[[cn]][i]), NA))) next
     if (identical(val(ad$from[i]), val(from)) &&
         identical(val(ad$population_id[i]), val(pop)) &&
-        identical(val(ad$subjects[i]), val(subjects)) &&
+        identical(val(ad$subjects_in[i]), val(subjects)) &&
         identical(norm(ad$where[i]), norm(where))) {
       return(ad$data_id[i])
     }
@@ -278,11 +278,11 @@
     sprintf("!((%s) %%in%% TRUE)", w)
 }
 
-# the subjects data it is kept to: its own `subjects`, else the nearest
+# the subjects data it is kept to: its own `subjects_in`, else the nearest
 # above it (NA when none)
 .adata_subjects_of <- function(ad, id) {
   for (d in rev(.adata_chain(ad, id))) {
-    s <- ad$subjects[match(d, ad$data_id)] %||% NA
+    s <- ad$subjects_in[match(d, ad$data_id)] %||% NA
     if (!is.na(s)) return(s)
   }
   NA_character_
@@ -311,7 +311,7 @@
   ad <- .adata_rows(x, output_id)
   list(analyses = paste(a$output_id[hit], a$analysis_id[hit], sep = " / "),
        data = ad$data_id[(!is.na(ad$from) & ad$from == id) |
-                           (!is.na(ad$subjects) & ad$subjects == id)])
+                           (!is.na(ad$subjects_in) & ad$subjects_in == id)])
 }
 
 # A name for a new analysis data: the dataset (or data) and the value a
@@ -365,8 +365,8 @@
 #' @param data_id The name (lower case; also the object's name in the ARD
 #'   program).
 #' @param from A dataset, or an analysis data above.
-#' @param population_id,subjects,where,add,derive,keep,distinct,label The
-#'   other columns (`subjects`: an analysis data above whose subjects it
+#' @param population_id,subjects_in,where,add,derive,keep,distinct,label The
+#'   other columns (`subjects_in`: an analysis data above whose subjects it
 #'   keeps, instead of `population_id`; `add`, `keep`, `distinct`: several
 #'   columns with `" | "` between them).
 #' @param old The name of the one to replace; `NULL`: a new one.
@@ -390,12 +390,12 @@
 set_analysis_data <- function(x, output_id, data_id, from, population_id = NA,
                               where = NA, add = NA, derive = NA,
                               distinct = NA, label = NA, old = NULL,
-                              subjects = NA, keep = NA, code = NA) {
+                              subjects_in = NA, keep = NA, code = NA) {
   if (.is_blank(output_id)) stop("An analysis data is a report's: give the report.", call. = FALSE)
   ad <- .adata_rows(x, output_id)
   row <- .normalize_ard_sheet(data.frame(
     output_id = output_id, data_id = data_id, label = label, from = from,
-    population_id = population_id, subjects = subjects, where = where,
+    population_id = population_id, subjects_in = subjects_in, where = where,
     add = add, derive = derive, keep = keep, distinct = distinct,
     code = code, stringsAsFactors = FALSE), "analysis_data")
   if (!nrow(row) || is.na(row$data_id)) {
@@ -421,7 +421,7 @@ set_analysis_data <- function(x, output_id, data_id, from, population_id = NA,
       a$denominator[k & !is.na(a$denominator) & a$denominator == old] <- row$data_id
       x$ard$analyses <- a
       ad$from[!is.na(ad$from) & ad$from == old] <- row$data_id
-      ad$subjects[!is.na(ad$subjects) & ad$subjects == old] <- row$data_id
+      ad$subjects_in[!is.na(ad$subjects_in) & ad$subjects_in == old] <- row$data_id
     }
   }
   .adata_set_rows(x, output_id, ad)
@@ -464,7 +464,7 @@ import_analysis_data <- function(x, from_output, output_id, data_ids = NULL) {
   while (length(new <- setdiff(unique(unlist(lapply(ids, function(id) .adata_chain(src, id)))),
                                want))) {
     want <- c(want, new)
-    ids <- intersect(stats::na.omit(src$subjects[match(new, src$data_id)]), src$data_id)
+    ids <- intersect(stats::na.omit(src$subjects_in[match(new, src$data_id)]), src$data_id)
   }
   rows <- src[src$data_id %in% want, , drop = FALSE]
   # the names: the same, unless the report's program has them
@@ -481,7 +481,7 @@ import_analysis_data <- function(x, from_output, output_id, data_ids = NULL) {
   }, "")
   ren <- function(v) ifelse(!is.na(v) & v %in% rows$data_id, new_id[match(v, rows$data_id)], v)
   rows$from <- ren(rows$from)
-  rows$subjects <- ren(rows$subjects)
+  rows$subjects_in <- ren(rows$subjects_in)
   rows$data_id <- unname(new_id)
   x <- .adata_set_rows(x, output_id, rbind(.adata_rows(x, output_id), rows))
   attr(x, "copied") <- unname(new_id)
@@ -532,7 +532,7 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
   a$analysis_data$output_id <- rep(".try", nrow(a$analysis_data))
   a$analyses <- .normalize_ard_sheet(data.frame(
     output_id = ".try", analysis_id = "TRY", method = "cards::ard_summary",
-    data = id, variables = "TRY_", stringsAsFactors = FALSE), "analyses")
+    data = id, variables = .adata_subject_key(x), stringsAsFactors = FALSE), "analyses")
   code <- tryCatch(tflspec::tfl_ard_code(structure(a, class = "tfl_ard_spec"),
                                          part = "body"),
                    error = function(e) NULL)
@@ -573,7 +573,7 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
   a$analysis_data$output_id <- rep(".try", nrow(a$analysis_data))
   a$analyses <- .normalize_ard_sheet(data.frame(
     output_id = ".try", analysis_id = "TRY", method = "cards::ard_summary",
-    data = id, variables = "TRY_", stringsAsFactors = FALSE), "analyses")
+    data = id, variables = .adata_subject_key(x), stringsAsFactors = FALSE), "analyses")
   code <- tryCatch(tflspec::tfl_ard_code(structure(a, class = "tfl_ard_spec"),
                                          part = "body"),
                    error = function(e) NULL)
@@ -609,7 +609,7 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
   r <- ad[match(id, ad$data_id), , drop = FALSE]
   if (!nrow(r)) return("")
   src <- paste(c(r$from, if (!is.na(r$population_id)) r$population_id,
-                 if (!is.na(r$subjects %||% NA)) sprintf(words$subj %||% "%s's subjects", r$subjects)),
+                 if (!is.na(r$subjects_in %||% NA)) sprintf(words$subj %||% "%s's subjects", r$subjects_in)),
                collapse = " \u00d7 ")
   bar <- function(v) paste(.split_bar(v), collapse = ", ")
   paste(c(src, if (!is.na(r$where)) r$where,

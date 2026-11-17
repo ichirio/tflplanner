@@ -217,7 +217,12 @@ open_study <- function(study, home = tflplanner_home()) {
   id <- if (is_dir) .read_meta(study)$study_id else study
   st <- .read_state(id, home)
   if (is.null(st)) {
-    if (is_dir) return(register_study(study, home = home))
+    if (is_dir) {
+      # its programs as its setup has it, as below (#680)
+      s <- register_study(study, home = home)
+      .use_study(s$path)
+      return(s)
+    }
     stop("No study '", study, "': not registered and not a study folder.",
          call. = FALSE)
   }
@@ -230,6 +235,8 @@ open_study <- function(study, home = tflplanner_home()) {
   s <- .adopt_spec(st, home, full = is.null(st$files))
   if (moved && !identical(s$spec$status, "invalid")) .write_state(s, home)
   .spec_note(s)
+  # a report's argument saved as R code text by an old card (rtfreporter#958)
+  .warn_deparsed_args(.deparsed_args(s$planner$spec$outputs %||% list()))
   .set_config("last_study", id, home)
   # its programs as its setup has it (its folders' variables, its packages)
   .use_study(s$path)

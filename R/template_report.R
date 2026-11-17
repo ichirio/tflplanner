@@ -49,13 +49,54 @@
   x
 }
 
-# A template's parameters, named, in its order (none: a template unknown)
+# A template's parameters, named, in its order (none: a template unknown).
+# A series template ("<series>/<template>") whose file tfl_arg_defs() reads:
+# its params from those defs (.tpl_params_from_defs()); else tflspec's
+# registered template's.
 .tpl_params <- function(name) {
+  defs <- .tpl_defs(name)
+  if (!is.null(defs)) return(.tpl_params_from_defs(defs))
+  # TODO(P1a-2): drop when series templates exist
   p <- tryCatch(tflspec::tfl_template_params(name), error = function(e) list())
   if (length(p) && is.null(names(p))) {
     names(p) <- vapply(p, function(x) x$name, "")
   }
   p
+}
+
+# A series template's argument definitions ("<series>/<template>": a
+# name with a series), NULL for a template of no series or no file yet
+.tpl_defs <- function(name) {
+  if (!is.character(name) || length(name) != 1L || !grepl("^[^/]+/[^/]+$", name)) return(NULL)
+  d <- .arg_defs(template = name)
+  if (is.data.frame(d) && nrow(d)) d
+}
+
+# A parameter marked "key" (tflspec's tier: a default that stays on top of
+# the card); a tflspec with no such tier, or a parameter with no tier: no
+.tpl_is_key <- function(x) identical(x$tier, "key")
+
+# The small "key" marker beside a key argument's label (tip: why it is on top);
+# `t` the translator
+.tpl_key_tag <- function(x, t) if (.tpl_is_key(x)) shiny::span(
+  class = "badge rounded-pill rp-tpl-badge rp-tpl-badge-key",
+  title = t("A setting often changed in this report; shown on top even at its default."),
+  t("Main"))
+
+# A required parameter (tier "required" or required = TRUE) that has no default
+.tpl_required_empty <- function(x) {
+  (isTRUE(x$required) || identical(x$tier, "required")) && is.null(x$default)
+}
+
+# The card's arguments of a section in two groups: `up`, kept on top -- the
+# required, the report's own (in `args`) and the key ones, whatever their
+# value -- and `low`, the others, folded away (their order kept).  `prm`: the
+# section's parameters, named.
+.tpl_card_groups <- function(prm, args) {
+  nm <- names(prm)
+  on_top <- vapply(nm, function(a) isTRUE(prm[[a]]$required) || a %in% names(args) ||
+                     .tpl_is_key(prm[[a]]), NA)
+  list(up = nm[on_top], low = nm[!on_top])
 }
 
 # A report's template, as its file says it (NULL: none; a figure
@@ -96,6 +137,19 @@
   ds <- toupper(as.character(dataset %||% "")[1L])
   if (!is.na(ds) && nzchar(ds) && !is.null(data[[ds]])) return(names(data[[ds]]))
   unique(unlist(lapply(data, names)))
+}
+
+# The dataset a series template's parameter takes its columns from: its
+# choices say `vars(adsl_sub)`, the data row the template reads -- named by
+# its dataset (adsl_sub: ADSL).  NULL when it says none of the datasets there are.
+.tpl_vars_dataset <- function(prm, data) {
+  for (w in tryCatch(.choice_words(prm$sources), error = function(e) character())) {
+    q <- .choice_word_parse(w)
+    if (!identical(q$name, "vars") || !length(q$args)) next
+    ds <- toupper(sub("_.*$", "", as.character(q$args[[1L]])))
+    if (ds %in% names(data)) return(ds)
+  }
+  NULL
 }
 
 .tpl_is_varlike <- function(x) {
@@ -530,7 +584,7 @@
   if (is.null(tp)) return(character())
   miss <- .tpl_missing(tp$name, tp$args, p$spec$study)
   if (.tpl_pop_of_report(.tpl_params(tp$name))) {
-    pid <- as.character(p$spec$outputs[[output_id]]$population %||% "")[1L]
+    pid <- as.character(p$spec$outputs[[output_id]]$common$population %||% "")[1L]
     if (is.na(pid) || !nzchar(pid)) miss <- c("population", miss)
   }
   miss
@@ -558,11 +612,18 @@
   }
 })
 .tpl_arg_section <- function(template, argument) {
+  # (a series template's def: its step)
+  st <- .arg_def(.tpl_defs(template), argument)$step
+  if (length(st) == 1L && !is.na(st) && st %in% names(.tpl_step_section)) {
+    return(.tpl_step_section[[st]])
+  }
+  # TODO(P1a-2): drop when series templates exist (and the table
+  # inst/extdata/template_arg_sections.csv with it)
   tab <- .tpl_section_table()
   i <- which(tab$template == template & tab$argument == argument)
   if (length(i)) return(tab$section[i[1L]])
   if (argument %in% c("population", "subset", "where", "data", "param", "paramcd")) return("data")
-  if (argument %in% c("title", "param_page", "param_heading")) return("page")
+  if (argument %in% c("title", "page_by", "page_heading")) return("page")
   if (argument %in% c("labels", "heading", "order", "sort", "formats") ||
         grepl("_(label|order)$", argument)) return("content")
   "ard"
@@ -675,8 +736,11 @@
   if (!is.null(name)) o$template$name <- name
   prm <- .tpl_params(o$template$name)
   args <- args[c(intersect(names(prm), names(args)), setdiff(names(args), names(prm)))]
+  if (!is.null(args$population)) o$common$population <- as.character(args$population)
+  # (a template whose analysis set is the report's population (demog) holds
+  # it in `common:`, not in its arguments)
+  if (.tpl_pop_of_report(prm)) args$population <- NULL
   o$template$args <- args
-  if (!is.null(args$population)) o$population <- as.character(args$population)
   o
 }
 
@@ -727,6 +791,7 @@ body.rp-switching #step ~ .tab-content, body.rp-switching #report_head, #report_
 .rp-tpl-badge-study { background-color: #198754; color: #fff; }
 .rp-tpl-badge-fallback { background-color: #ffc107; color: #000; }
 .rp-tpl-badge-default { background-color: transparent; color: #495057; border: 1px solid #adb5bd; }
+.rp-tpl-badge-key { background-color: #e9ecef; color: #495057; border: none; }
 .rp-code pre.rp-flow { max-height: none !important; overflow-y: visible; min-height: 0; }
 @keyframes rp-card-flash { 0%, 60% { outline-color: rgba(13,110,253,.85); }
   100% { outline-color: rgba(13,110,253,0); } }
@@ -1077,21 +1142,34 @@ $(document).on('shiny:connected', function() {
   message(sprintf("[tpl] %6.2f s  %s", as.numeric(difftime(Sys.time(), t0, units = "secs")), step))
 }
 
-# The verbs of the lines after a template report's call, as its program
-# has them (tflspec::tfl_content_code(): the study standard's items, and any
-# the template adds after its call), in their order -- the cards shown
-# with the report's own (one card a line, #440)
+# The verbs of the study standard's items a template report has, and of any
+# the template adds after its call, as its program has them, in their order
+# -- the cards shown with the report's own (one card an item, #440).  A
+# template with `extends` (demog) has the study's items inside its call
+# (`study = list(plan_x = ...)`, tflspec #780), the others as lines after it:
+# the resolved output's template record (`$rest`, items not the report's own)
+# says the first, the program's lines after the call the second.
 .tpl_code_fns <- function(p, output_id) {
   sp <- tryCatch(.code_spec(p), error = function(e) NULL)
   o <- sp$outputs[[output_id]]
   if (is.null(o) || is.null(.tpl_spec_name(o))) return(character())
-  code <- tryCatch(tflspec::tfl_content_code(tflspec::tfl_resolve_output(o, sp$study)),
-                   error = function(e) character())
+  res <- tryCatch(tflspec::tfl_resolve_output(o, sp$study), error = function(e) NULL)
+  code <- tryCatch(tflspec::tfl_content_code(res), error = function(e) character())
+  in_call <- vapply(attr(res, "template")$rest %||% list(), function(it) {
+    if (is.list(it) && !identical(it$from, "own") && is.character(it$fn) && length(it$fn) == 1L) it$fn else NA_character_
+  }, "")
   at <- grep("(tpl_[A-Za-z0-9_]+|tfl_tpl)\\(", code)
-  if (!length(at)) return(character())
-  rest <- code[seq_along(code) > at[1L]]
-  m <- regmatches(rest, regexpr("^\\s*(plan_[A-Za-z0-9_]+)\\(", rest))
-  sub("\\($", "", trimws(m))
+  after <- character()
+  if (length(at)) {
+    rest <- code[seq_along(code) > at[1L]]
+    m <- regmatches(rest, regexpr("^\\s*(plan_[A-Za-z0-9_]+)\\(", rest))
+    after <- sub("\\($", "", trimws(m))
+  }
+  # (an item said both ways counts once; a verb the lines repeat stays twice)
+  in_call <- in_call[!is.na(in_call)]
+  fns <- c(in_call[!in_call %in% after], after)
+  # (the study's items inside the call: only the plan verbs, as the lines are)
+  fns[grepl("^plan_", fns)]
 }
 .tpl_spec_name <- function(o) {
   t <- o$template
@@ -1122,8 +1200,11 @@ $(document).on('shiny:connected', function() {
 # replaced within `window` seconds: a field drawn from an older card saying
 # its old value back, not an edit.  `past`: data frame of v (the values) and
 # t (their times, seconds); `val`, `now` likewise.  (A write's say-back came
-# 2-6 s after it when measured; 15 s is the margin.)
-.tpl_stale_say <- function(val, past, now, window = 15) {
+# 2-6 s after it when measured; 15 s is the margin; the tests, which run on
+# machines that take longer, widen it with option tflplanner.tpl_stale_window.)
+.tpl_stale_say <- function(val, past, now,
+                           window = getOption("tflplanner.tpl_stale_window",
+                                              15)) {
   if (is.null(past) || !nrow(past)) return(FALSE)
   any(past$v == val & now - past$t <= window)
 }

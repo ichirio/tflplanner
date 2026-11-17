@@ -10,7 +10,7 @@ tpl_sample_planner <- function() {
 }
 
 tpl_demog_output <- function(id = "T-99") {
-  tflspec::tfl_output(id, "table", population = "SAF",
+  tflspec::tfl_output(id, "table", common = list(population = "SAF"),
                       template = list(name = "demog",
                                     args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
 }
@@ -209,8 +209,8 @@ test_that("a report's file with the template and arguments set, in the template'
   p <- .spec_add_output(p, tpl_demog_output(), population = "SAF")
   o <- .tpl_output(p, "T-99", list(zzz = 1, population = "FAS"), name = "disposition")
   expect_identical(o$template$name, "disposition")
-  expect_identical(names(o$template$args), c("population", "zzz"))
-  expect_identical(o$population, "FAS")
+  expect_identical(names(o$template$args), "zzz")
+  expect_identical(o$common$population, "FAS")
   # the name kept when none is given
   expect_identical(.tpl_output(p, "T-99", list())$template$name, "demog")
 })
@@ -272,18 +272,25 @@ test_that("the verbs after a template's call: the ones its program has", {
   expect_identical(.tpl_code_fns(p, code_id), character())
 })
 
+# demog's study items: in its call with tflspec#780 (tfl_tpl(study = )), none with #764
+.demog_study_fns <- if ("study" %in% names(formals(tflspec::tfl_tpl))) {
+  c("plan_cells", "plan_digits", "plan_stub", "plan_style")
+} else character()
+
 test_that("the verbs after a template's call in the program tflspec writes now", {
   skip_on_cran()
-  # (summary: the study standard's verbs follow its call; demog takes them
-  # as its arguments, tflspec#764, and its program has none after it)
-  o <- tflspec::tfl_output("T-99", "table", population = "SAF",
+  # (demog and summary take the study standard's verbs as their arguments,
+  # tflspec#764 / #785, in their call's `study = list(` (tflspec#780), and
+  # their programs have none after the call)
+  o <- tflspec::tfl_output("T-99", "table", common = list(population = "SAF"),
                            template = list(name = "summary",
                                          args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   p <- .spec_add_output(tpl_sample_planner(), o, population = "SAF")
-  fns <- .tpl_code_fns(p, "T-99")
-  expect_true(all(c("plan_digits", "plan_stub") %in% fns))
+  expect_identical(.tpl_code_fns(p, "T-99"), .demog_study_fns)
   q <- .spec_add_output(tpl_sample_planner(), tpl_demog_output(), population = "SAF")
-  expect_identical(.tpl_code_fns(q, "T-99"), character())
+  # (demog's study items are in its call, `study = list(`, tflspec#780: the
+  # verbs of those, from the template record; none with tflspec#764)
+  expect_identical(.tpl_code_fns(q, "T-99"), .demog_study_fns)
 })
 
 test_that("a program with no template call, or that tflspec cannot make, has no verbs", {
@@ -291,14 +298,17 @@ test_that("a program with no template call, or that tflspec cannot make, has no 
   p <- .spec_add_output(tpl_sample_planner(), tpl_demog_output(), population = "SAF")
   testthat::local_mocked_bindings(tfl_content_code = function(...) c("plan_cells(x)", "plan_labels(y)"),
                                   .package = "tflspec")
-  expect_identical(.tpl_code_fns(p, "T-99"), character())
+  expect_identical(.tpl_code_fns(p, "T-99"), .demog_study_fns)
   testthat::local_mocked_bindings(
     tfl_content_code = function(...) c("tpl_demog(x)", "  plan_cells(x)", "not a verb", "plan_labels(y)"),
     .package = "tflspec")
-  expect_identical(.tpl_code_fns(p, "T-99"), c("plan_cells", "plan_labels"))
+  # (the call's own items first, those the lines after it say again counted
+  # there: the lines' verbs last, in their order)
+  expect_identical(.tpl_code_fns(p, "T-99"),
+                   c(setdiff(.demog_study_fns, c("plan_cells", "plan_labels")), "plan_cells", "plan_labels"))
   testthat::local_mocked_bindings(tfl_content_code = function(...) stop("cannot"),
                                   .package = "tflspec")
-  expect_identical(.tpl_code_fns(p, "T-99"), character())
+  expect_identical(.tpl_code_fns(p, "T-99"), .demog_study_fns)
 })
 
 test_that("a template's name in a report's file, and its call in the program", {

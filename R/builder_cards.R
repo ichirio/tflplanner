@@ -10,7 +10,8 @@
 #                                        where the item came from, a summary,
 #                                        the menu) and its body
 #   builder_card_read(input, id, schema) the card's inputs as the item's args
-#   arg_field(id, arg, type, ...)        one argument's field, by its type
+#   arg_field(id, arg, type, ...)        one argument's field, by its type (a
+#                                        def's table: R/arg_defs_table.R)
 #   arg_group(label, fields, as)         several fields on one row
 #   arg_more(id, fn, used, schema)       the folded "other arguments"
 #   from_badge(from)                     the mark of where a value came from
@@ -183,6 +184,13 @@ builder_card_read <- function(input, id, schema = NULL, args = NULL, logical_fal
     if (isTRUE(get(a, "isr"))) {
       txt <- get(a, "r")
       if (!is.null(txt) && nzchar(trimws(txt))) out[[a]] <- tflspec::tfl_r(trimws(txt))
+      next
+    }
+    # (a def's table of a map or rows: its state read back as the type says)
+    # (a rows<...> with no columns to show was drawn as its R: read as R)
+    if (identical(.def_input(schema$args[[a]]), "table") && .tbl_is_state(get(a))) {
+      v <- .tbl_read(get(a))
+      if (!is.null(v)) out[[a]] <- v
       next
     }
     if (kind == "map") {

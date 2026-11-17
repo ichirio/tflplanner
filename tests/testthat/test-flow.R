@@ -24,7 +24,6 @@ two_output_study <- function(id = "F1") {
 }
 
 test_that("the study ARD grows output by output, and says where it stands", {
-  skip_if_not_installed("cards")
   skip_on_cran()
   flow_home()
   s <- two_output_study()
@@ -80,7 +79,6 @@ test_that("the study ARD grows output by output, and says where it stands", {
 
 test_that("two people saving different parts both keep their changes", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   flow_home()
   s <- two_output_study("F2")
   ard_person <- open_study("F2")

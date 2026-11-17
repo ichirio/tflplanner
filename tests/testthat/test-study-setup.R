@@ -30,6 +30,20 @@ setup_part <- function(s, k) {
   p <- .split_study_setup(.read_bytes(setup_file(s)))
   p[[k]]
 }
+# The study's data, where the setup reads it (with tflspec#794 its part 2
+# loads the catalog's datasets as it runs): a small file for each
+# readRDS(file.path(path_<folder>, "<name>.rds")) line, in its folder
+give_data <- function(s) {
+  txt <- readLines(setup_file(s), warn = FALSE)
+  m <- regmatches(txt, regexec("readRDS[(]file.path[(]path_([a-z_]+), \"([^\"]+)\"[)][)]",
+                               txt))
+  for (x in Filter(length, m)) {
+    d <- file.path(s$path, study_layout()[[x[2L]]])
+    dir.create(d, recursive = TRUE, showWarnings = FALSE)
+    saveRDS(data.frame(USUBJID = "01", TRT01A = "A"), file.path(d, x[3L]))
+  }
+  invisible(s)
+}
 add_to_part3 <- function(s, lines) {
   cat(paste0(lines, "\n", collapse = ""), file = setup_file(s), append = TRUE)
 }
@@ -66,6 +80,7 @@ test_that("a new study gets programs/study_setup.R with its three parts", {
   expect_true(any(grepl("^study_phase +<- \"2\"$", p2)))
   expect_true(any(grepl("^study_compound +<- NA_character_$", p2)))
   # it runs, and defines them
+  give_data(s)
   e <- new.env()
   withr::with_dir(s$path, sys.source(f, envir = e, toplevel.env = e))
   expect_identical(e$path_adam, "data/adam")
@@ -102,6 +117,7 @@ test_that("saving rewrites part 2 only: parts 1 and 3 stay byte for byte", {
   expect_match(p2, "study_compound    <- \"XY-1\"", fixed = TRUE)
   expect_false(dir.exists(file.path(s$path, "programs", ".edited")))
   # the file still runs: part 3 after part 2
+  give_data(s)
   e <- new.env()
   withr::with_dir(s$path, sys.source(f, envir = e, toplevel.env = e))
   expect_identical(e$my_fun(1), 2)
@@ -291,7 +307,6 @@ test_that("a change to study_setup.R marks the ARD and the reports outdated", {
 
 test_that("a sample built by its programs records the setup, and goes stale with it", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   local_home()
   s <- create_study("ABC-108", planner = setup_planner())
   saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
@@ -335,6 +350,7 @@ test_that("a study gets programs/study_helpers.R, which its setup sources", {
   fns <- c("set_levels", "tag_ard", "fmt_ard", "fmt_pvalue", "keep_stats",
            "save_ard")
   withr::defer(suppressWarnings(rm(list = fns, envir = globalenv())))
+  give_data(s)
   e <- new.env()
   withr::with_dir(s$path, sys.source(setup_file(s), envir = e, toplevel.env = e))
   for (fn in fns) {
@@ -384,4 +400,78 @@ test_that("a change to report_setup.R (the rounding) marks the reports outdated,
   # a record of study_setup.R alone (made before): held to it alone
   expect_false(.report_setup_changed(.study_setup_hash(s$path), s$path))
   expect_true(.report_setup_changed(paste0(.study_setup_hash(s$path), "|x"), s$path))
+})
+
+test_that("the study's rounding is set once, in study_setup.R's part 2 (tflspec#791)", {
+  skip_on_cran()
+  local_home()
+  s <- suppressMessages(create_sample_study(run = FALSE))
+  s$planner <- .spec_set_rounding(s$planner, "sas")
+  s <- suppressMessages(save_study(s))
+  setup <- readLines(file.path(s$path, .study_setup_path()), encoding = "UTF-8")
+  part2 <- setup[seq(grep(.setup_marker_study, setup, fixed = TRUE),
+                     grep(.setup_marker_user, setup, fixed = TRUE) - 1L)]
+  rnd <- "options(rtfreporter.rounding = \"sas\", cards.round_type = \"round-half-up\")"
+  expect_true(rnd %in% trimws(part2))
+  # the input data (tflspec#794), where tflspec writes it: after the rounding,
+  # through the folder variables part 2 defines, not the catalog's paths
+  if (any(grepl("readRDS", tflspec::tfl_study_setup_code(s$planner$spec$study)))) {
+    # (an object of its own, or study$adam_org's, read when first used: tflspec#814)
+    expect_true(any(grepl("readRDS(file.path(path_adam, \"adsl.rds\"))", part2, fixed = TRUE)))
+    expect_gt(grep("readRDS", part2)[1L], match(rnd, trimws(part2)))
+    expect_false(any(grepl("readRDS(\"data/", part2, fixed = TRUE)))
+    # and it runs from the study folder, the sample's data there
+    e <- new.env()
+    withr::with_dir(s$path, {
+      sys.source(file.path(s$path, .study_setup_path()), envir = e, toplevel.env = e)
+      expect_true(is.data.frame(e$adsl))
+    })
+  }
+  # the ARD and report setups source it and do not set the rounding again
+  ard <- readLines(file.path(s$path, study_layout()[["programs_ard"]], .ard_setup_file))
+  expect_false(any(grepl("cards.round_type", ard, fixed = TRUE)))
+  rep <- file.path(s$path, .report_setup_path())
+  if (file.exists(rep)) {
+    expect_false(any(grepl("rtfreporter.rounding", readLines(rep), fixed = TRUE)))
+  }
+  # the program as study_setup_code() gives it: with the study's spec, or none
+  expect_true(rnd %in% trimws(study_setup_code(s$meta, study = s$planner$spec$study)))
+  expect_false(any(grepl("rounding", study_setup_code(s$meta), fixed = TRUE)))
+  # the study's rounding changed: part 2 says the new one, once
+  s$planner <- .spec_set_rounding(s$planner, "r")
+  s <- suppressMessages(save_study(s))
+  setup <- readLines(file.path(s$path, .study_setup_path()), encoding = "UTF-8")
+  expect_identical(sum(grepl("rtfreporter.rounding = \"r\"", setup, fixed = TRUE)), 1L)
+  expect_false(any(grepl("rtfreporter.rounding = \"sas\"", setup, fixed = TRUE)))
+})
+
+test_that("the setup reads the datasets a report uses, not every dataset of the catalog", {
+  skip_on_cran()
+  local_home()
+  s <- suppressMessages(create_sample_study(run = FALSE))
+  p <- s$planner
+  # a dataset of the catalog no report uses (its file is not on disk)
+  p$spec$study$data$datasets <- c(p$spec$study$data$datasets,
+                                  list(list(dataset = "ADZZ", path = "data/adam/adzz.rds")))
+  # the datasets read: `adsl <- readRDS(...)`, or (tflspec#814)
+  # `delayedAssign("adsl", readRDS(...), assign.env = study$adam_org)`,
+  # over one line or several: the parsed code
+  read <- function(x) {
+    reads <- function(e) any(grepl("readRDS(", deparse(e), fixed = TRUE))
+    unlist(lapply(as.list(parse(text = x)), function(e) {
+      if (!is.call(e)) return(NULL)
+      f <- as.character(e[[1L]])
+      if (identical(f, "<-") && reads(e[[3L]])) return(as.character(e[[2L]]))
+      if (identical(f, "delayedAssign") && reads(e[[3L]])) return(as.character(e[[2L]]))
+      NULL
+    }))
+  }
+  all <- read(tflspec::tfl_study_setup_code(p$spec$study))
+  now <- read(tflspec::tfl_study_setup_code(.study_rounding_source(p)))
+  expect_true("adzz" %in% all)
+  expect_false("adzz" %in% now)
+  # the others as the catalog has them, ADSL first
+  used <- tolower(.reports_datasets(p))
+  expect_identical(now, all[all %in% used])
+  expect_identical(now[1L], "adsl")
 })

@@ -2,7 +2,9 @@
 # through the variables programs/study_setup.R defines (path_adam,
 # path_ard, ...), and no `pkg::` for the packages it attaches.  tflspec
 # writes its part so with its options tflspec.paths and tflspec.attached;
-# tflplanner's own lines read the same options.
+# tflplanner's own lines read the same options.  tflspec.study_setup: the
+# study's rounding is in programs/study_setup.R's part 2, so the ARD and
+# report setups leave it out (tflspec#791).
 #
 # They are set only while a program is written or compared with its file
 # (.with_study_code()): a study's programs run its setup first.  The app's
@@ -12,12 +14,37 @@
 .code_context <- new.env()
 
 # The study whose programs are written from now on (open_study(),
-# save_study(), study_status()): its setup's packages
+# save_study(), the app's study): its setup's packages.  NULL: no study
+# (closed, or none open yet), the programs as they are (#680)
 .use_study <- function(root) {
   .code_context$opts <- if (is.null(root)) NULL else list(
     tflspec.paths = .study_path_vars(),
-    tflspec.attached = .study_setup_packages(root))
+    tflspec.attached = .study_setup_packages(root),
+    tflspec.study_setup = TRUE)
+  .code_context$root <- if (is.null(root)) NULL else
+    normalizePath(root, "/", mustWork = FALSE)
   invisible(root)
+}
+
+# `expr` with the context of the study at `root`.  The open study's is
+# set for good (its setup may have changed); another study's (its status
+# looked at while one is open) only while `expr` runs: the open study's
+# context and its program cache are as they were afterwards (#680)
+.with_study_context <- function(root, expr) {
+  if (identical(.code_context$root, normalizePath(root, "/", mustWork = FALSE))) {
+    .use_study(root)
+    return(expr)
+  }
+  old <- list(opts = .code_context$opts, root = .code_context$root)
+  cache <- as.list(.program_cache, all.names = TRUE)
+  on.exit({
+    .code_context$opts <- old$opts
+    .code_context$root <- old$root
+    rm(list = ls(.program_cache, all.names = TRUE), envir = .program_cache)
+    list2env(cache, envir = .program_cache)
+  }, add = TRUE)
+  .use_study(root)
+  expr
 }
 
 # the study's folders as programs/study_setup.R names them

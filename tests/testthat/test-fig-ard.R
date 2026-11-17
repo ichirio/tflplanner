@@ -45,8 +45,11 @@ test_that("the sample's F-14-2-3 reads T-14-2-2's ARD in its data section", {
   code <- program_code(p, "F-14-2-3")
   i_data <- grep("^# ---- data ", code)
   i_ard <- which(code == "ard <- readRDS(file.path(path_ard, \"ard.rds\")) |>")
-  i_adam <- grep("^adtte <- readRDS", code)
+  # (the ADaM data is read once, in the study's setup: the data section
+  # derives its set from the `adtte` that is there)
+  i_adam <- grep("^adtte_ttskin <- adtte", code)[1L]
   expect_length(i_ard, 1L)
+  expect_false(any(grepl("^adtte <- readRDS", code)))
   expect_true(i_data < i_ard && i_ard < i_adam)
   expect_identical(code[i_ard + 1L], "  filter(output_id == \"T-14-2-2\")")
   expect_match(code[i_ard + 2L], "run programs/ard/T-14-2-2.R first", fixed = TRUE)
@@ -82,7 +85,6 @@ test_that("the checks: no source, not made yet, then each piece against the rows
   expect_identical(pr$severity, "warning")
   expect_match(pr$problem, "not made yet")
   # made: the design's pieces are in it
-  skip_if_not_installed("cardx")
   u <- suppressMessages(update_study_ard(s, "T-14-2-2"))
   expect_true(u$ok)
   expect_identical(nrow(.fig_ard_problems(s, "F-14-2-3")), 0L)
@@ -99,7 +101,6 @@ test_that("the checks: no source, not made yet, then each piece against the rows
 })
 
 test_that("a figure whose ARD has no rows yet says which and how to make it", {
-  skip_if_not_installed("cardx")
   skip_if_not_installed("ggsurvfit")
   s <- fig_ard_study()
   # (its table's ARD not made: an official run stopped half way, say)
@@ -108,7 +109,6 @@ test_that("a figure whose ARD has no rows yet says which and how to make it", {
 })
 
 test_that("the preview prints the table's medians", {
-  skip_if_not_installed("cardx")
   skip_if_not_installed("ggsurvfit")
   s <- fig_ard_study()
   suppressMessages(update_study_ard(s, "T-14-2-2"))
@@ -154,7 +154,6 @@ test_that("a table deleted, or an analysis dropped from it: the figure's checks 
   expect_identical(.figs_reading_table(p, "T-14-2-2"), c("F-14-2-2", "F-14-2-3"))
   # its KM analysis dropped from the definition: an error even while the
   # ARD made before still has the rows
-  skip_if_not_installed("cardx")
   s$planner <- p
   suppressMessages(update_study_ard(s, "T-14-2-2"))
   an <- p$ard$analyses
@@ -223,7 +222,6 @@ test_that("the study review lists a figure's ARD problems as F04-F08, each with 
   expect_identical(r$args[[1L]], "T-GONE")
   expect_match(r$message, "(deleted, or renamed by hand)", fixed = TRUE)
   # made, then a piece the ARD cannot answer: F08, in the designer
-  skip_if_not_installed("cardx")
   expect_true(suppressMessages(update_study_ard(s, "T-14-2-2"))$ok)
   expect_identical(nrow(rv(s)), 0L)
   d <- fig_design(s$planner, "F-14-2-3")
@@ -259,8 +257,13 @@ test_that("set_fig_own_analyses() writes a design's analyses to the figure's ARD
   expect_identical(ad$data_id[ad$output_id == "T1"], "adsl_saf")
   expect_identical(nrow(ad), 2L)
   expect_identical(sheet_rows(p, "report", "F-FOR")$ard_source, "own")
-  # the definition holds, and writes the figure's ARD program
-  expect_silent(.ard_spec(p$ard))
+  # the definition holds, and writes the figure's ARD program (tflspec's
+  # own forest analyses compare with "" -- its study$adam check, tflspec#817,
+  # says a blank is NA there: that note alone is not this test's)
+  blank_na <- function(w) if (grepl("a blank is NA", conditionMessage(w), fixed = TRUE)) {
+    invokeRestart("muffleWarning")
+  }
+  expect_silent(withCallingHandlers(.ard_spec(p$ard), warning = blank_na))
   # applied again (another subgroup): the same ids replaced, the rest kept
   an2 <- tflspec::tfl_fig_forest_analyses("ADTTE", "TTDE", "SAF", "TRT01A", "RACE")
   p2 <- set_fig_own_analyses(p, "F-FOR", an2)
@@ -286,7 +289,7 @@ tpl_fig_planner <- function(p, name, id, ...) {
   saf <- as.list(pops[match("SAF", pops$population_id),
                       intersect(c("population_id", "dataset", "where"), names(pops)), drop = FALSE])
   steps <- if (.tpl_own_data(tflspec::tfl_template_params(name))) .tpl_steps_from("ADTTE", saf, "PFS")
-  o <- tflspec::tfl_output(id, "figure", label = name, population = "SAF",
+  o <- tflspec::tfl_output(id, "figure", label = name, common = list(population = "SAF"),
                            template = list(name = name, args = list(...)),
                            data = if (length(steps)) list(steps = steps))
   .spec_add_output(p, o, label = name, population = "SAF")

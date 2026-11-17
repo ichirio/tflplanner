@@ -156,7 +156,7 @@
     # unchanged); one that cannot be drawn so is kept as it is (said so)
     e$legacy_pop <- blank_na(r$population_id)
     where <- blank_na(r$where)
-    if (nzchar(e$legacy_pop) && .is_blank(r$subjects)) {
+    if (nzchar(e$legacy_pop) && .is_blank(r$subjects_in)) {
       po <- p$ard$populations
       w2 <- .cond_put_pop(where, po$where[match(e$legacy_pop, po$population_id)])
       if (!is.na(w2)) {
@@ -169,17 +169,17 @@
       ad$data_id[seq_len(match(old, ad$data_id) - 1L)]
     bar <- function(v) .split_bar(v)
     cands <- adata_subject_cands(old)
-    if (!.is_blank(r$subjects) && !r$subjects %in% cands) cands <- c(r$subjects, cands)
+    if (!.is_blank(r$subjects_in) && !r$subjects_in %in% cands) cands <- c(r$subjects_in, cands)
     # kept to the report's analysis set's subjects (adsl_<set>), if it is one
     rp_data <- {
       rp <- report_population(p, ard_target() %||% "")
       pds <- p$ard$populations$dataset[match(rp, p$ard$populations$population_id)]
       if (is.na(rp)) NA else .adata_same_as(ad, if (is.na(pds)) "ADSL" else pds, rp, NA, NA)
     }
-    subj_now <- if (!.is_blank(r$subjects)) r$subjects else
+    subj_now <- if (!.is_blank(r$subjects_in)) r$subjects_in else
       if (!is.na(rp_data) && rp_data %in% cands) rp_data else if (length(cands)) cands[1L] else ""
     # kept to them: as it is; a new one, unless it is itself one row a subject
-    subj_on <- if (!is.null(old) || !is.null(e$name)) !.is_blank(r$subjects) else
+    subj_on <- if (!is.null(old) || !is.null(e$name)) !.is_blank(r$subjects_in) else
       length(cands) > 0L && !adata_root(r$from) %in% adata_pop_ds()
     e$cands <- cands
     adata_edit(e)
@@ -445,7 +445,7 @@
     if (!is.na(code)) {
       pop <- subjects <- where <- add <- derive <- keep <- distinct <- NA
     }
-    p <- set_analysis_data(p, ard_target(), id, from = from, population_id = pop, subjects = subjects,
+    p <- set_analysis_data(p, ard_target(), id, from = from, population_id = pop, subjects_in = subjects,
                            where = where, add = add,
                            derive = derive, keep = keep,
                            distinct = distinct, label = one(input$adata_label),
@@ -531,7 +531,7 @@
       tmp <- trimws(input$adata_id %||% "")
       if (!nzchar(tmp)) stop("no name")
       ps <- adata_pop_split(adata_subj_value())
-      set_analysis_data(q, ard_target(), tmp, from = one_of(input$adata_from), subjects = adata_subj_value(),
+      set_analysis_data(q, ard_target(), tmp, from = one_of(input$adata_from), subjects_in = adata_subj_value(),
                         population_id = ps$pop,
                         where = ps$where, add = one_of(input$adata_add),
                         derive = one_of(adata_derive_now()), keep = one_of(input$adata_keep),
@@ -567,6 +567,8 @@
     })
   })
   shiny::observeEvent(input$adata_save, {
+    # (no form open -- it was closed with the report it was for: nothing to write)
+    shiny::req(!is.null(adata_edit()))
     p <- tryCatch(adata_planner(), error = function(e) e)
     if (inherits(p, "error")) return(notify(conditionMessage(p), "warning"))
     e <- adata_edit()
@@ -1183,6 +1185,9 @@
   ard_scope_id <- shiny::reactive({
     if (identical(input$ard_scope, "study")) NULL else ard_target()
   })
+  # another report is open: the analysis data form of the one before is
+  # closed (what [Save] writes follows ard_target(), not the form's report)
+  shiny::observeEvent(ard_target(), adata_close(), ignoreNULL = FALSE, ignoreInit = TRUE)
   output$ard_code <- shiny::renderText({
     shiny::req(has_study())
     a <- rv$p$ard
@@ -1204,7 +1209,26 @@
   output$ard_spec_pane <- shiny::renderUI({
     shiny::tagList(
       shiny::checkboxInput("ard_all", t("Every report's analyses (with output_id)"), FALSE),
-      rhandsontable::rHandsontableOutput("hot_ard_analyses"))
+      rhandsontable::rHandsontableOutput("hot_ard_analyses"),
+      shiny::uiOutput("ard_item_sheets"))
+  })
+  # (a template item's condition rows and calls, tflspec#827: shown where
+  # the report has them, or an analysis takes params)
+  output$ard_item_sheets <- shiny::renderUI({
+    p <- rv$p
+    tg <- if (isTRUE(input$ard_all)) "" else ard_target()
+    an <- ard_rows(p, "analyses", tg)
+    has <- function(s) !is.null(p$ard[[s]]) && nrow(ard_rows(p, s, tg)) > 0L
+    show_cond <- has("conditions") || ("params" %in% names(an) && any(!is.na(an$params)))
+    show_ards <- has("ards")
+    if (!show_cond && !show_ards) return(NULL)
+    shiny::tagList(
+      if (show_cond) shiny::tagList(
+        shiny::h6(class = "mt-3", with_tip("conditions", t(.ard_sheet_help("conditions")))),
+        rhandsontable::rHandsontableOutput("hot_ard_conditions")),
+      if (show_ards) shiny::tagList(
+        shiny::h6(class = "mt-3", with_tip("ards", t(.ard_sheet_help("ards")))),
+        rhandsontable::rHandsontableOutput("hot_ard_ards")))
   })
   output$ard_result_pane <- shiny::renderUI({
     shiny::tagList(
@@ -1271,8 +1295,14 @@
     }
     !(dirty() && !do_save())
   }
-  output$ard_run_info <- shiny::renderUI({
+  # the result kept is the report's it was made for: another report's table
+  # is not shown under this one's
+  ard_res_here <- function() {
     r <- ard_res()
+    if (!is.null(r) && !identical(r$scope, ard_target())) NULL else r
+  }
+  output$ard_run_info <- shiny::renderUI({
+    r <- ard_res_here()
     if (is.null(r)) {
       return(shiny::p(class = "small text-muted mt-2",
                       t("Update preview to see the ARD this report's analyses make.")))
@@ -1305,7 +1335,7 @@
     )
   })
   output$ard_table <- DT::renderDT({
-    r <- ard_res()
+    r <- ard_res_here()
     shiny::req(r, r$ard)
     # a height of its own, so the horizontal scroll bar stays in sight
     DT::datatable(ard_view(r$ard), rownames = FALSE, filter = "top",

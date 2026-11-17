@@ -180,8 +180,7 @@ p$ard$datasets <- tbl(
   list(dataset = "ADLB", level = "ADaM", path = "data/adam/adlb.rds"),
   list(dataset = "ADTTE", level = "ADaM", path = "data/adam/adtte.rds"))
 p$ard$populations <- tbl(
-  list(population_id = "SAF", dataset = "ADSL", where = "SAFFL == \"Y\"",
-       derive = "TRTA = TRT01A"))
+  list(population_id = "SAF", dataset = "ADSL", where = "SAFFL == \"Y\""))
 p$ard$analyses <- tbl(
   list(output_id = "T-14-1-1", analysis_id = "GROUPN", label = "Subjects per group",
        method = "categorical", population_id = "SAF", variables = "TRT01A"),

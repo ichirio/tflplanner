@@ -115,25 +115,25 @@ test_that("a template report: one card a line after its call -- the study standa
 
 test_that("a study standard's card edited in a template report: the report's own, in its YAML", {
   skip_on_cran()
-  # (summary: its stub is the study standard's card; demog takes it as arguments now)
+  # (summary: its plan_style is the study standard's card; its stub and the rest are the template's arguments now)
   p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
-  o <- tflspec::tfl_output("T-99", "table", population = "SAF",
+  o <- tflspec::tfl_output("T-99", "table", common = list(population = "SAF"),
                            template = list(name = "summary",
                                          args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   p <- .spec_add_output(p, o, population = "SAF")
-  it <- Filter(function(x) identical(x$fn, "plan_stub"), builder_items(p, "T-99"))[[1L]]
+  it <- Filter(function(x) identical(x$fn, "plan_style"), builder_items(p, "T-99"))[[1L]]
   expect_identical(it$from, "defaults")
-  q <- .builder_item_write(p, "T-99", "plan_stub", utils::modifyList(it$args, list(indent = 3L)))
+  q <- .builder_item_write(p, "T-99", "plan_style", utils::modifyList(it$args, list(align_count_pct = FALSE)))
   own <- q$spec$outputs[["T-99"]]$content
-  expect_true("plan_stub" %in% vapply(own, function(x) x$fn, ""))
+  expect_true("plan_style" %in% vapply(own, function(x) x$fn, ""))
   expect_identical(q$spec$outputs[["T-99"]]$template$name, "summary")
-  it2 <- Filter(function(x) identical(x$fn, "plan_stub"), builder_items(q, "T-99"))[[1L]]
+  it2 <- Filter(function(x) identical(x$fn, "plan_style"), builder_items(q, "T-99"))[[1L]]
   expect_identical(it2$from, "own")
-  expect_true(any(grepl("indent: 3", unlist(q$spec$text), fixed = TRUE)))
+  expect_true(any(grepl("align_count_pct: false", unlist(q$spec$text), fixed = TRUE)))
   # the file written for it: the template, its arguments and the card
   txt <- paste(q$spec$text[[q$spec$where[["T-99"]]]], collapse = "\n")
   expect_match(txt, "template:", fixed = TRUE)
-  expect_match(txt, "plan_stub", fixed = TRUE)
+  expect_match(txt, "plan_style", fixed = TRUE)
 })
 
 test_that("an argument tflspec filled from the study is the study standard's, with its source", {
@@ -150,7 +150,7 @@ test_that("plan_digits in a template report: a variable's decimals the report's 
   skip_on_cran()
   # (summary: its plan_digits is the study standard's card; demog has no rounding argument now)
   p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
-  o <- tflspec::tfl_output("T-99", "table", population = "SAF",
+  o <- tflspec::tfl_output("T-99", "table", common = list(population = "SAF"),
                            template = list(name = "summary",
                                          args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   p <- .spec_add_output(p, o, population = "SAF")
@@ -176,7 +176,7 @@ test_that("a template report converted to code: its items on the usual cards, it
   skip_on_cran()
   home <- local_home()
   s <- suppressMessages(create_sample_study(run = FALSE, home = home))
-  o <- tflspec::tfl_output("T-TPL", "table", label = "Demographics", population = "SAF",
+  o <- tflspec::tfl_output("T-TPL", "table", label = "Demographics", common = list(population = "SAF"),
                            template = list(name = "demog",
                                          args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   s$planner <- .spec_add_output(s$planner, o, label = "Demographics", population = "SAF")
@@ -216,7 +216,7 @@ test_that("the step an argument is drawn in: the table, the name's default, else
   for (a in c("labels", "heading", "order", "sort", "formats", "total_label", "visit_order")) {
     expect_identical(.tpl_arg_section("company_tpl", a), "content")
   }
-  for (a in c("title", "param_page", "param_heading")) {
+  for (a in c("title", "page_by", "page_heading")) {
     expect_identical(.tpl_arg_section("company_tpl", a), "page")
   }
   # anything else: the ARD
@@ -303,7 +303,6 @@ test_that("the Japanese says one word for post-baseline, and the tip has its \\n
 
 test_that("a template report's preview is its content run on its ARD, not the study defaults' sheets", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   home <- local_home()
   s <- suppressMessages(create_sample_study(run = FALSE, home = home))
   # the lab data the shift table reads (tflspec's simulated ADLB)
@@ -314,7 +313,7 @@ test_that("a template report's preview is its content run on its ARD, not the st
                     after = i),
              file.path(s$path, "spec", "data.yml"))
   s <- suppressMessages(open_study("SAMPLE-01", home = home))
-  o <- tflspec::tfl_output("T-TPL", "table", label = "Shift", population = "SAF",
+  o <- tflspec::tfl_output("T-TPL", "table", label = "Shift", common = list(population = "SAF"),
                            template = list(name = "shift",
                                            args = list(population = "SAF",
                                                        post_header = "Worst: {col}")))
@@ -579,4 +578,37 @@ test_that("a template listing with no columns left says so in Report result, not
     expect_match(html, "Required arguments are empty: columns", fixed = TRUE)
     expect_false(grepl("pages", html, fixed = TRUE))
   })
+})
+
+test_that("demog's study items (inside tfl_tpl(study =), tflspec #780) still map to their cards", {
+  skip_on_cran()
+  skip_if_not("study" %in% names(formals(tflspec::tfl_tpl)), "tflspec without tfl_tpl(study =)")
+  p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
+  o <- tflspec::tfl_output("T-99", "table", common = list(population = "SAF"),
+                           template = list(name = "demog",
+                                         args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
+  p <- .spec_add_output(p, o, population = "SAF")
+  sp <- .code_spec(p)
+  code <- tflspec::tfl_content_code(tflspec::tfl_resolve_output(sp$outputs[["T-99"]], sp$study),
+                                    pipe = "|>")
+  code <- unlist(strsplit(paste(code, collapse = "
+"), "
+", fixed = TRUE))
+  # the study's plan_stub (and others) are in the call's `study = list(`, not after it
+  expect_true(any(grepl("study = list(", code, fixed = TRUE)))
+  expect_true(any(grepl("^\\s+plan_stub = list\\(", code)))
+  expect_false(any(grepl("^\\s*plan_stub\\(", code)))
+  fns <- .tpl_code_fns(p, "T-99")
+  expect_true(all(c("plan_stub", "plan_cells") %in% fns))
+  # the cards: one each, the study's mark and not the report's own
+  items <- builder_items(p, "T-99")
+  cards <- .builder_items_cards(items, template = TRUE, code_fns = fns)
+  cf <- stats::setNames(vapply(cards, function(x) x$from, ""), vapply(cards, function(x) x$fn, ""))
+  expect_true(all(c("plan_stub", "plan_cells") %in% names(cf)))
+  expect_false(any(cf[c("plan_stub", "plan_cells")] == "own"))
+  # the Code tab: the study's lines are those items' lines
+  m <- builder_code_map(code, items)
+  expect_true(all(c("plan_stub", "plan_cells") %in% m$path))
+  at <- grep("^\\s+plan_stub = list\\(", code)
+  expect_identical(m$path[m$line == at], "plan_stub")
 })

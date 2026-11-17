@@ -45,9 +45,13 @@
 #' options(old)
 #' @export
 study_status <- function(study) {
+  # (another study than the open one: the open one's context kept, #680)
+  .with_study_context(study$path, .study_status(study))
+}
+
+.study_status <- function(study) {
   p <- study$planner
   root <- study$path
-  .use_study(root)
   lay <- study_layout()
   setup <- .report_setup_recorded(root, p$outputs$output_id)
   now <- .report_setup_hash(root)
@@ -142,6 +146,8 @@ study_status <- function(study) {
 run_study <- function(study, output_id = NULL, wait = TRUE) {
   p <- study$planner
   ids <- output_id %||% p$outputs$output_id
+  # a package a report needs, not installed: said before anything runs (#682)
+  .need_report_pkgs(p, ids)
   # a figure printing an ARD's numbers: that ARD first, when it is not made
   # from its definition now (as the official run does, #293); a table's own
   # likewise -- the builder's preview makes its ARD apart and leaves the

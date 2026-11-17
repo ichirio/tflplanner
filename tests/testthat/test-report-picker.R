@@ -52,7 +52,6 @@ test_that("a study of many reports, in sections, its states mixed", {
 
 test_that("the list chooses the report; the tables search the same way", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   home <- local_home()
   .make_big_study(30L, root = file.path(home, "ws"), home = home, study_id = "BIG-30")
   shiny::testServer(server_for("BIG-30"), {

@@ -25,9 +25,6 @@ ard:
           warning = list(NULL), error = list(NULL)
         ))
       purpose: PRIMARY OUTCOME MEASURE
-data:
-  source: ard
-  object: ard
 content:
   - table_plan:
       cols: context

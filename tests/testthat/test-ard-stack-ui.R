@@ -1,5 +1,4 @@
 test_that("the ARD tab: the outline, a stack's form, one inside it, grouping and ungrouping", {
-  skip_if_not_installed("cards")
   local_home()
   s <- create_study("ST")
   dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)

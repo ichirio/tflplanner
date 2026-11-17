@@ -88,12 +88,8 @@ read_data_head <- function(path, n = 50L) {
     stop("read_data_head(): `path` is one file.", call. = FALSE)
   }
   ext <- tolower(tools::file_ext(path))
-  need <- function(pkg) {
-    if (!requireNamespace(pkg, quietly = TRUE)) {
-      stop("Reading .", ext, " files needs the ", pkg, " package.",
-           call. = FALSE)
-    }
-  }
+  # (a reader of Suggests: stop, naming the package to install)
+  need <- function(pkg) .need_pkg(pkg, sprintf(tr("Reading .%s files"), ext))
   d <- switch(ext,
     rds = readRDS(path),
     rda = , rdata = local({

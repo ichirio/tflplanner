@@ -18,7 +18,6 @@ test_that("1-2: a data the study has no choice for is a choice, as it is", {
 })
 
 test_that("1-1: an analysis data the form cannot show is saved back unchanged", {
-  skip_if_not_installed("cards")
   local_home()
   p <- add_output(new_planner(), "DM")
   p$ard$datasets <- data.frame(dataset = c("ADSL", "ADAE"),
@@ -30,7 +29,7 @@ test_that("1-1: an analysis data the form cannot show is saved back unchanged", 
   # written by hand in the sheet: a condition rows cannot hold, columns not
   # in the data, a derive
   odd <- "AESER == \"Y\" | (AETOXGR %in% c(\"3\", \"4\") & !is.na(AEACN))"
-  p <- set_analysis_data(p, "DM", "adae_odd", from = "ADAE", subjects = "adsl_saf",
+  p <- set_analysis_data(p, "DM", "adae_odd", from = "ADAE", subjects_in = "adsl_saf",
                          where = odd, add = "TRT01A | NOT_A_COLUMN",
                          derive = "Q = 1 | R = Q + 1", keep = "AEDECOD | ODD",
                          distinct = "USUBJID | AEDECOD")
@@ -62,4 +61,23 @@ test_that("1-1: an analysis data the form cannot show is saved back unchanged", 
     rownames(a1) <- rownames(b1) <- NULL
     expect_identical(a1, b1)
   })
+})
+
+test_that("1-1: the preview's dummy analysis adds no column to select() when keep is set", {
+  local_home()
+  p <- add_output(new_planner(), "DM")
+  p$ard$datasets <- data.frame(dataset = c("ADSL", "ADAE"),
+                               path = c("data/adam/adsl.rds", "data/adam/adae.rds"))
+  for (s in names(p$ard)) p$ard[[s]] <- .normalize_ard_sheet(p$ard[[s]], s)
+  p <- set_analysis_data(p, "DM", "adae_s", from = "ADAE",
+                         keep = "USUBJID | AEDECOD | AESEV")
+  code <- .adata_code_start(p, "DM", "adae_s")
+  expect_match(code, "select(adae, USUBJID, AEDECOD, AESEV)", fixed = TRUE)
+  expect_false(grepl("TRY_", code, fixed = TRUE))
+  s <- create_study("KU4", planner = p)
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  saveRDS(cards::ADAE, file.path(s$path, "data", "adam", "adae.rds"))
+  d <- .adata_make(p, s$path, "DM", "adae_s")
+  expect_null(attr(d, "error"))
+  expect_identical(names(d), c("USUBJID", "AEDECOD", "AESEV"))
 })

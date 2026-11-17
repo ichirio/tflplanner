@@ -1,6 +1,5 @@
 test_that("own ARD functions: the study's and the company's side by side, tried, made, replaced", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   home <- local_home()
   # the company's: one from tflspec's template
   dir.create(file.path(home, "standards", "ard_functions"), recursive = TRUE,
@@ -79,7 +78,6 @@ test_that("own ARD functions: the study's and the company's side by side, tried,
 
 test_that("the Own functions tab: listed, used, tried, a new one; the analysis form offers them", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   home <- local_home()
   dir.create(file.path(home, "standards", "ard_functions"), recursive = TRUE,
              showWarnings = FALSE)
@@ -141,7 +139,6 @@ test_that("the Own functions tab: listed, used, tried, a new one; the analysis f
 
 test_that("a function is tried on the study's data as the ARD programs make it", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   home <- local_home()
   dir.create(file.path(home, "standards", "ard_functions"), recursive = TRUE,
              showWarnings = FALSE)

@@ -74,18 +74,43 @@
 # visible arguments (or R), r a monospace field, map<aes, ...> a row of
 # aes fields each with a column / value switch.  Beside every field: the
 # `R` switch (the value as R) and the (i) of its help (what the argument
-# means).
+# means).  A def (tfl_arg_defs()'s row) and `ctx` (what the card knows,
+# .choice_values()) choose the field by its input form; `fixed_rows`: a
+# table's rows shown read only on top (the template's ALL row), not read
+# back.
 #' @noRd
 arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default = NULL,
                       choices = NULL, from = "own", help = NULL, required = FALSE,
                       lang = "en", fn = NULL, aes = NULL, nav = NULL, help_link = NULL,
-                      own = NULL, nested = FALSE) {
+                      own = NULL, def = NULL, ctx = NULL, fixed_rows = NULL, nested = FALSE) {
   t <- function(x) tr(x, lang)
   kind <- .arg_kind(type)
   fid <- paste0(id, "__", arg)
+  # (a def's input form: the field it says; .def_kind() the kind it draws)
+  form <- .def_input(def)
+  tbl <- NULL
+  if (!is.null(form)) {
+    if (is.null(choices) && length(def$choices)) {
+      choices <- .choice_values(def$choices, ctx, lang, values = def$values)
+    }
+    kind0 <- kind
+    kind <- .def_kind(form, kind, type, def)
+    # (a table: the table field of a map<K,V> or a rows<map<..>>, else the
+    # field its type has)
+    tbl <- if (identical(form, "table")) {
+      .tbl_spec(type, def, ctx, value = if (!inherits(value, "tfl_r")) value, lang = lang,
+                choices = choices)
+    }
+    if (!is.null(tbl)) kind <- "table"
+    # (a pick of text with nothing to choose from: the text field)
+    if (identical(kind, "pick_one") && identical(kind0, "string") && !length(choices) &&
+          !isTRUE(def$free)) {
+      kind <- kind0
+    }
+  }
   # (an argument that is R only -- no other form -- shows its R in its own
   # field, as the others' R: no switch to press, its R mark fixed)
-  r_only <- identical(kind, "r")
+  r_only <- kind %in% c("r", "condition")
   is_r <- inherits(value, "tfl_r") && !r_only
   r_text <- if (is_r) as.character(unclass(value)) else ""
   if (is_r) value <- NULL
@@ -111,6 +136,15 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
     shape = .field_shape(fid, choices, value, default, lang),
     call = .field_call(fid, .type_call_fn(type), value, default, lang),
     map = .field_map(fid, aes %||% .aes_default, value, choices, lang),
+    # (a def's forms)
+    pick_enum = .field_enum(fid, .def_entries(def, type), value, default, lang,
+                            labels = .enum_labels[[arg]]),
+    pick_one = .field_select(fid, choices, value, multiple = FALSE, lang = lang,
+                             placeholder = default, create = isTRUE(def$free)),
+    pick_many = .field_select(fid, choices, value, multiple = TRUE, lang = lang,
+                              placeholder = default, create = isTRUE(def$free)),
+    condition = .field_condition(fid, value, default, choices),
+    table = .field_table(fid, tbl, value, fixed_rows, lang),
     .field_r(fid, value, default))
   r_input <- shiny::tags$input(type = "text", id = paste0(fid, "__r"), class = "form-control form-control-sm rp-mono rp-r-input",
                                value = r_text, placeholder = "R", spellcheck = "false")
@@ -129,7 +163,10 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
     shiny::tags$input(type = "checkbox", id = paste0(fid, "__none"), class = "rp-isnone",
                       `data-init` = if (none) "1", checked = if (none) NA else NULL),
     shiny::tags$span(t(.none_word)))
-  cls <- c("rp-field", paste0("rp-field-", kind), if (required) "rp-field-required",
+  # (a def's form keeps its type's class: a pick of several is a list's)
+  cls_kind <- switch(kind, pick_many = "list", pick_one = "column", pick_enum = "enum",
+                     condition = "r rp-field-condition", kind)
+  cls <- c("rp-field", paste0("rp-field-", cls_kind), if (required) "rp-field-required",
            if (is_r) "rp-field-r", if (none) "rp-field-none",
            if (none || nzchar(r_text) || .has_value(value)) "rp-has-value")
   shiny::div(
@@ -142,7 +179,63 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
     shiny::div(class = "rp-field-row",
                shiny::div(class = "rp-form-input", control),
                if (!r_only) r_input, if (none_ok) shiny::div(class = "rp-none-show", t(.none_word)), none_switch, r_switch),
+    if (identical(kind, "pick_many") && isTRUE(def$ordered)) {
+      shiny::div(class = "rp-field-hint rp-ordered-hint", t("In order, top to bottom"))
+    },
     if (!is.null(nav)) nav_hint(nav, "field", lang))
+}
+
+# ---- a def's input form -> the field ----------------------------------------------
+
+# A def's input form (tfl_arg_defs()'s `input`), NULL for none
+.def_input <- function(def) {
+  f <- def$input
+  if (is.null(f) || length(f) != 1L || is.na(f) || !nzchar(f)) NULL else as.character(f)
+}
+
+# The kind of field a def's form draws, from the type's `kind`: a pick of an
+# enum or of fixed values a select of them ("pick_enum"; one that takes a
+# typed value, or whose values are only some of its choices, a selectize
+# "pick_one"), a pick of a list<...> a select of several ("pick_many"), a
+# pick of one a select ("pick_one"); a switch, a number field, a colour,
+# a shape, a call, a map, R: as the type says (the type decides).  A
+# condition of type r its R field with the columns as candidates.  A table:
+# the field its type has here; arg_field() draws the table field
+# (R/arg_defs_table.R) where the type is a map<K,V> or a rows<map<..>>.  A
+# text: as the type says.  The kind stays one that
+# builder_card_read() reads back as the type says.
+.def_kind <- function(form, kind, type, def) {
+  switch(
+    form,
+    pick = {
+      if (identical(kind, "list")) return("pick_many")
+      if (!kind %in% c("string", "column", "stat", "object", "enum")) return(kind)
+      words <- vapply(.choice_words(def$choices), function(w) .choice_word_parse(w)$name, "")
+      only_fixed <- !length(words) || all(words == "fixed")
+      if (length(.def_entries(def, type)) && only_fixed && !isTRUE(def$free)) return("pick_enum")
+      "pick_one"
+    },
+    condition = if (identical(kind, "r")) "condition" else kind,
+    kind)
+}
+
+# the entries of a def's pick: its values, else its type's enum
+.def_entries <- function(def, type) {
+  v <- as.character(unlist(def$values))
+  if (length(v)) v else .type_enum(type)
+}
+
+# A condition: its R in a monospace field, the columns (`choices`) offered
+# as it is typed
+.field_condition <- function(fid, value, default, choices = NULL) {
+  dl <- if (length(choices)) paste0(fid, "__dl")
+  v <- if (inherits(value, "tfl_r")) as.character(unclass(value)) else if (!is.null(value)) .arg_to_r(value)
+  shiny::tagList(
+    shiny::tags$input(type = "text", id = fid, class = "form-control form-control-sm rp-mono rp-condition",
+                      value = v, placeholder = if (!is.null(default)) .arg_to_r(default) else NULL,
+                      spellcheck = "false", list = dl),
+    if (!is.null(dl)) shiny::tags$datalist(id = dl, lapply(unique(as.character(unlist(choices))),
+                                                         function(x) shiny::tags$option(value = x))))
 }
 
 .has_value <- function(v) {
@@ -152,10 +245,13 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
 }
 
 # a select of the data's columns (or any choices), one or several
-.field_select <- function(fid, choices, value, multiple = FALSE, lang = "en", placeholder = NULL) {
+# (`create`: a value not among the choices may be typed)
+.field_select <- function(fid, choices, value, multiple = FALSE, lang = "en", placeholder = NULL,
+                          create = FALSE) {
   choices <- .choices_with(choices, value)
   ph <- if (!is.null(placeholder)) as.character(placeholder)[[1L]] else tr("Choose", lang)
   opts <- list(placeholder = ph)
+  if (create) opts$create <- TRUE
   # (several: in order, dragged to reorder -- a hierarchy's levels, the
   # columns of a stub, the keys of an order)
   if (multiple) opts$plugins <- list("remove_button", "drag_drop")
@@ -168,7 +264,7 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
   if (is.null(choices)) choices <- character()
   if (!is.null(value) && is.atomic(value)) {
     v <- as.character(value)
-    v <- v[nzchar(v) & !v %in% choices]
+    v <- v[nzchar(v) & !v %in% unlist(choices)]
     if (length(v)) choices <- c(choices, stats::setNames(v, v))
   }
   choices
@@ -281,7 +377,7 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
              lapply(vis, function(a) {
                arg_field(fid, a, ent$args[[a]]$type, label = ent$args[[a]]$label,
                          value = args[[a]], default = ent$args[[a]]$default,
-                         help = .schema_help(fn, a), lang = lang, nested = TRUE)
+                         help = .schema_help(fn, a), lang = lang, nested = TRUE, def = ent$args[[a]])
              }),
              shiny::tags$code(class = "rp-name", ")"))
 }

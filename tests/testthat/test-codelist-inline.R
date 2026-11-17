@@ -95,7 +95,6 @@ test_that("1-1 part 4: a click opens a column's code list in place, one at a tim
 
 test_that("the table builder's rows as the code list of variable: labels and order", {
   skip_on_cran()
-  skip_if_not_installed("cards")
   local_home()
   p <- add_output(new_planner(), "T-DM", type = "table")
   s <- create_study("BV", planner = p)

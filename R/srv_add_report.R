@@ -1,6 +1,14 @@
 # app_server(): add report -- moved from R/app.R as it was.  Run in
 # app_server()'s environment (.srv_part()); what it makes is copied back
 # there for the parts after it (.srv_keep()).
+# A report's `common: population` set (NA: taken out, and the empty
+# `common:` with it)
+.o_set_population <- function(o, population) {
+  has <- length(population) && !is.na(population[1L]) && nzchar(population[1L])
+  o$common$population <- if (has) population[1L]
+  if (!length(o$common)) o$common <- NULL
+  o
+}
 .srv_add_report <- function() {
   shiny::observeEvent(input$add_ok, {
     id <- .id_with_prefix(input$modal_id, input$modal_type)
@@ -63,7 +71,7 @@
                          none = FALSE) {
     data <- tpl_data()
     type <- .tpl_type(prm, tpl_all_cols())
-    cols <- .tpl_columns(data, dataset)
+    cols <- .tpl_columns(data, dataset %||% .tpl_vars_dataset(prm, data))
     shown <- if (is.null(value)) prm$default else value
     # (`!unset`: the "(none)" switch on; `none`, a study reference with no
     # value, or the unset: the placeholder says "(none)")
@@ -259,14 +267,21 @@
     prm <- .tpl_shown(.tpl_params(nm))
     opt <- Filter(function(x) !isTRUE(x$required), prm)
     if (!length(opt)) return(NULL)
-    shiny::tags$details(
+    # (the key arguments right under the required ones, open, with their marker;
+    # the folded group holds the rest)
+    top <- Filter(.tpl_is_key, opt)
+    opt <- opt[setdiff(names(opt), names(top))]
+    draw <- function(x, label = tpl_label(x)) tpl_widget(
+      tpl_arg_id(nm, x$name), x, tpl_opt_start(x), dataset = prm$data$default, params = prm,
+      label = label, say_first = TRUE, tpl = nm)
+    key_ui <- lapply(top, function(x) draw(x, shiny::span(tpl_label(x), " ", .tpl_key_tag(x, t))))
+    if (!length(opt)) return(shiny::tagList(key_ui))
+    shiny::tagList(key_ui, shiny::tags$details(
       class = "border rounded p-2 mb-2",
       shiny::tags$summary(class = "small fw-semibold",
                           with_tip(sprintf(t("More arguments (%d): filters, variables, columns ..."), length(opt)),
                                    t("Each starts at its default; only a value you change is written into the report."))),
-      lapply(opt, function(x) tpl_widget(tpl_arg_id(nm, x$name), x, tpl_opt_start(x),
-                                         dataset = prm$data$default, params = prm,
-                                         say_first = TRUE, tpl = nm)))
+      lapply(opt, draw)))
   })
   # (bound while the dialog fades in, it counts as hidden: drawn anyway)
   shiny::outputOptions(output, "tpl_modal_more", suspendWhenHidden = FALSE)
@@ -529,7 +544,8 @@
     pop <- as.character(dat$population %||% attr(args, "population") %||% args$population %||% NA_character_)
     attr(args, "population") <- NULL
     o <- tflspec::tfl_output(id, kind, label = if (is.na(desc)) NA_character_ else desc,
-                             population = pop, template = list(name = nm, args = args),
+                             common = if (!is.na(pop)) list(population = pop) else list(),
+                             template = list(name = nm, args = args),
                              data = if (length(dat$steps)) list(steps = dat$steps))
     # (straight into the spec: its toc line and its file, the view of
     # that report alone -- .spec_add_output())
@@ -582,6 +598,9 @@
     prm <- .tpl_params(name)[[a]]
     type <- .tpl_type(prm, tpl_all_cols())
     shown <- tp$args[[a]] %||% .tpl_study_value(rv$p$spec$study, prm) %||% prm$default
+    # (a switch with no default -- a series template's, from the series -- is drawn
+    # off: its first FALSE is what it showed, no edit)
+    if (is.null(shown) && identical(type, "flag")) shown <- FALSE
     if (identical(type, "columns") && is.null(.tpl_list_text(shown, prm))) return()
     # (a list the rows cannot show: its YAML text; not YAML, said and the value stays)
     yaml_box <- identical(type, "list") && is.null(.tpl_list_text(shown, prm))
@@ -710,7 +729,7 @@
   # that takes it as a shown argument, not given: the report's population
   # is carried over)
   tpl_pop_back <- function(tp, to_prm, id) {
-    pid <- rv$p$spec$outputs[[id]]$population
+    pid <- rv$p$spec$outputs[[id]]$common$population
     .tpl_pop_of_report(.tpl_params(tp$name)) && !.tpl_pop_of_report(to_prm) &&
       !.tpl_own_data(to_prm) && "population" %in% names(.tpl_shown(to_prm)) &&
       is.null(tp$args$population) && length(pid) && !is.na(pid[1L]) && nzchar(pid[1L])
@@ -727,7 +746,7 @@
     # (back from a template that takes the report's population: the
     # population an argument again)
     if (tpl_pop_back(tp, to_prm, id)) {
-      args$population <- as.character(rv$p$spec$outputs[[id]]$population)[1L]
+      args$population <- as.character(rv$p$spec$outputs[[id]]$common$population)[1L]
     }
     # (to a KM type: the old template's data stage -- its dataset, its
     # parameter, the report's analysis set -- becomes the report's `data:`
@@ -824,7 +843,7 @@
   # the card's analysis-set choice: the report's population, else its own
   # join -- a flag ("flag:<variable>") or as it is (".own") -- else none
   tpl_data_pop_sel <- function(id, f) {
-    pid <- rv$p$spec$outputs[[id]]$population
+    pid <- rv$p$spec$outputs[[id]]$common$population
     if (length(pid) && !is.na(pid[1L]) && nzchar(pid[1L])) return(as.character(pid[1L]))
     if (!f$join) return("")
     fl <- .pop_flag(f$join_where)
@@ -844,7 +863,7 @@
     ch
   }
   tpl_data_pop <- function(id) {
-    pid <- rv$p$spec$outputs[[id]]$population
+    pid <- rv$p$spec$outputs[[id]]$common$population
     pops <- rv$p$ard$populations
     if (is.null(pid) || is.null(pops) || !nrow(pops)) return(NULL)
     k <- match(as.character(pid)[1L], pops$population_id)
@@ -871,24 +890,24 @@
     pop <- NULL
     if (identical(sel, ".own")) {
       pop <- list(dataset = f$join_dataset, where = f$join_where)
-      o$population <- NA_character_
+      o <- .o_set_population(o, NA_character_)
     } else if (startsWith(sel, "flag:")) {
       pop <- list(dataset = "ADSL", where = sprintf("%s == \"Y\"", sub("^flag:", "", sel)))
-      o$population <- NA_character_
+      o <- .o_set_population(o, NA_character_)
     } else if (nzchar(sel)) {
-      o$population <- sel
+      o <- .o_set_population(o, sel)
       pops <- rv$p$ard$populations
       k <- match(sel, pops$population_id)
       if (!is.na(k)) pop <- as.list(pops[k, intersect(c("population_id", "dataset", "where"), names(pops)),
                                          drop = FALSE])
     } else {
-      o$population <- NA_character_
+      o <- .o_set_population(o, NA_character_)
     }
     steps <- .tpl_steps_from(input$tpl_data_ds, pop, input$tpl_data_param %||% "",
                              input$tpl_data_filter %||% "")
     if (is.null(steps)) o$data$steps <- NULL else o$data$steps <- steps
     if (!length(o$data)) o$data <- NULL
-    p2 <- guarded(.spec_set_output(.spec_set_toc_population(rv$p, id, o$population), id, o))
+    p2 <- guarded(.spec_set_output(.spec_set_toc_population(rv$p, id, o$common$population), id, o))
     if (is.null(p2)) return()
     rv$p <- p2
     rv$bver <- rv$bver + 1L
@@ -904,10 +923,10 @@
     if (is.null(tp) || !.tpl_pop_of_report(.tpl_params(tp$name))) return()
     o <- rv$p$spec$outputs[[id]]
     sel <- input$tpl_report_pop %||% ""
-    now <- as.character(o$population %||% "")[1L]
+    now <- as.character(o$common$population %||% "")[1L]
     if (identical(sel, if (is.na(now)) "" else now)) return()
-    o$population <- if (nzchar(sel)) sel else NA_character_
-    p2 <- guarded(.spec_set_output(.spec_set_toc_population(rv$p, id, o$population), id, o))
+    o <- .o_set_population(o, if (nzchar(sel)) sel else NA_character_)
+    p2 <- guarded(.spec_set_output(.spec_set_toc_population(rv$p, id, o$common$population), id, o))
     if (is.null(p2)) return()
     rv$p <- p2
     rv$bver <- rv$bver + 1L
@@ -939,7 +958,7 @@
     # the data step, written as the report's `population:`)
     pop_of_report <- part == "data" && .tpl_pop_of_report(prm_all)
     if (pop_of_report) {
-      pid <- as.character(p$spec$outputs[[id]]$population %||% "")[1L]
+      pid <- as.character(p$spec$outputs[[id]]$common$population %||% "")[1L]
       if (is.na(pid)) pid <- ""
       if (!nzchar(pid)) miss <- c("population", miss)
     }
@@ -948,9 +967,12 @@
     # where a value comes from: this report / the study standard / the
     # function's default (and the report's over the study's, said)
     filled <- .tpl_filled(p, id)
-    rows <- .tpl_args_rows(tp$name, study, p$spec$outputs[[id]]$population)
+    rows <- .tpl_args_rows(tp$name, study, p$spec$outputs[[id]]$common$population)
     from_of <- function(a) {
       b <- .tpl_badge_of(a, args, rows)
+      # (a required argument with no value and no default: nothing to say the origin of)
+      if (!(a %in% names(args)) && .tpl_required_empty(prm[[a]]) &&
+          (is.null(b) || b$kind %in% c("default", "none"))) return(NULL)
       og <- .tpl_arg_origin(study, prm[[a]], args, filled)
       sv <- og$study
       sk <- NULL
@@ -981,6 +1003,8 @@
                   if (identical(og$from, "study")) paste0(std, ": ", .tpl_show(sv)) else
                     t("The function's default"))
     }
+    # (a key argument's marker, small, beside its label)
+    key_tag <- function(x) .tpl_key_tag(x, t)
     row <- function(a, upper) {
       x <- prm[[a]]
       og <- .tpl_arg_origin(study, x, args, filled)
@@ -992,19 +1016,20 @@
                    tpl_widget(tpl_iid(tp$name, a), x, args[[a]] %||% sv, dataset, params = prm,
                               args = args,
                               none = !is.null(nk),
-                              label = shiny::span(tpl_label(x, nk), " ", from_of(a)))),
-        if (upper && !isTRUE(x$required)) shiny::tags$button(
+                              label = shiny::span(tpl_label(x, nk), " ", key_tag(x), from_of(a)))),
+        if (upper && !isTRUE(x$required) && a %in% names(args)) shiny::tags$button(
           type = "button", class = "btn btn-sm btn-outline-secondary mt-4",
           title = t("Back to the default (the line is taken out of args)"),
           onclick = sprintf("Shiny.setInputValue('tpl_revert', '%s', {priority: 'event'})", a),
           t("Revert")))
     }
-    # a section's arguments: those required or given, then the others folded
+    # a section's arguments: those required, given or key, then the others folded
     block <- function(secs, head = NULL) {
       nm <- names(prm)[sec_of %in% secs]
       if (!length(nm)) return(NULL)
-      up <- nm[vapply(nm, function(a) isTRUE(prm[[a]]$required) || a %in% names(args), NA)]
-      low <- setdiff(nm, up)
+      g <- .tpl_card_groups(prm[nm], args)
+      up <- g$up
+      low <- g$low
       key <- paste0("tpl_open_", secs[1L])
       shiny::tagList(
         if (!is.null(head)) shiny::h6(class = "mt-2 mb-1", head),

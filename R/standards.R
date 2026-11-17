@@ -207,8 +207,7 @@
       dataset = "ADSL",
       where = c("SAFFL == \"Y\"", "FASFL == \"Y\"", "PPROTFL == \"Y\"",
                 "ENRLFL == \"Y\"", "RANDFL == \"Y\"", "PKFL == \"Y\""),
-      derive = c("TRTA = TRT01A", "TRTP = TRT01P", "TRTP = TRT01P",
-                 "TRTP = TRT01P", "TRTP = TRT01P", "TRTA = TRT01A"),
+      derive = NA_character_,
       note = c("Safety Analysis Set", "Full Analysis Set", "Per Protocol Set",
                "Enrolled Set", "Randomized Set", "Pharmacokinetic Analysis Set")),
     datasets = .df(

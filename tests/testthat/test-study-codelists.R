@@ -51,11 +51,9 @@ cl_study <- function(id, file = TRUE) {
   cat("codelists:\n  SEX: [{value: F, label: DefF}, {value: M, label: DefM}]\n",
       file = file.path(sp, "defaults.yml"), append = TRUE)
   dir.create(file.path(sp, "patterns"))
-  # (a pattern with a page: tflspec's sheets name a pattern by its page
-  # rows, and a pattern with none is refused by the report sheet)
+  # (a pattern holds no page: that is a page configuration's, tflspec PP-1b)
   writeLines(c("codelists:", paste0("  ", cl_trt),
-               "  SEX: [{value: F, label: PatF}, {value: M, label: PatM}]",
-               "page:", "  titles:", "    1: {center: Pattern title}"),
+               "  SEX: [{value: F, label: PatF}, {value: M, label: PatM}]"),
              file.path(sp, "patterns", "pp.yml"))
   f <- file.path(sp, "outputs", "DM2.yml")
   writeLines(sub("^  - defaults$", "  - patterns/pp", readLines(f)), f)
@@ -90,6 +88,27 @@ cl_ahead <- function(p, id = "DM") {
 }
 # a program without its banner (the date, the description)
 cl_body <- function(x) x[!grepl("^#", x)]
+# a table program without its plan_labels() step: tflspec writes one merged
+# step from the study's code lists when the program is generated from the
+# spec (tflspec #796); the view ahead of the spec (the sheets path) has none.
+# Nor does it have the page the spec path writes from the built-in standard
+# page configuration (tokens, the section's header and footer): those lines
+# go too, so what is compared is the table.
+cl_unlabel <- function(x) {
+  x <- cl_unpage(x)
+  i <- grep("  plan_labels(", x, fixed = TRUE)
+  if (!length(i)) return(x)
+  j <- if (endsWith(x[i[1L]], ")")) i[1L] else i[1L] + which(x[-seq_len(i[1L])] == "  )")[1L]
+  x <- x[-(i[1L]:j)]
+  x[i[1L] - 1L] <- sub(" |>", "", x[i[1L] - 1L], fixed = TRUE)
+  x
+}
+cl_unpage <- function(x) {
+  i <- grep("^  tokens = list\\($", x)
+  if (length(i)) x <- x[-(i[1L]:(i[1L] - 1L + which(x[-seq_len(i[1L] - 1L)] == "  ),")[1L]))]
+  x <- x[!grepl("^  rtf_section\\(header = ", x)]
+  sub(", auto_section = TRUE", "", x, fixed = TRUE)
+}
 
 cl_ard <- function(s, id) .ard_spec_code(.ard_spec(s$planner$ard), id,
                                          codelists = .study_codelists(s$planner))
@@ -205,7 +224,6 @@ test_that("the lists are asked of tflspec once for the same spec", {
 })
 
 test_that("the ARD built from the layers' lists is built, not outdated (programs, tflspec's build, the batch's hash)", {
-  skip_if_not_installed("cards")
   cl_home()
   s <- save_study(cl_study("CL6"))
   # the ARD program of the planner
@@ -292,12 +310,16 @@ test_that("a program is written with the view ahead of the spec, like the one fr
     a <- program_code(p, id)
     b <- expect_no_error(program_code(cl_ahead(p, id), id))
     expect_false(any(grepl("does not hold", b, fixed = TRUE)))
-    # the inherited lists are the ARD program's: neither table program has
-    # a line for them (the sheets path with them would write plan_levels()
-    # for a variable the ARD does not read, which the spec path does not).
+    # the inherited lists are the ARD program's (set_levels()): neither
+    # table program has a line for them; the labels reach the table through
+    # one plan_labels() (the sheets path has the lists its sheets hold: an
+    # own list, not the inherited ones)
     # (DM2 extends a pattern with no normalize_ard(): its two paths differ
     # there, not in the lists)
-    if (id != "DM2") expect_identical(cl_body(b), cl_body(a))
+    if (id != "DM2") expect_identical(cl_body(cl_unlabel(b)), cl_body(cl_unlabel(a)))
+    if (id == "DM") {
+      expect_true(any(grepl("plan_labels(SEX = c(F = \"DefF\", M = \"DefM\"))", a, fixed = TRUE)))
+    }
   }
 })
 
@@ -310,23 +332,25 @@ test_that("the sheets path takes no inherited list a variable the ARD does not r
   p <- open_study("CL12")$planner
   ahead <- cl_ahead(p)
   expect_true("AGEGR1" %in% .study_codelists(p)$variable)
-  expect_identical(cl_body(program_code(ahead, "DM")), cl_body(program_code(p, "DM")))
+  expect_identical(cl_body(program_code(ahead, "DM")),
+                   cl_body(cl_unlabel(program_code(p, "DM"))))
   expect_false(any(grepl("agegr1", program_code(ahead, "DM"), ignore.case = TRUE)))
+  # (the spec path leaves it out too: a layer's list is a report's only for
+  # a variable its ARD reads, tflspec's tfl_resolve_output())
+  expect_false(any(grepl("Young", program_code(p, "DM"), fixed = TRUE)))
 })
 
-test_that("the ARS reads a report's inherited lists: a condition on a label is the data's value", {
-  skip_if_not_installed("cards")
+test_that("the ARS reads a report's inherited lists: a condition on a label stops", {
+  # tflspec #796: the data hold the codes, so a `where` written with a label
+  # stops in the ARS as in the ARD program, and says the code to write
   cl_home()
   s <- cl_study("CL13")
   p <- s$planner
   i <- which(p$ard$analyses$output_id == "DM2" & p$ard$analyses$analysis_id == "AGE")
   p$ard$analyses$where[i] <- "SEX == \"PatF\""
   s$planner <- p
-  txt <- paste(utils::capture.output(utils::str(.ars_build(s)$ars, max.level = 99)),
-               collapse = "\n")
   # (PatF is the pattern's label of F, a list DM2 has from its layer only)
-  expect_true(grepl("SEX == \\\"F\\\"", txt, fixed = TRUE))
-  expect_false(grepl("PatF", txt, fixed = TRUE))
+  expect_error(.ars_build(s), "SEX: write \"F\" for \"PatF\"", fixed = TRUE)
 })
 
 test_that("the study is saved after an edit, and spec/codelists.yml is left as it is", {
