@@ -437,7 +437,7 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
   x <- .ensure_pop_adata(x, id, pop)
   subj <- attr(x, "data_id")
   rec <- .adata_free_name(x, id, .adata_default_name(dsn, pop))
-  x <- set_analysis_data(x, id, rec, from = dsn, subjects = subj, where = where)
+  x <- set_analysis_data(x, id, rec, from = dsn, subjects_in = subj, where = where)
 
   # the analysis: the hierarchy by the group, percents of the set's subjects
   # (its name: the records' -- AE; TEAE for the treatment-emergent ones)

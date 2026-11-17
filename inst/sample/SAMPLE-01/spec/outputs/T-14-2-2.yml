@@ -12,7 +12,7 @@ data:
   - id: adtte_saf_ttskin
     label: Time to first skin disorder, safety set
     from: ADTTE
-    subjects: adsl_saf
+    subjects_in: adsl_saf
     where: !r PARAMCD == "TTSKIN"
 ard:
   analyses:

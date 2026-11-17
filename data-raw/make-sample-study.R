@@ -723,21 +723,21 @@ p$ard$analysis_data <- tbl(
   saf("T-14-2-1"),
   list(output_id = "T-14-2-1", data_id = "advs_saf_sysbp",
        label = "Systolic blood pressure at week 24, safety set",
-       from = "ADVS", subjects = "adsl_saf",
+       from = "ADVS", subjects_in = "adsl_saf",
        where = "PARAMCD == \"SYSBP\" & AVISIT == \"CYCLE 9 DAY 1\""),
   saf("T-14-2-3"),
   list(output_id = "T-14-2-3", data_id = "advs_saf_sysbp",
        label = "Systolic blood pressure at week 24, safety set",
-       from = "ADVS", subjects = "adsl_saf",
+       from = "ADVS", subjects_in = "adsl_saf",
        where = "PARAMCD == \"SYSBP\" & AVISIT == \"CYCLE 9 DAY 1\""),
   saf("T-14-2-2"),
   list(output_id = "T-14-2-2", data_id = "adtte_saf_ttskin",
        label = "Time to first skin disorder, safety set",
-       from = "ADTTE", subjects = "adsl_saf", where = "PARAMCD == \"TTSKIN\""),
+       from = "ADTTE", subjects_in = "adsl_saf", where = "PARAMCD == \"TTSKIN\""),
   saf("T-14-3-1"),
   list(output_id = "T-14-3-1", data_id = "adae_saf",
        label = "Treatment-emergent AEs of the safety set",
-       from = "ADAE", subjects = "adsl_saf", where = "TRTEMFL == \"Y\""))
+       from = "ADAE", subjects_in = "adsl_saf", where = "TRTEMFL == \"Y\""))
 for (sh in names(p$ard)) p$ard[[sh]] <- .normalize_ard_sheet(p$ard[[sh]], sh)
 
 # ------------------------------------------------ the listing, the figure
