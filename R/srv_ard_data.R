@@ -156,7 +156,7 @@
     # unchanged); one that cannot be drawn so is kept as it is (said so)
     e$legacy_pop <- blank_na(r$population_id)
     where <- blank_na(r$where)
-    if (nzchar(e$legacy_pop) && .is_blank(r$subjects)) {
+    if (nzchar(e$legacy_pop) && .is_blank(r$subjects_in)) {
       po <- p$ard$populations
       w2 <- .cond_put_pop(where, po$where[match(e$legacy_pop, po$population_id)])
       if (!is.na(w2)) {
@@ -169,17 +169,17 @@
       ad$data_id[seq_len(match(old, ad$data_id) - 1L)]
     bar <- function(v) .split_bar(v)
     cands <- adata_subject_cands(old)
-    if (!.is_blank(r$subjects) && !r$subjects %in% cands) cands <- c(r$subjects, cands)
+    if (!.is_blank(r$subjects_in) && !r$subjects_in %in% cands) cands <- c(r$subjects_in, cands)
     # kept to the report's analysis set's subjects (adsl_<set>), if it is one
     rp_data <- {
       rp <- report_population(p, ard_target() %||% "")
       pds <- p$ard$populations$dataset[match(rp, p$ard$populations$population_id)]
       if (is.na(rp)) NA else .adata_same_as(ad, if (is.na(pds)) "ADSL" else pds, rp, NA, NA)
     }
-    subj_now <- if (!.is_blank(r$subjects)) r$subjects else
+    subj_now <- if (!.is_blank(r$subjects_in)) r$subjects_in else
       if (!is.na(rp_data) && rp_data %in% cands) rp_data else if (length(cands)) cands[1L] else ""
     # kept to them: as it is; a new one, unless it is itself one row a subject
-    subj_on <- if (!is.null(old) || !is.null(e$name)) !.is_blank(r$subjects) else
+    subj_on <- if (!is.null(old) || !is.null(e$name)) !.is_blank(r$subjects_in) else
       length(cands) > 0L && !adata_root(r$from) %in% adata_pop_ds()
     e$cands <- cands
     adata_edit(e)
@@ -445,7 +445,7 @@
     if (!is.na(code)) {
       pop <- subjects <- where <- add <- derive <- keep <- distinct <- NA
     }
-    p <- set_analysis_data(p, ard_target(), id, from = from, population_id = pop, subjects = subjects,
+    p <- set_analysis_data(p, ard_target(), id, from = from, population_id = pop, subjects_in = subjects,
                            where = where, add = add,
                            derive = derive, keep = keep,
                            distinct = distinct, label = one(input$adata_label),
@@ -531,7 +531,7 @@
       tmp <- trimws(input$adata_id %||% "")
       if (!nzchar(tmp)) stop("no name")
       ps <- adata_pop_split(adata_subj_value())
-      set_analysis_data(q, ard_target(), tmp, from = one_of(input$adata_from), subjects = adata_subj_value(),
+      set_analysis_data(q, ard_target(), tmp, from = one_of(input$adata_from), subjects_in = adata_subj_value(),
                         population_id = ps$pop,
                         where = ps$where, add = one_of(input$adata_add),
                         derive = one_of(adata_derive_now()), keep = one_of(input$adata_keep),
