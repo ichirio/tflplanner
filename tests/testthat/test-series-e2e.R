@@ -99,6 +99,9 @@ series_e2e <- function(t, kind, args, ids, in_code = character(), home, gap = NU
   prm <- .tpl_shown(.tpl_params(name))
   if (!length(prm)) {
     later <- c(later, "cards: .tpl_params() has no params for a series template (needs tflplanner#702)")
+  } else if (!exists(".tpl_table_spec", asNamespace("tflplanner"), inherits = FALSE)) {
+    # (the table and pick cards of a series template's params come with #702)
+    later <- c(later, "cards: a series template's table and pick params (needs tflplanner#702)")
   } else {
     expect_identical(names(prm), defs$name)
     got <- vapply(prm, function(x) .tpl_type(x), "")
