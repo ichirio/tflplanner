@@ -98,7 +98,8 @@ test_that("a listing: its data step's code, then its columns as defined", {
   # its order and its columns on that data, not its dataset read again
   expect_true(any(grepl("data <- data |>", code, fixed = TRUE)))
   expect_true(any(grepl("listing_spec(", code, fixed = TRUE)))
-  expect_identical(sum(grepl("^adsl <- ", code)), 1L)
+  # read once (its blank-as-NA line is not another read)
+  expect_identical(sum(startsWith(code, "adsl <- readRDS(")), 1L)
   expect_silent(parse(text = code))
   # the study's setup has read it: the program does not
   with_setup()

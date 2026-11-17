@@ -226,7 +226,7 @@ test_that("an ARS row names its report: the longest output id that fits", {
                                       item = "populations$derive", note = "x"))$sheet,
                    "populations")
   j <- .ars_jump_row(list(output_id = "T-1", where = "T-1 / SYSBP",
-                          item = "analysis_data$subjects",
+                          item = "analysis_data$subjects_in",
                           note = "advs_saf: `adsl_saf` -- ..."))
   expect_identical(j[c("sheet", "row")], list(sheet = "analysis_data", row = "advs_saf"))
 })
