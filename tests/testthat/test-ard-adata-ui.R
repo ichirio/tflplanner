@@ -555,3 +555,27 @@ test_that("a dataset x population that a plain analysis data is too is not liste
   expect_true("ADAE|SAF" %in% out$pairs)
   expect_true("|SAF" %in% .an_data_drop_same(ch, "|SAF", ad, po, "pairs")$pairs)
 })
+
+test_that("an analysis data form does not stay open on another report", {
+  local_home()
+  p <- add_output(adata_planner(), "AE")
+  s <- create_study("AD2", planner = p)
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  shiny::testServer(server_for("AD2"), {
+    rv <- session$userData$rv
+    session$setInputs(nav = "make", step = "ard", target = "DM")
+    session$setInputs(ard_adata_name = "|SAF")
+    expect_match(output$adata_detail$html, "adata_id", fixed = TRUE)
+    # another report is open: the form of the one before is gone, and a Save
+    # (a click left on the page) writes nothing
+    session$setInputs(target = "AE")
+    expect_false(grepl("adata_id", paste(output$adata_detail$html, collapse = ""), fixed = TRUE))
+    before <- rv$p$ard
+    session$setInputs(adata_id = "adsl_saf", adata_from = "ADSL", adata_pop = "SAF", adata_save = 1)
+    expect_identical(rv$p$ard, before)
+    # (back on the first: a form of its own opens again)
+    session$setInputs(target = "DM")
+    session$setInputs(ard_adata_name = "|SAF")
+    expect_match(output$adata_detail$html, "adata_id", fixed = TRUE)
+  })
+})

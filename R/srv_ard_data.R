@@ -567,6 +567,8 @@
     })
   })
   shiny::observeEvent(input$adata_save, {
+    # (no form open -- it was closed with the report it was for: nothing to write)
+    shiny::req(!is.null(adata_edit()))
     p <- tryCatch(adata_planner(), error = function(e) e)
     if (inherits(p, "error")) return(notify(conditionMessage(p), "warning"))
     e <- adata_edit()
@@ -1183,6 +1185,9 @@
   ard_scope_id <- shiny::reactive({
     if (identical(input$ard_scope, "study")) NULL else ard_target()
   })
+  # another report is open: the analysis data form of the one before is
+  # closed (what [Save] writes follows ard_target(), not the form's report)
+  shiny::observeEvent(ard_target(), adata_close(), ignoreNULL = FALSE, ignoreInit = TRUE)
   output$ard_code <- shiny::renderText({
     shiny::req(has_study())
     a <- rv$p$ard
@@ -1290,8 +1295,14 @@
     }
     !(dirty() && !do_save())
   }
-  output$ard_run_info <- shiny::renderUI({
+  # the result kept is the report's it was made for: another report's table
+  # is not shown under this one's
+  ard_res_here <- function() {
     r <- ard_res()
+    if (!is.null(r) && !identical(r$scope, ard_target())) NULL else r
+  }
+  output$ard_run_info <- shiny::renderUI({
+    r <- ard_res_here()
     if (is.null(r)) {
       return(shiny::p(class = "small text-muted mt-2",
                       t("Update preview to see the ARD this report's analyses make.")))
@@ -1324,7 +1335,7 @@
     )
   })
   output$ard_table <- DT::renderDT({
-    r <- ard_res()
+    r <- ard_res_here()
     shiny::req(r, r$ard)
     # a height of its own, so the horizontal scroll bar stays in sight
     DT::datatable(ard_view(r$ard), rownames = FALSE, filter = "top",
