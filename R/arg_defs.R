@@ -282,6 +282,8 @@
          step = if (identical(d$step, "data")) "data" else "call",
          hidden = identical(kind, "fixed"),
          arg_step = d$step, input = d$input, sources = d$choices,
+         # (a level's variable: the one its choices word levels(<param>) names)
+         of = .tpl_levels_word(d),
          free = d$free, ordered = d$ordered, default_kind = if (kind != "none") kind,
          # (the def itself: a table's type, columns and choices)
          def = d,
@@ -291,6 +293,20 @@
          fixed_rows = .tpl_fixed_rows(d))
   })
   stats::setNames(out, defs$name)
+}
+
+# The variable a level def's choices read (its words levels(by),
+# levels(from_args(by))): a param's name or a column's, as levels' `of`;
+# NULL for any other def
+.tpl_levels_word <- function(d) {
+  if (!grepl("^(list<)?level>?$", d$type %||% "")) return(NULL)
+  w <- .choice_words(d$choices)
+  w <- w[vapply(w, function(x) identical(.choice_word_parse(x)$name, "levels"), NA)]
+  if (!length(w)) return(NULL)
+  a <- .choice_word_parse(w[[1L]])$args
+  if (!length(a)) return(NULL)
+  if (grepl("^from_args\\s*[(]", a[[1L]])) a <- .choice_word_parse(a[[1L]])$args
+  if (length(a)) a[[1L]]
 }
 
 # A def's fixed rows (a data frame, its attribute "position" "before" or

@@ -403,3 +403,49 @@ test_that("a series template's pick of source words: chosen from them (report_da
   expect_identical(.tpl_value(c("ADSL", "ADAE"), "picks", prm$tags), c("ADSL", "ADAE"))
   expect_identical(.tpl_untouched(c("ADSL", "ADAE"), "picks", prm$tags), c("ADSL", "ADAE"))
 })
+
+test_that("a level def's choices word levels(<param>) gives the card the variable to read", {
+  defs <- mk_defs(
+    list(name = "category", input = "pick", type = "column", choices = "vars(ADSL)"),
+    list(name = "responder", input = "pick", type = "level", choices = "levels(category)", free = TRUE),
+    list(name = "ref", input = "pick", type = "level", choices = "levels(from_args(category))"),
+    list(name = "many", input = "pick", type = "list<level>", choices = "levels(SEX)"),
+    list(name = "other", input = "pick", type = "level"))
+  prm <- .tpl_params_from_defs(defs)
+  expect_identical(prm$responder$of, "category")
+  expect_identical(prm$ref$of, "category")
+  expect_identical(prm$many$of, "SEX")
+  expect_null(prm$other$of)
+  expect_null(prm$category$of)
+  expect_identical(.tpl_type(prm$responder), "levels")
+  expect_identical(.tpl_type(prm$many), "levels")
+  # the variable is the other param's value (or its default), its values the data's
+  d <- list(ADSL = data.frame(ARM = c("A", "B", "A"), SEX = c("F", "M", "F")))
+  expect_identical(.tpl_levels_of(prm$responder, prm, list(category = "ARM")), "ARM")
+  expect_identical(.tpl_levels(d, .tpl_levels_of(prm$responder, prm, list(category = "ARM"))), c("A", "B"))
+  expect_identical(.tpl_levels(d, .tpl_levels_of(prm$many, prm, list())), c("F", "M"))
+})
+
+test_that("a series template's level params (orr_subgroup responder, forest_hr ref) read a variable", {
+  skip_if_not("tfl_arg_defs" %in% getNamespaceExports("tflspec"))
+  ok <- tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/orr_subgroup")),
+                 error = function(e) FALSE)
+  skip_if_not(ok, "this tflspec has no series templates")
+  for (x in list(c("orr_subgroup", "responder"), c("forest_hr", "ref"))) {
+    prm <- .tpl_params(paste0("tflspec_v1/", x[[1L]]))
+    expect_identical(.tpl_type(prm[[x[[2L]]]]), "levels", info = x[[1L]])
+    expect_true(nzchar(prm[[x[[2L]]]]$of %||% ""), info = x[[1L]])
+  }
+})
+
+test_that("a map keyed by columns (demog analysis_ids) offers the data's columns as its keys", {
+  defs <- mk_defs(list(name = "analysis_ids", step = "analysis", input = "table",
+                       type = "map<column,string>", choices = "vars(adsl_sub)"))
+  prm <- .tpl_params_from_defs(defs)
+  expect_identical(.tpl_type(prm$analysis_ids), "table")
+  data <- list(ADSL = data.frame(AGE = 1, SEX = "F"))
+  ctx <- .tpl_table_ctx(data, "ADSL", args = list(), params = prm)
+  spec <- .tpl_table_spec(prm$analysis_ids, ctx)
+  expect_identical(spec$kinds[[1L]], "pick")
+  expect_identical(unname(spec$choices[[1L]]), c("AGE", "SEX"))
+})
