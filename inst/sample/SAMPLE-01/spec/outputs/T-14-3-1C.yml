@@ -17,7 +17,7 @@ data:
   - id: adae_saf
     label: Treatment-emergent AEs of the safety set
     from: ADAE
-    subjects: adsl_saf
+    subjects_in: adsl_saf
     where: !r TRTEMFL == "Y"
 ard:
   analyses:
