@@ -227,3 +227,5 @@
 "Column that orders the rows","行の順を決める列"
 "Text when no record is left","記録が無い時の文"
 "Records by hierarchy","階層ごとの記録"
+"ADSL variables added to each record","各記録に足す ADSL の変数"
+"Listing of records","記録の一覧"
