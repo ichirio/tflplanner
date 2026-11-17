@@ -222,3 +222,8 @@
 "the analysis set's id: the report's `common: population`","解析対象集団の ID。帳票の `common: population` に書いたもの"
 "Nested rows","入れ子の行"
 "Value labels","値のラベル"
+"Dataset of the records","記録のデータセット"
+"Analysis ID of each depth","深さごとの解析 ID"
+"Column that orders the rows","行の順を決める列"
+"Text when no record is left","記録が無い時の文"
+"Records by hierarchy","階層ごとの記録"
