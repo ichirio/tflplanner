@@ -131,7 +131,7 @@
       analysis_data = list(
         from = c(p$ard$datasets$dataset, p$ard$analysis_data$data_id),
         population_id = p$ard$populations$population_id,
-        subjects = p$ard$analysis_data$data_id),
+        subjects_in = p$ard$analysis_data$data_id),
       study = list(key = c("id", "output", "source")),
       list())
   }

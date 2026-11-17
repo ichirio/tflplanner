@@ -29,7 +29,7 @@ test_that("the starter writes the rows of the sample's T-14-3-1", {
     expect_identical(sample_rows(r$p, part, sheet, cols = cols),
                      sample_rows(r$sample, part, sheet, cols = cols), info = sheet)
   }
-  same("ard", "analysis_data", c("data_id", "from", "population_id", "subjects", "where"))
+  same("ard", "analysis_data", c("data_id", "from", "population_id", "subjects_in", "where"))
   same("ard", "analyses", c("analysis_id", "method", "data", "by", "variables",
                             "denominator", "args", "overall"))
   same("sheet", "tables", c("cols", "rows", "label", "sort", "total"))
