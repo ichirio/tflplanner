@@ -50,7 +50,7 @@ test_that("closed choice columns refuse other values; open ones take them", {
   expect_false(isTRUE(by_name$method$strict))
   expect_identical(.ard_closed_columns,
                    c("data", "dataset", "population_id", "denominator", "from",
-                     "subjects"))
+                     "subjects_in"))
 })
 
 test_that("the SPEC | Code | Result tabs are not a card around the sheets' card", {
