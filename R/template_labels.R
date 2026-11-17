@@ -159,6 +159,8 @@
   missing_row = "Missing row",
   categorical_levels = "Values shown per categorical variable",
   col_header = "Column heading",
+  nest = "Nested rows",
+  value_labels = "Value labels",
   stub_name = "Row-title column name",
   stub_before = "Row-title column before the row keys",
   widths = "Column widths",

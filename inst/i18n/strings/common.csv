@@ -2179,3 +2179,4 @@
 "The call's place among the item's calls, 1, 2, ...","項目の呼び出しの中での順番。1, 2, ..."
 "The call's by, | between them; blank: the item's.","この呼び出しの by。| で区切る。空欄なら項目の by。"
 "The call's variables, | between them; blank: the item's.","この呼び出しの variables。| で区切る。空欄なら項目の variables。"
+"Second column","2 つ目の列"
