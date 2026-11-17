@@ -10,7 +10,7 @@ data:
     from: ADSL
   - id: adtte_saf_ttskin
     from: ADTTE
-    subjects: adsl_saf
+    subjects_in: adsl_saf
     where: !r PARAMCD == "TTSKIN"
 ard:
   analyses:

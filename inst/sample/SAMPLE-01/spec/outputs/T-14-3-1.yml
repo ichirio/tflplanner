@@ -10,7 +10,7 @@ data:
     from: ADSL
   - id: adae_saf
     from: ADAE
-    subjects: adsl_saf
+    subjects_in: adsl_saf
     where: !r TRTEMFL == "Y"
 ard:
   analyses:

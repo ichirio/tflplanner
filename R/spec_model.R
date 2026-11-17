@@ -781,8 +781,11 @@
     new <- sheet_rows(v, s, output_id)
     if (!same_rows(sheet_rows(p, s, output_id), new)) p <- set_sheet_rows(p, s, output_id, no_id(new))
   }
-  for (s in c("analysis_data", "analyses")) {
+  # (a template item's condition rows and calls too -- conditions and ards,
+  # tflspec#827 -- a tflspec without them none)
+  for (s in c("analysis_data", .ard_report_sheets)) {
     d <- v$ard[[s]]
+    if (is.null(d) || !"output_id" %in% names(d)) next
     new <- d[!is.na(d$output_id) & d$output_id == output_id, , drop = FALSE]
     o <- p$ard[[s]]
     old <- if (!is.null(o)) o[!is.na(o$output_id) & o$output_id == output_id, , drop = FALSE]

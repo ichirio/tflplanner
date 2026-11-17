@@ -42,7 +42,7 @@ test_that("a report's analysis set makes the data of its subjects, once", {
 
 test_that("a report's analysis set changed: its analyses move to the new set's data", {
   p <- set_report_population(pop_planner(), "T1", "SAF")
-  p <- set_analysis_data(p, "T1", "adae_saf", from = "ADAE", subjects = "adsl_saf",
+  p <- set_analysis_data(p, "T1", "adae_saf", from = "ADAE", subjects_in = "adsl_saf",
                          where = "TRTEMFL == \"Y\"")
   p <- set_analysis_data(p, "T1", "adae_ser", from = "adae_saf", where = "AESER == \"Y\"")
   p$ard$analyses <- .normalize_ard_sheet(data.frame(
@@ -61,7 +61,7 @@ test_that("a report's analysis set changed: its analyses move to the new set's d
   expect_setequal(attr(q, "made"), c("adsl_itt", "adae_itt"))
   ad <- .adata_rows(q, "T1")
   r <- ad[ad$data_id == "adae_itt", ]
-  expect_identical(r$subjects, "adsl_itt")
+  expect_identical(r$subjects_in, "adsl_itt")
   expect_identical(r$where, "TRTEMFL == \"Y\"")
   # the old ones stay (the study's)
   expect_true(all(c("adsl_saf", "adae_saf") %in% ad$data_id))
@@ -96,7 +96,7 @@ test_that("the report list's analysis set: the report's, else its analyses'", {
   p <- add_output(p, "T2")
   # T2's own: its adsl_saf and the AEs kept to it (no set of its own)
   p <- set_analysis_data(p, "T2", "adsl_saf", from = "ADSL", population_id = "SAF")
-  p <- set_analysis_data(p, "T2", "adae_saf", from = "ADAE", subjects = "adsl_saf")
+  p <- set_analysis_data(p, "T2", "adae_saf", from = "ADAE", subjects_in = "adsl_saf")
   p$ard$analyses <- .normalize_ard_sheet(data.frame(
     output_id = "T2", analysis_id = "A1", method = "categorical", data = "adae_saf",
     variables = "AEDECOD"), "analyses")
@@ -232,7 +232,7 @@ test_that("a TOC's datasets: kept, a listing's default, a table's analysis data 
   expect_identical(q$outputs$datasets, c(NA, "ADSL | ADAE", "ADAE", "ADSL"))
   expect_setequal(attr(q, "made"), c("adsl_saf", "adae_saf"))
   r <- .adata_rows(q, "N1")
-  expect_identical(r$subjects[r$data_id == "adae_saf"], "adsl_saf")
+  expect_identical(r$subjects_in[r$data_id == "adae_saf"], "adsl_saf")
   expect_identical(lf_rows(q, "listings", "L1")$dataset, "ADAE")
   expect_identical(.report_toc_data(q, "N1"), c(ADAE = "adae_saf", "adsl_saf"))
   # the report list: the TOC's datasets until the definition names its own
@@ -251,21 +251,21 @@ test_that("a TOC's datasets: kept, a listing's default, a table's analysis data 
 
 test_that("analysis data copied from another report: the same names, what they read along", {
   p <- add_output(set_report_population(pop_planner(), "T1", "SAF"), "T2")
-  p <- set_analysis_data(p, "T1", "adae_saf", from = "ADAE", subjects = "adsl_saf",
+  p <- set_analysis_data(p, "T1", "adae_saf", from = "ADAE", subjects_in = "adsl_saf",
                          where = "TRTEMFL == \"Y\"")
   # adae_saf alone asked for: adsl_saf (its subjects) comes along
   q <- import_analysis_data(p, "T1", "T2", "adae_saf")
   expect_setequal(attr(q, "copied"), c("adsl_saf", "adae_saf"))
   r <- .adata_rows(q, "T2")
   expect_identical(r$data_id, c("adsl_saf", "adae_saf"))
-  expect_identical(r$subjects[2L], "adsl_saf")
+  expect_identical(r$subjects_in[2L], "adsl_saf")
   # T1's are as they were
   expect_identical(.adata_rows(q, "T1"), .adata_rows(p, "T1"))
   # again: the names T2 has get _1, and what they read follows the new name
   q2 <- import_analysis_data(q, "T1", "T2", "adae_saf")
   r2 <- .adata_rows(q2, "T2")
   expect_identical(r2$data_id, c("adsl_saf", "adae_saf", "adsl_saf_1", "adae_saf_1"))
-  expect_identical(r2$subjects[4L], "adsl_saf_1")
+  expect_identical(r2$subjects_in[4L], "adsl_saf_1")
   expect_error(import_analysis_data(p, "T1", "T2", "nope"), "No analysis data nope")
   # in use in a report is that report's: T2 may delete its copy though T1 reads its own
   expect_identical(.adata_rows(remove_analysis_data(q, "T2", "adae_saf"), "T2")$data_id, "adsl_saf")
