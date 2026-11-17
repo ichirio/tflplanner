@@ -38,10 +38,11 @@
     # (the preview reads them, when it is a report's)
     if (id %in% rv$p$outputs$output_id &&
         !identical(ard_preview_state(current_study(), id), "current")) {
-      if (!is.null(tryCatch(fetch_ard(current_study(), id), error = function(e) NULL))) {
-        rv$ard_ver <- rv$ard_ver + 1L
-      }
+      tryCatch(fetch_ard(current_study(), id), error = function(e) NULL)
     }
+    # (what the builder and the content step read is read again: the ARD may
+    # be on disk already, made by the program above, with no fetch to say so)
+    rv$ard_ver <- rv$ard_ver + 1L
     invisible(TRUE)
   }
   shiny::observeEvent(input$ard_make_study, do_study_ard(ard_target()))
