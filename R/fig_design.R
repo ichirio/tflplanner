@@ -56,7 +56,12 @@ fig_design <- function(x, output_id) {
                  plot = d$plot %||% list(), layers = d$layers %||% list()),
             d[setdiff(names(d), c("data", "stats", "plot", "layers"))])
   args <- args[names(args) %in% names(formals(tflspec::tfl_fig_design))]
-  do.call(tflspec::tfl_fig_design, args)
+  out <- do.call(tflspec::tfl_fig_design, args)
+  # a figure report's content key, `figure: {name, args}` (tflspec#835):
+  # tfl_fig_design() has no place for it, so it rides on the design list
+  # (the sheets' design list holds it; the report's YAML reads it back)
+  if (!is.null(d$figure)) out$figure <- d$figure
+  out
 }
 
 #' @rdname fig_design
@@ -155,6 +160,34 @@ set_fig_design <- function(x, output_id, design) {
             .fig_size_words(sz), dpi),
     sprintf("%s <- fig_sized(%s, width_in = %s, height_in = %s, dpi = %s)",
             obj, obj, sz$width_in, sz$height_in, dpi))
+}
+
+# A figure report with the content key `figure: {name, args}` (tflspec#835):
+# its program's data and content as tflspec writes them -- the report's
+# datasets and analysis data (its ARD definition), its ARD (`ard`), then the
+# model's fit when the function takes one (km_fit, made from the analysis
+# data) and `content <- tflspec::<fn>(...)`.  A key that does not hold (an
+# unknown name, an argument left out) is a stop() line saying why, as the
+# report part's are.
+.fig_key_lines <- function(x, output_id) {
+  y <- .code_output(x, output_id)
+  call <- tryCatch(as.character(tflspec::tfl_content_code(.code_content(y), pipe = "|>")),
+                   error = function(e) c(
+                     "# the figure's key does not hold:",
+                     paste0("stop(", .r_string(trimws(conditionMessage(e))), ")")))
+  ad <- .adata_rows(x, output_id)
+  reads <- unique(unlist(lapply(ad$data_id, function(i) .adata_datasets(ad, i, x$ard$populations))))
+  c(if (length(reads)) c(
+      paste0("# the data: ", paste(reads, collapse = ", "), " (data catalog)"),
+      unlist(lapply(reads, function(d) .read_dataset_lines(x, d))),
+      ""),
+    if (nrow(ad)) c(
+      "# the report's analysis data (its ARD definition)",
+      .ard_spec_code(structure(x$ard, class = "tfl_ard_spec"), output_id = output_id,
+                     part = "data", data = ad$data_id),
+      ""),
+    .fig_ard_lines(x, output_id),
+    call)
 }
 
 # A designed figure's data and plot sections, as its program has them
@@ -283,7 +316,8 @@ set_fig_design <- function(x, output_id, design) {
   x <- study$planner
   owd <- setwd(study$path)
   on.exit(setwd(owd), add = TRUE)
-  e <- new.env(parent = globalenv())
+  # (the read lines use the study's helpers: blank_as_na())
+  e <- new.env(parent = .helpers_env(globalenv()))
   out <- list()
   for (d in datasets) {
     code <- .read_dataset_lines(x, d)
@@ -362,7 +396,7 @@ preview_figure <- function(study, output_id,
   if (!is.null(x0)) design <- .trim_join(design, x0)
   code <- .fig_design_script(design, output_id,
                              codelists = .study_codelists(study$planner), size = sz)
-  problems <- tflspec::tfl_check_fig_design(saved, data)
+  problems <- tflspec::tfl_check_fig_design(saved, if (length(data)) data)
   # its ARD (#293): the rows of its source, in `ard`; their problems
   reads_ard <- isTRUE(attr(tflspec::tfl_fig_design_code(saved, output_id, setup = TRUE,
                                                          save = FALSE), "ard"))

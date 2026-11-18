@@ -31,7 +31,6 @@
   any_grade = "Any-grade label",
   flags = "Flag rows",
   term = "Term variable",
-  data_label = "Analysis data label",
   analysis_id = "Analysis ID",
   analysis_label = "Analysis label",
   sort_by = "Column that orders terms",
@@ -159,6 +158,17 @@
   missing_row = "Missing row",
   categorical_levels = "Values shown per categorical variable",
   col_header = "Column heading",
+  nest = "Nested rows",
+  value_labels = "Value labels",
+  from = "Dataset of the records",
+  analysis_ids = "Analysis ID of each depth",
+  sort_column = "Column that orders the rows",
+  empty_text = "Text when no record is left",
+  subject_vars = "ADSL variables added to each record",
+  param_var = "Parameter variable",
+  baseline_total = "Total row of the baseline categories",
+  post_total = "Total column of the post-baseline categories",
+  baseline_total_label = "Total row label",
   stub_name = "Row-title column name",
   stub_before = "Row-title column before the row keys",
   widths = "Column widths",
@@ -178,6 +188,8 @@
     "Page name in the titles",
   "the groups: a page each (an analyte, an arm), the summary's too" = "Variable that splits the pages",
   "the variables that divide the listing (`by_break`); the records are ordered by them first, then by `sort`" =
+    "Variables that divide the listing",
+  "The variables that divide the listing (by_break); the records are ordered by them first. Empty for one listing." =
     "Variables that divide the listing",
   "the Total column's heading" = "Total column heading"
 )

@@ -556,7 +556,7 @@ p$ard$populations <- tbl(
   # every subject of ADSL (no condition): the screened subjects
   list(population_id = "ENR", dataset = "ADSL", label = "Screened Set"))
 p$ard$analyses <- tbl(
-  list(output_id = "T-14-1-1", analysis_id = "GROUPN", label = "Subjects per group",
+  list(output_id = "T-14-1-1", analysis_id = "BIGN", label = "Subjects per group",
        method = "categorical", data = "adsl_saf", variables = "TRT01A"),
   list(output_id = "T-14-1-1", analysis_id = "CONT", label = "Continuous",
        method = "continuous", data = "adsl_saf", by = "TRT01A",
@@ -576,13 +576,13 @@ p$ard$analyses <- tbl(
   list(output_id = "T-14-1-1S", analysis_id = "CAT", parent = "DEMOG",
        label = "Categorical", method = "categorical",
        variables = "AGEGR1 | SEX | RACE | ETHNIC", statistics = "n | p"),
-  list(output_id = "T-14-1-2", analysis_id = "GROUPN", method = "categorical",
+  list(output_id = "T-14-1-2", analysis_id = "BIGN", method = "categorical",
        data = "adsl_saf", variables = "TRT01A"),
   list(output_id = "T-14-1-2", analysis_id = "DISP",
        label = "Status at end of study", method = "categorical",
        data = "adsl_saf", by = "TRT01A", variables = "EOSSTT",
        statistics = "n | p"),
-  list(output_id = "T-14-2-1", analysis_id = "GROUPN", method = "categorical",
+  list(output_id = "T-14-2-1", analysis_id = "BIGN", method = "categorical",
        data = "adsl_saf", variables = "TRT01A"),
   list(output_id = "T-14-2-1", analysis_id = "SYSBP",
        label = "SYSBP at week 24", method = "continuous", data = "advs_saf_sysbp", by = "TRT01A",
@@ -608,7 +608,7 @@ p$ard$analyses <- tbl(
          "  warning = list(NULL), error = list(NULL)",
          "))", sep = "\n")),
   # T-14-1-4: the screen failures (SCRF, an analysis set by a condition)
-  list(output_id = "T-14-1-4", analysis_id = "GROUPN", method = "categorical",
+  list(output_id = "T-14-1-4", analysis_id = "BIGN", method = "categorical",
        data = "adsl_scrf", variables = "ARMNRS"),
   list(output_id = "T-14-1-4", analysis_id = "CONT", label = "Continuous",
        method = "continuous", data = "adsl_scrf", by = "ARMNRS",
@@ -618,7 +618,7 @@ p$ard$analyses <- tbl(
        variables = "AGEGR1 | SEX | RACE", statistics = "n | p"),
   # T-14-1-3: cards' default statistics of a count (n, N and p) -- the
   # table's cells print n (%) and leave the N rows out
-  list(output_id = "T-14-1-3", analysis_id = "GROUPN", method = "categorical",
+  list(output_id = "T-14-1-3", analysis_id = "BIGN", method = "categorical",
        data = "adsl_saf", variables = "TRT01A"),
   list(output_id = "T-14-1-3", analysis_id = "CAT",
        label = "Age group and sex", method = "categorical",
@@ -626,7 +626,7 @@ p$ard$analyses <- tbl(
   # T-14-2-3: the mean change and its 95% CI by a one-sample t-test, every
   # statistic the function gives (the test's method and alternative are
   # text in the ARD)
-  list(output_id = "T-14-2-3", analysis_id = "GROUPN", method = "categorical",
+  list(output_id = "T-14-2-3", analysis_id = "BIGN", method = "categorical",
        data = "adsl_saf", variables = "TRT01A"),
   list(output_id = "T-14-2-3", analysis_id = "N", label = "Subjects",
        method = "continuous", data = "advs_saf_sysbp", by = "TRT01A",
@@ -634,7 +634,7 @@ p$ard$analyses <- tbl(
   list(output_id = "T-14-2-3", analysis_id = "CI",
        label = "Mean change (95% CI), one-sample t-test", method = "mean_ci",
        data = "advs_saf_sysbp", by = "TRT01A", variables = "CHG"),
-  list(output_id = "T-14-2-2", analysis_id = "GROUPN", method = "categorical",
+  list(output_id = "T-14-2-2", analysis_id = "BIGN", method = "categorical",
        data = "adsl_saf", variables = "TRT01A"),
   list(output_id = "T-14-2-2", analysis_id = "KM",
        label = "Kaplan-Meier estimates", method = "custom", data = "adtte_saf_ttskin",
@@ -658,7 +658,7 @@ p$ard$analyses <- tbl(
   # T-14-1-5 and T-14-1-6: the demographics of the enrolled subjects, race
   # with its Asian sub-categories -- the same analyses, laid out nested
   # (T-14-1-5) or as a block of their own (T-14-1-6)
-  list(output_id = "T-14-1-5", analysis_id = "GROUPN", method = "categorical",
+  list(output_id = "T-14-1-5", analysis_id = "BIGN", method = "categorical",
        data = "adsl_enr", variables = "ARMGRP"),
   list(output_id = "T-14-1-5", analysis_id = "RACE", label = "Race",
        method = "categorical", data = "adsl_enr", by = "ARMGRP", overall = "TRUE",
@@ -676,7 +676,7 @@ p$ard$analyses <- tbl(
   # T-14-1-6: the demographics of the enrolled subjects,
   # percentages of the column's subjects; `overall` runs each analysis
   # again over all of them (cards' overall rows: the Total column)
-  list(output_id = "T-14-1-6", analysis_id = "GROUPN", method = "categorical",
+  list(output_id = "T-14-1-6", analysis_id = "BIGN", method = "categorical",
        data = "adsl_enr", variables = "ARMGRP"),
   list(output_id = "T-14-1-6", analysis_id = "RACE", label = "Race",
        method = "categorical", data = "adsl_enr", by = "ARMGRP", overall = "TRUE",
@@ -723,21 +723,21 @@ p$ard$analysis_data <- tbl(
   saf("T-14-2-1"),
   list(output_id = "T-14-2-1", data_id = "advs_saf_sysbp",
        label = "Systolic blood pressure at week 24, safety set",
-       from = "ADVS", subjects = "adsl_saf",
+       from = "ADVS", subjects_in = "adsl_saf",
        where = "PARAMCD == \"SYSBP\" & AVISIT == \"CYCLE 9 DAY 1\""),
   saf("T-14-2-3"),
   list(output_id = "T-14-2-3", data_id = "advs_saf_sysbp",
        label = "Systolic blood pressure at week 24, safety set",
-       from = "ADVS", subjects = "adsl_saf",
+       from = "ADVS", subjects_in = "adsl_saf",
        where = "PARAMCD == \"SYSBP\" & AVISIT == \"CYCLE 9 DAY 1\""),
   saf("T-14-2-2"),
   list(output_id = "T-14-2-2", data_id = "adtte_saf_ttskin",
        label = "Time to first skin disorder, safety set",
-       from = "ADTTE", subjects = "adsl_saf", where = "PARAMCD == \"TTSKIN\""),
+       from = "ADTTE", subjects_in = "adsl_saf", where = "PARAMCD == \"TTSKIN\""),
   saf("T-14-3-1"),
   list(output_id = "T-14-3-1", data_id = "adae_saf",
        label = "Treatment-emergent AEs of the safety set",
-       from = "ADAE", subjects = "adsl_saf", where = "TRTEMFL == \"Y\""))
+       from = "ADAE", subjects_in = "adsl_saf", where = "TRTEMFL == \"Y\""))
 for (sh in names(p$ard)) p$ard[[sh]] <- .normalize_ard_sheet(p$ard[[sh]], sh)
 
 # ------------------------------------------------ the listing, the figure

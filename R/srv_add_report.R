@@ -71,8 +71,13 @@
                          none = FALSE) {
     data <- tpl_data()
     type <- .tpl_type(prm, tpl_all_cols())
-    cols <- .tpl_columns(data, dataset)
+    cols <- .tpl_columns(data, dataset %||% .tpl_vars_dataset(prm, data))
     shown <- if (is.null(value)) prm$default else value
+    # (`!unset`: the "(none)" switch on; `none`, a study reference with no
+    # value, or the unset: the placeholder says "(none)")
+    unset <- .is_unset(shown)
+    if (unset) shown <- NULL
+    none <- isTRUE(none) || unset
     lab <- label
     # (a study reference with no value: its light placeholder says "(none)")
     ph <- function(x) if (none) t("(none)") else t(x)
@@ -83,7 +88,7 @@
       tpl_suggestion(tpl, prm$name, params,
                      if (is.null(args$data) && !is.null(dataset)) c(args, list(data = dataset)) else args)
     } else character()
-    switch(type,
+    w <- switch(type,
       population = shiny::selectInput(input_id, lab, pop_choices(),
                                       selected = as.character(shown %||% ""), width = "100%"),
       data = shiny::selectInput(
@@ -95,11 +100,9 @@
         vr <- .tpl_levels_of(prm, params, args)
         lv <- .tpl_levels(data, vr, dataset)
         several <- isTRUE(prm$multiple)
-        if (length(sugg)) {
-          return(.tpl_suggest_select(
-            input_id, lab, c(if (!several) stats::setNames("", ph("(not chosen)")), lv), sugg, several,
-            c(if (several) rm_btn, list(create = TRUE)), t))
-        }
+        if (length(sugg)) .tpl_suggest_select(
+          input_id, lab, c(if (!several) stats::setNames("", ph("(not chosen)")), lv), sugg, several,
+          c(if (several) rm_btn, list(create = TRUE)), t) else
         shiny::selectizeInput(
           input_id, lab,
           c(if (!several) stats::setNames("", ph("(not chosen)")),
@@ -133,6 +136,25 @@
       choices = shiny::selectizeInput(
         input_id, lab, union(as.character(shown), as.character(prm$choices)),
         selected = as.character(shown), multiple = TRUE, width = "100%", options = rm_btn),
+      # (a pick from the def's source words: report_data, study_data, ...;
+      # a value it does not offer kept, and one typed where the def allows)
+      pick = ,
+      picks = {
+        several <- identical(type, "picks")
+        ctx <- .tpl_table_ctx(data, dataset, args, params, populations = pop_choices())
+        ch <- tryCatch(.choice_values(prm$sources, ctx, tflplanner_language(), values = prm$choices),
+                       error = function(e) character())
+        cur <- as.character(shown %||% character())
+        miss <- setdiff(cur, unlist(ch))
+        if (length(miss)) ch <- if (is.list(ch)) c(as.list(stats::setNames(miss, miss)), ch) else c(miss, ch)
+        shiny::selectizeInput(
+          input_id, lab,
+          if (several) ch else c(stats::setNames("", ph(if (is.null(prm$default)) "(not chosen)" else "(default)")),
+                                 ch),
+          selected = if (several) cur else if (length(cur)) cur[1L] else "",
+          multiple = several, width = "100%",
+          options = c(if (several) rm_btn, list(create = !isFALSE(prm$free))))
+      },
       # (a listing's columns: the data's, in order, each its heading and
       # width -- the template's `data` field beside it, by its id)
       columns = .tpl_columns_widget(input_id, lab, shown, data,
@@ -180,13 +202,15 @@
               placeholder = if (none) t("(none)") else paste(.tpl_list_fields(prm), collapse = " | ")))
         }
       })
+    .tpl_none_wrap(w, input_id, type, prm, unset, t)
   }
   # The new report's dialog: the templates of each kind, a searchable list
   # with a line on each; the required arguments of each template, below it
   # -- all drawn with the dialog (shown by the choice in the page itself:
   # nothing is waited for from the server)
   tpl_input <- function(kind) paste0("modal_tpl_", kind)
-  tpl_arg_id <- function(nm, a) paste0("mtpl_", nm, "__", gsub("[^A-Za-z0-9_]", "_", a))
+  # (a series template's name has a "/": an id of letters, digits and _)
+  tpl_arg_id <- function(nm, a) paste0("mtpl_", .tpl_id_part(nm), "__", .tpl_id_part(a))
   tpl_chosen <- function() {
     kind <- input$modal_type %||% "table"
     nm <- input[[tpl_input(kind)]]
@@ -195,6 +219,7 @@
   tpl_modal_ui <- function() {
     shiny::tagList(lapply(report_types(), function(kind) {
       tp <- .tpl_list(kind)
+      ser <- .tpl_series_templates()
       shiny::conditionalPanel(
         sprintf("input.modal_type == '%s'", kind),
         if (!nrow(tp)) {
@@ -204,8 +229,8 @@
           shiny::selectizeInput(
             tpl_input(kind), t("Template"),
             stats::setNames(tp$name, vapply(tp$name, function(n) {
-              d <- if (!is.na(.tpl_desc[n])) t(.tpl_desc[[n]]) else ""
-              if (nzchar(d)) paste0(n, " \u2014 ", d) else n
+              d <- .tpl_desc_of(n, ser)
+              if (nzchar(d)) paste0(n, " \u2014 ", t(d)) else n
             }, "")),
             selected = tp$name[1L], width = "100%",
             options = list(searchField = list("label", "value"))),
@@ -383,10 +408,17 @@
         raw <- tpl_picked(nm, x)
         if (is.null(raw)) next
         type <- .tpl_type(x)
-        v <- .tpl_value(raw, type, x)
         start <- tpl_opt_start(x)
-        if (is.null(v) || identical(v, .tpl_untouched(start, type, x)) ||
-              identical(as.character(unlist(v)), as.character(unlist(start)))) next
+        # (a switch the "(none)" button turned off: its own input, <id>__none)
+        none_in <- input[[paste0(tpl_arg_id(nm, x$name), "__none")]]
+        if (identical(type, "flag") && isTRUE(none_in)) raw <- .none_word
+        v <- .tpl_value(raw, type, x)
+        if (.tpl_flag_off_drawn(type, v, start, none_in)) next
+        # (an unset only equals an unset; other values: as the field sent them untouched)
+        same <- .same_unset(v, start)
+        if (is.null(v) || isTRUE(same)) next
+        if (is.na(same) && (identical(v, .tpl_untouched(start, type, x)) ||
+                              identical(as.character(unlist(v)), as.character(unlist(start))))) next
         args[[x$name]] <- v
         next
       }
@@ -573,7 +605,7 @@
   tpl_obs <- new.env()
   # (per report, template and argument: the values its writes replaced, and when)
   tpl_past <- new.env()
-  tpl_iid <- function(name, a) paste0("tpl_", name, "__", gsub("[^A-Za-z0-9_]", "_", a))
+  tpl_iid <- function(name, a) paste0("tpl_", .tpl_id_part(name), "__", .tpl_id_part(a))
   tpl_write <- function(id, args, name = NULL, steps = NULL, redraw = TRUE) {
     o <- .tpl_output(rv$p, id, args, name = name)
     if (length(steps)) o$data$steps <- steps
@@ -596,6 +628,9 @@
     prm <- .tpl_params(name)[[a]]
     type <- .tpl_type(prm, tpl_all_cols())
     shown <- tp$args[[a]] %||% .tpl_study_value(rv$p$spec$study, prm) %||% prm$default
+    # (a switch with no default -- a series template's, from the series -- is drawn
+    # off: its first FALSE is what it showed, no edit)
+    if (is.null(shown) && identical(type, "flag")) shown <- FALSE
     if (identical(type, "columns") && is.null(.tpl_list_text(shown, prm))) return()
     # (a list the rows cannot show: its YAML text; not YAML, said and the value stays)
     yaml_box <- identical(type, "list") && is.null(.tpl_list_text(shown, prm))
@@ -622,8 +657,11 @@
     val <- if (yaml_box) ed$value else .tpl_value(v, type, prm)
     # (a field drawn again says its value back: what it shows already --
     # the report's, the study's or the default -- is no edit)
+    # (a switch drawn off for its "(none)" says FALSE when drawn: not an edit
+    # unless the switch was moved by hand, .tpl_flag_off_drawn())
+    if (.tpl_flag_off_drawn(type, val, shown, input[[paste0(tpl_iid(name, a), "__none")]])) return()
     list_key <- function(z) .tpl_list_text(z, prm) %||% .tpl_yaml_block(z)
-    same <- if (identical(type, "table")) {
+    same <- if (!is.na(su <- .same_unset(val, shown))) su else if (identical(type, "table")) {
       identical(.tpl_table_key(val, prm), .tpl_table_key(shown, prm))
     } else if (type %in% c("list", "columns")) {
       identical(list_key(val), list_key(shown))
@@ -635,7 +673,7 @@
     # go back and types it once more)
     key <- paste(id, name, a)
     now <- as.numeric(Sys.time())
-    as_key <- function(z) if (identical(type, "table")) .tpl_table_key(z, prm) else
+    as_key <- function(z) if (.is_unset(z)) .none_word else if (identical(type, "table")) .tpl_table_key(z, prm) else
       if (type %in% c("list", "columns")) list_key(z) else
       paste(as.character(unlist(z)), collapse = "\n")
     if (.tpl_stale_say(as_key(val), tpl_past[[key]], now)) {
@@ -668,6 +706,10 @@
         iid <- tpl_iid(name, a)
         shiny::observeEvent(input[[iid]], tpl_edit(name, a, input[[iid]]),
                             ignoreInit = TRUE, ignoreNULL = FALSE)
+        # (a switch's "(none)" button: its own input; the switch itself says no more than off)
+        shiny::observeEvent(input[[paste0(iid, "__none")]],
+                            if (isTRUE(input[[paste0(iid, "__none")]])) tpl_edit(name, a, .none_word),
+                            ignoreInit = TRUE)
       })
     }
   }
@@ -1086,7 +1128,8 @@
                                          t("Save as a template ..."))),
             shiny::tags$li(shiny::tags$a(class = "dropdown-item disabled", href = "#",
                                          t("Make a variant ..."))))),
-        if (!is.na(.tpl_desc[tp$name])) shiny::div(class = "small text-muted w-100", t(.tpl_desc[[tp$name]])))),
+        if (nzchar(.tpl_desc_of(tp$name))) shiny::div(class = "small text-muted w-100",
+                                                      t(.tpl_desc_of(tp$name))))),
       bslib::card_body(
         missing_alert,
         block("ard", t("Analysis (ARD)")),

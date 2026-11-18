@@ -43,10 +43,59 @@
 # The templates of a kind of report: name and kind
 .tpl_list <- function(kind) {
   x <- tryCatch(tflspec::tfl_templates(), error = function(e) NULL)
-  if (is.null(x) || !nrow(x)) return(data.frame(name = character(), kind = character()))
-  x <- x[x$kind %in% kind, c("name", "kind"), drop = FALSE]
+  x <- if (is.null(x) || !nrow(x)) data.frame(name = character(), kind = character()) else
+    x[, c("name", "kind"), drop = FALSE]
+  # (the series' templates first: "<series>/<template>")
+  s <- .tpl_series_templates()
+  x <- rbind(s[, c("name", "kind"), drop = FALSE], x)
+  x <- x[x$kind %in% kind, , drop = FALSE]
   rownames(x) <- NULL
   x
+}
+
+# The templates of tflspec's series (tflspec#819/#824: tfl_series_list(), each
+# series' templates/<t>.yml): name "<series>/<t>", kind (a `figure:` a
+# figure, a listing's style a listing, else a table) and its label.  None
+# for a tflspec with no series.
+.tpl_series_templates <- function(lister = .tpl_series_lister()) {
+  none <- data.frame(name = character(), kind = character(), label = character())
+  s <- if (is.function(lister)) tryCatch(lister(), error = function(e) NULL)
+  if (!is.data.frame(s) || !nrow(s)) return(none)
+  # (a series found in two folders: the first, as tflspec reads it)
+  s <- s[!duplicated(s$name), , drop = FALSE]
+  out <- lapply(seq_len(nrow(s)), function(i) {
+    files <- sort(list.files(file.path(s$path[[i]], "templates"), "\\.yml$", full.names = TRUE))
+    if (!length(files)) return(NULL)
+    rows <- lapply(files, function(fl) {
+      top <- readLines(fl, n = 80L, warn = FALSE, encoding = "UTF-8")
+      lab <- sub("^label:\\s*", "", grep("^label:", top, value = TRUE)[1L])
+      kind <- if (any(grepl("^figure:", top))) "figure" else
+        if (any(grepl("^style:.*listing", top))) "listing" else "table"
+      data.frame(name = paste0(s$name[[i]], "/", sub("\\.yml$", "", basename(fl))), kind = kind,
+                 label = if (is.na(lab)) "" else trimws(lab))
+    })
+    do.call(rbind, rows)
+  })
+  out <- do.call(rbind, out)
+  if (is.null(out)) none else out
+}
+
+# a name as a part of an input's id (letters, digits and _)
+.tpl_id_part <- function(x) gsub("[^A-Za-z0-9_]", "_", x)
+
+# tflspec's tfl_series_list(), NULL for a tflspec that has none
+.tpl_series_lister <- function() {
+  if (requireNamespace("tflspec", quietly = TRUE)) {
+    get0("tfl_series_list", envir = asNamespace("tflspec"), inherits = FALSE)
+  }
+}
+
+# A template's one line for the list: the app's own (.tpl_desc), else a
+# series template's label; "" for none
+.tpl_desc_of <- function(name, series = .tpl_series_templates()) {
+  if (!is.na(.tpl_desc[name])) return(.tpl_desc[[name]])
+  lab <- series$label[match(name, series$name)]
+  if (length(lab) && !is.na(lab)) lab else ""
 }
 
 # A template's parameters, named, in its order (none: a template unknown).
@@ -139,6 +188,19 @@
   unique(unlist(lapply(data, names)))
 }
 
+# The dataset a series template's parameter takes its columns from: its
+# choices say `vars(adsl_sub)`, the data row the template reads -- named by
+# its dataset (adsl_sub: ADSL).  NULL when it says none of the datasets there are.
+.tpl_vars_dataset <- function(prm, data) {
+  for (w in tryCatch(.choice_words(prm$sources), error = function(e) character())) {
+    q <- .choice_word_parse(w)
+    if (!identical(q$name, "vars") || !length(q$args)) next
+    ds <- toupper(sub("_.*$", "", as.character(q$args[[1L]])))
+    if (ds %in% names(data)) return(ds)
+  }
+  NULL
+}
+
 .tpl_is_varlike <- function(x) {
   is.character(x) && length(x) > 0L && is.null(names(x)) &&
     all(grepl("^[A-Z][A-Z0-9_]*$", x))
@@ -147,7 +209,7 @@
 # The input a parameter gets: population, data, var (one column), vars
 # (columns, in order), levels (a variable's values), flag, number, text,
 # chips (several texts), choice (one of tfl_param(choices = )), choices
-# (several of them), list (a small table of lines, "a | b"), columns (a
+# (several of them), pick / picks (from a def's source words), list (a small table of lines, "a | b"), columns (a
 # listing's: R/tpl_columns_ui.R).  By the type
 # tflspec declares (tfl_param(type = )); guessed from the default and the
 # doc only when it declares none.
@@ -167,6 +229,7 @@
       number = "number",
       text = if (several) "chips" else "text",
       choice = if (several) "choices" else "choice",
+      pick = if (several) "picks" else "pick",
       list = "list",
       "text"))
   }
@@ -231,7 +294,7 @@
 .tpl_list_records <- function(prm) isTRUE(prm$multiple) && length(prm$fields) > 0L
 
 .tpl_list_text <- function(x, prm) {
-  if (is.null(x) || !length(x)) return("")
+  if (is.null(x) || !length(x) || .is_unset(x)) return("")
   cell <- function(v) {
     if (is.null(v)) return("")
     if (!is.atomic(v) || !is.null(names(v))) return(NULL)
@@ -308,6 +371,7 @@
 # raw R) -- what .tpl_text_parse() reads back
 .tpl_show <- function(x) {
   if (is.null(x)) return("NULL")
+  if (.is_unset(x)) return(.none_word)
   if (is.character(x) && length(x) == 1L && is.null(names(x)) && !inherits(x, "tfl_r")) return(x)
   .tpl_yaml_flow(x)
 }
@@ -442,6 +506,14 @@
         !any(vapply(r, is.null, NA))) r else v
 }
 
+# A number as typed: a whole one an integer where the argument is a count
+# -- its default an integer, or its name says so (max_rows, n_*, *_digits)
+# -- so the SPEC YAML says 25, not 25.0
+.tpl_whole <- function(v, prm) {
+  count <- is.integer(prm$default) || grepl("(^n_|_n$|rows$|lines$|digits$)", prm$name %||% "")
+  if (count && all(is.finite(v)) && all(v == round(v)) && all(abs(v) < .Machine$integer.max)) as.integer(v) else v
+}
+
 # An edit of a list shown as YAML text: `same` (the text it was drawn with, no
 # edit), `bad` (not YAML, or not a map / list: the value stays; `msg` says why)
 # or `edit` (`value`, the list read back).  `shown`: the value drawn.
@@ -457,13 +529,21 @@
 # What an input gives, as the argument's value (NULL: none -- the default)
 .tpl_value <- function(v, type, prm = NULL) {
   if (is.null(v)) return(NULL)
+  # ("(none)" on an argument that may be left out: `!unset`; among other
+  # items of a many-valued field it is just not one of them)
+  # (in any language: "(none)", "\uff08\u306a\u3057\uff09")
+  nn <- is.character(v) && !isTRUE(prm$required) && any(trimws(v) %in% .none_texts())
+  if (nn) {
+    if (length(v) == 1L) return(tflspec::tfl_unset())
+    v <- v[!trimws(v) %in% .none_texts()]
+  }
   switch(type,
     flag = isTRUE(v),
     number = {
       v <- suppressWarnings(as.numeric(v))
-      if (!length(v) || is.na(v)) NULL else v
+      if (!length(v) || is.na(v)) NULL else .tpl_whole(v, prm)
     },
-    vars = , chips = , choices = , levels = {
+    vars = , chips = , choices = , picks = , levels = {
       v <- as.character(v)
       v <- v[nzchar(trimws(v))]
       if (!length(v)) NULL else if (identical(type, "levels") && !isTRUE(prm$multiple)) v[1L] else v
@@ -489,7 +569,7 @@
     text = if (is.null(shown)) "" else .tpl_show(shown),
     list = , columns = .tpl_list_text(shown, prm),
     table = .tpl_table_state(shown, prm),
-    vars = , chips = , choices = as.character(shown %||% character()),
+    vars = , chips = , choices = , picks = as.character(shown %||% character()),
     levels = if (isTRUE(prm$multiple)) as.character(shown %||% character()) else
       as.character(shown %||% "")[1L],
     as.character(shown %||% "")[1L]), error = function(e) NULL)
@@ -532,8 +612,18 @@
 # dataset when it names none or one the study lacks -- a template's own
 # data id, adsl_sub), a variable's values, the card's arguments and the
 # template's params
-.tpl_table_ctx <- function(data, dataset = NULL, args = list(), params = list()) {
+.tpl_table_ctx <- function(data, dataset = NULL, args = list(), params = list(),
+                           populations = NULL) {
+  ds <- function(x) {
+    x <- toupper(as.character(unlist(x)))
+    unique(x[!is.na(x) & nzchar(x)])
+  }
   list(
+    # (the source words of a pick: the study's data, the report's -- its
+    # `data` argument, else its dataset -- and the study's analysis sets)
+    study_data = ds(names(data)),
+    report_data = ds(c(args$data, if (is.null(args$data)) dataset)),
+    populations = populations,
     vars = function(what = NULL) {
       w <- toupper(as.character(what %||% "")[1L])
       if (!is.na(w) && nzchar(w) && is.data.frame(data[[w]])) names(data[[w]]) else
@@ -548,7 +638,7 @@
 .tpl_set_arg <- function(args, prm, value) {
   args <- args %||% list()
   if (is.null(value) || (!isTRUE(prm$required) && identical(value, prm$default)) ||
-      (!isTRUE(prm$required) && !is.null(prm$default) &&
+      (!isTRUE(prm$required) && !is.null(prm$default) && !.is_unset(value) && !.is_unset(prm$default) &&
        identical(unname(as.vector(value)), unname(as.vector(prm$default))))) {
     args[[prm$name]] <- NULL
   } else {

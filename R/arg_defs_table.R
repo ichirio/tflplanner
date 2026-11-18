@@ -30,12 +30,13 @@
 .tbl_type <- function(type) {
   if (is.null(type) || length(type) != 1L || is.na(type)) return(NULL)
   alts <- trimws(.type_split(trimws(type), "|"))
-  ty <- alts[grepl("^(rows|map)<.*>$", alts)][1L]
+  ty <- alts[grepl("^(rows|map)<.*>$|^list<map<.*>>$", alts)][1L]
   if (is.na(ty)) return(NULL)
   shape <- "map"
-  if (grepl("^rows<.*>$", ty)) {
+  # (a list<map<..>>: its maps in order, a rows<map<..>>'s table)
+  if (grepl("^(rows|list)<.*>$", ty)) {
     shape <- "rows"
-    ty <- trimws(sub("^rows<(.*)>$", "\\1", ty))
+    ty <- trimws(sub("^(rows|list)<(.*)>$", "\\2", ty))
     if (!grepl("^map<.*>$", ty)) {
       f <- trimws(.type_split(ty, ","))
       f <- f[nzchar(f)]
@@ -46,6 +47,13 @@
   if (!grepl("^map<.*>$", ty)) return(NULL)
   kv <- .type_split(sub("^map<(.*)>$", "\\1", ty), ",")
   if (length(kv) != 2L) return(NULL)
+  # (a map of maps, map<K,map<K2,V>>: a row an inner entry, its two keys
+  # and its value -- tflspec_summary's nest and value_labels)
+  if (identical(shape, "map") && grepl("^map<.*>$", kv[[2L]])) {
+    kv2 <- .type_split(sub("^map<(.*)>$", "\\1", kv[[2L]]), ",")
+    if (length(kv2) != 2L || grepl("^(map|rows|list)<", kv2[[2L]])) return(NULL)
+    return(list(shape = "map2", key = kv[[1L]], key2 = kv2[[1L]], value = kv2[[2L]]))
+  }
   list(shape = shape, key = kv[[1L]], value = kv[[2L]])
 }
 
@@ -88,6 +96,19 @@
   if (is.null(tt)) return(NULL)
   ctx <- ctx %||% list()
   if (is.null(choices)) choices <- .tbl_choices(def$choices, ctx, lang, values = def$values)
+  if (identical(tt$shape, "map2")) {
+    # (a key that is a column: picked from the def's choices, else typed)
+    key_kind <- function(k) if (grepl("^column", k) && length(choices) && !isTRUE(def$free)) "pick" else "text"
+    key_ch <- function(k) if (grepl("^column", k)) choices else character()
+    vk <- .tbl_cell_kind(tt$value)
+    return(list(shape = "map2", cols = c("key", "key2", "value"),
+                heads = c(tr(if (grepl("^column", tt$key)) "Column" else "Key", lang),
+                          tr(if (grepl("^column", tt$key2)) "Second column" else "Key", lang),
+                          tr(if (identical(vk, "list")) "Values" else "Value", lang)),
+                kinds = c(key_kind(tt$key), key_kind(tt$key2), vk),
+                choices = list(key_ch(tt$key), key_ch(tt$key2), character()),
+                ordered = isTRUE(def$ordered)))
+  }
   if (identical(tt$shape, "map")) {
     vk <- .tbl_cell_kind(tt$value)
     to_value <- identical(vk, "r")
@@ -183,6 +204,20 @@
 .tbl_rows <- function(spec, value) {
   if (identical(spec$shape, "rows")) value <- .tbl_records(value)
   if (is.null(value) || inherits(value, c("tfl_r", "tfl_unset")) || !length(value)) return(list())
+  if (identical(spec$shape, "map2")) {
+    nm <- names(value)
+    if (is.null(nm)) return(list())
+    out <- list()
+    for (i in seq_along(value)) {
+      inner <- as.list(value[[i]])
+      nm2 <- names(inner)
+      if (is.null(nm2)) next
+      for (j in seq_along(inner)) {
+        out[[length(out) + 1L]] <- c(nm[[i]], nm2[[j]], .tbl_cell_text(inner[[j]], spec$kinds[[3L]]))
+      }
+    }
+    return(out)
+  }
   if (identical(spec$shape, "map")) {
     nm <- names(value)
     if (is.null(nm)) return(list())
@@ -232,7 +267,21 @@
   kinds <- as.character(unlist(st$kinds))
   cols <- as.character(unlist(st$cols))
   rows <- lapply(st$rows, function(r) as.character(unlist(lapply(r, function(z) if (is.null(z)) "" else z))))
-  if (identical(as.character(unlist(st$shape))[1L], "map")) {
+  shape <- as.character(unlist(st$shape))[1L]
+  if (identical(shape, "map2")) {
+    # (the rows by their first key, in the order first seen)
+    out <- list()
+    for (r in rows) {
+      k <- trimws(r[1L] %||% "")
+      k2 <- trimws(if (length(r) >= 2L) r[[2L]] else "")
+      v <- .tbl_cell_value(if (length(r) >= 3L) r[[3L]] else "", kinds[[3L]])
+      if (is.na(k) || !nzchar(k) || is.na(k2) || !nzchar(k2) || is.null(v)) next
+      if (is.null(out[[k]])) out[[k]] <- list()
+      out[[k]][[k2]] <- v
+    }
+    return(if (length(out)) out)
+  }
+  if (identical(shape, "map")) {
     out <- list()
     for (r in rows) {
       k <- trimws(r[1L] %||% "")
