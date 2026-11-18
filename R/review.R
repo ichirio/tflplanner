@@ -134,11 +134,27 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
 # list's own
 .review_planner <- function(p, facts = NULL) {
   st <- p$study[!is.na(p$study)]
-  spec <- c(p$sheets, list(study = if (length(st)) st))
+  spec <- c(.review_page_unset(p$sheets), list(study = if (length(st)) st))
   spec$study <- spec$study %||% NULL
   r <- tflspec::tfl_review_spec(spec = spec, ard = p$ard, listings = p$lf,
                                 figures = p$fig_designs, facts = facts)
   .review_bind(list(.review_no_read_ard(r, p), .rules_report_list(p), .rules_ard_list(p)))
+}
+
+# The page sheet's "(none)" (a value left out here, `!unset` in the YAML; the
+# sheets' view writes the word, a person may type it in either language) is
+# no value to check: tflspec's check of the cell types would read it as a
+# number, TRUE / FALSE ... and say it is not one
+.review_page_unset <- function(sheets) {
+  d <- sheets$page
+  if (!is.data.frame(d) || !nrow(d)) return(sheets)
+  for (cn in setdiff(names(d), "output_id")) {
+    if (!is.character(d[[cn]])) next
+    none <- !is.na(d[[cn]]) & trimws(d[[cn]]) %in% .none_texts()
+    d[[cn]][none] <- NA_character_
+  }
+  sheets$page <- d
+  sheets
 }
 
 # tflspec's F02 "No dataset is read." is for a figure that reads nothing: not

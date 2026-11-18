@@ -57,9 +57,7 @@ report_population <- function(x, output_id) {
     return(x)
   }
   nm <- .adata_free_name(x, output_id, .adata_default_name(from, pop))
-  lab <- .pop_label(x, pop)
-  x <- set_analysis_data(x, output_id, nm, from = from, population_id = pop,
-                         label = if (identical(lab, pop)) NA else lab)
+  x <- set_analysis_data(x, output_id, nm, from = from, population_id = pop)
   attr(x, "data_id") <- nm
   attr(x, "added") <- TRUE
   x
@@ -114,7 +112,7 @@ report_population <- function(x, output_id) {
   nm <- .adata_free_name(x, output_id, base)
   x <- set_analysis_data(x, output_id, nm, from = r$from, population_id = pop, subjects_in = subj,
                          where = r$where, add = r$add, derive = r$derive, keep = r$keep,
-                         distinct = r$distinct, label = r$label)
+                         distinct = r$distinct)
   out(x, nm)
 }
 

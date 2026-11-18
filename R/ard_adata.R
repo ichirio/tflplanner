@@ -365,7 +365,7 @@
 #' @param data_id The name (lower case; also the object's name in the ARD
 #'   program).
 #' @param from A dataset, or an analysis data above.
-#' @param population_id,subjects_in,where,add,derive,keep,distinct,label The
+#' @param population_id,subjects_in,where,add,derive,keep,distinct The
 #'   other columns (`subjects_in`: an analysis data above whose subjects it
 #'   keeps, instead of `population_id`; `add`, `keep`, `distinct`: several
 #'   columns with `" | "` between them).
@@ -389,12 +389,12 @@
 #' @export
 set_analysis_data <- function(x, output_id, data_id, from, population_id = NA,
                               where = NA, add = NA, derive = NA,
-                              distinct = NA, label = NA, old = NULL,
+                              distinct = NA, old = NULL,
                               subjects_in = NA, keep = NA, code = NA) {
   if (.is_blank(output_id)) stop("An analysis data is a report's: give the report.", call. = FALSE)
   ad <- .adata_rows(x, output_id)
   row <- .normalize_ard_sheet(data.frame(
-    output_id = output_id, data_id = data_id, label = label, from = from,
+    output_id = output_id, data_id = data_id, from = from,
     population_id = population_id, subjects_in = subjects_in, where = where,
     add = add, derive = derive, keep = keep, distinct = distinct,
     code = code, stringsAsFactors = FALSE), "analysis_data")
@@ -494,7 +494,7 @@ import_analysis_data <- function(x, from_output, output_id, data_ids = NULL) {
 #'   own).
 #' @noRd
 name_analysis_data <- function(x, output_id, dataset, population_id,
-                               data_id, label = NA) {
+                               data_id) {
   a <- x$ard$analyses
   if (is.null(a$data)) a$data <- NA_character_
   same <- function(v, w) if (.is_blank(w)) .is_blank_v(v) else !.is_blank_v(v) & v == w
@@ -515,7 +515,7 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
   w <- unique(a$where[hit])
   common <- if (length(w) == 1L && !is.na(w)) w else NA_character_
   x <- set_analysis_data(x, output_id, data_id, from = ds_now, population_id = population_id,
-                         where = common, label = label)
+                         where = common)
   a$data[hit] <- data_id
   a$dataset[hit] <- NA
   a$population_id[hit] <- NA
