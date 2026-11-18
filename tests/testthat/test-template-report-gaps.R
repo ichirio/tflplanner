@@ -19,6 +19,8 @@ tpl_demog_output <- function(id = "T-99") {
 
 test_that("no templates from tflspec is an empty list of them", {
   testthat::local_mocked_bindings(tfl_templates = function(...) stop("none"), .package = "tflspec")
+  # (and no series: their templates are listed too)
+  testthat::local_mocked_bindings(.tpl_series_lister = function() NULL)
   x <- .tpl_list("table")
   expect_identical(names(x), c("name", "kind"))
   expect_identical(nrow(x), 0L)
