@@ -52,7 +52,7 @@ test_that("a flag's (none) stays when the card is drawn again, its default TRUE 
   # ae_soc_pt's any_row (default TRUE) and total (default FALSE)
   home <- local_home()
   s <- suppressMessages(create_sample_study(run = FALSE, home = home))
-  o <- tflspec::tfl_output("T-TPL", "table", label = "AEs", population = "SAF",
+  o <- tflspec::tfl_output("T-TPL", "table", label = "AEs", common = list(population = "SAF"),
                            template = list(name = "ae_soc_pt", args = list(population = "SAF")))
   s$planner <- .spec_add_output(s$planner, o, label = "AEs", population = "SAF")
   s <- suppressWarnings(suppressMessages(save_study(s, home = home)))
@@ -148,7 +148,7 @@ test_that("a template argument that is unset is passed as !unset, and the templa
   skip_if_not_installed("cards")
   home <- local_home()
   s <- suppressMessages(create_sample_study(run = FALSE, home = home))
-  o <- tflspec::tfl_output("T-TPL", "table", label = "Demographics", population = "SAF",
+  o <- tflspec::tfl_output("T-TPL", "table", label = "Demographics", common = list(population = "SAF"),
                            template = list(name = "demog",
                                          args = list(by = "TRT01A", continuous = "AGE",
                                                      categorical = "SEX", sd_missing = U())))
@@ -164,9 +164,11 @@ test_that("a template argument that is unset is passed as !unset, and the templa
   saf <- tflspec::adsl[tflspec::adsl$SAFFL == "Y", ]
   ard <- cards::bind_ard(cards::ard_tabulate(saf, variables = TRT01A),
                          cards::ard_summary(saf, by = TRT01A, variables = AGE))
-  with <- tflspec::tfl_template_run("summary", ard, population = "SAF", continuous = "AGE", sd_missing = U())
-  without <- tflspec::tfl_template_run("summary", ard, population = "SAF", continuous = "AGE")
-  expect_equal(with, without)
+  with <- tflspec::tfl_template_run("summary", ard, population = "SAF", by = "TRT01A", continuous = "AGE", sd_missing = U())
+  without <- tflspec::tfl_template_run("summary", ard, population = "SAF", by = "TRT01A", continuous = "AGE")
+  # (unset: no missing-SD alternative, which the default sd_missing adds)
+  expect_identical(with$layers[[1]]$fields$continuous[["Mean (SD)"]], "{mean} ({sd})")
+  expect_true(length(without$layers[[1]]$fields$continuous[["Mean (SD)"]]) > 1L)
 })
 
 test_that("a flag's (none) button is its own input; the switch turned on is a value", {
