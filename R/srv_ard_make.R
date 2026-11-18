@@ -1,6 +1,19 @@
 # app_server(): ard make -- moved from R/app.R as it was.  Run in
 # app_server()'s environment (.srv_part()); what it makes is copied back
 # there for the parts after it (.srv_keep()).
+# A "working" notice with a fixed id: each step replaces the one before and
+# it is removed when the work ends, also by an error -- so it never stays
+# and piles up.  `work(say)`; say(message, detail) shows a step.
+.with_working_note <- function(id, work, session = shiny::getDefaultReactiveDomain()) {
+  on.exit(shiny::removeNotification(id, session))
+  say <- function(message, detail = NULL) {
+    shiny::showNotification(
+      shiny::tagList(shiny::strong(message), if (!is.null(detail)) shiny::tagList(shiny::br(), detail)),
+      id = id, duration = NULL, closeButton = FALSE, type = "message", session = session)
+  }
+  work(say)
+}
+
 .srv_ard_make <- function() {
   # Make the ARD (step 1): this report's rows of the study ARD, by its
   # saved ARD program (the study saved first) -- what a table program
@@ -13,10 +26,10 @@
     t0 <- Sys.time()
     ok <- FALSE
     n_an <- sum(rv$p$ard$analyses$output_id %in% id)
-    shiny::withProgress(message = sprintf(t("The study ARD of %s"), id), {
-      shiny::setProgress(0.05, detail = t("1/2 saving the study"))
+    .with_working_note("ard_make_note", function(say) {
+      say(sprintf(t("The study ARD of %s"), id), t("1/2 saving the study"))
       if (ard_ready()) {
-        shiny::setProgress(0.2, detail = sprintf(
+        say(sprintf(t("The study ARD of %s"), id), sprintf(
           t("2/2 making its ARD (%d analyses, in its own R process)"), n_an))
         r <- guarded(update_study_ard(current_study(), id))
         ard_state_ver(ard_state_ver() + 1L)
