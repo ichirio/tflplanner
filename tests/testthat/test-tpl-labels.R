@@ -37,3 +37,17 @@ test_that("the card's top group: a key argument stays up at its default, another
   expect_false(.tpl_is_key(.tpl_params("hierarchical")$hierarchy))
   expect_identical(tr("Main", "ja"), "\u4e3b\u8981")
 })
+
+test_that("the series base templates' arguments have a heading and its Japanese", {
+  s <- .strings()
+  for (t in c("tflspec_hierarchy", "tflspec_listing", "tflspec_shift")) {
+    d <- tryCatch(tflspec::tfl_arg_defs(template = paste0("tflspec_v1/", t)), error = function(e) NULL)
+    if (!is.data.frame(d)) next
+    doc <- if (is.null(d$description)) rep("", nrow(d)) else d$description
+    short <- ifelse(doc %in% names(.tpl_doc_labels), .tpl_doc_labels[doc], .tpl_arg_labels[d$name])
+    expect_identical(d$name[is.na(short)], character(), info = t)
+    expect_identical(setdiff(short[!is.na(short)], s[[1L]]), character(), info = t)
+  }
+  expect_false(identical(tr("Listing of records", "ja"), "Listing of records"))
+  expect_identical(tr("Variables that divide the listing", "ja") == "Variables that divide the listing", FALSE)
+})
