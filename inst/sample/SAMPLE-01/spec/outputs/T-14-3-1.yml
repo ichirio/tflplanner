@@ -7,10 +7,8 @@ extends:
   - defaults
 data:
   - id: adsl_saf
-    label: Safety set
     from: ADSL
   - id: adae_saf
-    label: Treatment-emergent AEs of the safety set
     from: ADAE
     subjects_in: adsl_saf
     where: !r TRTEMFL == "Y"

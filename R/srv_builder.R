@@ -682,7 +682,7 @@
     }
     args <- .args_plain(args)
     shiny::removeModal()
-    if (identical(args_to_r(it$fn, args), args_to_r(it$fn, it$args))) return()
+    if (.args_same_r(it$fn, args, it$args %||% list())) return()
     k <- if (grepl("#", it$path, fixed = TRUE)) as.integer(sub("^.*#", "", it$path)) else 1L
     p2 <- guarded(.builder_item_write(rv$p, bform$id, it$fn, args, k))
     if (is.null(p2)) return()
@@ -821,7 +821,7 @@
       args <- if (isTRUE(attr(now[[path]], "special"))) .special_args_put(it$args, now[[path]]) else
         if (dots) .dots_form_args(.args_plain_attr(now[[path]]), it, fn) else
           .plan_form_args(now[[path]], it, fn)
-      if (identical(args_to_r(fn, args), args_to_r(fn, it$args %||% list()))) next
+      if (.args_same_r(fn, args, it$args %||% list())) next
       p2 <- guarded(.builder_item_write(rv$p, bform$id, fn, args, k))
       if (is.null(p2)) next
       rv$p <- p2

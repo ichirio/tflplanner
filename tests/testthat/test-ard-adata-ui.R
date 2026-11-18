@@ -11,7 +11,7 @@ adata_planner <- function() {
   p$ard$populations <- data.frame(population_id = "SAF", dataset = "ADSL",
                                   where = "SAFFL == \"Y\"")
   p$ard$analyses <- data.frame(
-    output_id = c("DM", "DM"), analysis_id = c("GROUPN", "AGE"),
+    output_id = c("DM", "DM"), analysis_id = c("BIGN", "AGE"),
     method = c("cards::ard_tabulate", "cards::ard_summary"),
     population_id = "SAF", where = c(NA, "AGE >= 18"),
     by = c(NA, "TRT01A"), variables = c("TRT01A", "AGE"))
@@ -23,7 +23,7 @@ test_that("analysis data are added, renamed, named from a report and removed", {
   p <- adata_planner()
   expect_identical(.adata_suggest(p, "DM", "ADSL", "SAF"), "adsl_saf")
   # a report's data given a name: its analyses read it; a condition all of
-  # them have (here only AGE's: GROUPN has none) stays with the analyses
+  # them have (here only AGE's: BIGN has none) stays with the analyses
   q <- name_analysis_data(p, "DM", NA, "SAF", "adsl_saf")
   a <- q$ard$analyses
   expect_identical(a$data, c("adsl_saf", "adsl_saf"))
@@ -88,14 +88,14 @@ test_that("the ARD tab shows a report's analysis data and makes one", {
     expect_match(output$adata_detail$html, "adata_id", fixed = TRUE)
     session$setInputs(adata_from = "ADSL", adata_pop = "SAF", adata_subj = "",
                       adata_add = NULL, adata_derive = "", adata_distinct = NULL,
-                      adata_id = "adsl_saf", adata_label = "Safety Analysis Set")
+                      adata_id = "adsl_saf")
     session$setInputs(adata_preview = 1)
     expect_match(output$adata_preview_out$html, "subjects", fixed = TRUE)
     session$setInputs(adata_save = 1)
     rv <- session$userData$rv
     expect_identical(rv$p$ard$analyses$data, c("adsl_saf", "adsl_saf"))
     h <- output$ard_adata$html
-    expect_match(h, "Read by GROUPN, AGE", fixed = TRUE)
+    expect_match(h, "Read by BIGN, AGE", fixed = TRUE)
     expect_match(h, "254 subjects", fixed = TRUE)
   })
 })
@@ -201,7 +201,7 @@ test_that("1-1: one list, a new analysis data, kept to another's subjects", {
     expect_match(f, "indexOf(input.adata_from) &lt; 0", fixed = TRUE)
     expect_match(f, "[&quot;ADSL&quot;]", fixed = TRUE)
     expect_match(f, "Nothing chosen: nothing added", fixed = TRUE)
-    session$setInputs(adata_label = "", adata_from = "ADSL", adata_add = NULL,
+    session$setInputs(adata_from = "ADSL", adata_add = NULL,
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL)
     # the condition (as the builder gives it): the name after it
     cond <- session$userData$adata_cond
@@ -218,7 +218,7 @@ test_that("1-1: one list, a new analysis data, kept to another's subjects", {
     expect_true(is.na(ad$where))
     # another kept to its subjects
     session$setInputs(ard_adata_new = 2)
-    session$setInputs(adata_id = "adsl_old", adata_label = "", adata_from = "ADSL",
+    session$setInputs(adata_id = "adsl_old", adata_from = "ADSL",
                       adata_subj_on = TRUE, adata_add = NULL,
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL)
     session$setInputs(adata_save = 2)
@@ -301,7 +301,7 @@ test_that("a data written as R: the code the program has as a start; saved, the 
     session$setInputs(nav = "make", step = "ard", target = "DM")
     session$setInputs(ard_adata_pick = "adae_teae")
     expect_match(output$adata_detail$html, "adata_code", fixed = TRUE)
-    session$setInputs(adata_id = "adae_teae", adata_label = "", adata_from = "ADAE", adata_add = NULL,
+    session$setInputs(adata_id = "adae_teae", adata_from = "ADAE", adata_add = NULL,
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL,
                       adata_code = "dplyr::filter(adae, AESER == \"Y\")")
     session$setInputs(adata_save = 1)
@@ -417,7 +417,7 @@ test_that("1-1's analysis set: the condition's first row, from the study's sets 
     session$setInputs(adata_from = "ADSL", adata_pop = "flag:PPROTFL")
     expect_identical(shiny::isolate(cond$value()), 'PPROTFL == "Y"')
     # saved: the condition, no population_id
-    session$setInputs(adata_id = "adsl_pp", adata_label = "", adata_subj = "", adata_add = NULL,
+    session$setInputs(adata_id = "adsl_pp", adata_subj = "", adata_add = NULL,
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL, adata_code = "")
     session$flushReact()
     session$setInputs(adata_save = 1)
@@ -431,7 +431,7 @@ test_that("1-1's analysis set: the condition's first row, from the study's sets 
     session$setInputs(adata_from = "ADSL", adata_pop = "pop:SAF")
     cond$value('SAFFL == "Y" & AGE >= 65')
     cond$key(shiny::isolate(cond$key()) + 1L)
-    session$setInputs(adata_id = "adsl_65", adata_label = "", adata_subj = "", adata_add = NULL,
+    session$setInputs(adata_id = "adsl_65", adata_subj = "", adata_add = NULL,
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL, adata_code = "")
     session$flushReact()
     session$setInputs(adata_save = 2)
@@ -494,14 +494,13 @@ test_that("1-1: a population_id the sheet has is the condition's first row", {
     session$setInputs(ard_adata_pick = "adsl_old")
     expect_false(grepl("Also kept to the population", output$adata_detail$html, fixed = TRUE))
     expect_identical(shiny::isolate(session$userData$adata_cond$value()), 'SAFFL == "Y" & AGE >= 65')
-    session$setInputs(adata_id = "adsl_old", adata_label = "Old", adata_from = "ADSL", adata_subj = "",
+    session$setInputs(adata_id = "adsl_old", adata_from = "ADSL", adata_subj = "",
                       adata_add = NULL, adata_derive = "", adata_keep = NULL, adata_distinct = NULL,
                       adata_code = "")
     session$setInputs(adata_save = 1)
     ad <- .adata_rows(session$userData$rv$p, "DM")
     expect_identical(ad$population_id[ad$data_id == "adsl_old"], "SAF")
     expect_identical(ad$where[ad$data_id == "adsl_old"], "AGE >= 65")
-    expect_identical(ad$label[ad$data_id == "adsl_old"], "Old")
   })
 })
 
