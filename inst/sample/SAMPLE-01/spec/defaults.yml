@@ -56,6 +56,7 @@ codelists:
   ETHNIC:
     - {value: HISPANIC OR LATINO, label: Hispanic or Latino}
     - {value: NOT HISPANIC OR LATINO, label: Not Hispanic or Latino}
+    - {value: NOT REPORTED, label: Not Reported}
 # The ADaM metadata, in a define's shape (tfl_read_define()): each variable's
 # code list (its OID) and the code lists, a value a row.  The levels of
 # study$adam come from these (settings: adam_levels: codelists).
