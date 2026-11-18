@@ -357,3 +357,23 @@ test_that("a template that hides its analysis set takes it from the report's pop
   expect_identical(.tpl_missing("demog", list(by = "TRT01A")), character())
   expect_identical(.tpl_missing("demog", list()), "by")
 })
+
+test_that("a table field's column choices are the template's data's, not every dataset's (gui-checks-1 D3)", {
+  data <- list(ADSL = data.frame(USUBJID = "1", AGE = 1, SEX = "F"),
+               ADAE = data.frame(USUBJID = "1", AEDECOD = "x"))
+  # a template's data id is its dataset's columns; a name the study lacks, all
+  expect_identical(.tpl_columns(data, "adsl_sub"), c("USUBJID", "AGE", "SEX"))
+  expect_identical(.tpl_columns(data, "ADAE"), c("USUBJID", "AEDECOD"))
+  expect_identical(.tpl_columns(data, NULL), c("USUBJID", "AGE", "SEX", "AEDECOD"))
+  expect_identical(.tpl_columns(data, "ADVS"), c("USUBJID", "AGE", "SEX", "AEDECOD"))
+  # tflspec_v1/demog's labels (map<column,string>, choices vars(adsl_sub)),
+  # the card's dataset none: ADSL's
+  labels <- list(name = "labels", def = list(type = "map<column,string>", input = "table",
+                                             choices = "vars(adsl_sub)"))
+  ctx <- .tpl_table_ctx(data, NULL, args = list(), params = list(labels = labels))
+  expect_identical(ctx$vars("adsl_sub"), c("USUBJID", "AGE", "SEX"))
+  spec <- .tpl_table_spec(labels, ctx, NULL, "en")
+  ch <- unlist(spec$choices)
+  expect_true("AGE" %in% ch)
+  expect_false("AEDECOD" %in% ch)
+})

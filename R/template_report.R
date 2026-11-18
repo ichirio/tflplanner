@@ -183,9 +183,19 @@
 # The columns a parameter chooses from: the dataset's the report reads
 # (its `data` argument or default), else every dataset's
 .tpl_columns <- function(data, dataset = NULL) {
+  .tpl_dataset_columns(data, dataset) %||% unique(unlist(lapply(data, names)))
+}
+
+# A dataset's columns, by its name or a template's data id (adsl_sub: its
+# dataset, ADSL -- as .tpl_vars_dataset() reads it); NULL when the study
+# has no such dataset
+.tpl_dataset_columns <- function(data, dataset) {
   ds <- toupper(as.character(dataset %||% "")[1L])
-  if (!is.na(ds) && nzchar(ds) && !is.null(data[[ds]])) return(names(data[[ds]]))
-  unique(unlist(lapply(data, names)))
+  if (is.na(ds) || !nzchar(ds)) return(NULL)
+  for (d in unique(c(ds, sub("_.*$", "", ds)))) {
+    if (!is.null(data[[d]])) return(names(data[[d]]))
+  }
+  NULL
 }
 
 # The dataset a series template's parameter takes its columns from: its
@@ -624,10 +634,10 @@
     study_data = ds(names(data)),
     report_data = ds(c(args$data, if (is.null(args$data)) dataset)),
     populations = populations,
+    # (vars(adsl_sub): the template's data id, its dataset's columns -- not
+    # every dataset's)
     vars = function(what = NULL) {
-      w <- toupper(as.character(what %||% "")[1L])
-      if (!is.na(w) && nzchar(w) && is.data.frame(data[[w]])) names(data[[w]]) else
-        .tpl_columns(data, dataset)
+      .tpl_dataset_columns(data, what) %||% .tpl_columns(data, dataset)
     },
     levels = function(what = NULL) .tpl_levels(data, as.character(what %||% NA_character_)[1L], dataset),
     args = args,
