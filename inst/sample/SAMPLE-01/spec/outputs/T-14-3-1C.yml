@@ -1,11 +1,6 @@
-# T-14-3-1 (tflplanner's SAMPLE-01 code SPEC, TEAEs by SOC / PT) with the
-# canon analysis ids: one BIGN (the arms' N, the column headings' N) and an
-# analysis a depth, AE_ANY, AE_L1, AE_L2 (canon b5db722: the item's id AE,
-# analysis_per: level; was TEAE).  Nothing else changed.  The twin of
-# T-14-3-1T.
 id: T-14-3-1C
 kind: table
-label: TEAEs by SOC / PT
+label: TEAEs by SOC / PT (a code SPEC)
 common:
   population: SAF
 extends:
@@ -28,7 +23,6 @@ ard:
       variables:
         - TRT01A
     - id: AE
-      analysis_per: level
       label: TEAE by SOC / PT
       method: hierarchical
       data: adae_saf
@@ -40,6 +34,7 @@ ard:
       denominator: adsl_saf
       args: !r over_variables = TRUE
       purpose: PRIMARY OUTCOME MEASURE
+      analysis_per: level
 codelists:
   TRT01A:
     - value: Drug X
@@ -95,3 +90,4 @@ page:
     OUTPUT_POPULATION: Safety Analysis Set
 style: compact
 note: TEAE by SOC / PT, frequency descending
+

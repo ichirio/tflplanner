@@ -11,13 +11,9 @@ outputs:
     kind: table
     label: Demographic characteristics (its ARD one ard_stack call)
     population: SAF
-  - id: T-14-1-1T
-    kind: table
-    label: Demographics (a template SPEC, tflspec_v1/demog; the twin of T-14-1-1C)
-    population: SAF
   - id: T-14-1-1C
     kind: table
-    label: Demographics (a code SPEC; the twin of T-14-1-1T)
+    label: Demographics (a code SPEC)
     population: SAF
   - id: T-14-1-2
     kind: table
@@ -79,13 +75,9 @@ outputs:
     kind: table
     label: TEAEs by SOC / PT
     population: SAF
-  - id: T-14-3-1T
-    kind: table
-    label: TEAEs by SOC / PT (a template SPEC, tflspec_v1/ae_soc_pt; the twin of T-14-3-1C)
-    population: SAF
   - id: T-14-3-1C
     kind: table
-    label: TEAEs by SOC / PT (a code SPEC; the twin of T-14-3-1T)
+    label: TEAEs by SOC / PT (a code SPEC)
     population: SAF
   - id: L-16-2-7
     kind: listing

@@ -1,10 +1,6 @@
-# T-14-3-1 written as a template SPEC: tflspec_v1/ae_soc_pt, whose ARD is
-# the code SPEC's (T-14-3-1C: tflplanner's SAMPLE-01 T-14-3-1 with the
-# canon ids).  The content is the template's, its defaults the code
-# SPEC's cards; the report gives only max_rows (22, the series' 30).
 id: T-14-3-1T
 kind: table
-label: TEAEs by SOC / PT
+label: TEAEs by SOC / PT (a template SPEC, tflspec_v1/ae_soc_pt; the twin of T-14-3-1C)
 common:
   population: SAF
 codelists:
@@ -14,7 +10,8 @@ codelists:
 template:
   name: tflspec_v1/ae_soc_pt
   analysis:
-    by: [TRT01A]
+    by:
+      - TRT01A
   content:
     max_rows: 22
 page:
@@ -28,3 +25,4 @@ page:
     OUTPUT_POPULATION: Safety Analysis Set
 style: compact
 note: TEAE by SOC / PT, frequency descending
+

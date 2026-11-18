@@ -24,6 +24,23 @@ twin_rows <- function(a) {
   a
 }
 
+# the template twins are not in the sample: written into the study's spec
+# (their files and lines of spec/toc.yml) and the study read again
+twin_add_templates <- function(s, home) {
+  ids <- c("T-14-1-1T", "T-14-3-1T")
+  toc_file <- file.path(s$path, "spec", "toc.yml")
+  toc <- yaml::read_yaml(toc_file)
+  for (id in ids) {
+    f <- testthat::test_path("fixtures", "twins", paste0(id, ".yml"))
+    expect_true(file.copy(f, file.path(s$path, "spec", "outputs", paste0(id, ".yml"))))
+    o <- yaml::read_yaml(f)
+    toc$outputs <- c(toc$outputs, list(list(id = id, kind = o$kind, label = o$label,
+                                            population = o$common$population)))
+  }
+  yaml::write_yaml(toc, toc_file)
+  suppressMessages(reload_from_spec(s, home = home))
+}
+
 test_that("SAMPLE-01's template and code twins make the same ARD (DM, AE)", {
   skip_on_cran()
   skip_if_not_installed("cards")
@@ -31,6 +48,7 @@ test_that("SAMPLE-01's template and code twins make the same ARD (DM, AE)", {
   skip_if(!isTRUE(ok), "this tflspec has no series templates (tflspec#824)")
   home <- local_home()
   s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- twin_add_templates(s, home)
   p <- s$planner
   pairs <- list(DM = c("T-14-1-1T", "T-14-1-1C"), AE = c("T-14-3-1T", "T-14-3-1C"))
   ids <- list(DM = c("AGE", "AGEGR1", "BIGN", "ECOGBL", "RACE", "SEX"), AE = c("AE_ANY", "AE_L1", "AE_L2", "BIGN"))
