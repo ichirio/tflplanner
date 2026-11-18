@@ -11,7 +11,7 @@ data:
     from: ADSL
 ard:
   analyses:
-    - id: GROUPN
+    - id: BIGN
       method: categorical
       data: adsl_saf
       variables:

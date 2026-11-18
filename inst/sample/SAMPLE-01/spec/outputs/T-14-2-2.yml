@@ -14,7 +14,7 @@ data:
     where: !r PARAMCD == "TTSKIN"
 ard:
   analyses:
-    - id: GROUPN
+    - id: BIGN
       method: categorical
       data: adsl_saf
       variables:

@@ -11,7 +11,7 @@ adata_planner <- function() {
   p$ard$populations <- data.frame(population_id = "SAF", dataset = "ADSL",
                                   where = "SAFFL == \"Y\"")
   p$ard$analyses <- data.frame(
-    output_id = c("DM", "DM"), analysis_id = c("GROUPN", "AGE"),
+    output_id = c("DM", "DM"), analysis_id = c("BIGN", "AGE"),
     method = c("cards::ard_tabulate", "cards::ard_summary"),
     population_id = "SAF", where = c(NA, "AGE >= 18"),
     by = c(NA, "TRT01A"), variables = c("TRT01A", "AGE"))
@@ -23,7 +23,7 @@ test_that("analysis data are added, renamed, named from a report and removed", {
   p <- adata_planner()
   expect_identical(.adata_suggest(p, "DM", "ADSL", "SAF"), "adsl_saf")
   # a report's data given a name: its analyses read it; a condition all of
-  # them have (here only AGE's: GROUPN has none) stays with the analyses
+  # them have (here only AGE's: BIGN has none) stays with the analyses
   q <- name_analysis_data(p, "DM", NA, "SAF", "adsl_saf")
   a <- q$ard$analyses
   expect_identical(a$data, c("adsl_saf", "adsl_saf"))
@@ -95,7 +95,7 @@ test_that("the ARD tab shows a report's analysis data and makes one", {
     rv <- session$userData$rv
     expect_identical(rv$p$ard$analyses$data, c("adsl_saf", "adsl_saf"))
     h <- output$ard_adata$html
-    expect_match(h, "Read by GROUPN, AGE", fixed = TRUE)
+    expect_match(h, "Read by BIGN, AGE", fixed = TRUE)
     expect_match(h, "254 subjects", fixed = TRUE)
   })
 })
