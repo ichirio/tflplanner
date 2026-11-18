@@ -31,7 +31,6 @@
   any_grade = "Any-grade label",
   flags = "Flag rows",
   term = "Term variable",
-  data_label = "Analysis data label",
   analysis_id = "Analysis ID",
   analysis_label = "Analysis label",
   sort_by = "Column that orders terms",

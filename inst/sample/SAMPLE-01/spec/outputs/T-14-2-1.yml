@@ -7,10 +7,8 @@ extends:
   - defaults
 data:
   - id: adsl_saf
-    label: Safety set
     from: ADSL
   - id: advs_saf_sysbp
-    label: Systolic blood pressure at week 24, safety set
     from: ADVS
     subjects_in: adsl_saf
     where: !r PARAMCD == "SYSBP" & AVISIT == "CYCLE 9 DAY 1"

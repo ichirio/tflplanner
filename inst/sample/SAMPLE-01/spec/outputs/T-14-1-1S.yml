@@ -7,7 +7,6 @@ extends:
   - defaults
 data:
   - id: adsl_saf
-    label: Safety set
     from: ADSL
 ard:
   analyses:

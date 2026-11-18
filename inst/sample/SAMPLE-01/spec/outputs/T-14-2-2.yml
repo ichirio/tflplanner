@@ -7,10 +7,8 @@ extends:
   - defaults
 data:
   - id: adsl_saf
-    label: Safety set
     from: ADSL
   - id: adtte_saf_ttskin
-    label: Time to first skin disorder, safety set
     from: ADTTE
     subjects_in: adsl_saf
     where: !r PARAMCD == "TTSKIN"
