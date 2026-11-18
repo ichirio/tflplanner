@@ -43,8 +43,7 @@ content:
       rows:
         group: variable
   - plan_labels:
-      variable:
-        EOSSTT: Status at end of study, n (%)
+      EOSSTT: Status at end of study, n (%)
   - plan_paginate_rows:
       max_rows: 24
 page:

@@ -148,12 +148,11 @@ content:
         - RACE
         - ETHNIC
   - plan_labels:
-      variable:
-        AGE: Age (years)
-        AGEGR1: Age group, n (%)
-        SEX: Sex, n (%)
-        RACE: Race, n (%)
-        ETHNIC: Ethnicity, n (%)
+      AGE: Age (years)
+      AGEGR1: Age group, n (%)
+      SEX: Sex, n (%)
+      RACE: Race, n (%)
+      ETHNIC: Ethnicity, n (%)
   - plan_nest:
       ASIANSUB:
         RACE: Asian
