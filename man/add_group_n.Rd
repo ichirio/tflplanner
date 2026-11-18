@@ -18,7 +18,7 @@ The \code{tflplanner}.
 }
 \description{
 Adds to the report's ARD analyses the subjects per group, which clinical
-reporting calls big N (\code{GROUPN}: the group counted, by nothing) -- what
+reporting calls big N (\code{BIGN}: the group counted, by nothing) -- what
 the column headers' \code{(N={n})} read --
 with the data and analysis set of its first analysis.
 }

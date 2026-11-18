@@ -13,7 +13,7 @@ ard_planner <- function() {
   p$ard$populations <- data.frame(population_id = "SAF", dataset = "ADSL",
                                   where = "SAFFL == \"Y\"")
   p$ard$analyses <- data.frame(
-    output_id = c("DM", "DM"), analysis_id = c("GROUPN", "AGE"),
+    output_id = c("DM", "DM"), analysis_id = c("BIGN", "AGE"),
     method = c("categorical", "continuous"), population_id = "SAF",
     by = c(NA, "TRT01A"), variables = c("TRT01A", "AGE"))
   for (s in names(p$ard)) p$ard[[s]] <- .normalize_ard_sheet(p$ard[[s]], s)
@@ -76,7 +76,7 @@ test_that("the definition is saved, reopened and run", {
 
   r <- run_ard(o, "DM")
   expect_null(r$error)
-  expect_setequal(unique(r$ard$analysis_id), c("GROUPN", "AGE"))
+  expect_setequal(unique(r$ard$analysis_id), c("BIGN", "AGE"))
   v <- ard_view(r$ard)
   expect_true(all(c("analysis_id", "variable", "stat_name", "stat") %in%
                     names(v)))
@@ -226,7 +226,7 @@ test_that("an ARS row names its report: the longest output id that fits", {
                                       item = "populations$derive", note = "x"))$sheet,
                    "populations")
   j <- .ars_jump_row(list(output_id = "T-1", where = "T-1 / SYSBP",
-                          item = "analysis_data$subjects",
+                          item = "analysis_data$subjects_in",
                           note = "advs_saf: `adsl_saf` -- ..."))
   expect_identical(j[c("sheet", "row")], list(sheet = "analysis_data", row = "advs_saf"))
 })

@@ -61,6 +61,8 @@ series_card_type <- function(input, type, choices = NULL) {
   if (identical(input, "pick") && length(unlist(choices)) && grepl("^(list<)?string>?$", type))
     return(if (startsWith(type, "list<")) "picks" else "pick")
   if (startsWith(type, "enum[")) return("choice")
+  # (several free texts: the list field, a line each)
+  if (identical(type, "list<string>")) return("list")
   switch(type, logical = "flag", number = "number", `list<column>` = "vars",
          column = "var", level = "levels", `list<level>` = "levels",
          if (startsWith(type, "list<")) "list" else "text")

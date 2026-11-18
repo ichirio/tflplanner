@@ -156,7 +156,7 @@
     # unchanged); one that cannot be drawn so is kept as it is (said so)
     e$legacy_pop <- blank_na(r$population_id)
     where <- blank_na(r$where)
-    if (nzchar(e$legacy_pop) && .is_blank(r$subjects)) {
+    if (nzchar(e$legacy_pop) && .is_blank(r$subjects_in)) {
       po <- p$ard$populations
       w2 <- .cond_put_pop(where, po$where[match(e$legacy_pop, po$population_id)])
       if (!is.na(w2)) {
@@ -169,17 +169,17 @@
       ad$data_id[seq_len(match(old, ad$data_id) - 1L)]
     bar <- function(v) .split_bar(v)
     cands <- adata_subject_cands(old)
-    if (!.is_blank(r$subjects) && !r$subjects %in% cands) cands <- c(r$subjects, cands)
+    if (!.is_blank(r$subjects_in) && !r$subjects_in %in% cands) cands <- c(r$subjects_in, cands)
     # kept to the report's analysis set's subjects (adsl_<set>), if it is one
     rp_data <- {
       rp <- report_population(p, ard_target() %||% "")
       pds <- p$ard$populations$dataset[match(rp, p$ard$populations$population_id)]
       if (is.na(rp)) NA else .adata_same_as(ad, if (is.na(pds)) "ADSL" else pds, rp, NA, NA)
     }
-    subj_now <- if (!.is_blank(r$subjects)) r$subjects else
+    subj_now <- if (!.is_blank(r$subjects_in)) r$subjects_in else
       if (!is.na(rp_data) && rp_data %in% cands) rp_data else if (length(cands)) cands[1L] else ""
     # kept to them: as it is; a new one, unless it is itself one row a subject
-    subj_on <- if (!is.null(old) || !is.null(e$name)) !.is_blank(r$subjects) else
+    subj_on <- if (!is.null(old) || !is.null(e$name)) !.is_blank(r$subjects_in) else
       length(cands) > 0L && !adata_root(r$from) %in% adata_pop_ds()
     e$cands <- cands
     adata_edit(e)
@@ -248,10 +248,9 @@
         sprintf(t("Also kept to the population %s (population_id, as the sheet has it: SPEC shows it)."),
                 e$legacy_pop)),
       bslib::layout_columns(
-        col_widths = c(5, 7),
+        col_widths = 5,
         shiny::textInput("adata_id", argl("Name (used in the program)", "data_id"),
-                         blank_na(r$data_id), width = "100%"),
-        shiny::textInput("adata_label", t("Label"), blank_na(r$label), width = "100%")),
+                         blank_na(r$data_id), width = "100%")),
       shiny::uiOutput("adata_same"),
       shiny::div(
       id = "adata_gui", class = if (!.is_blank(r$code)) "rp-greyed",
@@ -428,7 +427,7 @@
     p <- rv$p
     if (!is.null(e$name)) {
       sp <- .an_data_split(e$name)
-      p <- name_analysis_data(p, ard_target(), sp$dataset, sp$pop, id, label = one(input$adata_label))
+      p <- name_analysis_data(p, ard_target(), sp$dataset, sp$pop, id)
       e$old <- id
     }
     from <- one(input$adata_from)
@@ -445,10 +444,10 @@
     if (!is.na(code)) {
       pop <- subjects <- where <- add <- derive <- keep <- distinct <- NA
     }
-    p <- set_analysis_data(p, ard_target(), id, from = from, population_id = pop, subjects = subjects,
+    p <- set_analysis_data(p, ard_target(), id, from = from, population_id = pop, subjects_in = subjects,
                            where = where, add = add,
                            derive = derive, keep = keep,
-                           distinct = distinct, label = one(input$adata_label),
+                           distinct = distinct,
                            old = e$old, code = code)
     suppressWarnings(.ard_spec(p$ard))
     p
@@ -531,7 +530,7 @@
       tmp <- trimws(input$adata_id %||% "")
       if (!nzchar(tmp)) stop("no name")
       ps <- adata_pop_split(adata_subj_value())
-      set_analysis_data(q, ard_target(), tmp, from = one_of(input$adata_from), subjects = adata_subj_value(),
+      set_analysis_data(q, ard_target(), tmp, from = one_of(input$adata_from), subjects_in = adata_subj_value(),
                         population_id = ps$pop,
                         where = ps$where, add = one_of(input$adata_add),
                         derive = one_of(adata_derive_now()), keep = one_of(input$adata_keep),
@@ -567,6 +566,8 @@
     })
   })
   shiny::observeEvent(input$adata_save, {
+    # (no form open -- it was closed with the report it was for: nothing to write)
+    shiny::req(!is.null(adata_edit()))
     p <- tryCatch(adata_planner(), error = function(e) e)
     if (inherits(p, "error")) return(notify(conditionMessage(p), "warning"))
     e <- adata_edit()
@@ -608,9 +609,8 @@
     f <- input$adata_import_from
     shiny::req(f)
     ad <- .adata_rows(rv$p, f)
-    lab <- ifelse(.is_blank_v(ad$label), ad$data_id, paste(ad$data_id, "\u2014", ad$label))
     shiny::checkboxGroupInput("adata_import_ids", t("Its analysis data (what they are made from and kept to come with them)"),
-                              stats::setNames(ad$data_id, lab), selected = ad$data_id,
+                              stats::setNames(ad$data_id, ad$data_id), selected = ad$data_id,
                               width = "100%")
   })
   shiny::observeEvent(input$adata_import_ok, {
@@ -838,7 +838,7 @@
     a <- shiny::isolate(st_rows())
     kids <- a[.stack_kids(a, r$analysis_id), , drop = FALSE]
     fl <- .stack_flags_of(r$args)
-    # the report's own rows that count the subjects per group (GROUPN)
+    # the report's own rows that count the subjects per group (BIGN)
     groupn <- a$analysis_id[.stack_group_n(a, r)]
     js <- function(input, value) sprintf(
       "Shiny.setInputValue('%s', %s, {priority: 'event'});", input, value)
@@ -903,7 +903,7 @@
         shiny::tags$summary(class = "small", t("This analysis as code")),
         shiny::div(class = "rp-code", shiny::verbatimTextOutput("ard_an_code"))))
   })
-  # the stack counting the subjects per group while GROUPN does: said at once
+  # the stack counting the subjects per group while BIGN does: said at once
   output$ard_stack_n_note <- shiny::renderUI({
     st_drawn()
     r <- shiny::isolate(st_row())
@@ -1129,7 +1129,7 @@
     an_pick(s$analysis_id[1L])
     bump()
     if (isFALSE(.stack_flags_of(s$args[1L])$flags[[".by_stats"]])) {
-      notify(sprintf(t("%s does not count the subjects per group: the report's GROUPN does already (two would break the column headers' N). Delete GROUPN and tick it on %s to let the stack count them."),
+      notify(sprintf(t("%s does not count the subjects per group: the report's BIGN does already (two would break the column headers' N). Delete BIGN and tick it on %s to let the stack count them."),
                      s$analysis_id[1L], s$analysis_id[1L]))
     }
   })
@@ -1183,6 +1183,9 @@
   ard_scope_id <- shiny::reactive({
     if (identical(input$ard_scope, "study")) NULL else ard_target()
   })
+  # another report is open: the analysis data form of the one before is
+  # closed (what [Save] writes follows ard_target(), not the form's report)
+  shiny::observeEvent(ard_target(), adata_close(), ignoreNULL = FALSE, ignoreInit = TRUE)
   output$ard_code <- shiny::renderText({
     shiny::req(has_study())
     a <- rv$p$ard
@@ -1290,8 +1293,14 @@
     }
     !(dirty() && !do_save())
   }
-  output$ard_run_info <- shiny::renderUI({
+  # the result kept is the report's it was made for: another report's table
+  # is not shown under this one's
+  ard_res_here <- function() {
     r <- ard_res()
+    if (!is.null(r) && !identical(r$scope, ard_target())) NULL else r
+  }
+  output$ard_run_info <- shiny::renderUI({
+    r <- ard_res_here()
     if (is.null(r)) {
       return(shiny::p(class = "small text-muted mt-2",
                       t("Update preview to see the ARD this report's analyses make.")))
@@ -1324,7 +1333,7 @@
     )
   })
   output$ard_table <- DT::renderDT({
-    r <- ard_res()
+    r <- ard_res_here()
     shiny::req(r, r$ard)
     # a height of its own, so the horizontal scroll bar stays in sight
     DT::datatable(ard_view(r$ard), rownames = FALSE, filter = "top",

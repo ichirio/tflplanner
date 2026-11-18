@@ -379,6 +379,8 @@ data_lines <- function(x, output_id, todo = TRUE) {
     design <- fig_design(x, output_id)
     f <- if (is.null(design)) {
       .figure_lines(x, output_id, info)
+    } else if (!is.null(design$figure)) {
+      c(.fig_source_lines(), "", .fig_key_lines(x, output_id))
     } else {
       .fig_design_lines(x, output_id, design)
     }
@@ -593,6 +595,9 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   # a step of the report's own code: its data and content parts are
   # .code_report_lines()'s
   own <- .is_code_step(x, output_id, "data") || .is_code_step(x, output_id, "content")
+  # a figure report with the content key `figure: {name, args}` (tflspec#835):
+  # its program is tflspec's call, `content <- tflspec::<fn>(...)`
+  fig_key <- !is.null(design$figure) && !own
 
   head <- .banner(
     paste("Program    :", file.path(lay[["programs_tfl"]], info$program)),
@@ -605,7 +610,11 @@ program_code <- function(x, output_id, date = Sys.Date()) {
            ", ", format(date, "%Y-%m-%d")),
     if (own) paste0(
       "The data and content parts are your code where its steps are; the report part is written from ",
-      lay[["spec"]], "/.") else if (is.null(design)) paste0(
+      lay[["spec"]], "/.") else if (fig_key) c(
+      paste0("The data and content parts make `content` (tflspec's figure function, called as the report's ",
+             "`figure:` says); the report part is written from ", lay[["spec"]], "/."),
+      paste0("Edit its `figure:` key in ", lay[["spec"]], "/outputs/", output_id, ".yml, not this code.")
+    ) else if (is.null(design)) paste0(
       "The data part makes `", obj, "`; the report part is written from ",
       lay[["spec"]], "/.") else c(
       paste0("The data and plot parts make `plot`; the report part is written from ",
@@ -615,7 +624,8 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 
   data <- if (is.null(design) || own) data_lines(x, output_id) else c(
     if (!is.na(x$setup)) c(.code_block(x$setup), ""),
-    .fig_design_lines(x, output_id, design, source = FALSE))
+    if (fig_key) .fig_key_lines(x, output_id) else
+      .fig_design_lines(x, output_id, design, source = FALSE))
   # (the deliverable is the report: a table's data is not saved -- the
   # study ARD holds it by output_id)
   data_part <- if (!is.null(design) || own) data else c(

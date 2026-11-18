@@ -81,8 +81,9 @@ builder_items <- function(x, output_id, meta = NULL) {
       k <- sum(seen == fn)
       at <- which(own_fn == fn)
       from <- if (identical(fn, "table_plan")) "own" else it$from %||% "own"
-      list(fn = fn, args = it$args %||% list(),
-           own_args = if (length(at) >= k) sp$own[[at[k]]]$args %||% list(),
+      own_args <- if (length(at) >= k) sp$own[[at[k]]]$args %||% list()
+      list(fn = fn, args = .args_with_unset(it$args %||% list(), own_args),
+           own_args = own_args,
            from = from, arg_from = it$arg_from, below = it$below,
            path = if (k > 1L) paste0(fn, "#", k) else fn,
            revert = identical(from, "own") && !is.null(it$below),
@@ -90,6 +91,14 @@ builder_items <- function(x, output_id, meta = NULL) {
     })
   }
   .builder_items_ard_first(items)
+}
+
+# The plan's arguments with the report's own `!unset` ones among them: the
+# plan leaves such an argument out (the call has none), the card shows it as
+# "(none)" and keeps it when it is written again
+.args_with_unset <- function(args, own) {
+  for (k in names(own)[vapply(own, .is_unset, NA)]) args[k] <- list(own[[k]])
+  args
 }
 
 # ... from the sheets (the bridge): the report's and the defaults' items,
