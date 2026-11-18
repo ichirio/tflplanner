@@ -52,8 +52,12 @@ test_that("a map<column,r> (derive): a new column's name = R, the columns offere
   # (ordered: the rows move)
   expect_match(html(arg_field("c", "derive", "map<column,r>", def = c(d, ordered = TRUE), ctx = ctx)),
                "rp-tbl-up", fixed = TRUE)
-  # (no R field of the whole value is lost: the R switch stays)
-  expect_match(h, "c__derive__isr", fixed = TRUE)
+  # (no R switch of the whole value: a map is not an R expression's type, its
+  # cells are -- canon 17dfbb8; a whole value that is R keeps its switch)
+  expect_false(grepl("c__derive__isr", h, fixed = TRUE))
+  expect_match(html(arg_field("c", "derive", "map<column,r>", def = d, ctx = ctx,
+                              value = tflspec::tfl_r("list(A = quote(x))"))),
+               "c__derive__isr", fixed = TRUE)
 })
 
 test_that("a map<column,list<level>> (levels): a column picked, its values one a line", {
