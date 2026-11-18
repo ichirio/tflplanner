@@ -16,9 +16,8 @@ set_analysis_data(
   add = NA,
   derive = NA,
   distinct = NA,
-  label = NA,
   old = NULL,
-  subjects = NA,
+  subjects_in = NA,
   keep = NA,
   code = NA
 )
@@ -37,8 +36,8 @@ program).}
 
 \item{from}{A dataset, or an analysis data above.}
 
-\item{population_id, subjects, where, add, derive, keep, distinct, label}{The
-other columns (\code{subjects}: an analysis data above whose subjects it
+\item{population_id, subjects_in, where, add, derive, keep, distinct}{The
+other columns (\code{subjects_in}: an analysis data above whose subjects it
 keeps, instead of \code{population_id}; \code{add}, \code{keep}, \code{distinct}: several
 columns with \code{" | "} between them).}
 

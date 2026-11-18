@@ -10,31 +10,32 @@
 # by field.
 
 # whose value the form edits, as its marker says it: the report's, the
-# pattern's (in the pattern dialog), Standard's
+# pattern's (a page configuration, in the pattern dialog), Standard's (the
+# study's default configuration)
 .pg_own_word <- function(id, t, kind = NULL) {
-  if (is.na(id)) t("Standard") else if (.is_pattern_id(id)) t("this pattern") else
+  if (is.na(id)) t("Standard") else if (.is_pattern_id(id)) t("this page configuration") else
     if (is.null(kind) || identical(kind, "table")) t("This table") else t("This report")
 }
-# what Revert goes back to, its tooltip
+# what Revert goes back to, its tooltip (a configuration is complete: nothing
+# lies under its values)
 .pg_back_word <- function(id, t) {
-  if (is.na(id)) t("Clear") else if (.is_pattern_id(id)) t("Back to Standard") else
-    t("Back to the study default")
+  if (is.na(id) || .is_pattern_id(id)) t("Clear") else t("Back to the study default")
 }
 # the form's target in the browser: a report's id, @name, or "" (Standard)
 .pg_target <- function(id) if (is.na(id)) "" else id
 .pg_target_id <- function(v) if (is.null(v) || !nzchar(v)) NA_character_ else v
 
 # where a value comes from, as the form says it: the layer's name
-# (defaults, pattern:<name>, style:<name>); in a pattern's form the
-# defaults are Standard
+# (style:<name>, the report's page configuration; defaults, the study's
+# tokens)
 .page_from_label <- function(from, id, t) {
   kind <- sub(":.*$", "", from %||% "")
   name <- sub("^[^:]*:", "", from %||% "")
   switch(kind,
          own = .pg_own_word(id, t),
-         defaults = if (!is.na(id) && .is_pattern_id(id)) t("Standard") else t("Study default"),
-         pattern = sprintf(t("pattern %s"), name),
-         style = sprintf(t("style %s"), name),
+         defaults = t("Study default"),
+         pattern = sprintf(t("Page configuration: %s"), name),
+         style = sprintf(t("Page configuration: %s"), name),
          "")
 }
 
@@ -172,28 +173,30 @@ $(document).on('shiny:value', function(e) {
   own <- identical(a$from, "own")
   below <- a$below
   inh <- if (!is.null(below$value)) .pgs_show(below$value, f$kind) else
-    if (isTRUE(below$unset)) "(none)" else ""
+    if (isTRUE(below$unset)) t(.none_word) else ""
   # (nothing in the spec: rtfreporter's own default)
   dflt <- if (is.null(a$value) && !own) .pg_fn_default(fn, f$arg, f$kind) else ""
   if (!nzchar(inh) && nzchar(dflt)) inh <- dflt
-  val <- if (own && a$unset) "(none)" else if (own) .pgs_show(a$value, f$kind) else ""
+  # ("(none)": the value of a choice's item, the screen's word in a text field)
+  val <- if (own && a$unset) .none_word else if (own) .pgs_show(a$value, f$kind) else ""
   key <- paste(fn, f$arg, sep = ":")
   attrs <- list(class = "pg-in form-control form-control-sm", `data-kind` = "arg",
                 `data-fn` = fn, `data-arg` = f$arg, `data-key` = key)
   input <- if (f$kind %in% c("choice", "logical")) {
     ch <- if (identical(f$kind, "logical")) c("TRUE", "FALSE") else f$choices
-    if (own && a$unset) ch <- c(ch, "(none)")
+    if (own && a$unset) ch <- c(ch, .none_word)
     opts <- c(list(shiny::tags$option(value = "", if (nzchar(inh))
       sprintf(t("(%s: %s)"), if (!is.na(below$from)) .page_from_label(below$from, id, t) else
         t("rtfreporter's default"), inh) else "")),
       lapply(ch, function(x) shiny::tags$option(
-        value = x, selected = if (own && identical(tolower(val), tolower(x))) NA, x)))
+        value = x, selected = if (own && identical(tolower(val), tolower(x))) NA,
+        if (identical(x, .none_word)) t(x) else x)))
     do.call(shiny::tags$select, c(attrs, list(class = "pg-in form-select form-select-sm"), opts))
   } else {
     list_id <- if (!is.null(f$choices)) paste0("pg-list-", fn, "-", f$arg)
     shiny::tagList(
       do.call(shiny::tags$input, c(attrs, list(
-        type = "text", value = val, list = list_id,
+        type = "text", value = if (identical(val, .none_word)) t(val) else val, list = list_id,
         placeholder = if (nzchar(inh)) inh else ""))),
       if (!is.null(list_id)) shiny::tags$datalist(
         id = list_id, lapply(f$choices, function(x) shiny::tags$option(value = x))))
@@ -210,7 +213,7 @@ $(document).on('shiny:value', function(e) {
                        `data-arg` = f$arg),
       # (a value the layers below say: none here)
       if (!is.null(below$value) && !(own && a$unset))
-        .pg_btn("none", "(none)", t("None here (!unset)"), `data-fn` = fn, `data-arg` = f$arg)))
+        .pg_btn("none", t(.none_word), t("None here (!unset)"), `data-fn` = fn, `data-arg` = f$arg)))
 }
 
 # A function's card: the arguments with a value (written in its call)
@@ -336,7 +339,7 @@ $(document).on('shiny:value', function(e) {
     shiny::tags$button(type = "button", class = "pg-act btn btn-sm btn-outline-secondary py-0",
                        `data-act` = "addline", `data-band` = band,
                        if (is.na(id)) t("Add a line") else if (.is_pattern_id(id))
-                         t("Add a line to this pattern") else t("Add a line for this report")))
+                         t("Add a line to this page configuration") else t("Add a line for this report")))
 }
 
 # The tokens a page says but does not set: the report list's (its ID and
@@ -352,6 +355,19 @@ $(document).on('shiny:value', function(e) {
     name)
 }
 
+.page_study_tokens_ui <- function(sp, t) {
+  tk <- .pgs_study_tokens(sp$study)
+  rows <- lapply(names(tk), function(k) shiny::tags$tr(
+    shiny::tags$td(shiny::code(paste0("{", k, "}"))),
+    shiny::tags$td(class = "pg-val", .pgs_text(tk[[k]]))))
+  shiny::tagList(
+    if (length(rows)) shiny::tags$table(class = "table table-sm pg-lines pg-tokens mb-1",
+                                        shiny::tags$tbody(rows))
+    else shiny::p(class = "small text-muted mb-1", t("(no tokens)")),
+    shiny::p(class = "small text-muted mb-1",
+             t("Edited for the whole study (study.yml tokens:), not for each page configuration.")))
+}
+
 .page_tokens_ui <- function(sp, id, t, kind = NULL) {
   d <- .pgs_tokens(sp, id)
   d <- d[!d$name %in% c(.pg_report_tokens, .pg_builtin_names()), , drop = FALSE]
@@ -360,7 +376,7 @@ $(document).on('shiny:value', function(e) {
     r <- d[i, , drop = FALSE]
     own <- identical(r$from, "own")
     below <- if (own) .pgs_find(.pgs_layers(sp, id)[-1L], c("tokens", r$name)) else NULL
-    v <- if (r$omitted) "(none)" else if (is.na(r$value)) "" else r$value
+    v <- if (r$omitted) t(.none_word) else if (is.na(r$value)) "" else r$value
     shiny::tags$tr(
       class = if (!own) "pg-inh",
       shiny::tags$td(shiny::code(paste0("{", r$name, "}"))),
@@ -588,7 +604,7 @@ $(document).on('shiny:value', function(e) {
       shiny::div(class = "small fw-semibold mt-2", t("This report's own tokens")),
       .page_tokens_ui(sp, id, t, kind),
       .page_builtins_ui(t))
-    else card(t("Tokens"), "(rtf_document(tokens =))", .page_tokens_ui(sp, id, t, kind), .page_builtins_ui(t)),
+    else card(t("Tokens"), "(rtf_document(tokens =))", .page_study_tokens_ui(sp, t), .page_builtins_ui(t)),
     .page_paper_ui(sp, id, t, kind),
     .page_fn_ui(sp, id, "rtf_style", t, kind,
                 fields = Filter(function(f) !f$arg %in% .page_paper_moved$rtf_style,
@@ -617,9 +633,18 @@ $(document).on('shiny:value', function(e) {
 
 # A line number for a new line of a band: after the last line the page has
 # (a run line at 99 kept last: before it).  `x` a planner (its sheets) or,
-# with `sp`, the spec.
+# with `sp`, the spec: a report's new line is a body line, a configuration's
+# one of its first block.
 .page_new_line <- function(x, sheet, id, sp = NULL) {
   lines <- if (!is.null(sp)) .pgs_lines(sp, id, sheet)$line else page_lines_from(x, sheet, id)$line
+  if (!is.null(sp)) {
+    cfg <- is.na(id) || .is_pattern_id(id)
+    mine <- if (cfg) lines[startsWith(lines, "first:")] else lines[!grepl("^(first|last):", lines)]
+    n <- suppressWarnings(as.integer(sub("^first:", "", mine)))
+    n <- n[!is.na(n)]
+    nxt <- if (length(n)) max(n) + 1L else 1L
+    return(if (cfg) paste0("first:", nxt) else as.character(nxt))
+  }
   n <- suppressWarnings(as.integer(lines))
   n <- n[!is.na(n)]
   below <- n[n < 90L]

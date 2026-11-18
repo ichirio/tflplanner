@@ -10,7 +10,7 @@ tpl_sample_planner <- function() {
 }
 
 tpl_demog_output <- function(id = "T-99") {
-  tflspec::tfl_output(id, "table", population = "SAF",
+  tflspec::tfl_output(id, "table", common = list(population = "SAF"),
                       template = list(name = "demog",
                                     args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
 }
@@ -19,9 +19,35 @@ tpl_demog_output <- function(id = "T-99") {
 
 test_that("no templates from tflspec is an empty list of them", {
   testthat::local_mocked_bindings(tfl_templates = function(...) stop("none"), .package = "tflspec")
+  # (and no series: their templates are listed too)
+  testthat::local_mocked_bindings(.tpl_series_lister = function() NULL)
   x <- .tpl_list("table")
   expect_identical(names(x), c("name", "kind"))
   expect_identical(nrow(x), 0L)
+})
+
+test_that("a series' templates are listed by kind, \"<series>/<template>\", with their labels", {
+  d <- tempfile("series")
+  dir.create(file.path(d, "demo_v1", "templates"), recursive = TRUE)
+  on.exit(unlink(d, recursive = TRUE), add = TRUE)
+  w <- function(f, x) writeLines(x, file.path(d, "demo_v1", "templates", f))
+  w("dm.yml", c("# demo", "template: dm", "label: Demographics", "params: {}"))
+  w("km.yml", c("template: km", "label: KM curves", "figure: km_curves"))
+  w("lst.yml", c("template: lst", "label: A listing", "style: !series style_listing"))
+  lister <- function() data.frame(name = c("demo_v1", "demo_v1"), label = "Demo", released = NA,
+                                  path = file.path(d, "demo_v1"), source = c("option", "package"))
+  x <- .tpl_series_templates(lister)
+  expect_identical(x$name, c("demo_v1/dm", "demo_v1/km", "demo_v1/lst"))
+  expect_identical(x$kind, c("table", "figure", "listing"))
+  expect_identical(x$label, c("Demographics", "KM curves", "A listing"))
+  expect_identical(.tpl_desc_of("demo_v1/km", x), "KM curves")
+  expect_identical(.tpl_desc_of("demog", x), .tpl_desc[["demog"]])
+  expect_identical(.tpl_desc_of("no/such", x), "")
+  # (no series, or a tflspec without them: none)
+  expect_identical(nrow(.tpl_series_templates(NULL)), 0L)
+  expect_identical(nrow(.tpl_series_templates(function() stop("no"))), 0L)
+  # (a name with "/" as a part of an input's id)
+  expect_identical(.tpl_id_part("demo_v1/dm"), "demo_v1_dm")
 })
 
 test_that("the templates of a kind nobody has are an empty list too", {
@@ -209,8 +235,8 @@ test_that("a report's file with the template and arguments set, in the template'
   p <- .spec_add_output(p, tpl_demog_output(), population = "SAF")
   o <- .tpl_output(p, "T-99", list(zzz = 1, population = "FAS"), name = "disposition")
   expect_identical(o$template$name, "disposition")
-  expect_identical(names(o$template$args), c("population", "zzz"))
-  expect_identical(o$population, "FAS")
+  expect_identical(names(o$template$args), "zzz")
+  expect_identical(o$common$population, "FAS")
   # the name kept when none is given
   expect_identical(.tpl_output(p, "T-99", list())$template$name, "demog")
 })
@@ -272,17 +298,25 @@ test_that("the verbs after a template's call: the ones its program has", {
   expect_identical(.tpl_code_fns(p, code_id), character())
 })
 
+# demog's study items: in its call with tflspec#780 (tfl_tpl(study = )), none with #764
+.demog_study_fns <- if ("study" %in% names(formals(tflspec::tfl_tpl))) {
+  c("plan_cells", "plan_digits", "plan_stub", "plan_style")
+} else character()
+
 test_that("the verbs after a template's call in the program tflspec writes now", {
   skip_on_cran()
   # (demog and summary take the study standard's verbs as their arguments,
-  # tflspec#764 / #785, and their programs have none after the call)
-  o <- tflspec::tfl_output("T-99", "table", population = "SAF",
+  # tflspec#764 / #785, in their call's `study = list(` (tflspec#780), and
+  # their programs have none after the call)
+  o <- tflspec::tfl_output("T-99", "table", common = list(population = "SAF"),
                            template = list(name = "summary",
                                          args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   p <- .spec_add_output(tpl_sample_planner(), o, population = "SAF")
-  expect_identical(.tpl_code_fns(p, "T-99"), character())
+  expect_identical(.tpl_code_fns(p, "T-99"), .demog_study_fns)
   q <- .spec_add_output(tpl_sample_planner(), tpl_demog_output(), population = "SAF")
-  expect_identical(.tpl_code_fns(q, "T-99"), character())
+  # (demog's study items are in its call, `study = list(`, tflspec#780: the
+  # verbs of those, from the template record; none with tflspec#764)
+  expect_identical(.tpl_code_fns(q, "T-99"), .demog_study_fns)
 })
 
 test_that("a program with no template call, or that tflspec cannot make, has no verbs", {
@@ -290,14 +324,17 @@ test_that("a program with no template call, or that tflspec cannot make, has no 
   p <- .spec_add_output(tpl_sample_planner(), tpl_demog_output(), population = "SAF")
   testthat::local_mocked_bindings(tfl_content_code = function(...) c("plan_cells(x)", "plan_labels(y)"),
                                   .package = "tflspec")
-  expect_identical(.tpl_code_fns(p, "T-99"), character())
+  expect_identical(.tpl_code_fns(p, "T-99"), .demog_study_fns)
   testthat::local_mocked_bindings(
     tfl_content_code = function(...) c("tpl_demog(x)", "  plan_cells(x)", "not a verb", "plan_labels(y)"),
     .package = "tflspec")
-  expect_identical(.tpl_code_fns(p, "T-99"), c("plan_cells", "plan_labels"))
+  # (the call's own items first, those the lines after it say again counted
+  # there: the lines' verbs last, in their order)
+  expect_identical(.tpl_code_fns(p, "T-99"),
+                   c(setdiff(.demog_study_fns, c("plan_cells", "plan_labels")), "plan_cells", "plan_labels"))
   testthat::local_mocked_bindings(tfl_content_code = function(...) stop("cannot"),
                                   .package = "tflspec")
-  expect_identical(.tpl_code_fns(p, "T-99"), character())
+  expect_identical(.tpl_code_fns(p, "T-99"), .demog_study_fns)
 })
 
 test_that("a template's name in a report's file, and its call in the program", {
@@ -319,4 +356,24 @@ test_that("a template that hides its analysis set takes it from the report's pop
   # (not an empty argument of the card: the report's `population:` says it)
   expect_identical(.tpl_missing("demog", list(by = "TRT01A")), character())
   expect_identical(.tpl_missing("demog", list()), "by")
+})
+
+test_that("a table field's column choices are the template's data's, not every dataset's (gui-checks-1 D3)", {
+  data <- list(ADSL = data.frame(USUBJID = "1", AGE = 1, SEX = "F"),
+               ADAE = data.frame(USUBJID = "1", AEDECOD = "x"))
+  # a template's data id is its dataset's columns; a name the study lacks, all
+  expect_identical(.tpl_columns(data, "adsl_sub"), c("USUBJID", "AGE", "SEX"))
+  expect_identical(.tpl_columns(data, "ADAE"), c("USUBJID", "AEDECOD"))
+  expect_identical(.tpl_columns(data, NULL), c("USUBJID", "AGE", "SEX", "AEDECOD"))
+  expect_identical(.tpl_columns(data, "ADVS"), c("USUBJID", "AGE", "SEX", "AEDECOD"))
+  # tflspec_v1/demog's labels (map<column,string>, choices vars(adsl_sub)),
+  # the card's dataset none: ADSL's
+  labels <- list(name = "labels", def = list(type = "map<column,string>", input = "table",
+                                             choices = "vars(adsl_sub)"))
+  ctx <- .tpl_table_ctx(data, NULL, args = list(), params = list(labels = labels))
+  expect_identical(ctx$vars("adsl_sub"), c("USUBJID", "AGE", "SEX"))
+  spec <- .tpl_table_spec(labels, ctx, NULL, "en")
+  ch <- unlist(spec$choices)
+  expect_true("AGE" %in% ch)
+  expect_false("AEDECOD" %in% ch)
 })

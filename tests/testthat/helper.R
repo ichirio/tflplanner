@@ -16,6 +16,24 @@ sample_fig_design <- function(id) {
     system.file("sample", "SAMPLE-01", package = "tflplanner"))$fig_designs[[id]]
 }
 
+# The study code context (.use_study()) is the R session's: no test starts
+# with one another test left (#680).  Reset when the helpers load, and for
+# each test that makes a home (local_home()): none while it runs, the one
+# before put back after it.
+.code_context$opts <- NULL
+.code_context$root <- NULL
+local_code_context <- function(env = parent.frame()) {
+  old <- list(opts = .code_context$opts, root = .code_context$root)
+  .code_context$opts <- NULL
+  .code_context$root <- NULL
+  restore <- function() {
+    .code_context$opts <- old$opts
+    .code_context$root <- old$root
+  }
+  do.call(on.exit, list(substitute(restore()), add = TRUE), envir = env)
+  invisible(old)
+}
+
 # The slowest test files (the whole app's server driven through
 # shiny::testServer(), whole-study builds) start with skip_if_quick(): the
 # quick check on a pull request into next sets TFLPLANNER_QUICK=true and leaves

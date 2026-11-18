@@ -66,7 +66,7 @@ test_that("first_table() writes every sheet a summary table needs", {
   an <- ard_rows(p, "analyses", "T-DM")
   # the N per group first (column headers), then one analysis per call:
   # the numbers together, the counts together
-  expect_identical(an$analysis_id, c("GROUPN", "CONT", "CAT"))
+  expect_identical(an$analysis_id, c("BIGN", "CONT", "CAT"))
   # written as the cards functions (the same analyses as the keywords)
   expect_identical(an$method, c("cards::ard_tabulate", "cards::ard_summary",
                                 "cards::ard_tabulate"))
@@ -127,8 +127,8 @@ test_that("a row of the analyses grid is edited as a form", {
     # only the list until a row is clicked (no empty form below it); a
     # click opens it below
     expect_null(output$ard_stat_ui)
-    session$setInputs(ard_ol_pick = "GROUPN")
-    expect_match(output$ard_stat_ui$html, "Analysis GROUPN")
+    session$setInputs(ard_ol_pick = "BIGN")
+    expect_match(output$ard_stat_ui$html, "Analysis BIGN")
     expect_match(output$ard_stat_ui$html, "What to compute", fixed = TRUE)
     # a click on the grid's second row: CONT (AGE)
     session$setInputs(hot_ard_analyses_select = list(select = list(r = 2L)))
@@ -363,6 +363,8 @@ test_that(".tpl_stale_say: a value a write replaced a moment ago, not the curren
 
 test_that("a field saying the value a write just replaced is not an edit; the card is drawn again for it", {
   skip_on_cran()
+  old_win <- options(tflplanner.tpl_stale_window = 3600)
+  on.exit(options(old_win), add = TRUE)
   local_home()
   s <- create_study("L3")
   dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
@@ -456,7 +458,7 @@ test_that("a report's ARD can be given the subjects per group", {
   expect_false(.has_group_n(p, "T1", "TRT01A"))
   p <- add_group_n(p, "T1", "TRT01A")
   a <- ard_rows(p, "analyses", "T1")
-  expect_identical(a$analysis_id, c("GROUPN", "AGE"))
+  expect_identical(a$analysis_id, c("BIGN", "AGE"))
   expect_identical(a$variables[1], "TRT01A")
   expect_true(is.na(a$by[1]))
   expect_identical(a$population_id[1], "SAF")
@@ -466,7 +468,7 @@ test_that("a report's ARD can be given the subjects per group", {
 test_that("set_total_column() switches a Total column on and off in both halves (#212)", {
   skip_if(!"total" %in% names(tflspec::tfl_table_spec()$tables), "tflspec has no tables$total")
   p <- set_ard_rows(new_planner(), "analyses", "T1", data.frame(
-    analysis_id = c("GROUPN", "AGE", "SEX", "DEMO", "RACE", "OWN", "AEBY"),
+    analysis_id = c("BIGN", "AGE", "SEX", "DEMO", "RACE", "OWN", "AEBY"),
     parent = c(NA, NA, NA, NA, "DEMO", NA, NA),
     method = c("categorical", "continuous", "categorical", "cards::ard_stack",
                "categorical", "custom", "categorical"),
@@ -484,7 +486,7 @@ test_that("set_total_column() switches a Total column on and off in both halves 
   expect_true(is.na(tb$total_position))
   a <- ard_rows(p, "analyses", "T1")
   # the rows by the column variable: the stack's own row, not the one
-  # inside it; not GROUPN (no by), not custom, not a row by something else
+  # inside it; not BIGN (no by), not custom, not a row by something else
   expect_identical(a$overall, c(NA, "TRUE", "TRUE", "TRUE", NA, NA, NA))
   # first, under another heading
   p <- set_total_column(p, "T1", "All", "first")
@@ -500,7 +502,7 @@ test_that("set_total_column() switches a Total column on and off in both halves 
   expect_identical(tb$cols, "TRT01A")
   a <- ard_rows(p, "analyses", "T1")
   expect_true(all(is.na(a$overall)))
-  expect_identical(a$analysis_id, c("GROUPN", "AGE", "SEX", "DEMO", "RACE", "OWN", "AEBY"))
+  expect_identical(a$analysis_id, c("BIGN", "AGE", "SEX", "DEMO", "RACE", "OWN", "AEBY"))
   # the column variable inherited from the study defaults counts too
   p2 <- set_sheet_rows(p, "tables", "T1", data.frame(cols = NA_character_))
   p2 <- set_sheet_rows(p2, "tables", NA, data.frame(cols = "TRT01A"))
@@ -536,7 +538,7 @@ test_that("the wizard puts the numbers in one analysis and the counts in another
   p <- first_table(new_planner(), "T-M", "data/adam/adsl.rds", d, "SAFFL",
                    "TRT01A", c("AGE", "SEX", "BMIBL", "RACE"), stack = FALSE)
   an <- ard_rows(p, "analyses", "T-M")
-  expect_identical(an$analysis_id, c("GROUPN", "CONT", "CAT"))
+  expect_identical(an$analysis_id, c("BIGN", "CONT", "CAT"))
   expect_identical(an$variables, c("TRT01A", "AGE | BMIBL", "SEX | RACE"))
   # the rows keep the order they were chosen in
   vr <- sheet_rows(p, "variables", "T-M")
@@ -545,7 +547,7 @@ test_that("the wizard puts the numbers in one analysis and the counts in another
   # only counts: no CONT
   p2 <- first_table(new_planner(), "T-C", "data/adam/adsl.rds", d, "SAFFL",
                     "TRT01A", c("SEX", "RACE"), stack = FALSE)
-  expect_identical(ard_rows(p2, "analyses", "T-C")$analysis_id, c("GROUPN", "CAT"))
+  expect_identical(ard_rows(p2, "analyses", "T-C")$analysis_id, c("BIGN", "CAT"))
 })
 
 test_that("the wizard runs the analyses together (ard_stack), unless a subject has no group", {
@@ -568,7 +570,7 @@ test_that("the wizard runs the analyses together (ard_stack), unless a subject h
   d$TRT01A[2] <- NA
   p2 <- first_table(new_planner(), "T-S", "data/adam/adsl.rds", d, "SAFFL",
                     "TRT01A", c("AGE", "SEX"))
-  expect_identical(ard_rows(p2, "analyses", "T-S")$analysis_id, c("GROUPN", "CONT", "CAT"))
+  expect_identical(ard_rows(p2, "analyses", "T-S")$analysis_id, c("BIGN", "CONT", "CAT"))
   expect_identical(attr(p2, "group_missing"), 1L)
 })
 

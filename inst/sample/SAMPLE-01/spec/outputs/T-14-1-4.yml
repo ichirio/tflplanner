@@ -2,17 +2,16 @@ id: T-14-1-4
 kind: table
 label: Demographic characteristics of the screen failures (an analysis set by a condition
   alone)
-population: SCRF
+common:
+  population: SCRF
 extends:
   - defaults
+data:
+  - id: adsl_scrf
+    from: ADSL
 ard:
-  analysis_data:
-    - id: adsl_scrf
-      label: Screen failures
-      from: ADSL
-      population: SCRF
   analyses:
-    - id: GROUPN
+    - id: BIGN
       method: categorical
       data: adsl_scrf
       variables:
@@ -48,9 +47,6 @@ ard:
         - 'n'
         - p
       purpose: PRIMARY OUTCOME MEASURE
-data:
-  source: ard
-  object: ard
 codelists:
   ARMNRS:
     - value: SCREEN FAILURE

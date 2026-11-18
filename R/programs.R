@@ -379,6 +379,8 @@ data_lines <- function(x, output_id, todo = TRUE) {
     design <- fig_design(x, output_id)
     f <- if (is.null(design)) {
       .figure_lines(x, output_id, info)
+    } else if (!is.null(design$figure)) {
+      c(.fig_source_lines(), "", .fig_key_lines(x, output_id))
     } else {
       .fig_design_lines(x, output_id, design)
     }
@@ -593,6 +595,9 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   # a step of the report's own code: its data and content parts are
   # .code_report_lines()'s
   own <- .is_code_step(x, output_id, "data") || .is_code_step(x, output_id, "content")
+  # a figure report with the content key `figure: {name, args}` (tflspec#835):
+  # its program is tflspec's call, `content <- tflspec::<fn>(...)`
+  fig_key <- !is.null(design$figure) && !own
 
   head <- .banner(
     paste("Program    :", file.path(lay[["programs_tfl"]], info$program)),
@@ -605,7 +610,11 @@ program_code <- function(x, output_id, date = Sys.Date()) {
            ", ", format(date, "%Y-%m-%d")),
     if (own) paste0(
       "The data and content parts are your code where its steps are; the report part is written from ",
-      lay[["spec"]], "/.") else if (is.null(design)) paste0(
+      lay[["spec"]], "/.") else if (fig_key) c(
+      paste0("The data and content parts make `content` (tflspec's figure function, called as the report's ",
+             "`figure:` says); the report part is written from ", lay[["spec"]], "/."),
+      paste0("Edit its `figure:` key in ", lay[["spec"]], "/outputs/", output_id, ".yml, not this code.")
+    ) else if (is.null(design)) paste0(
       "The data part makes `", obj, "`; the report part is written from ",
       lay[["spec"]], "/.") else c(
       paste0("The data and plot parts make `plot`; the report part is written from ",
@@ -615,7 +624,8 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 
   data <- if (is.null(design) || own) data_lines(x, output_id) else c(
     if (!is.na(x$setup)) c(.code_block(x$setup), ""),
-    .fig_design_lines(x, output_id, design, source = FALSE))
+    if (fig_key) .fig_key_lines(x, output_id) else
+      .fig_design_lines(x, output_id, design, source = FALSE))
   # (the deliverable is the report: a table's data is not saved -- the
   # study ARD holds it by output_id)
   data_part <- if (!is.null(design) || own) data else c(
@@ -794,9 +804,12 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   if (!is.null(spec)) {
     # (the study's page text as its sheets' cells mean it: .page_sheet_text())
     st <- spec$study
-    st$defaults$page <- .page_sheet_text(st$defaults$page)
-    for (nm in names(st$patterns)) {
-      st$patterns[[nm]]$page <- .page_sheet_text(st$patterns[[nm]]$page)
+    # (the page configurations -- the study's style sets -- and its tokens)
+    for (nm in names(st$styles)) {
+      st$styles[[nm]]$page <- .page_sheet_text(st$styles[[nm]]$page)
+    }
+    if (length(st$study$tokens)) {
+      st$study$tokens <- .page_sheet_text(list(tokens = st$study$tokens))$tokens
     }
     spec$study <- st
   }
@@ -844,16 +857,24 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     if (length(q)) v <- q[3L]
     gsub("\\n", "\n", gsub("\r\n", "\n", v, fixed = TRUE), fixed = TRUE)
   }
+  line_text <- function(cells) {
+    if (!is.list(cells) || inherits(cells, "tfl_unset")) return(cells)
+    for (k in intersect(c("left", "center", "right"), names(cells))) {
+      if (!is.null(cells[[k]])) cells[[k]] <- text(cells[[k]])
+    }
+    cells
+  }
   for (band in intersect(c("header", "footer", "titles", "footnotes"), names(pg))) {
     m <- pg[[band]]
     if (!is.list(m) || inherits(m, "tfl_unset")) next
     for (ln in names(m)) {
-      cells <- m[[ln]]
-      if (!is.list(cells) || inherits(cells, "tfl_unset")) next
-      for (k in intersect(c("left", "center", "right"), names(cells))) {
-        if (!is.null(cells[[k]])) cells[[k]] <- text(cells[[k]])
+      # (a configuration's band is its blocks, first and last, of lines; a
+      # report's may have them too)
+      if (ln %in% c("first", "last") && is.list(m[[ln]]) && !inherits(m[[ln]], "tfl_unset")) {
+        for (l2 in names(m[[ln]])) m[[ln]][[l2]] <- line_text(m[[ln]][[l2]])
+      } else {
+        m[[ln]] <- line_text(m[[ln]])
       }
-      m[[ln]] <- cells
     }
     pg[[band]] <- m
   }
@@ -930,7 +951,7 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 #' reports' font and size (`options(rtfreporter.font = )`), the
 #' study's tokens (`options(rtfreporter.tokens = )`: the company, the
 #' analysis, the protocol ...), its running header and footer
-#' (`study_header`, `study_footer`), written once from the study's
+#' (`header_standard`, `footer_standard`), written once from the study's
 #' defaults, `spec/defaults.yml` ([tflspec::tfl_report_setup_code()]).  Each report program then says
 #' only its own tokens (`OUTPUT_LABEL`, `OUTPUT_TITLE` ...), and ends with
 #' `record_report()`, which records the report as made, with the

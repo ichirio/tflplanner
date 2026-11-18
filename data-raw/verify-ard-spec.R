@@ -68,8 +68,7 @@ spec <- list(
   populations = tbl(list(
     row(population_id = "ALL", dataset = "ADSL",
         note = "every subject, screen failures too"),
-    row(population_id = "SAF", dataset = "ADSL", where = "SAFFL == \"Y\"",
-        derive = "TRTA = TRT01A"))),
+    row(population_id = "SAF", dataset = "ADSL", where = "SAFFL == \"Y\""))),
   analyses = tbl(list(
     # ---- subjects
     A("T-POP", "N", "categorical", population_id = "ALL", variables = "TRT01A",
@@ -103,7 +102,7 @@ spec <- list(
       where = "PARAMCD == \"TDOSE\"", by = "TRTA", variables = "AVAL",
       label = "Total dose"),
     # ---- adverse events
-    A("T-AE-OV", "N", "categorical", population_id = S, variables = "TRTA"),
+    A("T-AE-OV", "N", "categorical", population_id = S, variables = "TRT01A"),
     A("T-AE-OV", "ANY", "subjects", dataset = "ADAE", population_id = S,
       where = "TRTEMFL == \"Y\"", by = "TRTA", variables = "ANY_TEAE"),
     A("T-AE-OV", "SER", "subjects", dataset = "ADAE", population_id = S,

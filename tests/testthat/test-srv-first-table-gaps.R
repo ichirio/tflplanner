@@ -295,7 +295,9 @@ test_that("a dataset row with a file shows its size in KB, and a file outside th
     expect_identical(where, c("", "outside the study folder"))
     # and the folder outside is named under the grid
     expect_match(output$catalog_files_note$html, "Outside the study folder:", fixed = TRUE)
-    expect_match(output$catalog_files_note$html, normalizePath(elsewhere, "/", mustWork = FALSE),
+    # (by the folder's own name: the note keeps the path as given, which
+    # may differ from normalizePath()'s, e.g. RUNNER~1 on Windows, /private/var on macOS)
+    expect_match(output$catalog_files_note$html, paste0("/", basename(elsewhere), "/"),
                  fixed = TRUE)
   })
 })

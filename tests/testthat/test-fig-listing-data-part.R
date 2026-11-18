@@ -29,8 +29,11 @@ test_that("a listing of an analysis data, or of an analysis set's subjects: its 
   expect_lt(grep("^adae_ser <- ", code)[1L], match("data <- adae_ser |>", code))
   expect_silent(parse(text = program_code(p, "L1")))
   code2 <- unlist(strsplit(data_lines(p, "L2"), "\n", fixed = TRUE))
-  expect_true(any(startsWith(code2, "pop_saf <- ")))
-  expect_true(any(grepl("semi_join(dplyr::select(pop_saf, USUBJID)", code2, fixed = TRUE)))
+  expect_true(any(startsWith(code2, "adsl_sub <- ")))
+  expect_true(any(grepl("dplyr::inner_join(", code2, fixed = TRUE)))
+  expect_true(any(grepl("dplyr::select(adsl_sub, USUBJID),", code2, fixed = TRUE)))
+  expect_lt(grep("^adsl_sub <- ", code2)[1L], grep("dplyr::select(adsl_sub, USUBJID),", code2, fixed = TRUE)[1L])
+  expect_identical(sum(code2 == "# ---- data ----"), 1L)
 })
 
 test_that("a figure whose read step names an analysis data: made before the plot", {

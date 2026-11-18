@@ -2,33 +2,31 @@ id: T-14-2-3
 kind: table
 label: 'Systolic blood pressure: mean change at week 24 (95% CI), p-value; the ARD
   also holds the test''s method and alternative as text'
-population: SAF
+common:
+  population: SAF
 extends:
   - defaults
+data:
+  - id: adsl_saf
+    from: ADSL
+  - id: advs_saf_sysbp
+    from: ADVS
+    subjects_in: adsl_saf
+    where: !r PARAMCD == "SYSBP" & AVISIT == "CYCLE 9 DAY 1"
 ard:
-  analysis_data:
-    - id: adsl_saf
-      label: Safety set
-      from: ADSL
-      population: SAF
-    - id: advs_saf_sysbp
-      label: Systolic blood pressure at week 24, safety set
-      from: ADVS
-      subjects: adsl_saf
-      where: !r PARAMCD == "SYSBP" & AVISIT == "CYCLE 9 DAY 1"
   analyses:
-    - id: GROUPN
+    - id: BIGN
       method: categorical
       data: adsl_saf
       variables:
-        - TRTA
+        - TRT01A
       purpose: PRIMARY OUTCOME MEASURE
     - id: 'N'
       label: Subjects
       method: continuous
       data: advs_saf_sysbp
       by:
-        - TRTA
+        - TRT01A
       variables:
         - CHG
       statistics:
@@ -39,20 +37,17 @@ ard:
       method: mean_ci
       data: advs_saf_sysbp
       by:
-        - TRTA
+        - TRT01A
       variables:
         - CHG
       purpose: SECONDARY OUTCOME MEASURE
-data:
-  source: ard
-  object: ard
 codelists:
-  TRTA:
+  TRT01A:
     - value: Drug X
     - value: Control
 content:
   - table_plan:
-      cols: TRTA
+      cols: TRT01A
       rows:
         group: variable
   - plan_cells:
@@ -62,7 +57,7 @@ content:
         p-value: '{p.value:.3f}'
   - plan_levels:
       variable: CHG
-      TRTA:
+      TRT01A:
         - Drug X
         - Control
   - plan_labels:

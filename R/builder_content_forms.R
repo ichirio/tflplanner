@@ -28,7 +28,7 @@
 # check (an unticked check would say FALSE).
 .plan_cell_look <- "enum[TRUE|FALSE]|logical"
 .plan_form_types <- list(
-  normalize_ard = c(drop_contexts = "r", stack = "r"),
+  normalize_ard = c(drop_contexts = "r", stack = "r", combine = "r"),
   plan_cell_style = c(bold = .plan_cell_look, italic = .plan_cell_look,
                       underline = .plan_cell_look, color = "colour", background = "colour"),
   plan_columns = c(widths = "widths", row_title = "list<column>"))
@@ -65,10 +65,15 @@
 # function's own (not `plan`) and its visible arguments the main ones
 .plan_form_schema <- function(fn) {
   sch <- .schema_of(fn) %||% list()
+  # (a type of the form's own: the field the type says, not the def's input)
   for (a in names(.plan_form_types[[fn]])) {
     sch$args[[a]]$type <- .plan_form_types[[fn]][[a]]
+    sch$args[[a]]$input <- NULL
   }
-  for (a in .plan_form_r[[fn]]) sch$args[[a]]$type <- "r"
+  for (a in .plan_form_r[[fn]]) {
+    sch$args[[a]]$type <- "r"
+    sch$args[[a]]$input <- NULL
+  }
   fl <- tryCatch(formals(utils::getFromNamespace(fn, "rtfreporter")), error = function(e) NULL)
   fo <- names(fl)
   # (an argument the schema only names -- a label, no type -- passed by
@@ -146,7 +151,7 @@
       f <- arg_field(cid, k, sch$args[[k]]$type, label = .arg_meaning(fn, k), value = value,
                      default = paste(ak, collapse = ", "), choices = unique(c(ak, choices)),
                      from = if (same) "ard" else from, own = if (!same) own,
-                     help = .arg_help(fn, k, sch, lang), lang = lang)
+                     help = .arg_help(fn, k, sch, lang), lang = lang, def = sch$args[[k]])
       return(.ard_checked(f, ak, same, fixed_link, lang))
     }
     if (identical(sch$args[[k]]$type, "widths")) {
@@ -156,7 +161,8 @@
     }
     arg_field(cid, k, sch$args[[k]]$type, label = .arg_meaning(fn, k), value = value,
               default = sch$args[[k]]$default, choices = choices,
-              from = from, own = own, help = .arg_help(fn, k, sch, lang), lang = lang)
+              from = from, own = own, help = .arg_help(fn, k, sch, lang), lang = lang,
+              def = sch$args[[k]])
   }
   shiny::div(
     class = "rp-plan-args", `data-card` = cid,
@@ -189,7 +195,7 @@
               default = sch$args[[k]]$default,
               from = if (k %in% names(a)) .arg_from(it, k) else "own",
               own = if (k %in% names(it$own_args %||% list())) it$own_word %||% "This table",
-              help = .arg_help(fn, k, sch, lang), lang = lang)
+              help = .arg_help(fn, k, sch, lang), lang = lang, def = sch$args[[k]])
   }
   shiny::div(
     class = "rp-plan-args rp-special-more", `data-card` = cid,
@@ -198,17 +204,24 @@
     arg_more(cid, fn, schema = sch, lang = lang, rest = lo,
              fields = lapply(lo, function(k) field(k, NULL)), label = "Arguments not in the code"))
 }
-# ... read back: those fields' values (`set`) and the fields emptied, or a
-# check as the function's default (`unset`); NULL while they are not there
+# ... read back: those fields' values (`set`; "(none)" its toggle on: `!unset`,
+# tflspec::tfl_unset()) and the fields emptied, or a check as the function's
+# default (`unset`: taken out of the arguments); NULL while they are not there
 .special_read <- function(input, cid, fn) {
   ex <- .special_args(fn)
-  seen <- ex[vapply(ex, function(k) !is.null(.input_value(input, paste0(cid, "__", k))), NA)]
+  seen <- ex[vapply(ex, function(k) {
+    !is.null(.input_value(input, paste0(cid, "__", k))) || !is.null(.input_value(input, paste0(cid, "__", k, "__none")))
+  }, NA)]
   if (!length(seen)) return(NULL)
   sch <- .plan_form_schema(fn)
   r <- builder_card_read(input, cid, sch, args = seen, logical_false = TRUE)
   out <- list(set = list(), unset = character())
   for (k in seen) {
     v <- r[[k]]
+    if (.is_unset(v)) {
+      out$set[[k]] <- v
+      next
+    }
     d <- sch$args[[k]]$default
     empty <- is.null(v) || !length(v) || (length(v) == 1L && (is.na(v) || identical(v, ""))) ||
       (is.logical(v) && (if (is.null(d)) isFALSE(as.logical(v)) else

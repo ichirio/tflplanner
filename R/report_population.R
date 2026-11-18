@@ -57,9 +57,7 @@ report_population <- function(x, output_id) {
     return(x)
   }
   nm <- .adata_free_name(x, output_id, .adata_default_name(from, pop))
-  lab <- .pop_label(x, pop)
-  x <- set_analysis_data(x, output_id, nm, from = from, population_id = pop,
-                         label = if (identical(lab, pop)) NA else lab)
+  x <- set_analysis_data(x, output_id, nm, from = from, population_id = pop)
   attr(x, "data_id") <- nm
   attr(x, "added") <- TRUE
   x
@@ -80,11 +78,11 @@ report_population <- function(x, output_id) {
   if (is.na(i)) return(out(x, NA_character_))
   r <- ad[i, , drop = FALSE]
   if (!.is_blank(r$code) || r$from %in% ad$data_id) return(out(x, NA_character_))
-  if (identical(r$population_id, from_pop) && .is_blank(r$subjects)) {
+  if (identical(r$population_id, from_pop) && .is_blank(r$subjects_in)) {
     pop <- to_pop
     subj <- NA_character_
-  } else if (!.is_blank(r$subjects)) {
-    x <- .adata_for_pop(x, output_id, r$subjects, from_pop, to_pop)
+  } else if (!.is_blank(r$subjects_in)) {
+    x <- .adata_for_pop(x, output_id, r$subjects_in, from_pop, to_pop)
     subj <- attr(x, "data_id")
     if (is.na(subj)) return(out(x, NA_character_))
     pop <- NA_character_
@@ -100,7 +98,7 @@ report_population <- function(x, output_id) {
   ad <- .adata_rows(x, output_id)
   same <- vapply(seq_len(nrow(ad)), function(j) {
     identical(ad$from[j], r$from) && identical(.blank_na(ad$population_id[j]), .blank_na(pop)) &&
-      identical(.blank_na(ad$subjects[j]), .blank_na(subj)) &&
+      identical(.blank_na(ad$subjects_in[j]), .blank_na(subj)) &&
       all(vapply(c("where", "add", "derive", "keep", "distinct"), function(cn)
         identical(.blank_na(ad[[cn]][j]), .blank_na(r[[cn]])), NA)) &&
       .is_blank(ad$code[j])
@@ -112,9 +110,9 @@ report_population <- function(x, output_id) {
     paste0(substr(id, 1L, nchar(id) - nchar(from_pop)), lo(to_pop))
   } else paste0(id, "_", lo(to_pop))
   nm <- .adata_free_name(x, output_id, base)
-  x <- set_analysis_data(x, output_id, nm, from = r$from, population_id = pop, subjects = subj,
+  x <- set_analysis_data(x, output_id, nm, from = r$from, population_id = pop, subjects_in = subj,
                          where = r$where, add = r$add, derive = r$derive, keep = r$keep,
-                         distinct = r$distinct, label = r$label)
+                         distinct = r$distinct)
   out(x, nm)
 }
 

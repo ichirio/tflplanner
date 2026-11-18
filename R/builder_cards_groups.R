@@ -50,7 +50,7 @@ arg_more <- function(id, fn, used = character(), schema = NULL, lang = "en",
     }
     arg_field(id, a, schema$args[[a]]$type, label = .arg_meaning(fn, a), value = values[[a]],
               default = schema$args[[a]]$default, help = help, help_link = link,
-              choices = choices, lang = lang)
+              choices = choices, lang = lang, def = schema$args[[a]])
   })
   shiny::div(
     class = "rp-more", `data-card` = id,
@@ -100,10 +100,15 @@ arg_more <- function(id, fn, used = character(), schema = NULL, lang = "en",
   if (is.null(h)) NULL else tr(h, lang)
 }
 
-# the schema of a function, when tflspec has one
+# the schema of a function, when tflspec has one: its function-level
+# fields (label, rank, stage, ...) the schema's, each argument with its
+# definition from tfl_arg_defs() (input, choices, values, free, ordered,
+# columns, step, tier, required, default, default_kind; .schema_with_defs())
 .schema_of <- function(fn) {
   if (is.null(fn) || !requireNamespace("tflspec", quietly = TRUE)) return(NULL)
-  tryCatch(tflspec::tfl_schema(fn), error = function(e) NULL)
+  ent <- tryCatch(tflspec::tfl_schema(fn), error = function(e) NULL)
+  if (is.null(ent) || !is.character(fn) || length(fn) != 1L) return(ent)
+  .schema_with_defs(ent, .arg_defs(fn = fn))
 }
 
 # an argument's help text, NULL for none

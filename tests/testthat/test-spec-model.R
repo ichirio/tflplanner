@@ -474,7 +474,8 @@ test_that("the builder's cells and decimals are plan_cells(); the rounding the s
   st3$cat_format <- "nNpct"
   q <- builder_write(p, id, st3, was = st)
   expect_identical(cells(q)$categorical, "{n:.0f}/{N:.0f} ({p:.1f%})")
-  expect_identical(names(cells(q))[1:3], c("default", "categorical", "continuous"))
+  # (the sample standard's `na` is a key of the cells too, after the default)
+  expect_identical(setdiff(names(cells(q)), "na")[1:3], c("default", "categorical", "continuous"))
   st4 <- st
   st4$value <- "stat_fmt"
   q <- builder_write(p, id, st4, was = st)
@@ -746,6 +747,27 @@ test_that("settings: sd_missing survives open, an unchanged save and a change of
     s2 <- suppressMessages(open_study("SAMPLE-01", home = home))
     expect_identical(s2$planner$study[["sd_missing"]], case$v)
   }
+})
+
+test_that("settings: adam_levels (canon 32449ac): none survives open and save; codelists, the default, is no line", {
+  skip_on_cran()
+  s <- model_sample()
+  home <- getOption("tflplanner.home")
+  s <- suppressMessages(open_study("SAMPLE-01", home = home))
+  expect_identical(.study_adam_levels(s$planner), "codelists")
+  # none: written into settings:, read back on open
+  s$planner$study[["adam_levels"]] <- "none"
+  s <- suppressMessages(save_study(s, home = home))
+  y <- yaml::read_yaml(file.path(s$path, "study.yml"))
+  expect_identical(y$settings$adam_levels, "none")
+  s2 <- suppressMessages(open_study("SAMPLE-01", home = home))
+  expect_identical(s2$planner$study[["adam_levels"]], "none")
+  expect_identical(.study_adam_levels(s2$planner), "none")
+  # back to codelists (not set): no line
+  s2$planner$study[["adam_levels"]] <- NA_character_
+  s2 <- suppressMessages(save_study(s2, home = home))
+  expect_false(any(grepl("adam_levels", readLines(file.path(s2$path, "study.yml")))))
+  expect_identical(.study_adam_levels(s2$planner), "codelists")
 })
 
 test_that("a study without settings: sd_missing keeps no such line", {
