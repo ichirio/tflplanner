@@ -275,6 +275,8 @@
          required = isTRUE(d$required),
          doc = if (length(d$description) && !is.na(d$description) && nzchar(d$description)) d$description,
          study = if (identical(kind, "study") && tagged) as.character(dv$value),
+         # (a !series K default: K, the series value it reads, .tpl_series_value())
+         series = if (identical(kind, "series") && tagged) as.character(unlist(dv$value))[1L],
          type = .tpl_param_type(d),
          multiple = grepl("^list<", d$type %||% ""),
          choices = if (length(vals)) as.character(unlist(vals)),
