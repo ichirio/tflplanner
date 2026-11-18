@@ -166,6 +166,8 @@
   empty_text = "Text when no record is left",
   subject_vars = "ADSL variables added to each record",
   param_var = "Parameter variable",
+  across = "Variable of the columns",
+  across_heading = "Heading over the columns",
   baseline_total = "Total row of the baseline categories",
   post_total = "Total column of the post-baseline categories",
   baseline_total_label = "Total row label",
@@ -183,6 +185,18 @@
 )
 
 .tpl_doc_labels <- c(
+  "The groups (an arm), a page each; the summary is by them too.  For one page, a variable with one value." =
+    "Variable that splits the pages",
+  "An analysis id for a value of param_var, keyed by the value; empty for the value itself (SUMM with no param_var)." =
+    "Analysis ID of each parameter",
+  "The statistics the ARD computes (every one the cells name)." =
+    "Statistics to compute",
+  "What the listing prints for no value." =
+    "Text for no value",
+  "The values aligned on the decimal point." =
+    "Decimal alignment",
+  "The value of `across` that starts a second block of columns; empty for one block." =
+    "Column value that starts a second block",
   "the curves' variable (survfit2(~ by), the colours)" = "Variable that splits the curves",
   "a page's name in the titles ({<group>}: its value); NULL: the groups' values, a line each; the last title line, or where the title line `{PAGE_HEADING}` is" =
     "Page name in the titles",
