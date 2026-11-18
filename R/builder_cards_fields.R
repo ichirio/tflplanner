@@ -28,6 +28,14 @@
   "r"
 }
 
+# Does a type take an R expression as its value?  One of its alternatives
+# is `r`, `formula`, `guard` or a list of R; no type known: R is all it
+# can be.
+.type_takes_r <- function(type) {
+  if (is.null(type) || !length(type) || is.na(type) || !nzchar(type)) return(TRUE)
+  any(.type_split(trimws(type), "|") %in% c("r", "formula", "guard", "list<r>"))
+}
+
 # the entries of an enum[a|b]
 .type_enum <- function(type) {
   alts <- .type_split(trimws(type), "|")
@@ -72,9 +80,11 @@
 # with the data's suggestions, a colour a select with swatches, a shape a
 # select with the shapes, a call<fn> a small form of that function's
 # visible arguments (or R), r a monospace field, map<aes, ...> a row of
-# aes fields each with a column / value switch.  Beside every field: the
-# `R` switch (the value as R) and the (i) of its help (what the argument
-# means).  A def (tfl_arg_defs()'s row) and `ctx` (what the card knows,
+# aes fields each with a column / value switch.  Beside a field: the (i)
+# of its help (what the argument means) and, only where the definition's
+# type takes an R expression (.type_takes_r(); `r_ok` says otherwise), the
+# `R` switch (the value as R) -- a value that is R already (`!r` written
+# in the YAML by hand) keeps its switch, so it is shown and not lost.  A def (tfl_arg_defs()'s row) and `ctx` (what the card knows,
 # .choice_values()) choose the field by its input form; `fixed_rows`: a
 # table's rows shown read only on top (the template's ALL row), not read
 # back.
@@ -82,7 +92,8 @@
 arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default = NULL,
                       choices = NULL, from = "own", help = NULL, required = FALSE,
                       lang = "en", fn = NULL, aes = NULL, nav = NULL, help_link = NULL,
-                      own = NULL, def = NULL, ctx = NULL, fixed_rows = NULL, nested = FALSE) {
+                      own = NULL, def = NULL, ctx = NULL, fixed_rows = NULL, nested = FALSE,
+                      r_ok = NULL) {
   t <- function(x) tr(x, lang)
   kind <- .arg_kind(type)
   fid <- paste0(id, "__", arg)
@@ -112,6 +123,9 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
   # field, as the others' R: no switch to press, its R mark fixed)
   r_only <- kind %in% c("r", "condition")
   is_r <- inherits(value, "tfl_r") && !r_only
+  # (the R switch: the definition's type -- not the one the field is drawn
+  # by -- takes R, or the value is R)
+  r_ok <- !r_only && (is_r || (r_ok %||% .type_takes_r(def$def_type %||% type)))
   r_text <- if (is_r) as.character(unclass(value)) else ""
   if (is_r) value <- NULL
   # (`!unset`: the field says "(none)", and the control is hidden behind it)
@@ -149,7 +163,7 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
   r_input <- shiny::tags$input(type = "text", id = paste0(fid, "__r"), class = "form-control form-control-sm rp-mono rp-r-input",
                                value = r_text, placeholder = "R", spellcheck = "false")
   r_switch <- if (r_only) shiny::tags$span(class = "rp-r-toggle rp-r-fixed", title = t("As R"), "R") else
-    shiny::tags$label(
+    if (r_ok) shiny::tags$label(
     class = "rp-r-toggle", title = t("As R"),
     shiny::tags$input(type = "checkbox", id = paste0(fid, "__isr"), class = "rp-isr",
                       checked = if (is_r) NA else NULL),
@@ -178,7 +192,7 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
                       help_tip(help), help_link),
     shiny::div(class = "rp-field-row",
                shiny::div(class = "rp-form-input", control),
-               if (!r_only) r_input, if (none_ok) shiny::div(class = "rp-none-show", t(.none_word)), none_switch, r_switch),
+               if (r_ok) r_input, if (none_ok) shiny::div(class = "rp-none-show", t(.none_word)), none_switch, r_switch),
     if (identical(kind, "pick_many") && isTRUE(def$ordered)) {
       shiny::div(class = "rp-field-hint rp-ordered-hint", t("In order, top to bottom"))
     },

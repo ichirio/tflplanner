@@ -117,6 +117,10 @@ button[onclick*='tpl_revert'] { white-space: nowrap; flex-shrink: 0; }
 .rp-more-body { padding-left: .6rem; margin-top: .2rem; }
 .rp-more:not(.rp-open) .rp-more-search { display: none; }
 .rp-more:not(.rp-open) .rp-more-body > .rp-field:not(.rp-has-value) { display: none; }
+.rp-more:not(.rp-open) .rp-more-group > .rp-field:not(.rp-has-value) { display: none; }
+.rp-more:not(.rp-open) .rp-more-group:not(:has(.rp-field.rp-has-value)) { display: none; }
+.rp-more-group:not(:has(.rp-field)), .rp-args-up > .rp-group[data-group]:not(:has(.rp-field)) { display: none; }
+.rp-more-group > .rp-group-label { margin-top: .3rem; }
 .rp-more-search { margin-bottom: .3rem; max-width: 18em; }
 .rp-more .rp-field.rp-hidden { display: none !important; }
 .rp-nav-hint { font-size: 12.5px; color: #4b5563; background: var(--bs-tertiary-bg, #f6f7f9);
@@ -314,15 +318,20 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
       var r = order.indexOf(String(g.data('arg')));
       if (r >= 0 && r < rank) after = $(this);
     });
-    if (after) after.after(el); else if (wrap) box.prepend(el); else box.children('.rp-more-search').length ? box.children('.rp-more-search').after(el) : box.prepend(el);
+    var head = box.children('.rp-more-search, .rp-group-label').last();
+    if (after) after.after(el); else if (wrap) box.prepend(el); else head.length ? head.after(el) : box.prepend(el);
   }
   $(document).on('focusout', '.rp-plan-args .rp-field', function() {
     var f = $(this);
     setTimeout(function() {
       if (f[0].contains(document.activeElement)) return;
       var card = f.closest('.rp-plan-args');
-      var up = card.find('.rp-args-up .rp-group-row').first();
-      var low = card.find('.rp-more-body').first();
+      // (a card with groups: the field stays in its own group, above or in the fold)
+      var grp = f.closest('[data-group]').attr('data-group');
+      var up = grp ? card.find('.rp-args-up .rp-group').filter(function() { return this.getAttribute('data-group') === grp; }).find('.rp-group-row').first()
+                   : card.find('.rp-args-up .rp-group-row').first();
+      var low = grp ? card.find('.rp-more-body .rp-more-group').filter(function() { return this.getAttribute('data-group') === grp; }).first()
+                    : card.find('.rp-more-body').first();
       if (!up.length || !low.length) return;
       var order = (card.find('[data-formals]').first().attr('data-formals') || '').split(',');
       var below = f.closest('.rp-more-body').length > 0;
