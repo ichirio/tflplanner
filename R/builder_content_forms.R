@@ -1,176 +1,25 @@
-# The table builder's content, part 3: the forms of the layout cards and the
-# plan_columns(), plan_digits(), plan_levels(), plan_filter() cards.
-# Split from R/builder_content.R (no code change).
+# The table builder's content, part 3: the older names of the card
+# generator (R/spec_card.R), the remaining arguments of the cards with an
+# editor of their own, and the plan_columns(), plan_digits(), plan_levels(),
+# plan_filter() cards.
 
-# ---- the forms of the layout cards -------------------------------------------------
+# ---- the cards of the generator ----------------------------------------------------
 
-# The cards with a form of fields by the schema's types (arg_field()): the
-# arguments the schema marks `main` on the card, the rest folded under
-# "Other arguments"
-.plan_form_fns <- c("normalize_ard", "plan_filter", "plan_blanks", "plan_paginate_rows",
-                    "plan_paginate_cols", "plan_paginate_group", "plan_row_group", "plan_stub",
-                    "plan_columns", "plan_style", "plan_hide", "plan_cell_style")
-
-# a form card's main arguments: those its schema marks `main`
-.plan_form_main <- function(fn) {
-  a <- .schema_of(fn)$args %||% list()
-  m <- names(a)[vapply(a, function(x) isTRUE(x$main), NA)]
-  # (in the function's order, as its fields are drawn)
-  fo <- tryCatch(names(formals(utils::getFromNamespace(fn, "rtfreporter"))),
-                 error = function(e) character())
-  .arg_order(m, fo)
-}
-
-# the types the form uses over the schema's: a choice of the usual values,
-# or R; "widths" a number a column (.widths_field()); a colour a picker
-# (no R or map of its own on the card).  plan_cell_style()'s looks are a
-# choice of TRUE / FALSE with a blank (left alone: not written), not a
-# check (an unticked check would say FALSE).
-.plan_cell_look <- "enum[TRUE|FALSE]|logical"
-.plan_form_types <- list(
-  normalize_ard = c(drop_contexts = "r", stack = "r", combine = "r"),
-  plan_cell_style = c(bold = .plan_cell_look, italic = .plan_cell_look,
-                      underline = .plan_cell_look, color = "colour", background = "colour"),
-  plan_columns = c(widths = "widths", row_title = "list<column>"))
-
-# the arguments of a form card given as R (no field of their own)
-.plan_form_r <- list(
-  plan_filter = "by",
-  plan_cell_style = "border",
-  plan_columns = c("cell_format", "column_widths_twips"),
-  plan_paginate_cols = "col_header",
-  plan_row_group = "group_col")
-
-# The defaults of the plan verbs whose formals are NULL (rtfreporter#949: a
-# verb records only what its call says, the defaults are applied when the
-# layers are merged).  A form shows these, as it showed the formals before;
-# a value equal to its default is not written.  Here (not read from
-# rtfreporter's internals) for the arguments named.
-.plan_verb_defaults <- list(
-  plan_stub = list(before = FALSE),
-  plan_paginate_group = list(keep = TRUE),
-  plan_sort = list(keep = TRUE),
-  plan_total = list(label = "Total", position = "last", direction = "cols"),
-  plan_empty = list(when = "auto", position = "last"))
-
-# a formal's default: the function's own, else (a NULL formal) the verb's
-# documented default above
-.plan_formal_default <- function(fn, fl, a) {
-  # (a required argument's formal is the empty symbol: not evaluated here)
-  nul <- vapply(fl[a], function(d) !is.symbol(d) && is.null(d), NA)
-  if (length(nul) == 1L && nul) .plan_verb_defaults[[fn]][[a]] else fl[[a]]
-}
-
-# a form card's schema: tflspec's, with the types above, its formals the
-# function's own (not `plan`) and its visible arguments the main ones
-.plan_form_schema <- function(fn) {
-  sch <- .schema_of(fn) %||% list()
-  # (a type of the form's own: the field the type says, not the def's input)
-  for (a in names(.plan_form_types[[fn]])) {
-    sch$args[[a]]$type <- .plan_form_types[[fn]][[a]]
-    sch$args[[a]]$input <- NULL
-  }
-  for (a in .plan_form_r[[fn]]) {
-    sch$args[[a]]$type <- "r"
-    sch$args[[a]]$input <- NULL
-  }
-  fl <- tryCatch(formals(utils::getFromNamespace(fn, "rtfreporter")), error = function(e) NULL)
-  fo <- names(fl)
-  # (an argument the schema only names -- a label, no type -- passed by
-  # `...`: no field; plan_filter()'s condition is the condition builder's)
-  if (length(fo)) {
-    typed <- vapply(sch$args, function(x) !is.null(x$type), NA)
-    sch$args <- sch$args[typed | names(sch$args) %in% fo]
-  }
-  # a check's default the function's own (plan_paginate_group(keep = TRUE)):
-  # the field ticked as the function would be
-  for (a in intersect(fo, names(sch$args))) {
-    d <- .plan_formal_default(fn, fl, a)
-    if (identical(.arg_kind(sch$args[[a]]$type), "logical") && is.null(sch$args[[a]]$default) &&
-        is.logical(d) && length(d) == 1L && !is.na(d)) {
-      sch$args[[a]]$default <- d
-    }
-  }
-  sch$formals <- setdiff(unique(c(fo, names(sch$args))), c("plan", ".plan", "..."))
-  # (no argument is read only: normalize_ard()'s hierarchy is a field too,
-  # marked the ARD's while it says the same, warned when it does not)
-  sch$fixed <- character()
-  # (the main fields in the function's order too)
-  sch$visible <- .arg_order(.plan_form_main(fn), sch$formals)
-  sch
-}
-
-# where an argument's value came from: the report's own, the study's
-# defaults, a pattern (the item's arg_from, read from the spec); else a
-# value the item has that the report does not say is the defaults'
-.arg_from <- function(it, a) {
-  af <- it$arg_from
-  if (!is.null(af) && a %in% names(af)) return(af[[a]])
-  if (a %in% names(it$own_args %||% list())) "own" else if (a %in% names(it$args)) "defaults" else "own"
-}
-
-# The function's arguments a card shows, in two groups (each in the
-# function's order, a data argument -- x, plan -- none): `upper` those the
-# call's code writes -- the required, the item's arguments
-# (tflspec::tfl_item_written()), those the ARD decides (`ard`) -- and
-# `lower` the rest.  The same for every report: no kind of table shows or
-# hides an argument.
-.data_args <- c("x", "plan", ".plan", "data", "ard", "...")
-
-.fields_split <- function(fn, it, formals, ard = character()) {
-  fo <- setdiff(formals, .data_args)
-  fl <- tryCatch(formals(utils::getFromNamespace(sub("^.*::", "", fn), "rtfreporter")),
-                 error = function(e) NULL)
-  req <- names(fl)[vapply(fl, function(d) is.symbol(d) && !nzchar(as.character(d)), NA)]
-  a <- it$args %||% list()
-  wr <- if (length(a)) tryCatch(tflspec::tfl_item_written(tflspec::tfl_item(fn, a)),
-                                error = function(e) names(a)) else character()
-  # (a verb's positional ... keyed by an argument -- plan_hide(cols) -- by its key too)
-  up <- unique(c(req, wr, names(a)[nzchar(names(a))], ard))
-  list(upper = fo[fo %in% up], lower = fo[!fo %in% up])
-}
-
-# A form card's body: the function's arguments as fields (each marked where
-# its value came from), those its code writes above, the rest below
-# ("Arguments not in the code", folded: a value given there moves its field up).
-# `choices`: the columns offered (the row layers, the ARD's keys).
+# The cards whose body is the generator's (spec_card(); the verbs:
+# .plan_form_fns): their arguments as fields by the definitions' types,
+# those the code writes above, the rest folded under "Arguments not in the
+# code".  The names the builder has used for the generator's parts:
+.plan_form_schema <- function(fn) spec_card_defs(fn)
+.plan_form_main <- function(fn) spec_card_defs(fn)$visible
 .plan_form_body <- function(cid, fn, it, choices = NULL, lang = "en", cols = NULL,
                             ard = list(), fixed_link = NULL) {
-  sch <- .plan_form_schema(fn)
-  a <- it$args %||% list()
-  sp <- .fields_split(fn, it, sch$formals, ard = names(Filter(length, ard)))
-  field <- function(k, value) {
-    from <- if (k %in% names(a)) .arg_from(it, k) else "own"
-    own <- if (k %in% names(it$own_args %||% list())) it$own_word %||% "This table"
-    # an argument the ARD decides (normalize_ard()'s hierarchy: step 1's
-    # analysis): an ordinary field, "From the ARD" while it says the same
-    # (blank: the ARD's), a warning when another value is given
-    ak <- ard[[k]]
-    if (length(ak)) {
-      same <- is.null(value) || identical(as.character(unlist(value)), as.character(ak))
-      f <- arg_field(cid, k, sch$args[[k]]$type, label = .arg_meaning(fn, k), value = value,
-                     default = paste(ak, collapse = ", "), choices = unique(c(ak, choices)),
-                     from = if (same) "ard" else from, own = if (!same) own,
-                     help = .arg_help(fn, k, sch, lang), lang = lang, def = sch$args[[k]])
-      return(.ard_checked(f, ak, same, fixed_link, lang))
-    }
-    if (identical(sch$args[[k]]$type, "widths")) {
-      return(.widths_field(cid, k, cols %||% .widths_cols(value, choices), value,
-                           label = .arg_meaning(fn, k), from = from, own = own,
-                           help = .arg_help(fn, k, sch, lang), lang = lang))
-    }
-    arg_field(cid, k, sch$args[[k]]$type, label = .arg_meaning(fn, k), value = value,
-              default = sch$args[[k]]$default, choices = choices,
-              from = from, own = own, help = .arg_help(fn, k, sch, lang), lang = lang,
-              def = sch$args[[k]])
-  }
-  shiny::div(
-    class = "rp-plan-args", `data-card` = cid,
-    shiny::div(class = "rp-args-up", `data-formals` = paste(sch$formals, collapse = ","),
-               arg_group(NULL, lapply(sp$upper, function(k) field(k, a[[k]])), lang = lang)),
-    arg_more(cid, fn, schema = sch, lang = lang, rest = sp$lower,
-             fields = lapply(sp$lower, function(k) field(k, NULL)), label = "Arguments not in the code"))
+  spec_card(cid, fn, it, lang = lang,
+            ctx = list(choices = choices, cols = cols, ard = ard, fixed_link = fixed_link))
 }
+.plan_form_read <- function(input, cid, fn, cols = NULL) {
+  spec_card_read(input, cid, fn, ctx = list(cols = cols))
+}
+.plan_form_args <- function(read, it, fn) spec_card_args(read, it, fn)
 
 # The cards of a form of their own (table_plan()'s roles, plan_cells()'
 # rows and formats, plan_col_header()'s lines, plan_sort()'s order): the
@@ -186,23 +35,7 @@
 .special_more <- function(cid, fn, it, lang = "en") {
   ex <- .special_args(fn)
   if (!length(ex)) return(NULL)
-  sch <- .plan_form_schema(fn)
-  a <- it$args %||% list()
-  up <- ex[ex %in% names(a)]
-  lo <- setdiff(ex, up)
-  field <- function(k, value) {
-    arg_field(cid, k, sch$args[[k]]$type, label = .arg_meaning(fn, k), value = value,
-              default = sch$args[[k]]$default,
-              from = if (k %in% names(a)) .arg_from(it, k) else "own",
-              own = if (k %in% names(it$own_args %||% list())) it$own_word %||% "This table",
-              help = .arg_help(fn, k, sch, lang), lang = lang, def = sch$args[[k]])
-  }
-  shiny::div(
-    class = "rp-plan-args rp-special-more", `data-card` = cid,
-    shiny::div(class = "rp-args-up", `data-formals` = paste(ex, collapse = ","),
-               arg_group(NULL, lapply(up, function(k) field(k, a[[k]])), lang = lang)),
-    arg_more(cid, fn, schema = sch, lang = lang, rest = lo,
-             fields = lapply(lo, function(k) field(k, NULL)), label = "Arguments not in the code"))
+  spec_card(cid, fn, it, lang = lang, only = ex, class = "rp-special-more")
 }
 # ... read back: those fields' values (`set`; "(none)" its toggle on: `!unset`,
 # tflspec::tfl_unset()) and the fields emptied, or a check as the function's
@@ -250,39 +83,6 @@
   htmltools::tagAppendChild(field, shiny::div(class = "small rp-ard-link", link))
 }
 
-
-# the form read back: the arguments its fields say (an unticked check
-# FALSE); NULL while its fields are not there yet.  `cols`: the columns
-# of a widths field, as drawn (.widths_cols()).
-.plan_form_read <- function(input, cid, fn, cols = NULL) {
-  sch <- .plan_form_schema(fn)
-  wa <- names(Filter(function(x) identical(x$type, "widths"), sch$args))
-  seen <- vapply(.plan_form_main(fn), function(k) {
-    if (k %in% wa) {
-      return(length(cols) > 0L && !is.null(.input_value(input, paste0(cid, "__", k, "__1"))))
-    }
-    !is.null(.input_value(input, paste0(cid, "__", k))) ||
-      isTRUE(.input_value(input, paste0(cid, "__", k, "__isr")))
-  }, NA)
-  if (!any(seen)) return(NULL)
-  out <- builder_card_read(input, cid, sch, args = setdiff(sch$formals, c(wa, sch$fixed)),
-                           logical_false = TRUE)
-  for (k in intersect(names(out), names(sch$args))) {
-    out[[k]] <- .form_list_value(out[[k]], sch$args[[k]]$type)
-    if (identical(sch$args[[k]]$type, "formula")) out[[k]] <- .formula_text(out[[k]])
-  }
-  for (k in wa) {
-    if (isTRUE(.input_value(input, paste0(cid, "__", k, "__isr")))) {
-      txt <- .input_value(input, paste0(cid, "__", k, "__r"))
-      if (!is.null(txt) && nzchar(trimws(txt))) out[[k]] <- tflspec::tfl_r(trimws(txt))
-      next
-    }
-    w <- .widths_read(input, paste0(cid, "__", k), cols)
-    if (length(w)) out[[k]] <- w
-  }
-  out
-}
-
 # A condition typed as R for a one-sided formula's argument
 # (plan_cell_style(where = )): its text without the "~" the code writes
 # itself (`~ is.na(label)` typed: `is.na(label)`); blank: none
@@ -315,12 +115,14 @@
 }
 
 # A widths field: a small table, a column a row and its relative width (a
-# number; blank: rtfreporter's), its `R` switch as every field has
+# number; blank: rtfreporter's), its `R` switch where `r_ok`
 .widths_field <- function(id, arg, cols, value = NULL, label = NULL, from = "own", own = NULL,
-                          help = NULL, lang = "en") {
+                          help = NULL, lang = "en", r_ok = TRUE) {
   t <- function(x) tr(x, lang)
   fid <- paste0(id, "__", arg)
   is_r <- inherits(value, "tfl_r")
+  # (its R switch as every field's: where the type takes R, or the value is R)
+  r_ok <- r_ok || is_r
   r_text <- if (is_r) as.character(unclass(value)) else ""
   w <- if (!is_r && (is.list(value) || is.numeric(value))) value else list()
   rows <- lapply(seq_along(cols), function(i) {
@@ -348,10 +150,10 @@
                                             shiny::tags$tbody(rows)),
                           shiny::div(class = "small text-muted",
                                      t("Blank: rtfreporter's width. .values: every value column."))),
-               shiny::tags$input(type = "text", id = paste0(fid, "__r"),
-                                 class = "form-control form-control-sm rp-mono rp-r-input",
-                                 value = r_text, placeholder = "R", spellcheck = "false"),
-               shiny::tags$label(class = "rp-r-toggle", title = t("As R"),
+               if (r_ok) shiny::tags$input(type = "text", id = paste0(fid, "__r"),
+                                           class = "form-control form-control-sm rp-mono rp-r-input",
+                                           value = r_text, placeholder = "R", spellcheck = "false"),
+               if (r_ok) shiny::tags$label(class = "rp-r-toggle", title = t("As R"),
                                  shiny::tags$input(type = "checkbox", id = paste0(fid, "__isr"),
                                                    class = "rp-isr",
                                                    checked = if (is_r) NA else NULL),
@@ -378,33 +180,6 @@
   if (is.null(a) || is.null(b)) return(is.null(a) && is.null(b))
   if (is.numeric(a) && is.numeric(b)) return(isTRUE(all.equal(as.numeric(a), as.numeric(b))))
   identical(.arg_to_r(a), .arg_to_r(b))
-}
-
-# The item's whole arguments after the form's edit: its arguments (the
-# report's over its layers') with what the form says otherwise put in, a
-# field emptied taking its argument away (an argument the item does not
-# say is the function's default: a check ticked as that default is no
-# change).  .builder_item_write() keeps of them what differs from the layers.
-.plan_form_args <- function(read, it, fn) {
-  sch <- .plan_form_schema(fn)
-  eff <- it$args %||% list()
-  # (a widths field not drawn -- no columns known -- reads nothing: no change)
-  wa <- names(Filter(function(x) identical(x$type, "widths"), sch$args))
-  for (a in setdiff(union(names(read), setdiff(intersect(names(eff), sch$formals),
-                                              setdiff(wa, names(read)))), sch$fixed)) {
-    lg <- identical(.arg_kind(sch$args[[a]]$type), "logical") && !inherits(read[[a]], "tfl_r")
-    new <- read[[a]]
-    cur <- eff[[a]]
-    if (is.null(cur) && lg) cur <- sch$args[[a]]$default
-    # (a text field drawn from "" reads back blank -- left out -- as one
-    # never set would: "" is a value (plan_stub(heading = "") a blank
-    # heading), so the field left blank keeps it)
-    if (is.null(new) && identical(cur, "")) next
-    if (.same_value(new, cur, lg)) next
-    eff[a] <- list(new)
-    if (is.null(new)) eff[[a]] <- NULL
-  }
-  eff
 }
 
 # ---- plan_digits(), plan_levels(), plan_filter() -----------------------------------
