@@ -313,15 +313,15 @@
           }
         },
         study = {
-          # study.yml as the bridge writes it, with the keys the view does
-          # not write (series_settings:, ai:, ...) kept as the file has them
+          # study.yml as the bridge writes it, with the blocks no planner
+          # writes (.study_yml_not_planner: series_settings:, ai:) kept as
+          # the spec's text has them
           mine <- new$study$study
           blocks <- .yaml_top_blocks(p$spec$text[[r]])
-          kept <- setdiff(intersect(names(sp$study$study), names(blocks)), names(mine))
-          if (length(kept)) kept <- setdiff(kept, names(was_study()$study))
+          kept <- setdiff(intersect(.study_yml_not_planner, names(blocks)), names(mine))
           if (length(kept)) {
             sp$text[[r]] <- c(sp$text[[r]], unlist(blocks[kept], use.names = FALSE))
-            mine[kept] <- sp$study$study[kept]
+            for (k in intersect(kept, names(sp$study$study))) mine[k] <- list(sp$study$study[[k]])
           }
           sp$study["study"] <- list(mine)
         },
