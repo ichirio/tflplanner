@@ -205,6 +205,17 @@
   invisible(f)
 }
 
+# A YAML file's top-level blocks, by key: each key's line to the next
+# top-level key's, as written (its tags, comments and quoting kept)
+.yaml_top_blocks <- function(lines) {
+  lines <- as.character(lines)
+  top <- grep("^[^[:space:]#-][^:]*:", lines)
+  if (!length(top)) return(list())
+  ends <- c(top[-1L] - 1L, length(lines))
+  keys <- gsub("^[\"']|[\"']$", "", sub(":.*$", "", lines[top]))
+  stats::setNames(lapply(seq_along(top), function(i) lines[top[i]:ends[i]]), keys)
+}
+
 # Which part of the spec a file is: study, data, defaults, toc,
 # pattern (its name) or output
 .spec_part <- function(rel) {
@@ -330,6 +341,19 @@
           if (!identical(mine, new$study$patterns[[nm]])) {
             sp$text[[r]] <- .study_part_lines(sp$study, "patterns", nm)
           }
+        },
+        study = {
+          # study.yml as the bridge writes it, with the blocks no planner
+          # writes (.study_yml_not_planner: series_settings:, ai:) kept as
+          # the spec's text has them
+          mine <- new$study$study
+          blocks <- .yaml_top_blocks(p$spec$text[[r]])
+          kept <- setdiff(intersect(.study_yml_not_planner, names(blocks)), names(mine))
+          if (length(kept)) {
+            sp$text[[r]] <- c(sp$text[[r]], unlist(blocks[kept], use.names = FALSE))
+            for (k in intersect(kept, names(sp$study$study))) mine[k] <- list(sp$study$study[[k]])
+          }
+          sp$study["study"] <- list(mine)
         },
         {
           mine <- new$study[[part$kind]]
