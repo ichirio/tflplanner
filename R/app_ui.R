@@ -744,6 +744,8 @@ app_ui <- function(lang = "en") {
                             shiny::tags$script(shiny::HTML(.builder_cards_js)),
                             shiny::tags$style(shiny::HTML(.tpl_css)),
                             shiny::tags$script(shiny::HTML(.tpl_js)),
+                            shiny::tags$style(shiny::HTML(.none_css)),
+                            shiny::tags$script(shiny::HTML(.none_js)),
                             shiny::tags$script(shiny::HTML(.tpl_columns_js)),
                             shiny::tags$style(shiny::HTML(.builder_content_css)),
                             shiny::tags$script(shiny::HTML(.builder_content_js)),

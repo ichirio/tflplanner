@@ -113,7 +113,7 @@
 
 # A figure design's R pieces (data_code, layer_code, a derive or filter
 # expression, an `!r` value), parsed, and tflspec's check of the design
-.check_fig <- function(id, d) {
+.check_fig <- function(id, d, p = NULL) {
   f <- file.path(study_layout()[["spec"]], "outputs", paste0(id, ".yml"))
   out <- .problem_rows(character(), character(), character(), character(),
                        character())
@@ -137,6 +137,22 @@
     }
   }
   walk(unclass(d), "")
+  # a figure report's content key (`figure: {name, args}`, tflspec#835): the
+  # design has no layers to check; its name must be a figure content of
+  # tflspec's and its arguments the model's and the function's.  tflspec
+  # says (the report's `figure` part): its message, as the program's stop.
+  if (!is.null(d$figure)) {
+    r <- tryCatch({
+      # the report as the study has it (its data steps too), else the key alone
+      y <- if (!is.null(p)) .code_output(p, id)
+      o <- if (!is.null(y)) .code_content(y) else tflspec::tfl_output(id, "figure")
+      o$figure <- d$figure
+      suppressMessages(suppressWarnings(tflspec::tfl_content_code(o)))
+    }, error = function(e) e)
+    if (inherits(r, "error")) {
+      out <- rbind(out, .problem_rows(f, "", "", "figure", conditionMessage(r)))
+    }
+  }
   ck <- tryCatch(tflspec::tfl_check_fig_design(structure(d, class = "tfl_fig_design")),
                  error = function(e) data.frame(part = "", field = "",
                                                 problem = conditionMessage(e)))
@@ -220,7 +236,7 @@
                do.call(rbind, c(list(.problem_rows(character(), character(),
                                                    character(), character(),
                                                    character())),
-                                lapply(figs, function(f) .check_fig(f, p$fig_designs[[f]])))),
+                                lapply(figs, function(f) .check_fig(f, p$fig_designs[[f]], p)))),
                .check_programs(p, ids, af),
                .check_fig_ards(s, ids))
   rownames(out) <- NULL
