@@ -838,13 +838,76 @@ test_that("an edit's spec is bridged once, and the base once until it changes (#
   b <- .spec_now(p)
   expect_identical(n, 3L)
   expect_true(any(grepl("treatment: TRT01P", b$text[["study.yml"]], fixed = TRUE)))
-  # saved: the new base is bridged when an edit asks for it
+  # saved: the base the save made is kept (#749), an edit bridges itself only
   s$planner <- p
   s <- suppressMessages(save_study(s, home = home))
   q <- s$planner
   q$study[["treatment"]] <- NA_character_
   m <- n
   d <- .spec_now(q)
-  expect_identical(n, m + 2L)
+  expect_identical(n, m + 1L)
   expect_false(any(grepl("treatment: TRT01P", d$text[["study.yml"]], fixed = TRUE)))
+})
+
+test_that("a change to the study's fields alone bridges study.yml alone, as the whole bridge would (#749)", {
+  skip_on_cran()
+  s <- model_sample()
+  home <- getOption("tflplanner.home")
+  s <- suppressMessages(open_study("SAMPLE-01", home = home))
+  meta <- s$meta
+  meta$title <- "Another title"
+  meta$short_title <- "Short one"
+  orig <- .spec_bridge
+  n <- 0L
+  local_mocked_bindings(.spec_bridge = function(...) {
+    n <<- n + 1L
+    orig(...)
+  })
+  fast <- .spec_sync_run(s$planner, meta)
+  expect_identical(n, 0L)
+  expect_identical(attr(fast, "changed"), "study.yml")
+  # the same as the whole bridge (the cut one made unusable)
+  local_mocked_bindings(.spec_bridge_study = function(...) stop("not here"))
+  whole <- .spec_sync_run(s$planner, meta)
+  expect_gt(n, 0L)
+  expect_identical(attr(whole, "changed"), "study.yml")
+  stamp <- function(x) x[!startsWith(x, "updated:")]
+  expect_identical(stamp(fast$spec$text[["study.yml"]]), stamp(whole$spec$text[["study.yml"]]))
+  rest <- setdiff(names(whole$spec$text), "study.yml")
+  expect_identical(fast$spec$text[rest], whole$spec$text[rest])
+  expect_identical(fast$spec$outputs, whole$spec$outputs)
+  st <- function(x) {
+    x$spec$study$study$updated <- NULL
+    x$spec$study
+  }
+  expect_identical(st(fast), st(whole))
+  expect_identical(.planner_body(fast), .planner_body(whole))
+  # saved with the app's widths: study.yml written, no report's file, no
+  # report bridged
+  m <- n
+  s$meta <- meta
+  s2 <- suppressMessages(save_study(s, home = home, fill_widths = TRUE))
+  expect_identical(n, m)
+  w <- s2$files$file[s2$files$status == "written"]
+  expect_false(any(grepl("spec/outputs/", w, fixed = TRUE)))
+  expect_true(any(endsWith(w, "study.yml")))
+  y <- yaml::read_yaml(file.path(s2$path, "study.yml"))
+  expect_identical(y$short_title, "Short one")
+  expect_identical(y$title, "Another title")
+})
+
+test_that("the widths read before a save are those of the reports it writes (#749)", {
+  skip_on_cran()
+  s <- model_sample()
+  home <- getOption("tflplanner.home")
+  s <- suppressMessages(open_study("SAMPLE-01", home = home))
+  all <- .widths_before(s$path)
+  rel <- unname(s$planner$spec$where[1L])
+  one <- .widths_before(s$path, c(rel, "study.yml"))
+  ids <- names(s$planner$spec$where)[s$planner$spec$where == rel]
+  expect_setequal(names(one), ids)
+  expect_identical(one, all[ids])
+  expect_identical(.widths_before(s$path, character()), list())
+  # nothing to write: none
+  expect_identical(.spec_to_write(s$planner, s$path), character())
 })
