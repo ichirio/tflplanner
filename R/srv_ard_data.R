@@ -1387,7 +1387,8 @@
       return(if (src %in% c("own", "none")) step_mark("\u25cb", t("Optional"), "text-muted"))
     }
     if ("ard" %in% (.type_idle_tabs[[report_kind()]] %||% character())) {
-      return(step_mark("\u2013", t("Not used"), "text-muted"))
+      # (a template listing's analysis step has the template's arguments)
+      return(if (is.null(.tpl_of(rv$p, id))) step_mark("\u2013", t("Not used"), "text-muted"))
     }
     st <- tryCatch(ard_state(), error = function(e) NULL)
     s0 <- if (!is.null(st)) st$state[match(id, st$output_id)] else NA

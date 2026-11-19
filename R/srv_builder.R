@@ -325,7 +325,7 @@
       if (!hier) shiny::div(
         class = "small text-muted rp-b-fixed-note",
         shiny::actionLink("b_rows_step1", sprintf(t("Step %s's analysis"), .step_no("ard"))), " ",
-        help_tip(t("A variable not here is added in the ARD analysis."))))
+        help_tip(t("A variable not here is added to the analysis in the analysis step."))))
     # (a summary table's variables each shown or not: plan_filter()'s card,
     # written as its row filter; the ARD stays as it is)
     shown_ui <- if (nrow(v) >= 2L && !is.null(hidden)) shiny::checkboxGroupInput(
@@ -380,7 +380,7 @@
     }
     labels_body <- if (nrow(v) > 0L) shiny::tagList(
       # (a template report has no step 1-1: #440)
-      if (!tpl) .btn("cl3_open", t("Code lists: in the Analysis data step (column definitions)"),
+      if (!tpl) .btn("cl3_open", t("Code lists: in the data step (column definitions)"),
                      class = "btn-sm btn-link py-0 px-0 mb-1"),
       # the headings and the order as one grid (the code list of the
       # variables), once: here
