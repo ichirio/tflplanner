@@ -104,6 +104,8 @@ button[onclick*='tpl_revert'] { white-space: nowrap; flex-shrink: 0; }
 .rp-tbl-ro td { color: #6b7280; background: var(--bs-tertiary-bg, #f6f7f9); }
 .rp-tbl-table td.rp-tbl-none { color: #9ca3af; font-size: 12.5px; }
 .rp-tbl-addrow { padding: 0; font-size: 12.5px; text-decoration: none; }
+.rp-tbl-cand:has(td:nth-last-child(2) .rp-tbl-cell:placeholder-shown) td:first-child .rp-tbl-cell {
+  color: var(--bs-secondary-color, #9ca3af); }
 .rp-group { margin-bottom: .35rem; }
 .rp-group-label { font-size: 12.5px; font-weight: 600; color: #4b5563; margin-bottom: .1rem; }
 .rp-group-row { display: flex; gap: .6rem; flex-wrap: wrap; }
@@ -275,6 +277,17 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
     var tr = $(this).closest('tr');
     if ($(this).hasClass('rp-tbl-up')) tr.prev('.rp-tbl-row').before(tr); else tr.next('.rp-tbl-row').after(tr);
     tr.closest('.rp-tbl').trigger('rp-tbl-change');
+  });
+  // a template card's table left: the focus out of it (and not back within
+  // a moment, longer than the input's debounce) -- the card may be drawn
+  // again now, never while someone types in it (R/srv_add_report.R)
+  $(document).on('focusout', '.rp-tbl', function() {
+    var box = this;
+    if (!box.id || box.id.indexOf('tpl_') !== 0) return;
+    setTimeout(function() {
+      if (box.contains(document.activeElement)) return;
+      if (window.Shiny && Shiny.setInputValue) Shiny.setInputValue('tpl_tbl_left', box.id, {priority: 'event'});
+    }, 400);
   });
   // a list cell's Add a value: the choice one more line
   $(document).on('change', '.rp-tbl-add', function() {

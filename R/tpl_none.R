@@ -8,15 +8,18 @@
 #   * a text / number / list field: the value reads "(none)" when unset, and
 #     the small "(none)" button under it writes it;
 #   * a flag: the switch off with a "(none)" note, and the same button (the
-#     button hidden while the note is on).
+#     button hidden while the note is on);
+#   * a table: drawn empty with the "(none)" note, and the same button, which
+#     empties the table (its rows typed again are a value again).
 # The words in the screen's language; a field gives back either word
 # (.is_none_text()), an item of a select the value "(none)".
 # Not on a required argument (it cannot be left out), nor on one tflspec
 # marks `unset: "stop"`, nor on the columns
 # field (its own table).  What an input then gives is read by .tpl_value().
 
-.tpl_none_selects <- c("population", "data", "levels", "vars", "var", "chips", "choice", "choices")
-.tpl_none_buttons <- c("text", "number", "flag", "list")
+.tpl_none_selects <- c("population", "data", "levels", "vars", "var", "chips", "choice", "choices",
+                       "pick", "picks")
+.tpl_none_buttons <- c("text", "number", "flag", "list", "table")
 
 .tpl_none_wrap <- function(w, input_id, type, prm, none, t = identity) {
   # (nor on one tflspec says cannot be left unset: its `unset` "stop"; NA, a
@@ -37,6 +40,13 @@
   }
   if (!type %in% .tpl_none_buttons) return(w)
   q <- htmltools::tagQuery(w)
+  if (identical(type, "table")) {
+    # (the note and the button inside the field: an edit of the table takes the note off)
+    return(q$addClass("tpl-tbl-field")$append(shiny::div(
+      class = "none-row",
+      .none_btn(t, onclick = sprintf("tplNone('%s', this)", input_id)),
+      shiny::span(class = paste("none-note", if (none) "none-on"), t(.none_word))))$allTags())
+  }
   if (identical(type, "flag")) {
     q$addClass("tpl-flag-field")
   } else if (none) {
@@ -60,4 +70,10 @@
 # is written as FALSE.  `none_in` the <id>__none input (NULL: never moved).
 .tpl_flag_off_drawn <- function(type, val, shown, none_in) {
   identical(type, "flag") && .is_unset(shown) && isFALSE(val) && !isFALSE(none_in)
+}
+
+# A table drawn for a "(none)" is empty, and says so as it is drawn: no edit
+# (rows typed into it are one)
+.tpl_table_none_drawn <- function(type, val, shown) {
+  identical(type, "table") && .is_unset(shown) && is.null(val)
 }
