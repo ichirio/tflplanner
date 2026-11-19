@@ -183,9 +183,19 @@
 # The columns a parameter chooses from: the dataset's the report reads
 # (its `data` argument or default), else every dataset's
 .tpl_columns <- function(data, dataset = NULL) {
+  .tpl_dataset_columns(data, dataset) %||% unique(unlist(lapply(data, names)))
+}
+
+# A dataset's columns, by its name or a template's data id (adsl_sub: its
+# dataset, ADSL -- as .tpl_vars_dataset() reads it); NULL when the study
+# has no such dataset
+.tpl_dataset_columns <- function(data, dataset) {
   ds <- toupper(as.character(dataset %||% "")[1L])
-  if (!is.na(ds) && nzchar(ds) && !is.null(data[[ds]])) return(names(data[[ds]]))
-  unique(unlist(lapply(data, names)))
+  if (is.na(ds) || !nzchar(ds)) return(NULL)
+  for (d in unique(c(ds, sub("_.*$", "", ds)))) {
+    if (!is.null(data[[d]])) return(names(data[[d]]))
+  }
+  NULL
 }
 
 # The dataset a series template's parameter takes its columns from: its
@@ -628,15 +638,15 @@
     study_data = ds(names(data)),
     report_data = if (has_rows) unique(rows$id) else ds(c(args$data, if (is.null(args$data)) dataset)),
     populations = populations,
+    # (vars(adsl_sub): the data row's dataset's columns -- not every
+    # dataset's: its `from`, else the dataset its id names or begins with,
+    # else the report's dataset)
     vars = function(what = NULL) {
       w <- as.character(what %||% "")[1L]
-      if (is.na(w) || !nzchar(w)) return(.tpl_columns(data, dataset))
-      k <- if (has_rows) match(w, rows$id) else NA_integer_
-      for (x in c(if (!is.na(k)) rows$from[[k]], w, sub("_.*$", "", w))) {
-        x <- toupper(as.character(x %||% NA_character_))
-        if (!is.na(x) && nzchar(x) && is.data.frame(data[[x]])) return(names(data[[x]]))
-      }
-      .tpl_columns(data, dataset)
+      k <- if (has_rows && !is.na(w)) match(w, rows$id) else NA_integer_
+      from <- if (!is.na(k)) rows$from[[k]]
+      .tpl_dataset_columns(data, from) %||% .tpl_dataset_columns(data, w) %||%
+        .tpl_columns(data, dataset)
     },
     levels = function(what = NULL) .tpl_levels(data, as.character(what %||% NA_character_)[1L], dataset),
     args = args,
