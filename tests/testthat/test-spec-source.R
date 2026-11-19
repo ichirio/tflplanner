@@ -518,3 +518,22 @@ test_that("a report outside the conflict keeps what the merge gave it", {
   expect_identical(.tpl_of(keep$planner, "T-TP2")$args$continuous, "HEIGHT")
   expect_identical(keep$planner$spec$outputs[["T-TP2"]], m$study$planner$spec$outputs[["T-TP2"]])
 })
+
+test_that("a save that stops part way writes nothing, and the next save is not stopped (#751)", {
+  spec_home()
+  s <- spec_study()
+  o <- open_study("SP-1")
+  rel <- c(report_file(s), file.path(s$path, "study.yml"))
+  before <- tools::md5sum(rel)
+  o$planner <- set_sheet_rows(o$planner, "titles", "T-1", data.frame(line = "1", center = "New title"))
+  # the ARD programs cannot be written: the save stops after the spec
+  # files and the report programs were written -- they are put back
+  testthat::with_mocked_bindings(
+    expect_error(suppressMessages(save_study(o)), "no program"),
+    .save_ard = function(...) stop("no program", call. = FALSE))
+  expect_identical(tools::md5sum(rel), before)
+  expect_identical(sheet_rows(open_study("SP-1")$planner, "titles", "T-1")$center, "Old title")
+  # the files are the record's: the next save goes through
+  suppressMessages(save_study(o))
+  expect_identical(sheet_rows(open_study("SP-1")$planner, "titles", "T-1")$center, "New title")
+})
