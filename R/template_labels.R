@@ -51,6 +51,7 @@
   censor = "Censoring variable",
   event = "Event definition",
   time_unit = "Time unit",
+  days_per_month = "Days in a month",
   y_type = "Y axis type",
   y_percent = "Y axis in percent",
   ci = "Confidence interval display",
@@ -191,5 +192,7 @@
     "Variables that divide the listing",
   "The variables that divide the listing (by_break); the records are ordered by them first. Empty for one listing." =
     "Variables that divide the listing",
-  "the Total column's heading" = "Total column heading"
+  "the Total column's heading" = "Total column heading",
+  "The group variable; one curve a group." = "Variable that splits the curves",
+  "The breaks of the time axis (and the times of the number at risk); none for ggplot2's." = "Time axis ticks"
 )
