@@ -173,6 +173,9 @@
                            placeholder = if (none) t("(none)") else if (is.null(prm$default)) t("(default)"))
         }
       },
+      # (an R condition: the builder's R field, the dataset's columns as it is typed)
+      r = .tpl_r_field(input_id, lab, shown, cols,
+                       placeholder = if (is.null(prm$default)) t("(default)")),
       # (a def's table, a map or rows: the table field -- a row a line, the
       # template's own rows read only on top; its value the report's rows)
       table = {

@@ -51,6 +51,7 @@
   censor = "Censoring variable",
   event = "Event definition",
   time_unit = "Time unit",
+  days_per_month = "Days in a month",
   y_type = "Y axis type",
   y_percent = "Y axis in percent",
   ci = "Confidence interval display",
@@ -203,5 +204,7 @@
   "An analysis id for each variable; empty for the variable's name." = "Analysis ID of each variable",
   "An analysis id for a parameter, keyed by its value (ALT); empty for the parameter's value." =
     "Analysis ID of each parameter",
-  "The subgroup rows, one a subgroup level, after the ALL row." = "Subgroup rows"
+  "The subgroup rows, one a subgroup level, after the ALL row." = "Subgroup rows",
+  "The group variable; one curve a group." = "Variable that splits the curves",
+  "The breaks of the time axis (and the times of the number at risk); none for ggplot2's." = "Time axis ticks"
 )

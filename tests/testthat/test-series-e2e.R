@@ -55,6 +55,8 @@ series_study <- function(home, id) {
 # The input a def's card gets (.tpl_type()), from the def alone
 series_card_type <- function(input, type, choices = NULL) {
   if (identical(input, "table")) return("table")
+  # a condition, or any R: the R field
+  if (identical(input, "condition") || identical(type, "r")) return("r")
   # a pick of source words (report_data, study_data, ...): a choice
   if (identical(input, "pick") && length(unlist(choices)) && grepl("^(list<)?string>?$", type))
     return(if (startsWith(type, "list<")) "picks" else "pick")
@@ -62,7 +64,8 @@ series_card_type <- function(input, type, choices = NULL) {
   # (several free texts: the list field, a line each)
   if (identical(type, "list<string>")) return("list")
   switch(type, logical = "flag", number = "number", `list<column>` = "vars",
-         column = "var", level = "levels", "text")
+         column = "var", level = "levels", `list<level>` = "levels",
+         if (startsWith(type, "list<")) "list" else "text")
 }
 
 # The report's YAML file as the app wrote it (one text)
