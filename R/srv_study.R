@@ -1422,7 +1422,7 @@
       shiny::selectInput(
         "study_adam_levels",
         with_tip(t("Apply the code list (define.xml) levels to the ADaM (settings.adam_levels)"),
-                 t("Whether study$adam gets the levels of the study's code lists (define.xml). Applied when ARDs, figures and listings are made; changing it makes the ARDs already made outdated. Either way a blank is NA, and study$adam_org is the file as it is. With none, a report's own levels: / labels: still apply, and naming a study code list is an error.")),
+                 t("Whether study$adam gets the levels of the study's code lists (define.xml). Applied when ARDs, Figures and Listings are made; changing it makes the ARDs already made outdated. Either way a blank is NA, and study$adam_org is the file as it is. With none, a report's own levels: / labels: still apply, and naming a study code list is an error. It takes effect after a save.")),
         stats::setNames(c("codelists", "none"),
                         t(c("Apply (codelists)", "Do not apply (none)"))),
         selected = .study_adam_levels(shiny::isolate(rv$p))),
