@@ -316,10 +316,9 @@
           # study.yml as the bridge writes it, with the keys the view does
           # not write (series_settings:, ai:, ...) kept as the file has them
           mine <- new$study$study
-          kept <- setdiff(names(sp$study$study),
-                          union(names(was_study()$study), names(mine)))
           blocks <- .yaml_top_blocks(p$spec$text[[r]])
-          kept <- intersect(kept, names(blocks))
+          kept <- setdiff(intersect(names(sp$study$study), names(blocks)), names(mine))
+          if (length(kept)) kept <- setdiff(kept, names(was_study()$study))
           if (length(kept)) {
             sp$text[[r]] <- c(sp$text[[r]], unlist(blocks[kept], use.names = FALSE))
             mine[kept] <- sp$study$study[kept]

@@ -70,3 +70,17 @@ test_that("a title edit not saved yet: the spec's study.yml keeps the blocks (th
   expect_identical(sum(txt == "series_settings:"), 1L)
   expect_identical(sum(txt == "ai:"), 1L)
 })
+
+test_that("a planner with no spec, written whole, keeps the blocks too", {
+  f <- keys_study()
+  before <- block_of(f)
+  s <- suppressMessages(open_study("KS-1"))
+  s$planner <- .planner_body(s$planner)
+  s$meta$title <- "Written whole"
+  s <- suppressMessages(save_study(s))
+  after <- block_of(f)
+  expect_identical(after$title, "Written whole")
+  expect_identical(after$series_settings, before$series_settings)
+  expect_identical(after$ai, before$ai)
+  expect_true(s$planner$spec$study$study$series_settings$tflspec_v1$total)
+})
