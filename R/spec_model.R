@@ -222,7 +222,38 @@
 # the bridge's text and what it reads as; the others keep the spec's.  The
 # result is in step (its base the view now).  The files changed are the
 # attribute `changed`.
+#
+# (kept for the last planner and fields asked for: the study tab's
+# plan_cells() card asks for the spec at each edit, twice, and a bridge
+# writes the whole study -- a select took a minute, #738)
+.spec_sync_cache <- new.env(parent = emptyenv())
 .spec_sync <- function(p, meta) {
+  k <- .spec_sync_cache
+  if (!is.null(k$out) && identical(k$meta, meta) && identical(k$p, p)) return(k$out)
+  out <- .spec_sync_run(p, meta)
+  k$out <- NULL
+  k$p <- p
+  k$meta <- meta
+  k$out <- out
+  out
+}
+
+# The base's bridge, kept while the base is the same (it is until the next
+# save or open: each edit bridged it again), its folder kept with it
+.spec_base_cache <- new.env(parent = emptyenv())
+.spec_bridge_base <- function(base, meta, style) {
+  k <- .spec_base_cache
+  key <- list(base, meta, style)
+  if (!is.null(k$was) && dir.exists(k$was$dir) && identical(k$key, key)) return(k$was)
+  if (!is.null(k$was)) unlink(k$was$dir, recursive = TRUE)
+  k$was <- k$key <- NULL
+  was <- .spec_bridge(base, meta, style)
+  k$key <- key
+  k$was <- was
+  was
+}
+
+.spec_sync_run <- function(p, meta) {
   sp <- p$spec
   body <- .planner_body(p)
   m <- .spec_meta(meta)
@@ -238,8 +269,7 @@
   if (is.null(sp) || is.null(sp$base)) {
     changed <- union(names(sp$text), names(now$text))
   } else {
-    was <- .spec_bridge(sp$base, sp$meta, style)
-    on.exit(unlink(was$dir, recursive = TRUE), add = TRUE)
+    was <- .spec_bridge_base(sp$base, sp$meta, style)
     rels <- union(names(was$text), names(now$text))
     changed <- rels[!vapply(rels, function(r) identical(was$text[[r]], now$text[[r]]), NA)]
   }
