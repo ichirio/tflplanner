@@ -70,13 +70,18 @@
     v <- adata_drv$text()
     if (is.na(v)) "" else v
   }
+  # the filter field holds the rows beyond the analysis set's (the
+  # Population field): the whole condition is the set's, then them
+  adata_pop_cur <- shiny::reactiveVal(".none")
   adata_where_now <- function() {
     v <- adata_cond()$expr
-    if (is.null(v) || !length(v) || is.na(v) || !nzchar(trimws(v))) NA_character_ else v
+    rest <- if (is.null(v) || !length(v) || is.na(v) || !nzchar(trimws(v))) NA_character_ else v
+    o <- adata_pop_options(input$adata_from %||% "")
+    .cond_with_pop(rest, o$cond[match(adata_pop_cur(), o$value)])
   }
   # a new data still under its suggested name: named after what it is
   # made from and its condition (ADSL, SAFFL == "Y": adsl_saf)
-  shiny::observeEvent(list(adata_cond()$expr, input$adata_pop, input$adata_subj_on,
+  shiny::observeEvent(list(adata_cond()$expr, adata_pop_cur(), input$adata_subj_on,
                            input$adata_from), {
     e <- adata_edit()
     shiny::req(!is.null(e), is.null(e$old), identical(input$adata_id, e$suggested))
@@ -117,35 +122,28 @@
     o <- adata_pop_options(from)
     c(stats::setNames(".none", t("(none)")), stats::setNames(o$value, o$label))
   }
-  # the option the condition's first row is (".none": none)
+  # the option whose condition the condition's first rows are (".none": none)
   adata_pop_of_where <- function(where, from) {
     o <- adata_pop_options(from)
-    f <- .cond_first(where)
-    k <- match(f, vapply(o$cond, .cond_first, ""))
-    if (is.na(f) || is.na(k)) ".none" else o$value[k]
+    k <- which(vapply(o$cond, function(cd) .cond_leads(where, cd), NA))
+    if (!length(k)) ".none" else o$value[k[1L]]
   }
   adata_pop_name <- function() {
-    v <- input$adata_pop %||% ""
     o <- adata_pop_options(input$adata_from %||% "")
-    o$name[match(v, o$value)] %||% NA_character_
+    o$name[match(adata_pop_cur(), o$value)] %||% NA_character_
   }
-  # chosen: the condition's first row becomes it (a first row that is an
-  # analysis set's goes; "none" takes it out)
+  # chosen: the set (or flag) whose condition goes first -- the filter
+  # field keeps only its own rows
   shiny::observeEvent(input$adata_pop, {
     shiny::req(!is.null(adata_edit()))
-    o <- adata_pop_options(input$adata_from %||% "")
     v <- input$adata_pop
-    new <- o$cond[match(v, o$value)]
-    w <- .cond_set_first(adata_where_now(), if (length(new)) new else NA, o$cond)
-    if (!identical(w, adata_where_now())) {
-      adata_cond_value(w)
-      adata_cond_key(shiny::isolate(adata_cond_key()) + 1L)
-    }
+    if (v %in% c(".none", adata_pop_options(input$adata_from %||% "")$value)) adata_pop_cur(v)
   }, ignoreInit = TRUE)
   shiny::observeEvent(input$adata_from, {
     shiny::req(!is.null(adata_edit()))
-    shiny::updateSelectInput(session, "adata_pop", choices = adata_pop_choices(input$adata_from),
-                             selected = adata_pop_of_where(adata_where_now(), input$adata_from))
+    ch <- adata_pop_choices(input$adata_from)
+    if (!adata_pop_cur() %in% ch) adata_pop_cur(".none")
+    shiny::updateSelectInput(session, "adata_pop", choices = ch, selected = adata_pop_cur())
   }, ignoreInit = TRUE)
   adata_form <- function(r, title) {
     blank_na <- function(x) if (is.null(x) || !length(x) || is.na(x[1L])) "" else x[1L]
@@ -183,17 +181,19 @@
       length(cands) > 0L && !adata_root(r$from) %in% adata_pop_ds()
     e$cands <- cands
     adata_edit(e)
-    # the analysis set: the condition's first row; a new data not kept to
-    # other subjects starts with the study's first
+    # the analysis set: the condition's first rows (shown in the
+    # Population field, not in the filter's); a new data not kept to other
+    # subjects starts with the report's set, else the study's first
     pop_ch <- adata_pop_choices(r$from)
     pop_now <- adata_pop_of_where(where, r$from)
     if (is.null(old) && is.null(e$name) && !subj_on && identical(pop_now, ".none") &&
         length(pop_ch) > 1L) {
       rp <- paste0("pop:", report_population(p, ard_target() %||% ""))
       pop_now <- if (rp %in% pop_ch) rp else unname(pop_ch[2L])
-      o <- adata_pop_options(r$from)
-      where <- .cond_set_first(where, o$cond[match(pop_now, o$value)], o$cond)
     }
+    o <- adata_pop_options(r$from)
+    where <- .cond_drop_lead(where, o$cond[match(pop_now, o$value)])
+    adata_pop_cur(pop_now)
     adata_cond_value(if (.is_blank(where)) NA_character_ else where)
     adata_cond_key(shiny::isolate(adata_cond_key()) + 1L)
     ds <- p$ard$datasets$dataset
@@ -233,7 +233,12 @@
       class = "rp-b-card mb-2 border-primary",
       shiny::h6(class = "mb-2", title),
       e$note,
-      # first what it is made from and its analysis set (the name follows them)
+      # the name first: the program assigns to it (adsl_saf <- adsl |>
+      # filter(...)); then what it is made from and its analysis set
+      bslib::layout_columns(
+        col_widths = 5,
+        shiny::textInput("adata_id", argl("Name (used in the program)", "data_id"),
+                         blank_na(r$data_id), width = "100%")),
       bslib::layout_columns(
         col_widths = c(6, 6),
         shiny::selectInput("adata_from", argl("Made from", "from"), from_ch,
@@ -247,10 +252,6 @@
         class = "small text-muted mb-2",
         sprintf(t("Also kept to the population %s (population_id, as the sheet has it: SPEC shows it)."),
                 e$legacy_pop)),
-      bslib::layout_columns(
-        col_widths = 5,
-        shiny::textInput("adata_id", argl("Name (used in the program)", "data_id"),
-                         blank_na(r$data_id), width = "100%")),
       shiny::uiOutput("adata_same"),
       shiny::div(
       id = "adata_gui", class = if (!.is_blank(r$code)) "rp-greyed",
@@ -270,7 +271,7 @@
           shiny::selectInput("adata_subj", NULL, stats::setNames(cands, cands),
                              selected = subj_now, width = "100%")),
         NULL),
-      shiny::tags$label(class = "form-label", with_tip(argl("Filter (a condition)", "where"), t("The condition the data's rows are filtered by (filter()). The rows are AND (\"+ and\"); \"+ or (another group)\" is OR. A flag: \"= Y\". What the rows cannot say: \"Write the condition as R\"."))),
+      shiny::tags$label(class = "form-label", with_tip(argl("Filter (a condition)", "where"), t("The condition the data's rows are filtered by (filter()), beyond the Population's (its condition is not repeated here). The rows are AND (\"+ and\"); \"+ or (another group)\" is OR. A flag: \"= Y\". What the rows cannot say: \"Write the condition as R\"."))),
       condition_builder_ui("adata_cond", lang),
       # its columns, in the order the program makes them: added, made or
       # changed, kept, and the code lists put on them
@@ -360,8 +361,8 @@
     e <- adata_edit()
     where <- adata_where_now()
     if (!is.na(subjects)) return(list(pop = NA_character_, where = where))
-    # the set chosen, else the one the first row is
-    v <- input$adata_pop %||% ""
+    # the set chosen, else the one the first rows are
+    v <- adata_pop_cur()
     if (!startsWith(v, "pop:")) v <- adata_pop_of_where(where, input$adata_from %||% "")
     pop <- if (startsWith(v, "pop:")) substring(v, 5L) else NA_character_
     ps <- .cond_take_pop(where, rv$p$ard$populations, pop)
@@ -540,6 +541,22 @@
     if (is.na(v)) return(notify(t("The code cannot be written yet: give the data a name and what it is made from."), "warning"))
     shiny::updateTextAreaInput(session, "adata_code", value = v)
   })
+  # step 1's Code tab: the program's lines of the data in the form (as it
+  # is now), else of the one chosen, else of the report's last
+  output$adata_code_view <- shiny::renderText({
+    tg <- ard_target()
+    shiny::req(has_study(), tg)
+    e <- adata_edit()
+    id <- NULL
+    p <- rv$p
+    if (!is.null(e)) {
+      id <- trimws(input$adata_id %||% "")
+      p <- tryCatch(adata_planner(), error = function(err) err)
+      if (inherits(p, "error")) return(paste("#", conditionMessage(p)))
+    }
+    v <- .adata_code_view(p, tg, id)
+    if (is.na(v)) paste("#", t("No analysis data to show yet: choose one on the left, or make one.")) else v
+  })
   shiny::observeEvent(input$adata_preview, {
     p <- tryCatch(adata_planner(), error = function(e) e)
     output$adata_preview_out <- shiny::renderUI({
@@ -558,10 +575,13 @@
                                           derive = one_of(adata_derive_now()),
                                           where = adata_where_now()))
       output$adata_preview_tbl <- shiny::renderTable(
-        utils::head(d[cols], 5L), striped = TRUE, spacing = "xs")
+        utils::head(d[cols], 20L), striped = TRUE, spacing = "xs")
+      # (no height of its own: the pane scrolls, the table as tall as its
+      # rows; a cell on one line, so a narrow pane scrolls sideways rather
+      # than make each row several lines high)
       shiny::tagList(
         shiny::p(class = "small mt-2 mb-1", .adata_count_words(d, w)),
-        shiny::div(style = "max-height: 14rem; overflow: auto;", class = "small",
+        shiny::div(class = "small rp-adata-preview",
                    shiny::tableOutput("adata_preview_tbl")))
     })
   })
