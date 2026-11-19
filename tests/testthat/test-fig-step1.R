@@ -54,7 +54,7 @@ test_that("a figure without a design: step 1 says where to start it", {
   create_study("S1", planner = p)
   shiny::testServer(server_for("S1"), {
     session$setInputs(target = "F1", nav = "make", step = "data")
-    expect_match(output$pd_data_body$html, "start it in step 3 (Content)", fixed = TRUE)
+    expect_match(output$pd_data_body$html, "start it in step 3 (content)", fixed = TRUE)
   })
 })
 
