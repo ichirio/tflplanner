@@ -150,7 +150,7 @@ test_that("the card lists the series and shows the study's series with its value
     # the study's block names tflspec_v1: it is the one chosen
     session$flushReact()
     v <- html_of(output$series_values)
-    expect_match(v, "Defaults shared by the tflspec_v1 series' templates (values:)")
+    expect_match(v, "Defaults shared by the tflspec_v1 series' templates (values:)", fixed = TRUE)
     expect_match(v, "{N: 0, mean: 2, p: xx.x%}", fixed = TRUE)
     expect_match(v, "!study sponsor.name", fixed = TRUE)
     expect_match(v, "!fixed 0.95", fixed = TRUE)
