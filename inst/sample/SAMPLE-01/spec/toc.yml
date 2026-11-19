@@ -11,6 +11,10 @@ outputs:
     kind: table
     label: Demographic characteristics (its ARD one ard_stack call)
     population: SAF
+  - id: T-14-1-1C
+    kind: table
+    label: Demographics (a code SPEC)
+    population: SAF
   - id: T-14-1-2
     kind: table
     label: Subject disposition
@@ -70,6 +74,10 @@ outputs:
   - id: T-14-3-1
     kind: table
     label: TEAEs by SOC / PT
+    population: SAF
+  - id: T-14-3-1C
+    kind: table
+    label: TEAEs by SOC / PT (a code SPEC)
     population: SAF
   - id: L-16-2-7
     kind: listing

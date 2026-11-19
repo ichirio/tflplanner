@@ -64,6 +64,48 @@
              stringsAsFactors = FALSE)
 }
 
+# A definition file tflplanner writes itself outside a save (the series
+# card's study.yml series_settings): `write(root)` writes it, and the record
+# then takes its new fingerprint, so the next save does not stop on it as a
+# change made outside tflplanner.  Only when every file was as recorded
+# before: a change made outside before it stays one (the save still stops,
+# and loading the files takes in this write too).  TRUE when recorded.
+.spec_own_write <- function(study, rel, write, home = tflplanner_home()) {
+  root <- study$path
+  id <- study$meta$study_id
+  st <- .read_state(id, home)
+  same <- !is.null(st$files) &&
+    all(.spec_diff(st$files, .spec_fingerprints(root))$status == "same")
+  write(root)
+  if (!same) return(invisible(FALSE))
+  f <- .state_file(id, home)
+  # (this session's own state stays its own: no merge on the next save)
+  seen <- .state_seen[[f]]
+  mine <- !is.null(seen) && identical(unname(tools::md5sum(f)), seen$md5)
+  .write_state(.study_from_state(st), home)
+  if (mine) .state_seen[[f]] <- list(md5 = unname(tools::md5sum(f)), planner = seen$planner)
+  invisible(TRUE)
+}
+
+# A planner's spec with the same write made to its text of the file `rel`
+# (a copy in a folder of its own): what the file says now, with the
+# planner's own unsaved changes to it kept
+.spec_text_apply <- function(p, rel, write) {
+  if (is.null(p$spec) || is.null(p$spec$text[[rel]])) return(p)
+  tmp <- tempfile("tflplanner-own")
+  on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
+  f <- file.path(tmp, rel)
+  dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+  writeLines(p$spec$text[[rel]], f, useBytes = TRUE)
+  write(tmp)
+  p$spec$text[[rel]] <- readLines(f, encoding = "UTF-8", warn = FALSE)
+  if (identical(rel, .study_file) && !is.null(p$spec$study)) {
+    y <- tryCatch(tflspec::tfl_read_study_spec(tmp)$study, error = function(e) NULL)
+    if (!is.null(y)) p$spec$study["study"] <- list(y)
+  }
+  p
+}
+
 # Which part of the study a file holds: books (the two workbooks, read
 # together), ard, lf, meta, or fig:<output_id>
 .spec_part_of <- function(file) {

@@ -4,16 +4,40 @@
 .srv_series <- function() {
   study_dir <- shiny::reactiveVal(NULL)
   shiny::observe(study_dir(rv$study$path))
+  # The card writes study.yml itself (series_settings): the app's own write,
+  # so its record of the file and its copies of study.yml's text follow --
+  # the next save then neither takes it for a change made outside the app
+  # nor writes the old text back over it
+  own_write <- function(dir, write) {
+    s <- rv$study
+    if (is.null(s) || !identical(s$path, dir)) return(write(dir))
+    .spec_own_write(s, .study_file, write)
+    put <- function(p) .spec_text_apply(p, .study_file, write)
+    p <- rv$p
+    saved <- rv$saved
+    new_saved <- put(saved)
+    rv$p <- if (identical(p, saved)) new_saved else put(p)
+    rv$saved <- new_saved
+    rv$study$planner <- if (identical(s$planner, saved)) new_saved else put(s$planner)
+    if (!is.null(held$p)) {
+      held$p <- if (identical(held$p, p)) rv$p else put(held$p)
+      held$before <- put(held$before)
+    }
+    invisible(dir)
+  }
   .series_server(input, output, session, study_dir = study_dir, t = t,
-                 notify = notify)
+                 notify = notify, write = own_write)
 }
 
 # `study_dir`: a reactive of the open study's folder (NULL: none open).
 # `notify(msg, type)`: how a message is shown; tflspec's errors as they are.
+# `write(dir, f)`: how the card's write of study.yml (`f(dir)`) is made --
+# the app's own (.srv_series()), else as it is.
 .series_server <- function(input, output, session, study_dir, t = identity,
                            notify = function(msg, type = "message") {
                              shiny::showNotification(msg, type = type)
-                           }) {
+                           },
+                           write = function(dir, f) f(dir)) {
   .series_dir_option()
   ok <- .series_available()
   # list_ver: the series read again; lock_ver: spec/series.lock written
@@ -139,7 +163,7 @@
     })
     if (isFALSE(vals)) return()
     done <- tryCatch({
-      .series_fn("tfl_series_settings_set")(dir, s, vals)
+      write(dir, function(d) .series_fn("tfl_series_settings_set")(d, s, vals))
       TRUE
     }, error = fail)
     if (is.null(done)) return()

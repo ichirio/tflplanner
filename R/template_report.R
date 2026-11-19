@@ -183,9 +183,19 @@
 # The columns a parameter chooses from: the dataset's the report reads
 # (its `data` argument or default), else every dataset's
 .tpl_columns <- function(data, dataset = NULL) {
+  .tpl_dataset_columns(data, dataset) %||% unique(unlist(lapply(data, names)))
+}
+
+# A dataset's columns, by its name or a template's data id (adsl_sub: its
+# dataset, ADSL -- as .tpl_vars_dataset() reads it); NULL when the study
+# has no such dataset
+.tpl_dataset_columns <- function(data, dataset) {
   ds <- toupper(as.character(dataset %||% "")[1L])
-  if (!is.na(ds) && nzchar(ds) && !is.null(data[[ds]])) return(names(data[[ds]]))
-  unique(unlist(lapply(data, names)))
+  if (is.na(ds) || !nzchar(ds)) return(NULL)
+  for (d in unique(c(ds, sub("_.*$", "", ds)))) {
+    if (!is.null(data[[d]])) return(names(data[[d]]))
+  }
+  NULL
 }
 
 # The dataset a series template's parameter takes its columns from: its
@@ -227,6 +237,7 @@
       levels = "levels",
       flag = "flag",
       number = "number",
+      r = "r",
       text = if (several) "chips" else "text",
       choice = if (several) "choices" else "choice",
       pick = if (several) "picks" else "pick",
@@ -249,6 +260,26 @@
     return(if (length(d) == 1L) "text" else "chips")
   }
   "list"
+}
+
+# An R parameter's value as the text its field shows (a tfl_r's text, a
+# string as it is, a logical or number as R writes it); "" for none
+.tpl_r_text <- function(x) {
+  if (is.null(x) || !length(x)) return("")
+  if (inherits(x, "tfl_r") || is.character(x)) return(paste(as.character(unclass(x)), collapse = "\n"))
+  paste(deparse(x, width.cutoff = 500L), collapse = " ")
+}
+
+# The R field of a template card (the one the builder's R conditions use:
+# monospace, the dataset's columns offered as it is typed); `id` its input id
+.tpl_r_field <- function(id, label, value, cols = character(), placeholder = NULL) {
+  dl <- paste0(id, "__dl")
+  w <- shiny::textInput(id, label, value = .tpl_r_text(value), width = "100%", updateOn = "blur",
+                        placeholder = placeholder)
+  w <- htmltools::tagQuery(w)$find("input")$addClass("rp-mono rp-condition")$
+    addAttrs(spellcheck = "false", list = if (length(cols)) dl)$allTags()
+  shiny::tagList(w, if (length(cols)) shiny::tags$datalist(
+    id = dl, lapply(unique(as.character(cols)), function(x) shiny::tags$option(value = x))))
 }
 
 # The variable whose values a levels parameter chooses from: its `of` -- a
@@ -550,6 +581,11 @@
     },
     list = , columns = .tpl_list_parse(v, prm),
     table = if (.tbl_is_state(v)) .tbl_read(v),
+    # (R as typed, never YAML: TRUE stays the text TRUE, `x: y` stays that text)
+    r = {
+      v <- trimws(paste(as.character(v), collapse = "\n"))
+      if (nzchar(v)) tflspec::tfl_r(v)
+    },
     {
       v <- trimws(paste(as.character(v), collapse = "\n"))
       # (YAML flow or `!r`: what .tpl_show() writes; a text that does not parse is kept as typed --
@@ -567,6 +603,7 @@
     flag = isTRUE(shown),
     number = .num_or_null(shown),
     text = if (is.null(shown)) "" else .tpl_show(shown),
+    r = .tpl_r_text(shown),
     list = , columns = .tpl_list_text(shown, prm),
     table = .tpl_table_state(shown, prm),
     vars = , chips = , choices = , picks = as.character(shown %||% character()),
@@ -624,10 +661,10 @@
     study_data = ds(names(data)),
     report_data = ds(c(args$data, if (is.null(args$data)) dataset)),
     populations = populations,
+    # (vars(adsl_sub): the template's data id, its dataset's columns -- not
+    # every dataset's)
     vars = function(what = NULL) {
-      w <- toupper(as.character(what %||% "")[1L])
-      if (!is.na(w) && nzchar(w) && is.data.frame(data[[w]])) names(data[[w]]) else
-        .tpl_columns(data, dataset)
+      .tpl_dataset_columns(data, what) %||% .tpl_columns(data, dataset)
     },
     levels = function(what = NULL) .tpl_levels(data, as.character(what %||% NA_character_)[1L], dataset),
     args = args,

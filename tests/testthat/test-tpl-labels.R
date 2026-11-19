@@ -42,7 +42,7 @@ test_that("the card's top group: a key argument stays up at its default, another
 
 test_that("the series base templates' arguments have a heading and its Japanese", {
   s <- .strings()
-  for (t in c("tflspec_hierarchy", "tflspec_listing", "tflspec_shift", "tflspec_listing_summary")) {
+  for (t in c("tflspec_hierarchy", "tflspec_listing", "tflspec_shift", "km_cards", "tflspec_listing_summary")) {
     d <- tryCatch(tflspec::tfl_arg_defs(template = paste0("tflspec_v1/", t)), error = function(e) NULL)
     if (!is.data.frame(d)) next
     doc <- if (is.null(d$description)) rep("", nrow(d)) else d$description
