@@ -28,6 +28,11 @@ fake_series <- function(dir) {
     sd_missing = "-", sponsor = structure(list(key = "sponsor.name"), class = "tfl_study_ref"),
     conf_level = structure(list(value = 0.95), class = "tfl_fixed_ref")),
     site_v2 = list(style = "site"))
+  # what a value means: a text tflplanner translates, one it does not; the
+  # other keys have none, and site_v2 none at all
+  docs <- list(tflspec_v1 = c(
+    count_cell = "The cell of a count and its percent; % means ×100; no % sign is printed (e.g. 12 (34.5)).",
+    style = "A site's own words."))
   fns <- list(
     tfl_series_list = function(dir = NULL) {
       data.frame(name = c("site_v2", "tflspec_v1"), label = c("Site", "tflspec templates"),
@@ -37,7 +42,8 @@ fake_series <- function(dir) {
     },
     tfl_series_read = function(series, dir = NULL) {
       list(name = series, label = series, released = "2026-11-17", needs = NULL,
-           fixes = list(), values = vals[[series]], path = paste0("/x/", series))
+           fixes = list(), values = vals[[series]], descriptions = docs[[series]],
+           path = paste0("/x/", series))
     },
     # as tflspec: a series' values with the study's over them, `origins`
     # saying which are the study's
@@ -144,10 +150,14 @@ test_that("the card lists the series and shows the study's series with its value
     # the study's block names tflspec_v1: it is the one chosen
     session$flushReact()
     v <- html_of(output$series_values)
-    expect_match(v, "Values of tflspec_v1")
+    expect_match(v, "Defaults shared by the tflspec_v1 series' templates (values:)")
     expect_match(v, "{N: 0, mean: 2, p: xx.x%}", fixed = TRUE)
     expect_match(v, "!study sponsor.name", fixed = TRUE)
     expect_match(v, "!fixed 0.95", fixed = TRUE)
+    # what each value means, beside its key; a key without one: an empty cell
+    expect_match(v, "<th>Description</th>", fixed = TRUE)
+    expect_match(v, "A site's own words.", fixed = TRUE)
+    expect_match(v, '<td class="text-muted"></td>', fixed = TRUE)
     # the study's value beside its key, as an input
     expect_match(v, 'id="series_edit_2"', fixed = TRUE)
     expect_match(v, "SAF2", fixed = TRUE)
@@ -163,7 +173,7 @@ test_that("the card lists the series and shows the study's series with its value
     expect_identical(rv$draft$conf_level, "0.95")
     expect_identical(rv$draft$sponsor, "")
     session$setInputs(series_list_rows_selected = 1L)
-    expect_match(html_of(output$series_values), "Values of site_v2")
+    expect_match(html_of(output$series_values), "Defaults shared by the site_v2 series' templates")
   })
 })
 
@@ -283,7 +293,7 @@ test_that("the app's server starts the card on the open study", {
   suppressWarnings(shiny::testServer(server_for("S1"), {
     session$flushReact()
     expect_match(html_of(output$series_card), "series_list", fixed = TRUE)
-    expect_match(html_of(output$series_values), "Values of tflspec_v1", fixed = TRUE)
+    expect_match(html_of(output$series_values), "Defaults shared by the tflspec_v1 series' templates (values:)", fixed = TRUE)
     expect_match(html_of(output$series_lock), "No spec/series.lock yet", fixed = TRUE)
   }))
 })
@@ -344,4 +354,26 @@ test_that("the card's save of study.yml is the app's own: the next save goes thr
     expect_identical(st$status[st$file == "study.yml"], "changed")
     expect_identical(open_study("S1")$planner$outputs$description[1], "again")
   }))
+})
+
+test_that("the values' descriptions are in the app's language when tflplanner has them (user check 2026-11-19)", {
+  ja <- function(x) tr(x, "ja")
+  docs <- c(count_cell = "The cell of a count and its percent; % means ×100; no % sign is printed (e.g. 12 (34.5)).",
+            max_rows = "The most rows a page holds.", style = "A site's own words.")
+  h <- as.character(.series_values_ui(
+    list(count_cell = "{n} ({p:.1f%})", max_rows = 30L, style = "s", total = FALSE),
+    list(), list(), ja, docs))
+  expect_match(h, "<th>説明</th>", fixed = TRUE)
+  # count_cell: the % is x100, no sign printed
+  expect_match(h, "記号は出ない（例: 12 (34.5)）", fixed = TRUE)
+  expect_match(h, "1 ページ", fixed = TRUE)
+  # a text tflplanner has no Japanese for: as written; a key with none: empty
+  expect_match(h, "A site's own words.", fixed = TRUE)
+  expect_match(h, '<td class="text-muted"></td>', fixed = TRUE)
+  # no descriptions at all (an older tflspec): the column is there, empty
+  h <- as.character(.series_values_ui(list(total = FALSE), list(), list(), identity, NULL))
+  expect_match(h, "<th>Description</th>", fixed = TRUE)
+  # the heading
+  expect_identical(sprintf(ja("Defaults shared by the %s series' templates (values:)"), "tflspec_v1"),
+                   "tflspec_v1 シリーズのテンプレートに共通の既定値 (values:)")
 })
