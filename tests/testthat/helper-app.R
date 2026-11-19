@@ -1,6 +1,9 @@
-# Shared by the app's tests: a home of its own, two studies, a server
-# started on one of them.
-
+# Shared by the app's tests: a home of its own, two studies, a server
+
+# started on one of them.
+
+
+
 local_home <- function(env = parent.frame()) {
   home <- withr_tempdir(env)
   local_code_context(env)
@@ -24,7 +27,12 @@ two_studies <- function() {
 server_for <- function(study) {
   testthat::skip_on_cran()
   start <- open_study(study)
-  function(input, output, session) app_server(input, output, session, start)
+  function(input, output, session) {
+    # (a form's edit is applied once the form is drawn, not 1.5 s after:
+    # .form_live())
+    session$userData$form_settle <- 0
+    app_server(input, output, session, start)
+  }
 }
 
 # A template report's argument cards of every step, as one text: an

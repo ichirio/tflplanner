@@ -160,7 +160,6 @@ test_that("a row of the analyses grid is edited as a form", {
     inp[[id("strata")]] <- "SEX"
     inp[[id("den")]] <- ""
     do.call(session$setInputs, inp)
-    session$setInputs(ard_stat_apply = 1)
     a <- ard_rows(rv$p, "analyses", "T1")
     r <- a[a$analysis_id == "CONT", ]
     expect_identical(r$label, "Age (years)")
@@ -175,7 +174,7 @@ test_that("a row of the analyses grid is edited as a form", {
     # a subset that is not R is refused
     inp2 <- list(); inp2[[id("where")]] <- "AGE >="
     do.call(session$setInputs, inp2)
-    session$setInputs(ard_stat_apply = 2)
+    expect_match(output$ard_stat_problem$html, "not an R condition", fixed = TRUE)
     a <- ard_rows(rv$p, "analyses", "T1")
     expect_identical(a$where[a$analysis_id == "CONT"], "AGE >= 18")
     # a new analysis

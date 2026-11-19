@@ -747,6 +747,9 @@
   })
   shiny::observeEvent(input$discard_ok, {
     shiny::removeModal()
+    discard_now()
+  })
+  discard_now <- function() {
     held$p <- held$before <- NULL
     rv$p <- rv$saved
     rv$meta <- rv$saved_meta
@@ -756,7 +759,7 @@
     rv$ard_ver <- rv$ard_ver + 1L
     bump()
     notify(t("The changes were discarded: the study is as it was last saved."))
-  })
+  }
   # [Close]: tflplanner stops -- where it runs on this computer only (an
   # app on a server is not one user's to stop).  Unsaved changes are asked
   # about first: save and close, close without saving, or cancel.  The same

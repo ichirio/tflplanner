@@ -188,7 +188,7 @@
     ad <- .adata_rows(p, ard_target())
     d <- ad[ad$data_id %in% shiny::isolate(adata_grid_ids()), , drop = FALSE]
     grids_drawn()
-    # (no spare row: a new data's row comes from the form, when it is saved)
+    # (no spare row: a new data's row comes from the form, at its first edit)
     .grid(d, "analysis_data", adata_grid_key(), shiny::isolate(ard_choices("analysis_data")),
           closed = .ard_closed_columns, spare = 0L)
   })
@@ -231,7 +231,7 @@
   # A click on a row of the analyses grid shows that analysis here, with the
   # parts of the first-table form: what to compute (by its label), the data,
   # the analysis set, the groups (columns), the variables (rows), a subset,
-  # and the statistics with their formats.  Apply writes the row; the grid
+  # and the statistics with their formats.  An edit writes the row at once; the grid
   # stays for what the form does not say (args, code).  Fresh input ids per
   # drawing, as the builder's.
   st_env <- new.env()
@@ -240,6 +240,38 @@
   st_drawn <- shiny::reactiveVal(0L)
   st_id <- function(x) paste0("st", st_env$n, "_", x)
   an_pick <- shiny::reactiveVal(NULL)
+  # The form's edits applied at once (st_apply(), R/srv_ard_analysis.R):
+  # what the form wrote since the analysis was opened (its Undo), the
+  # value it could not apply (said in the form), and its own write not
+  # drawing the form again (st_env$hold: the page keeps it, .tpl_js)
+  st_live <- .form_live(session)
+  st_msg <- shiny::reactiveVal(NULL)
+  st_say <- function(text, blocks = TRUE) {
+    st_msg(if (!is.null(text)) list(text = text, blocks = blocks))
+    invisible()
+  }
+  st_write <- function(p, new_id, redraw = FALSE) {
+    if (.same_planner(p, rv$p)) return(FALSE)
+    if (!redraw) {
+      st_env$hold <- TRUE
+      session$onFlushed(function() st_env$hold <- FALSE, once = TRUE)
+    }
+    rv$p <- p
+    st_live$wrote(p)
+    st_live$id <- new_id
+    an_pick(new_id)
+    bump()
+    TRUE
+  }
+  st_revert_btn <- function() {
+    .btn("ard_an_revert", t("Undo"), class = "btn-sm btn-outline-secondary",
+         title = t("Back to the values when the form was opened"))
+  }
+  output$ard_stat_problem <- shiny::renderUI({
+    m <- st_msg()
+    if (is.null(m)) return(NULL)
+    shiny::div(class = "alert alert-warning small py-1 my-2", m$text)
+  })
   st_rows <- shiny::reactive({
     tg <- ard_target()
     if (is.null(tg) || !has_study()) return(NULL)
@@ -401,7 +433,9 @@
   # the dataset and the analysis set the form's data choice stands for
   form_data <- function(r) {
     v <- input[[st_id("data")]]
-    .an_data_split(v %||% .an_data_value_row(r), .adata_rows(rv$p, ard_target()))
+    # (the study as it is, not a dependency: the form's own edits do not
+    # draw its parts again)
+    .an_data_split(v %||% .an_data_value_row(r), .adata_rows(shiny::isolate(rv$p), ard_target()))
   }
   # an analysis data chosen in the form: its subjects become the
   # percentages' denominator, when the form has one and it says nothing
@@ -569,10 +603,23 @@
     a <- st_rows()
     # none chosen: nothing (the list above says a click opens one here)
     if (is.null(a) || !nrow(a) || is.null(an_pick()) || !an_pick() %in% a$analysis_id) {
+      # (closed: opened again, it is opened afresh -- its Undo from then)
+      st_live$id <- NULL
       return(NULL)
     }
     r <- st_row()
     rv$ver
+    # (the form's own edit, applied: the form stays as it is drawn)
+    if (isTRUE(st_env$hold)) return(shiny::HTML("<!--rp-keep-->"))
+    # another analysis opened: what Undo goes back to; the same one drawn
+    # again: the values the page sends back first are not an edit
+    if (!identical(st_live$id, r$analysis_id)) {
+      st_live$open(rv$p)
+      st_live$id <- st_live$orig <- r$analysis_id
+      st_msg(NULL)
+    } else {
+      st_live$wait()
+    }
     st_env$n <- st_env$n + 1L
     st_drawn(st_env$n)
     st_method(r$method)
@@ -660,39 +707,20 @@
         .where_labels_note(sheet_rows(shiny::isolate(rv$p), "codelists",
                                       shiny::isolate(current()) %||% ""), t)),
       shiny::uiOutput("ard_stat_part"),
+      # (no Apply of its own: an edit is applied at once, the top-right
+      # Save writes the files; a value that cannot be is said here)
+      shiny::uiOutput("ard_stat_problem"),
       shiny::div(
         class = "d-flex flex-wrap gap-2 align-items-center",
-        .btn("ard_stat_apply", t("Apply to the analysis"),
-             class = "btn-sm btn-primary"),
+        st_revert_btn(),
         if (role == "single" && !r$method %in% .stack_not_inside)
           .btn("ard_stack_group", t("Run together with other analyses (one call)..."),
                class = "btn-sm btn-outline-secondary"),
         if (role == "single" && !identical(r$method, "custom"))
           .btn("ard_an_as_code", t("Write this analysis as code..."),
-               class = "btn-sm btn-outline-secondary")),
-      shiny::tags$details(
-        class = "mt-2", open = NA,
-        shiny::tags$summary(class = "small", t("This analysis as code")),
-        shiny::div(class = "rp-code", shiny::verbatimTextOutput("ard_an_code"))))
+               class = "btn-sm btn-outline-secondary")))
   })
-  # this analysis alone as code (the data it reads, its analysis set, the
-  # call), as the definition has it now -- the whole program is on the right
-  output$ard_an_code <- shiny::renderText({
-    r <- st_row()
-    a <- rv$p$ard
-    # a stack is one call with the analyses inside it: one inside shows it
-    mine <- a$analyses[!is.na(a$analyses$output_id) & a$analyses$output_id == r$output_id, ,
-                       drop = FALSE]
-    top <- switch(st_role(r, mine), parent = r$analysis_id, inside = r$parent, NA)
-    ids <- if (is.na(top)) r$analysis_id else
-      c(top, mine$analysis_id[.stack_kids(mine, top)])
-    a$analyses <- mine[mine$analysis_id %in% ids, , drop = FALSE]
-    code <- tryCatch(tflspec::tfl_ard_code(structure(a, class = "tfl_ard_spec"),
-                                           part = "body"),
-                     error = function(e) paste(t("The code cannot be written yet:"),
-                                               conditionMessage(e)))
-    paste(code, collapse = "\n")
-  })
+  # (the R of the analyses: the right's Code tab only, not under the form too)
   output$ard_fn_now <- shiny::renderUI({
     st_drawn()
     m <- st_method()
@@ -798,7 +826,7 @@
                t("in preparation: a function that runs others")))))
   })
   # a function found by a word that means a setting: start from it (the
-  # argument fields filled in; Apply writes them)
+  # argument fields filled in; written at once)
   output$ard_fn_preset <- shiny::renderUI({
     n <- st_drawn()
     m <- st_method()
@@ -815,7 +843,7 @@
     ps <- fn_preset()
     if (!is.null(ps) && identical(ps$n, n) && identical(ps$method, m)) {
       return(shiny::p(class = "small text-muted mt-n1 mb-2",
-                      sprintf(t("Started from the setting: %s (Apply to the analysis writes it)."), a),
+                      sprintf(t("Started from the setting: %s."), a),
                       if (!is.null(replaces)) shiny::tagList(shiny::br(), replaces)))
     }
     shiny::div(

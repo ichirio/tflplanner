@@ -211,12 +211,22 @@
   # some unrelated timer woke the session.  Made with the form instead
   # (they draw nothing until an analysis is chosen).
   for (o in c("ard_stat_part", "ard_an_vars", "ard_an_args", "ard_method_note",
-              "ard_fn_preset", "ard_fn_list", "ard_fn_now", "ard_an_code",
+              "ard_fn_preset", "ard_fn_list", "ard_fn_now",
               "ard_stat_fmts")) {
     shiny::outputOptions(output, o, suspendWhenHidden = FALSE)
   }
-  shiny::observeEvent(input$ard_stat_apply, {
-    r <- st_row()
+  # The form's fields applied as they are edited (no Apply of its own, as
+  # the template fields): the checks Apply made are made at each edit, and a
+  # value that cannot be is said in the form (ard_stat_problem) and not
+  # applied.  The form is not drawn again for its own edit (the focus stays
+  # in the field), unless what it is changes: another method, a stack.
+  st_apply <- function() {
+    if (!st_live$ready()) return(invisible())
+    # (the analysis the form shows: none open, or another report's, nothing)
+    id <- an_pick()
+    if (is.null(id) || !identical(st_live$id, id)) return(invisible())
+    r <- tryCatch(st_row(), error = function(e) NULL)
+    if (is.null(r) || !identical(r$analysis_id, id)) return(invisible())
     g <- function(x) input[[st_id(x)]]
     one_val <- function(v) {
       v <- trimws(paste(v %||% character(), collapse = " | "))
@@ -224,19 +234,18 @@
     }
     role <- st_role(r)
     new_id <- trimws(g("id") %||% r$analysis_id)
-    if (!nzchar(new_id)) return(notify(t("Give the analysis an ID."), "warning"))
+    if (!nzchar(new_id)) return(st_say(t("Give the analysis an ID.")))
     a <- rv$p$ard$analyses
     mine <- !is.na(a$output_id) & a$output_id == r$output_id
     if (!identical(new_id, r$analysis_id) &&
         any(mine & !is.na(a$analysis_id) & a$analysis_id == new_id)) {
-      return(notify(sprintf(t("%s already has an analysis %s."), r$output_id,
-                            new_id), "warning"))
+      return(st_say(sprintf(t("%s already has an analysis %s."), r$output_id,
+                            new_id)))
     }
     where <- trimws(g("where") %||% "")
     if (nzchar(where) &&
         inherits(try(parse(text = where), silent = TRUE), "try-error")) {
-      return(notify(sprintf(t("The subset is not an R condition: %s"), where),
-                    "warning"))
+      return(st_say(sprintf(t("The subset is not an R condition: %s"), where)))
     }
     # a stack: on what it runs them, and what it adds
     if (role == "parent") {
@@ -259,16 +268,15 @@
       }, NA)
       a$args[i] <- .stack_args(flags, g("args_other") %||% .stack_flags_of(r$args)$other)
       a$analysis_id[i] <- new_id
-      rv$p$ard$analyses <- a
-      rv$p <- stack_rename(rv$p, r$output_id, r$analysis_id, new_id)
-      an_pick(new_id)
-      bump()
-      notify(sprintf(t("%s: written"), new_id))
+      p <- rv$p
+      p$ard$analyses <- a
+      p <- stack_rename(p, r$output_id, r$analysis_id, new_id)
       # written, but the subjects per group are counted twice: said
-      tw <- stack_n_twice(ard_rows(rv$p, "analyses", r$output_id))
+      tw <- stack_n_twice(ard_rows(p, "analyses", r$output_id))
       k <- match(new_id, tw$analysis_id)
-      if (!is.na(k)) notify(sprintf(t(.n_twice_words), new_id, tw$with[k]), "warning")
-      return()
+      st_say(if (!is.na(k)) sprintf(t(.n_twice_words), new_id, tw$with[k]), blocks = FALSE)
+      st_write(p, new_id, redraw = FALSE)
+      return(invisible())
     }
     # inside a stack: a variable the others have is refused (its rows could
     # not be told apart)
@@ -279,9 +287,8 @@
                        unlist(lapply(sib$variables, .split_bar)))
       if (length(dup)) {
         who <- sib$analysis_id[vapply(sib$variables, function(v) any(.split_bar(v) %in% dup), NA)]
-        return(notify(sprintf(t("%s is computed by %s as well: make one of them an analysis of its own."),
-                              paste(dup, collapse = ", "), paste(who, collapse = ", ")),
-                      "warning"))
+        return(st_say(sprintf(t("%s is computed by %s as well: make one of them an analysis of its own."),
+                              paste(dup, collapse = ", "), paste(who, collapse = ", "))))
       }
     }
     pick <- g("pick") %||% character()
@@ -289,8 +296,7 @@
     fm <- fm[nzchar(fm)]
     bad <- names(fm)[!.fmt_ok(fm)]
     if (length(bad)) {
-      return(notify(sprintf(t("Not a format: %s"), paste(bad, collapse = ", ")),
-                    "warning"))
+      return(st_say(sprintf(t("Not a format: %s"), paste(bad, collapse = ", "))))
     }
     # the analysis's variable-specific formats (AGE:mean=...) stay
     old <- .parse_formats(r$formats)
@@ -328,11 +334,35 @@
       own <- c("variables", "optional", "statistics", "strata", "denominator", "formats", "args")
       for (cn in intersect(own, names(a))) a[[cn]][i] <- NA
     }
-    rv$p$ard$analyses <- a
-    an_pick(new_id)
+    p <- rv$p
+    p$ard$analyses <- a
+    st_say(NULL)
+    if (st_write(p, new_id, redraw = to_stack || !identical(a$method[i], r$method)) && to_stack) {
+      notify(sprintf(t("%s runs analyses together now: add them inside it."), new_id))
+    }
+    invisible()
+  }
+  # every field of the form drawn (its inputs are this drawing's, st<n>_),
+  # and the method chosen; not the function search, nor the buttons that
+  # only fill a field
+  shiny::observe({
+    pre <- paste0("st", st_drawn(), "_")
+    nm <- grep(paste0("^", pre), names(input), value = TRUE)
+    own <- substring(nm, nchar(pre) + 1L)
+    nm <- nm[!own %in% c("fn_q", "use_default") & !startsWith(own, "fb_go_")]
+    lapply(nm, function(x) input[[x]])
+    st_method()
+    shiny::isolate(st_apply())
+  })
+  # Undo: the analysis as it was when opened, and the form drawn so
+  shiny::observeEvent(input$ard_an_revert, {
+    id0 <- st_live$orig
+    shiny::req(!is.null(id0))
+    if (st_live$changed()) rv$p <- st_live$revert(rv$p)
+    st_live$id <- NULL
+    st_msg(NULL)
+    an_pick(id0)
     bump()
-    notify(sprintf(t("%s: written"), new_id))
-    if (to_stack) notify(sprintf(t("%s runs analyses together now: add them inside it."), new_id))
   })
   # an analysis the fields cannot say: written as code (a custom analysis),
   # starting from the code its fields make now -- the same ARD; the
@@ -350,7 +380,7 @@
     an_as_code(c(list(output_id = r$output_id, analysis_id = r$analysis_id), v))
     shiny::showModal(shiny::modalDialog(
       title = sprintf(t("Write %s as code"), r$analysis_id), size = "l", easyClose = TRUE,
-      shiny::p(t("The method becomes custom and this code, written from the definition as it is now, is the analysis: the same ARD (press Apply to the analysis first). The code is part of the definition: the program is never edited.")),
+      shiny::p(t("The method becomes custom and this code, written from the definition as it is now, is the analysis: the same ARD. The code is part of the definition: the program is never edited.")),
       shiny::div(class = "rp-code", shiny::tags$pre(v$code)),
       if (!is.na(v$formats)) shiny::p(class = "small text-muted",
                                      sprintf(t("Formats written out (its method's defaults with its own): %s"), v$formats)),

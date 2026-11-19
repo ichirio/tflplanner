@@ -205,3 +205,4 @@
 "Whether study$adam gets the levels of the study's code lists (codelists) or not (none). Either way a blank is NA, and study$adam_org is the file as it is. With none, a report's own levels: / labels: still apply, and naming a study code list is an error.","study$adam に試験のコードリストの水準を当てる（codelists）か、当てない（none）かを選びます。どちらでも空欄は NA になり、study$adam_org はファイルのままです。none の時も帳票が自分で書いた levels: / labels: は効きます。試験のコードリストを名前で指すとエラーになります。"
 "codelists: apply the study's code list levels to the ADaM","codelists: 試験のコードリストの水準を ADaM に当てる"
 "none: do not apply them","none: 当てない"
+"Save them before opening %s, or discard them (every unsaved change of the study goes).","%s を開く前に保存するか、破棄してください（試験の保存していない変更がすべて消えます）。"

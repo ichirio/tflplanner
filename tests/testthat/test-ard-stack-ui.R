@@ -28,7 +28,6 @@ test_that("the ARD tab: the outline, a stack's form, one inside it, grouping and
     do.call(session$setInputs, stats::setNames(
       list(FALSE, TRUE, TRUE),
       paste0("st", n, "_fl", c(".total_n", ".missing", ".by_stats"))))
-    session$setInputs(ard_stat_apply = 1)
     expect_identical(ard_rows(rv$p, "analyses", "T1")$args[1], ".missing = TRUE")
     # one inside: no data of its own, the way out offered
     session$setInputs(ard_ol_pick = "CAT")
@@ -39,7 +38,6 @@ test_that("the ARD tab: the outline, a stack's form, one inside it, grouping and
     # a variable CONT has already: refused
     n <- session$userData$st_env$n
     do.call(session$setInputs, stats::setNames(list(c("SEX", "AGE")), paste0("st", n, "_vars")))
-    session$setInputs(ard_stat_apply = 2)
     expect_identical(ard_rows(rv$p, "analyses", "T1")$variables[3], "SEX")
     # moved up: CAT before CONT
     session$setInputs(ard_ol_move = list(id = "CAT", by = -1))
@@ -74,7 +72,6 @@ test_that("the ARD tab: the outline, a stack's form, one inside it, grouping and
     n <- session$userData$st_env$n
     do.call(session$setInputs, stats::setNames(list(TRUE), paste0("st", n, "_fl.by_stats")))
     expect_match(output$ard_stack_n_note$html, "so does BIGN", fixed = TRUE)
-    session$setInputs(ard_stat_apply = 3)
     # the outline's badge reads the review (made 2 s after the edits pause)
     session$elapse(2100)
     expect_match(output$ard_outline$html, "counts the subjects per group twice", fixed = TRUE)
@@ -86,7 +83,9 @@ test_that("the ARD tab: the outline, a stack's form, one inside it, grouping and
     expect_identical(nrow(stack_n_twice(a)), 0L)
     # the code of one inside: the stack's one call
     session$setInputs(ard_ol_pick = "CAT")
-    expect_match(output$ard_an_code, "ard_stack(", fixed = TRUE)
+    expect_match(output$ard_code, "ard_stack(", fixed = TRUE)
+    # (shown in the right's Code tab only, not under the form too)
+    expect_false(grepl("ard_an_code", output$ard_stat_ui$html, fixed = TRUE))
     # the stack deleted, its analyses kept
     session$setInputs(ard_ol_pick = "STACK")
     session$setInputs(ard_stack_delete = 1)
