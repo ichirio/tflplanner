@@ -102,6 +102,7 @@ button[onclick*='tpl_revert'] { white-space: nowrap; flex-shrink: 0; }
 .rp-tbl-list { resize: vertical; min-height: 2.2em; }
 .rp-tbl-add { margin-top: .15rem; font-size: 12px; padding: 0 .3rem; color: #6b7280; }
 .rp-tbl-ro td { color: #6b7280; background: var(--bs-tertiary-bg, #f6f7f9); }
+.rp-tbl-table td.rp-tbl-none { color: #9ca3af; font-size: 12.5px; }
 .rp-tbl-addrow { padding: 0; font-size: 12.5px; text-decoration: none; }
 .rp-group { margin-bottom: .35rem; }
 .rp-group-label { font-size: 12.5px; font-weight: 600; color: #4b5563; margin-bottom: .1rem; }
@@ -223,6 +224,7 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
     var box = $(this).closest('.rp-tbl'), tpl = box.children('template.rp-tbl-tpl')[0];
     if (!tpl) return;
     var body = box.find('tbody.rp-tbl-body').first();
+    body.children('tr.rp-tbl-empty').remove();
     body.append(document.importNode(tpl.content, true));
     body.children('tr').last().find('.rp-tbl-cell').first().trigger('focus');
     box.trigger('rp-tbl-change');
@@ -251,12 +253,22 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
     };
     add('data-cols', col);
     add('data-kinds', String(btn.data('kind')));
+    box.find('tbody.rp-tbl-body > tr.rp-tbl-empty > td').each(function() {
+      this.colSpan = this.colSpan + 1;
+    });
     btn.remove();
     box.trigger('rp-tbl-change');
   });
+  // the last row deleted: the empty table's light \"(none)\" line again (one
+  // cell across the heading's columns; no .rp-tbl-row, so never read back)
   $(document).on('click', '.rp-tbl-del', function() {
-    var box = $(this).closest('.rp-tbl');
+    var box = $(this).closest('.rp-tbl'), body = $(this).closest('tbody.rp-tbl-body');
     $(this).closest('tr').remove();
+    if (body.length && !body.children('tr.rp-tbl-row').length && !body.children('tr.rp-tbl-empty').length) {
+      var td = $('<td class=\"rp-tbl-none\"></td>').text(box.attr('data-none') || '(none)');
+      td.attr('colspan', box.find('thead tr').first().children('th').length);
+      body.append($('<tr class=\"rp-tbl-empty\"></tr>').append(td));
+    }
     box.trigger('rp-tbl-change');
   });
   $(document).on('click', '.rp-tbl-up, .rp-tbl-down', function() {
