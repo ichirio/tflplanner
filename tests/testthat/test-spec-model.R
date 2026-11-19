@@ -813,3 +813,39 @@ test_that("sd_missing set and then removed leaves no line", {
   s <- suppressMessages(save_study(s, home = home))
   expect_false(any(grepl("sd_missing", readLines(file.path(s$path, "study.yml")))))
 })
+
+test_that("an edit's spec is bridged once, and the base once until it changes (#738)", {
+  skip_on_cran()
+  s <- model_sample()
+  home <- getOption("tflplanner.home")
+  s <- suppressMessages(open_study("SAMPLE-01", home = home))
+  rm(list = ls(.spec_sync_cache), envir = .spec_sync_cache)
+  rm(list = ls(.spec_base_cache), envir = .spec_base_cache)
+  orig <- .spec_bridge
+  n <- 0L
+  local_mocked_bindings(.spec_bridge = function(...) {
+    n <<- n + 1L
+    orig(...)
+  })
+  p <- s$planner
+  p$study[["adam_levels"]] <- "none"
+  # the study tab's plan_cells() card asks twice for each edit
+  a <- .spec_now(p)
+  expect_identical(.spec_now(p), a)
+  expect_identical(n, 2L)
+  expect_true(any(grepl("adam_levels: none", a$text[["study.yml"]], fixed = TRUE)))
+  # the next edit: its own bridge only, the base's kept
+  p$study[["treatment"]] <- "TRT01P"
+  b <- .spec_now(p)
+  expect_identical(n, 3L)
+  expect_true(any(grepl("treatment: TRT01P", b$text[["study.yml"]], fixed = TRUE)))
+  # saved: the new base is bridged when an edit asks for it
+  s$planner <- p
+  s <- suppressMessages(save_study(s, home = home))
+  q <- s$planner
+  q$study[["treatment"]] <- NA_character_
+  m <- n
+  d <- .spec_now(q)
+  expect_identical(n, m + 2L)
+  expect_false(any(grepl("treatment: TRT01P", d$text[["study.yml"]], fixed = TRUE)))
+})
