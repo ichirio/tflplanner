@@ -854,8 +854,9 @@ test_that("a change to the study's fields alone bridges study.yml alone, as the 
   s <- model_sample()
   home <- getOption("tflplanner.home")
   s <- suppressMessages(open_study("SAMPLE-01", home = home))
+  # (the short title: no report's page says it; the title is a token of
+  # the sample's headers, a report edit)
   meta <- s$meta
-  meta$title <- "Another title"
   meta$short_title <- "Short one"
   orig <- .spec_bridge
   n <- 0L
@@ -867,8 +868,8 @@ test_that("a change to the study's fields alone bridges study.yml alone, as the 
   expect_identical(n, 0L)
   expect_identical(attr(fast, "changed"), "study.yml")
   # the same as the whole bridge (the cut one made unusable)
-  local_mocked_bindings(.spec_bridge_study = function(...) stop("not here"))
-  whole <- .spec_sync_run(s$planner, meta)
+  whole <- with_mocked_bindings(.spec_sync_run(s$planner, meta),
+                                 .spec_bridge_study = function(...) stop("not here"))
   expect_gt(n, 0L)
   expect_identical(attr(whole, "changed"), "study.yml")
   stamp <- function(x) x[!startsWith(x, "updated:")]
@@ -893,7 +894,6 @@ test_that("a change to the study's fields alone bridges study.yml alone, as the 
   expect_true(any(endsWith(w, "study.yml")))
   y <- yaml::read_yaml(file.path(s2$path, "study.yml"))
   expect_identical(y$short_title, "Short one")
-  expect_identical(y$title, "Another title")
 })
 
 test_that("the widths read before a save are those of the reports it writes (#749)", {
