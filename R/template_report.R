@@ -114,11 +114,49 @@
 }
 
 # A series template's argument definitions ("<series>/<template>": a
-# name with a series), NULL for a template of no series or no file yet
+# name with a series), NULL for a template of no series or no file yet.
+# Read from the open study's copy when it has one (a study reads only its
+# copies, canon 2026-11-19; a template copied under a name of its own has
+# no other), else from the series folders (a template not added yet).
 .tpl_defs <- function(name) {
   if (!is.character(name) || length(name) != 1L || !grepl("^[^/]+/[^/]+$", name)) return(NULL)
-  d <- .arg_defs(template = name)
+  dir <- .tpl_study_dir()
+  d <- if (!is.null(dir) && file.exists(.tpl_copy_file(dir, name))) {
+    .arg_defs(template = name, study_dir = dir)
+  } else {
+    .arg_defs(template = name)
+  }
   if (is.data.frame(d) && nrow(d)) d
+}
+
+# The open study's folder, which the template cards read the study's
+# copies from: set by the app (`dir`), NULL when none is open
+.tpl_ctx <- new.env(parent = emptyenv())
+.tpl_study_dir <- function(dir) {
+  if (missing(dir)) return(.tpl_ctx$dir)
+  .tpl_ctx$dir <- if (length(dir) && !is.na(dir[1L]) && dir.exists(dir[1L])) dir[1L]
+  invisible(.tpl_ctx$dir)
+}
+
+# A study's copy of a template "<series>/<name>"
+# (<study>/spec/series/<series>/templates/<name>.yml)
+.tpl_copy_file <- function(dir, name) {
+  file.path(.series_copy_root(dir), sub("/.*$", "", name), "templates",
+            paste0(sub("^[^/]*/", "", name), ".yml"))
+}
+
+# A series template copied into the study before a report uses it
+# (tflspec::tfl_copy_templates(); a copy the study has is left as it is):
+# the message saying so, NULL when it was there already or the template
+# is of no series.  tflspec's error as it is.
+.tpl_copy_into_study <- function(dir, name, t = identity) {
+  if (is.null(dir) || !is.character(name) || !grepl("^[^/]+/[^/]+$", name)) return(NULL)
+  d <- tflspec::tfl_copy_templates(dir, name)
+  new <- d[d$status == "copied", , drop = FALSE]
+  if (!nrow(new)) return(NULL)
+  .arg_defs_reset()
+  sprintf(t("Copied the template %s into this study (%s): the study reads its own copy from now on; the series screen lists it."),
+          name, file.path(study_layout()[["spec"]], "series", sub("/.*$", "", name)))
 }
 
 # A parameter marked "key" (tflspec's tier: a default that stays on top of
@@ -725,17 +763,24 @@
   out[!duplicated(out$id), , drop = FALSE]
 }
 
-# The value a `!series K` default takes (canon 2026-11-16: the study's
-# series_settings.<series>.K, else the series' values.K) -- NULL for a
-# param whose default is no series value, a template of no series, or a
-# tflspec that cannot say.  `study`: the study spec (rv$p$spec$study, its
-# study.yml in $study), as .tpl_study_value() takes it
+# The value a `!series K` default takes (canon 2026-11-19: the series'
+# values.K in the study's copy of the series, else in its source) -- NULL
+# for a param whose default is no series value, a template of no series,
+# or a tflspec that cannot say.  `study`: the study spec (rv$p$spec$study,
+# its folder in $dir)
 .tpl_series_value <- function(study, name, prm) {
   key <- as.character(prm$series %||% "")[1L]
   if (is.na(key) || !nzchar(key) || !is.character(name) || !grepl("/", name, fixed = TRUE)) return(NULL)
-  yml <- if (is.list(study$study)) study$study else list()
-  v <- tryCatch(tflspec::tfl_series_settings(yml, sub("/.*$", "", name)),
-                error = function(e) NULL)
+  s <- sub("/.*$", "", name)
+  dir <- if (is.list(study) && is.character(study$dir)) study$dir
+  v <- tryCatch({
+    x <- if (.series_copied(dir, s)) {
+      tflspec::tfl_series_read(s, dir = .series_copy_root(dir))
+    } else {
+      tflspec::tfl_series_read(s)
+    }
+    x$values
+  }, error = function(e) NULL)
   if (is.list(v)) v[[key]]
 }
 

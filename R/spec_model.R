@@ -344,7 +344,7 @@
         },
         study = {
           # study.yml as the bridge writes it, with the blocks no planner
-          # writes (.study_yml_not_planner: series_settings:, ai:) kept as
+          # writes (.study_yml_not_planner: ai:) kept as
           # the spec's text has them
           mine <- new$study$study
           blocks <- .yaml_top_blocks(p$spec$text[[r]])

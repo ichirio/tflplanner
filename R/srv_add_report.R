@@ -556,12 +556,27 @@
     tpl_ready$id <- if (tpl) id
     tpl_mode_send(tpl, kind, loading = !is.null(id), ready = !is.null(id) && !tpl, id = id)
   }, ignoreNULL = FALSE, priority = 99)
+  # A series template copied into the open study (tflspec's
+  # tfl_copy_templates(); said when it is a new copy): FALSE when it
+  # could not be, tflspec's error said
+  tpl_copy <- function(name) {
+    msg <- tryCatch(.tpl_copy_into_study(rv$study$path, name, t), error = function(e) {
+      notify(conditionMessage(e), "error")
+      FALSE
+    })
+    if (isFALSE(msg)) return(FALSE)
+    if (!is.null(msg)) {
+      notify(msg, "message")
+      tpl_copies_ver(tpl_copies_ver() + 1L)
+    }
+    TRUE
+  }
   add_template_report <- function(id, desc) {
     .tpl_trace("OK", start = TRUE)
     # (not made: the page's "Loading ..." taken away again)
     fail <- function(msg, type) {
       session$sendCustomMessage("rp-report-ready", TRUE)
-      notify(msg, type)
+      if (!is.null(msg)) notify(msg, type)
     }
     nm <- tpl_chosen()
     if (is.null(nm)) return(fail(t("Choose a template"), "warning"))
@@ -572,6 +587,8 @@
     if (is.null(rv$p$spec)) {
       return(fail(t("A template report needs the study's YAML spec (save the study first)."), "error"))
     }
+    # (the study reads only its own copy of a template: copied first)
+    if (!tpl_copy(nm)) return(fail(NULL, NULL))
     kind <- input$modal_type
     sec <- trimws(input$modal_section %||% "")
     # (the page shows the new report's steps from its first draw)
@@ -800,6 +817,7 @@
     tp <- .tpl_of(rv$p, id %||% "")
     to <- input$tpl_switch
     if (is.null(tp) || is.null(to)) return()
+    if (!tpl_copy(to)) return(tpl_ver(tpl_ver() + 1L))
     to_prm <- .tpl_params(to)
     args <- tp$args[intersect(names(tp$args), names(.tpl_shown(to_prm)))]
     # (back from a template that takes the report's population: the

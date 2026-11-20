@@ -819,7 +819,7 @@ app_ui <- function(lang = "en") {
           shiny::uiOutput("study_actions"))),
       # the template series and the open study's values for them (R/srv_series.R)
       bslib::card(
-        bslib::card_header(with_tip(t("Template series"), t("tflspec's template series: their shared values (series.yml), this study's own values for them (study.yml series_settings) and the pins (spec/series.lock)."))),
+        bslib::card_header(with_tip(t("Template series"), t("tflspec's template series: their shared values (series.yml), and this study's own copies of the series and templates it uses (spec/series/): its values, and each copy against its source."))),
         shiny::uiOutput("series_card")),
       bslib::card(
           bslib::card_header(with_tip(t("Own ARD functions"), t("Your own ARD functions: the company's (every study) and this study's (programs/ard/functions/; it wins over the company's). They are R files, edited outside the app; try one after a change."))),
