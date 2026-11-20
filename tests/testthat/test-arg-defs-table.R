@@ -323,7 +323,7 @@ test_that("a schema function's table argument draws and reads through its tfl_ar
   testthat::local_mocked_bindings(
     tfl_schema = function(fn = NULL) if (identical(fn, "plan_x")) sch,
     tfl_arg_defs = function(fn = NULL, template = NULL) {
-      d <- data.frame(name = "derive", label_key = "x.derive", step = "data", input = "table",
+      d <- data.frame(name = "derive", label_en = NA_character_, step = "data", input = "table",
                       type = "map<column,r>", required = FALSE, stringsAsFactors = FALSE)
       d$default <- I(list(NULL))
       d$default_kind <- NA_character_

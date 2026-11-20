@@ -114,17 +114,19 @@ test_that("a card's label is the meaning and the verb; an argument's the meaning
   expect_match(h, "rp-meaning\">Statistics in the cells<", fixed = TRUE)
   expect_match(h, "(plan_cells())", fixed = TRUE)
   # every verb shown has its meaning
-  expect_true(all(fns_of(items) %in% names(.plan_meaning)))
+  expect_true(all(fns_of(items) %in% .plan_verbs))
   # an argument: "Columns (cols)"
   a <- html(.item_args_view(items[[2L]]))
   expect_match(a, "rp-meaning\">Columns<", fixed = TRUE)
   expect_match(a, "(cols)", fixed = TRUE)
-  # in Japanese, every meaning translated
-  labs <- unlist(lapply(names(.plan_meaning), function(fn)
-    lapply(.schema_of(fn)$args, `[[`, "label")), use.names = FALSE)
-  m <- unique(c(unname(.plan_meaning), labs))
-  ja <- vapply(m, tr, "", lang = "ja")
-  expect_true(all(ja != m), info = paste(m[ja == m], collapse = ", "))
+  # in Japanese, every meaning translated (tflspec's ja, else the app's texts)
+  labs <- unlist(lapply(.plan_verbs, function(fn) {
+    c(list(.verb_meaning(fn)), lapply(.schema_of(fn)$args, `[[`, "label"))
+  }), recursive = FALSE, use.names = FALSE)
+  labs <- Filter(Negate(is.null), labs)
+  en <- vapply(labs, .label_text, "", lang = "en")
+  ja <- vapply(labs, .label_text, "", lang = "ja")
+  expect_true(all(ja != en), info = paste(en[ja == en], collapse = ", "))
   expect_match(html(.table_cards(items[2L], lang = "ja")), tr("Table structure", "ja"), fixed = TRUE)
 })
 

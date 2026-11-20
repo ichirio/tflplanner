@@ -23,8 +23,11 @@ test_that("a label is the meaning and the name; the name alone without a meaning
   # the schema's label by language, the English translated by tr()
   expect_match(html(builder_label(list(en = "Lines", ja = "\u7dda"), "geom_line", "fn", lang = "ja")),
                "\u7dda", fixed = TRUE)
+  # (no ja: the English by the app's texts)
   expect_match(html(builder_label(list(en = "Lines"), "geom_line", "fn", lang = "ja")),
-               ">Lines<", fixed = TRUE)
+               paste0(">", tr("Lines", "ja"), "<"), fixed = TRUE)
+  expect_match(html(builder_label(list(en = "Lines", ja = NA_character_), "geom_line", "fn", lang = "ja")),
+               paste0(">", tr("Lines", "ja"), "<"), fixed = TRUE)
   expect_match(html(builder_label("Column", "cols", "arg", lang = "ja")), "\u5217", fixed = TRUE)
   # a meaning that says the name already (a translation "... (rounding)"):
   # the name once

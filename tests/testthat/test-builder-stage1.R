@@ -212,17 +212,18 @@ test_that("normalize_ard(): a form card -- the hierarchy a field marked From the
   expect_match(h, 'id="n__overall"', fixed = TRUE)
   expect_match(h, 'value="Any TEAE"', fixed = TRUE)
   expect_match(h, ">This table<", fixed = TRUE)
-  # the arguments the code writes above, the rest below, each in the
-  # function's order -- the same fields as any table's
+  # the arguments the code writes and the key ones (tflspec's: stack) above,
+  # the rest below, each in the function's order -- the same fields as any
+  # table's
   args <- gsub('data-arg="|"', "", regmatches(h, gregexpr('data-arg="[^"]+"', h))[[1L]])
-  expect_identical(args, c("hierarchy", "overall", "keys", "drop_contexts", "drop_key_variables",
-                           "stack", "stack_sep", "stack_nest", "combine"))
-  expect_match(h, "More settings (7)", fixed = TRUE)
+  expect_identical(args, c("hierarchy", "overall", "stack", "keys", "drop_contexts",
+                           "drop_key_variables", "stack_sep", "stack_nest", "combine"))
+  expect_match(h, "More settings (6)", fixed = TRUE)
   expect_false(grepl("rp-badge-unsaved", h, fixed = TRUE))
-  # a summary table's (the study's defaults: none): every argument below
+  # a summary table's (the study's defaults: none): every argument below but the key ones (overall, stack)
   i0 <- item(builder_items(p, "T-14-1-1"), "normalize_ard")
   h0 <- html(.plan_form_body("n", "normalize_ard", i0, ard = list(hierarchy = character())))
-  expect_match(h0, "More settings (9)", fixed = TRUE)
+  expect_match(h0, "More settings (7)", fixed = TRUE)
   # its hierarchy an ordinary field below (the code does not write it)
   expect_false(grepl("data-ard=", h0, fixed = TRUE))
   expect_match(h0, 'id="n__hierarchy"', fixed = TRUE)
@@ -260,7 +261,7 @@ test_that("normalize_ard(): a form card -- the hierarchy a field marked From the
   expect_match(hj, "ARD を Table を作りやすい形に整えます。", fixed = TRUE)
   expect_match(hj, "カテゴリの値は .label（行の文字）になります。", fixed = TRUE)
   # every argument's help under Other arguments is said in Japanese too
-  helps <- unlist(lapply(names(.plan_meaning), function(fn)
+  helps <- unlist(lapply(.plan_verbs, function(fn)
     lapply(.schema_of(fn)$args, `[[`, "help")), use.names = FALSE)
   miss <- unique(helps[vapply(helps, tr, "", lang = "ja") == helps])
   expect_length(miss, 0L)

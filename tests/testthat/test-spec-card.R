@@ -3,6 +3,12 @@
 # card reads back is what the SPEC's YAML keeps.
 
 html <- function(...) as.character(htmltools::tagList(...))
+# a function's definitions with no `key` tier (tflspec's from `visible:` /
+# `main:`): the fold decided by the tiers a test sets
+no_key <- function(d) {
+  for (a in names(d$args)) if (identical(d$args[[a]]$tier, "key")) d$args[[a]]$tier <- "usual"
+  d
+}
 data_args_of <- function(h) {
   gsub('data-arg="|"', "", regmatches(h, gregexpr('data-arg="[^"]+"', h))[[1L]])
 }
@@ -47,8 +53,14 @@ test_that("each generator card's fields are its definitions table", {
     # in the function's order
     in_fl <- f$name[f$name %in% fl]
     expect_identical(in_fl, fl[fl %in% in_fl], info = fn)
-    # a field's type and tier are the table's (the fallback's types excepted)
-    own <- setdiff(intersect(f$name, typed), names(.spec_fallback$type[[fn]]))
+    # a field's type and tier are the table's (those drawn by another type
+    # -- the fallback's, an `r` input -- excepted: their own kept as def_type)
+    cd <- spec_card_defs(fn)
+    drawn <- names(Filter(function(x) "def_type" %in% names(x), cd$args))
+    own <- setdiff(intersect(f$name, typed), drawn)
+    expect_identical(unname(vapply(cd$args[drawn], function(x) x$def_type %||% NA_character_, "")),
+                     unname(vapply(sch$args[drawn], function(x) x$type %||% NA_character_, "")),
+                     info = fn)
     expect_identical(f$type[match(own, f$name)], defs$type[match(own, defs$name)], info = fn)
     both <- intersect(f$name, defs$name)
     expect_identical(f$tier[match(both, f$name)], defs$tier[match(both, defs$name)], info = fn)
@@ -65,15 +77,17 @@ test_that("the fallback names only arguments the cards have, and tflspec's own v
   for (fn in names(.spec_fallback$type)) {
     expect_true(all(names(.spec_fallback$type[[fn]]) %in% spec_card_fields(fn)$name), info = fn)
   }
-  for (fn in names(.spec_fallback$default)) {
-    d <- spec_card_defs(fn)
-    expect_true(all(names(.spec_fallback$default[[fn]]) %in% d$formals), info = fn)
+  # a verb's label is the schema's {en, ja}; a plan verb has one
+  for (fn in .plan_verbs) {
+    expect_false(is.null(.label_text(.verb_meaning(fn), "en")), info = fn)
   }
-  # a label the schema gives is the card's, not the fallback's
-  expect_identical(.verb_meaning("plan_blanks"),
-                   tflspec::tfl_schema("plan_blanks")$label %||% .plan_meaning[["plan_blanks"]])
-  # a default of the fallback: plan_empty()'s enum says which entry is the default
+  expect_identical(.verb_meaning("plan_blanks"), tflspec::tfl_schema("plan_blanks")$label)
+  # the defaults of the verbs whose formals are NULL: the schema's
   expect_identical(spec_card_defs("plan_empty")$args$when$default, "auto")
+  expect_identical(spec_card_defs("plan_empty")$args$position$default, "last")
+  expect_false(spec_card_defs("plan_stub")$args$before$default)
+  expect_true(spec_card_defs("plan_sort")$args$keep$default)
+  expect_true(spec_card_defs("plan_paginate_group")$args$keep$default)
   expect_match(html(spec_card("c", "plan_empty", list(fn = "plan_empty", args = list()))),
                "auto (default)", fixed = TRUE)
 })
@@ -82,12 +96,12 @@ test_that("a field is above the fold when the call writes it or its tier is key;
   skip_on_cran()
   fn <- "plan_blanks"
   it <- list(fn = fn, args = list(where = "between_groups"))
-  f <- spec_card_fields(fn, it)
+  d <- no_key(spec_card_defs(fn))
+  f <- spec_card_fields(fn, it, defs = d)
   expect_identical(f$name[f$shown], "where")
   # usual: folded at its default
   expect_true(all(f$tier[!f$shown] %in% c("usual", "other")))
   # key: shown though it has no value
-  d <- spec_card_defs(fn)
   d$args$counted$tier <- "key"
   f2 <- spec_card_fields(fn, it, defs = d)
   expect_setequal(f2$name[f2$shown], c("where", "counted"))
@@ -101,7 +115,7 @@ test_that("group headings where the definitions give groups, none where they do 
   skip_on_cran()
   fn <- "plan_blanks"
   it <- list(fn = fn, args = list(where = "between_groups", first = TRUE, last = TRUE, counted = TRUE))
-  d0 <- spec_card_defs(fn)
+  d0 <- no_key(spec_card_defs(fn))
   d0$groups <- NULL
   for (a in names(d0$args)) d0$args[[a]]$group <- NULL
   h0 <- html(spec_card("c", fn, it, defs = d0))
@@ -305,4 +319,174 @@ test_that("the R switch is the definition's: only on a field whose type takes an
   hw2 <- html(spec_card("c", "plan_columns", list(args = list(widths = tflspec::tfl_r("c(1, 2)"))),
                         ctx = list(cols = c("a", "b"))))
   expect_true(has_switch(hw2, "widths"))
+})
+
+# a field's value as the page shows it (the rendered HTML, not .arg_to_r())
+rendered_value <- function(h, fid) {
+  m <- regmatches(h, regexpr(sprintf('<input[^>]*id="%s"[^>]*>', fid), h))
+  if (!length(m)) return(NULL)
+  if (grepl('type="checkbox"', m)) return(grepl("checked", m))
+  v <- regmatches(m, regexpr('value="[^"]*"', m))
+  if (!length(v)) return("")
+  x <- sub('^value="(.*)"$', "\\1", v)
+  x <- gsub("&quot;", '"', x)
+  x <- gsub("&#39;", "'", x)
+  x <- gsub("&lt;", "<", x)
+  x <- gsub("&gt;", ">", x)
+  gsub("&amp;", "&", x)
+}
+
+test_that("a value only drawn as R (the fallback's, an r input) reads back the same: no edit, no write", {
+  skip_on_cran()
+  cases <- list(
+    list("plan_titles", list(pages = list(c("Table 14.3.1", "ALT"), c("Table 14.3.2", "AST")))),
+    list("plan_footnotes", list(pages = "x")),
+    list("plan_cell_style", list(border = list(fn = "rtf_border", args = list(bottom = "single")))))
+  for (cs in cases) {
+    fn <- cs[[1L]]
+    args <- cs[[2L]]
+    a <- names(args)
+    it <- list(fn = fn, args = args, own_args = args)
+    h <- html(spec_card("c", fn, it))
+    shown <- rendered_value(h, paste0("c__", a))
+    # shown as R source, its quotes kept
+    expect_identical(shown, .arg_to_r(args[[a]]), info = fn)
+    inp <- stats::setNames(list(shown), paste0("c__", a))
+    # (the page has its main fields; here the field itself tells the card is there)
+    d <- spec_card_defs(fn)
+    d$visible <- a
+    r <- spec_card_read(inp, "c", fn, defs = d)
+    expect_identical(r[[a]], args[[a]], info = fn)
+    own <- spec_card_args(r, it, fn, defs = d)
+    expect_identical(own, args, info = fn)
+    expect_false(any(vapply(own, inherits, NA, "tfl_r")), info = fn)
+    expect_true(.args_same_r(fn, own, args), info = fn)
+  }
+  # R typed there stays R
+  d <- spec_card_defs("plan_titles")
+  d$visible <- "pages"
+  r <- spec_card_read(list(c__pages = "my_pages"), "c", "plan_titles", defs = d)
+  expect_identical(r$pages, tflspec::tfl_r("my_pages"))
+})
+
+test_that("the data's columns are offered only to a field of columns", {
+  skip_on_cran()
+  ctx <- list(choices = c(COLX = "COLX", COLY = "COLY"))
+  h <- html(spec_card("c", "plan_cell_style", list(fn = "plan_cell_style", args = list()), ctx = ctx))
+  colour_opts <- function(a) {
+    m <- regmatches(h, regexpr(sprintf('(?s)<select[^>]*id="c__%s".*?</select>', a), h, perl = TRUE))
+    sub('^<option value="([^"]*)".*$', "\\1", regmatches(m, gregexpr('<option value="[^"]*"', m))[[1L]])
+  }
+  for (a in c("color", "background")) {
+    o <- colour_opts(a)
+    expect_true(all(c("red", "blue") %in% o), info = a)
+    expect_false(any(c("COLX", "COLY") %in% o), info = a)
+  }
+  # a text field: no columns suggested
+  hs <- html(spec_card("c", "plan_stub", list(fn = "plan_stub", args = list()), ctx = ctx))
+  hs <- regmatches(hs, regexpr('(?s)data-arg="name".*?(?=data-arg=)', hs, perl = TRUE))
+  expect_match(hs, 'id="c__name"', fixed = TRUE)
+  expect_false(grepl("COLX", hs, fixed = TRUE))
+  expect_true(.type_has_column("list<column>"))
+  expect_true(.type_has_column("map<aes, column|r>"))
+  expect_false(.type_has_column("colour|r|map<column, r>"))
+  expect_true(.type_has_column("column|r"))
+  expect_false(.type_has_column("string"))
+})
+
+test_that("a help by language is the card's language's", {
+  sch <- list(args = list(x = list(help = list(en = "The help", ja = "\u52a9\u3051"))))
+  expect_identical(.arg_help("f", "x", sch, "ja"), "\u52a9\u3051")
+  expect_identical(.arg_help("f", "x", sch, "en"), "The help")
+  expect_identical(.arg_help("f", "x", list(args = list(x = list(help = "Plain"))), "en"), "Plain")
+})
+
+test_that("an r input is an R-expression field: its R mark fixed, no switch", {
+  skip_on_cran()
+  d <- spec_card_defs("plan_cell_style")
+  expect_identical(d$args$border$type, "r")
+  expect_identical(d$args$border$def_type, tflspec::tfl_schema("plan_cell_style")$args$border$type)
+  h <- html(spec_card("c", "plan_cell_style", list(fn = "plan_cell_style", args = list())))
+  expect_match(h, 'data-arg="border"', fixed = TRUE)
+  expect_false(grepl('id="c__border__isr"', h, fixed = TRUE))
+  # the data / analysis built-ins' R (then, code, args, post): input r
+  for (fn in c("data", "analysis")) {
+    dd <- tflspec::tfl_arg_defs(fn = fn)
+    for (a in intersect(c("then", "code", "args", "post"), dd$name)) {
+      expect_identical(dd$input[dd$name == a], "r", info = paste(fn, a))
+      def <- .arg_def(dd, a)
+      ha <- html(arg_field("c", a, def$type, def = def))
+      expect_match(ha, "rp-r-fixed", fixed = TRUE)
+      expect_false(grepl(paste0("c__", a, "__isr"), ha, fixed = TRUE), info = paste(fn, a))
+    }
+  }
+  # any type with input r: the R field
+  hc <- html(arg_field("c", "b", "call<rtf_border>", def = list(input = "r")))
+  expect_match(hc, "rp-r-fixed", fixed = TRUE)
+  expect_false(grepl("c__b__isr", hc, fixed = TRUE))
+})
+
+test_that("tflspec's columns decide: by / group_col a pick of the columns", {
+  skip_on_cran()
+  ctx <- list(choices = c(AEBODSYS = "AEBODSYS", SOC = "SOC"))
+  for (cs in list(c("plan_filter", "by", "AEBODSYS"), c("plan_row_group", "group_col", "SOC"))) {
+    fn <- cs[[1L]]
+    a <- cs[[2L]]
+    d <- spec_card_defs(fn)
+    expect_identical(d$args[[a]]$type, "column", info = fn)
+    expect_false("def_type" %in% names(d$args[[a]]), info = fn)
+    args <- stats::setNames(list(cs[[3L]]), a)
+    it <- list(fn = fn, args = args, own_args = args)
+    h <- html(spec_card("c", fn, it, ctx = ctx))
+    expect_match(h, sprintf('<select[^>]*id="c__%s"', a), info = fn)
+    d$visible <- a
+    r <- spec_card_read(stats::setNames(list(cs[[3L]]), paste0("c__", a)), "c", fn, defs = d)
+    expect_identical(r[[a]], cs[[3L]], info = fn)
+    expect_identical(spec_card_args(r, it, fn, defs = d), args, info = fn)
+  }
+})
+
+test_that("(none) follows the definition's unset: none for stop, offered for omit and step_off", {
+  skip_on_cran()
+  has_none <- function(h, a) grepl(sprintf('id="c__%s__none"', a), h, fixed = TRUE)
+  expect_false(has_none(html(arg_field("c", "x", "string", def = list(input = "text", unset = "stop"))), "x"))
+  for (u in list("omit", "step_off", NA_character_, NULL)) {
+    expect_true(has_none(html(arg_field("c", "x", "string", def = list(input = "text", unset = u))), "x"))
+  }
+  # a card: its arguments' unset from tfl_arg_defs()
+  for (fn in .plan_form_fns) {
+    d <- spec_card_defs(fn)
+    fo <- setdiff(d$formals, .data_args)
+    h <- html(spec_card("c", fn, list(fn = fn, args = list()), ctx = list(cols = c("row_label", ".values"))))
+    for (a in fo) {
+      if (identical(d$args[[a]]$unset, "stop")) {
+        expect_false(has_none(h, a), info = paste(fn, a))
+      }
+    }
+  }
+  defs <- tflspec::tfl_arg_defs(fn = "plan_blanks")
+  expect_true(all(defs$unset %in% c("omit", "step_off", "stop")))
+  expect_true(all(defs$unset[defs$required] == "stop"))
+})
+
+test_that("a column name of digits is a name: written quoted in the YAML", {
+  skip_on_cran()
+  expect_identical(spec_card_defs("plan_columns")$args$row_title$type,
+                   tflspec::tfl_schema("plan_columns")$args$row_title$type)
+  r <- spec_card_read(list(c__row_title = c("1", "row_label")), "c", "plan_columns")
+  expect_identical(r$row_title, c("1", "row_label"))
+  y <- yaml::as.yaml(list(row_title = r$row_title))
+  expect_match(y, "'1'", fixed = TRUE)
+  expect_identical(yaml::yaml.load(y)$row_title, c("1", "row_label"))
+  # a list of whole numbers alone: numbers
+  expect_identical(.form_list_value(c("1", "2"), "list<integer>"), 1:2)
+  expect_identical(.form_list_value(c("1", "2"), "list<column>|list<integer>"), c("1", "2"))
+})
+
+test_that("a label by language: its ja, else the English by the app's texts", {
+  expect_identical(.label_text(list(en = "Table structure", ja = "X"), "ja"), "X")
+  expect_identical(.label_text(list(en = "Table structure", ja = NA_character_), "ja"),
+                   tr("Table structure", "ja"))
+  expect_identical(.label_text(list(en = "Table structure"), "ja"), tr("Table structure", "ja"))
+  expect_identical(.label_text(list(en = "Table structure", ja = NA_character_), "en"), "Table structure")
 })

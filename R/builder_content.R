@@ -10,13 +10,15 @@
 
 # ---- meanings ---------------------------------------------------------------
 
-# a verb's meaning: the schema's label, else the fallback's (.plan_meaning,
-# R/spec_card_fallback.R: until tflspec's definitions have it); NULL for none
-.verb_meaning <- function(fn) {
-  lab <- .schema_of(fn)$label
-  if (!is.null(lab)) return(lab)
-  if (fn %in% names(.plan_meaning)) .plan_meaning[[fn]] else NULL
-}
+# The table's plan verbs, the cards a table's content has
+.plan_verbs <- c("normalize_ard", "table_plan", "plan_cells", "plan_digits", "plan_levels",
+                 "plan_labels", "plan_nest", "plan_total", "plan_compare", "plan_stat_groups",
+                 "plan_sort", "plan_filter", "plan_hide", "plan_col_header", "plan_stub",
+                 "plan_blanks", "plan_paginate_rows", "plan_paginate_group", "plan_paginate_cols",
+                 "plan_row_group", "plan_columns", "plan_style", "plan_cell_style", "plan_append")
+
+# a verb's meaning: the schema's label (`label: {en, ja}`); NULL for none
+.verb_meaning <- function(fn) .schema_of(fn)$label
 
 # an argument's meaning: the schema's label (tflspec::tfl_schema()); NULL
 # for none

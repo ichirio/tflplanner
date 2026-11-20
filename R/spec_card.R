@@ -16,8 +16,8 @@
 # What the definitions say is all a card needs: the type and the input form
 # (the field), the choices, the default, the tier (`key`: shown though it
 # has a default), the group (a heading over its fields) and the labels.
-# Where tflspec's table has no such column yet, R/spec_card_fallback.R
-# holds the few values -- until P0.
+# Where tflspec's definitions say no field tflplanner draws yet,
+# R/spec_card_fallback.R holds the few types.
 
 # ---- the definitions ---------------------------------------------------------
 
@@ -63,8 +63,21 @@
     he <- sch$args[[a]]$help %||% sch$args[[a]]$description
     if (!is.null(hj) && is.character(he)) sch$args[[a]]$help <- list(en = he, ja = hj)
   }
-  sch$groups <- attr(defs, "groups", exact = TRUE) %||% sch$groups
+  sch$groups <- .spec_groups_list(attr(defs, "groups", exact = TRUE)) %||% sch$groups
   sch
+}
+
+# tfl_arg_defs()'s groups (a data frame id, label_en, label_ja; no rows:
+# none) as the schema's `groups:` list, each list(id, label); NULL for none
+.spec_groups_list <- function(g) {
+  if (!is.data.frame(g)) return(g)
+  if (!nrow(g)) return(NULL)
+  lapply(seq_len(nrow(g)), function(i) {
+    en <- g$label_en[[i]]
+    ja <- if ("label_ja" %in% names(g)) g$label_ja[[i]] else NA_character_
+    label <- if (is.na(en)) g$id[[i]] else if (is.na(ja)) en else list(en = en, ja = ja)
+    list(id = g$id[[i]], label = label)
+  })
 }
 
 # A positional `...` whose key the schema's arguments do not name
@@ -95,8 +108,9 @@
 }
 
 # The definitions a card is made from: tflspec's schema entry with each
-# argument's row of tfl_arg_defs() (.schema_of()), the fallback values
-# (R/spec_card_fallback.R), and what the generator works out --
+# argument's row of tfl_arg_defs() (.schema_of()), the fallback types
+# (R/spec_card_fallback.R), an `r` input drawn as R (.spec_input_r()), and
+# what the generator works out --
 #   formals   the card's fields, in the function's order (a `...` given by
 #             a key: the key in its place)
 #   visible   the arguments the schema marks `main` (the card's fields are
@@ -108,7 +122,7 @@ spec_card_defs <- function(fn) {
   sch <- .schema_of(fn) %||% list()
   sch <- .spec_defs_columns(sch, .arg_defs(fn = fn))
   sch <- .spec_defs_dots(sch)
-  sch <- .spec_fallback_types(sch, fn)
+  sch <- .spec_input_r(.spec_fallback_types(sch, fn))
   fl <- .spec_fn_formals(fn)
   fo <- names(fl)
   # (an argument the schema only names -- a label, no type -- passed by
@@ -125,10 +139,6 @@ spec_card_defs <- function(fn) {
           is.logical(d) && length(d) == 1L && !is.na(d)) {
       sch$args[[a]]$default <- d
     }
-  }
-  # (the fallback's defaults of the other kinds: an enum's "(default)")
-  for (a in intersect(names(.spec_fallback$default[[fn]]), names(sch$args))) {
-    if (is.null(sch$args[[a]]$default)) sch$args[[a]]$default <- .spec_fallback$default[[fn]][[a]]
   }
   # (the key of a `...` where the function has its `...`)
   key <- names(Filter(function(x) isTRUE(x$dots), sch$args))
@@ -150,11 +160,13 @@ spec_card_defs <- function(fn) {
   .arg_order(names(a)[vapply(a, function(x) isTRUE(x$main), NA)], formals)
 }
 
-# a formal's default: the function's own, else (a NULL formal) the fallback's
+# a formal's default: the function's own; NULL for a NULL formal (the
+# verbs that record only what the call says: their defaults are the
+# definitions', `default:` in tflspec's schema)
 .spec_formal_default <- function(fn, fl, a) {
   # (a required argument's formal is the empty symbol: not evaluated here)
   nul <- vapply(fl[a], function(d) !is.symbol(d) && is.null(d), NA)
-  if (length(nul) == 1L && nul) .spec_fallback$default[[fn]][[a]] else fl[[a]]
+  if (length(nul) == 1L && nul) NULL else fl[[a]]
 }
 
 # ---- the fields --------------------------------------------------------------
@@ -271,9 +283,24 @@ spec_card_fields <- function(fn, item = list(), ard = character(), defs = spec_c
     return(part$field(id, k, value, ctx, label = label, from = from, own = own, help = help,
                       lang = lang, r_ok = .type_takes_r(d$def_type %||% d$type)))
   }
+  # (the columns offered only to a field of columns -- a colour's field
+  # offers its colours, a text's none -- or to a condition)
+  cols <- if (.type_has_column(d$def_type %||% d$type) || identical(.def_input(d), "condition")) {
+    ctx$choices
+  }
   arg_field(id, k, d$type, label = label, value = value, default = d$default,
-            choices = ctx$choices, from = from, own = own, help = help, lang = lang,
+            choices = cols, from = from, own = own, help = help, lang = lang,
             def = d, ctx = ctx$sources)
+}
+
+# does a type's field take a column of the data (column, list<column>,
+# map<aes, column|r>, ...)?  The first alternative decides, as it decides
+# the field (.arg_kind()): colour|r|map<column, r> is a colour's
+.type_has_column <- function(type) {
+  if (is.null(type) || length(type) != 1L || is.na(type) || !nzchar(type)) return(FALSE)
+  alts <- .type_split(trimws(type), "|")
+  alts <- c(setdiff(alts, "r"), intersect(alts, "r"))
+  grepl("\\bcolumn\\b", alts[[1L]])
 }
 
 # ---- the card ------------------------------------------------------------------
@@ -354,12 +381,25 @@ spec_card_read <- function(input, id, fn, ctx = list(), defs = spec_card_defs(fn
     out[[k]] <- .form_list_value(out[[k]], defs$args[[k]]$type)
     if (identical(defs$args[[k]]$type, "formula")) out[[k]] <- .formula_text(out[[k]])
     if (isTRUE(defs$args[[k]]$dots)) out[[k]] <- .spec_dots_read(fn, k, out[[k]])
+    out[[k]] <- .spec_drawn_r_read(defs$args[[k]], out[[k]])
   }
   for (k in parts) {
     v <- .spec_parts[[defs$args[[k]]$type]]$read(input, id, k, ctx)
     if (length(v)) out[[k]] <- v
   }
   out
+}
+
+# An argument drawn as R that is not R only (.spec_drawn_as(): its
+# definition's type is another, plan_cell_style(border = ) a call): the field's R
+# read back as the value it says -- a literal ("AEBODSYS", list(c("a",
+# "b"))) its plain value, as it was drawn -- and only other R as R
+.spec_drawn_r_read <- function(d, v) {
+  if (!inherits(v, "tfl_r") || !"def_type" %in% names(d) || .type_only_r(d$def_type) ||
+        !identical(.arg_kind(d$type), "r")) {
+    return(v)
+  }
+  .text_value(as.character(unclass(v)))
 }
 
 # The item's whole arguments after the card's edit: its arguments (the

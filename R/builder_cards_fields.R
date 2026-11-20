@@ -131,8 +131,11 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
   # (`!unset`: the field says "(none)", and the control is hidden behind it)
   none <- .is_unset(value)
   if (none) value <- NULL
-  # (a string in an argument that takes only R is that R's text)
-  if (.type_only_r(type) && !is.null(value)) value <- .only_r_value(value)
+  # (a string in an argument that takes only R is that R's text; one only
+  # drawn as R -- the definition's type is another, .spec_drawn_as()
+  # -- is a value, shown as R source: "AEBODSYS", quotes kept)
+  only_r <- .type_only_r(if ("def_type" %in% names(def)) def$def_type else type)
+  if (only_r && !is.null(value)) value <- .only_r_value(value)
   control <- switch(
     kind,
     column = .field_select(fid, choices, value, multiple = FALSE, lang = lang, placeholder = default),
@@ -169,8 +172,10 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
                       checked = if (is_r) NA else NULL),
     shiny::tags$span("R"))
   # (the "(none)" toggle, as the R switch: not on a required argument, nor
-  # on a field inside a call's small form -- `nested`)
-  none_ok <- !required && !nested
+  # on a field inside a call's small form -- `nested` -- nor where the
+  # definition's `unset` is "stop" (tflspec: the argument needs a value;
+  # "omit" and "step_off" offer it))
+  none_ok <- !required && !nested && !identical(.def_unset(def), "stop")
   none <- none && none_ok
   none_switch <- if (none_ok) shiny::tags$label(
     class = "rp-none-toggle", title = t("None here (!unset)"),
@@ -207,6 +212,13 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
   if (is.null(f) || length(f) != 1L || is.na(f) || !nzchar(f)) NULL else as.character(f)
 }
 
+# What "(none)" does for a def (tfl_arg_defs()'s `unset`: "omit",
+# "step_off" or "stop"), NULL for none said
+.def_unset <- function(def) {
+  u <- def[["unset"]]
+  if (is.null(u) || length(u) != 1L || is.na(u) || !nzchar(u)) NULL else as.character(u)
+}
+
 # The kind of field a def's form draws, from the type's `kind`: a pick of an
 # enum or of fixed values a select of them ("pick_enum"; one that takes a
 # typed value, or whose values are only some of its choices, a selectize
@@ -216,7 +228,8 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
 # condition of type r its R field with the columns as candidates.  A table:
 # the field its type has here; arg_field() draws the table field
 # (R/arg_defs_table.R) where the type is a map<K,V> or a rows<map<..>>.  A
-# text: as the type says.  The kind stays one that
+# text: as the type says.  An r (an R expression, canon 17dfbb8): the R
+# field.  The kind stays one that
 # builder_card_read() reads back as the type says.
 .def_kind <- function(form, kind, type, def) {
   switch(
@@ -230,6 +243,8 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
       "pick_one"
     },
     condition = if (identical(kind, "r")) "condition" else kind,
+    # (an R expression: its R field, whatever the type)
+    r = "r",
     kind)
 }
 
