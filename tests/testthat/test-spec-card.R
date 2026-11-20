@@ -77,6 +77,13 @@ test_that("the fallback names only arguments the cards have, and tflspec's own v
   for (fn in names(.spec_fallback$type)) {
     expect_true(all(names(.spec_fallback$type[[fn]]) %in% spec_card_fields(fn)$name), info = fn)
   }
+  # the untyped R-only arguments: R fields while tflspec gives them no type
+  for (fn in names(.spec_fallback$r)) {
+    for (a in .spec_fallback$r[[fn]]) {
+      expect_null(tflspec::tfl_schema(fn)$args[[a]]$type, info = paste(fn, a))
+      expect_identical(spec_card_defs(fn)$args[[a]]$type, "r", info = paste(fn, a))
+    }
+  }
   # a verb's label is the schema's {en, ja}; a plan verb has one
   for (fn in .plan_verbs) {
     expect_false(is.null(.label_text(.verb_meaning(fn), "en")), info = fn)

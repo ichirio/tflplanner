@@ -100,10 +100,14 @@
   if (!is.character(v) || !length(v) || is.null(type)) return(v)
   alts <- .type_split(type, "|")
   if ("logical" %in% alts && length(v) == 1L && v %in% c("TRUE", "FALSE")) return(as.logical(v))
-  # (digits are whole numbers only where no column is meant: a column's
-  # name of digits stays a name -- plan_columns(row_title = "1") is written
+  # (digits are whole numbers where the type says positions before
+  # columns: plan_paginate_cols(at = c(2, 4)), list<integer>|list<column>;
+  # where it says columns first a name of digits stays a name --
+  # plan_columns(row_title = "1"), list<column>|list<integer>, is written
   # "1" in the YAML, which tflspec reads as a column, a YAML 1 a position)
-  if ("list<integer>" %in% alts && !any(grepl("^list<column", alts)) && all(grepl("^[0-9]+$", v))) {
+  ints <- match("list<integer>", alts)
+  cols <- grep("^list<column", alts)
+  if (!is.na(ints) && (!length(cols) || ints < min(cols)) && all(grepl("^[0-9]+$", v))) {
     return(as.integer(v))
   }
   v
