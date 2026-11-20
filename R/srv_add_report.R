@@ -578,7 +578,7 @@
     attr(args, "population") <- NULL
     o <- tflspec::tfl_output(id, kind, label = if (is.na(desc)) NA_character_ else desc,
                              common = if (!is.na(pop)) list(population = pop) else list(),
-                             template = list(name = nm, args = args),
+                             template = .tpl_write_args(list(name = nm), args, by_step = TRUE),
                              data = if (length(dat$steps)) list(steps = dat$steps))
     # (straight into the spec: its toc line and its file, the view of
     # that report alone -- .spec_add_output())

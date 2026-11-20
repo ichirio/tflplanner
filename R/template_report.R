@@ -176,15 +176,58 @@
   args
 }
 
-# A report's `template:` with its arguments written flat (`args:`), its
-# step sections dropped: the one form tflplanner writes
-.tpl_flat <- function(t, args) {
+# The step sections a report's `template:` has (maps, not one of the
+# template's own parameters), in the file's order
+.tpl_step_secs <- function(t) {
   own <- tryCatch(names(.tpl_params(as.character(t$name)[1L])), error = function(e) character())
-  for (k in setdiff(intersect(.tpl_arg_steps, names(t)), own)) {
-    if (is.list(t[[k]]) && !is.null(names(t[[k]]))) t[[k]] <- NULL
+  ks <- setdiff(intersect(names(t), .tpl_arg_steps), own)
+  ks[vapply(ks, function(k) is.list(t[[k]]) && !is.null(names(t[[k]])), NA)]
+}
+
+# A report's `template:` with its arguments written in the form the file
+# already uses: flat stays flat (`args:`); by step stays by step, an
+# argument in the section (or the flat `args:`) it was in, a new one in the
+# section of its `step:` (tfl_arg_defs(template =)), else flat.  `by_step`:
+# write a report with no arguments yet by step (a new report, the canon's
+# form).  An emptied section is dropped (tflspec reads `analysis: {}` as an
+# argument).
+.tpl_write_args <- function(t, args, by_step = FALSE) {
+  secs <- .tpl_step_secs(t)
+  if (!length(secs) && !(by_step && !length(t$args))) {
+    t$args <- args
+    return(t)
   }
-  t$args <- args
+  name <- as.character(t$name)[1L]
+  old <- lapply(stats::setNames(secs, secs), function(k) t[[k]])
+  flat_old <- names(t$args %||% list())
+  out <- old
+  out[] <- list(list())
+  flat <- list()
+  for (a in names(args)) {
+    k <- if (a %in% flat_old) NA_character_ else {
+      w <- secs[vapply(secs, function(k) a %in% names(old[[k]]), NA)]
+      if (length(w)) w[[1L]] else .tpl_arg_step(name, a, secs)
+    }
+    if (is.na(k)) flat[a] <- list(args[[a]]) else out[[k]][a] <- list(args[[a]])
+  }
+  # (the file's order kept, a new argument after it)
+  keep_order <- function(x, was) x[c(intersect(was, names(x)), setdiff(names(x), was))]
+  for (k in secs) {
+    out[[k]] <- keep_order(out[[k]], names(old[[k]]))
+    t[[k]] <- NULL
+  }
+  t$args <- if (length(flat)) keep_order(flat, flat_old)
+  for (k in names(out)) if (length(out[[k]])) t[[k]] <- out[[k]]
   t
+}
+
+# The section a template's argument is written in by step: its `step:`
+# (an older file's `ard:` for the analysis step); NA when the template does
+# not say
+.tpl_arg_step <- function(name, arg, secs = character()) {
+  st <- as.character(.arg_def(.tpl_defs(name), arg)$step %||% NA_character_)[1L]
+  if (is.na(st) || !st %in% .tpl_arg_steps) return(NA_character_)
+  if (identical(st, "analysis") && "ard" %in% secs && !"analysis" %in% secs) "ard" else st
 }
 
 # The study's datasets, by dataset (upper case), read once a study folder:
@@ -986,7 +1029,7 @@
   # (a template whose analysis set is the report's population (demog) holds
   # it in `common:`, not in its arguments)
   if (.tpl_pop_of_report(prm)) args$population <- NULL
-  o$template <- .tpl_flat(o$template, args)
+  o$template <- .tpl_write_args(o$template, args)
   o
 }
 
