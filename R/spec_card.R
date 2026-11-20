@@ -285,7 +285,11 @@ spec_card_fields <- function(fn, item = list(), ard = character(), defs = spec_c
   }
   # (the columns offered only to a field of columns -- a colour's field
   # offers its colours, a text's none -- or to a condition)
-  cols <- if (.type_has_column(d$def_type %||% d$type) || identical(.def_input(d), "condition")) {
+  # (an argument's own columns, ctx$arg_choices, before the card's: none
+  # there is none offered)
+  cols <- if (k %in% names(ctx$arg_choices)) {
+    as.character(ctx$arg_choices[[k]])
+  } else if (.type_has_column(d$def_type %||% d$type) || identical(.def_input(d), "condition")) {
     ctx$choices
   }
   arg_field(id, k, d$type, label = label, value = value, default = d$default,
@@ -312,7 +316,9 @@ spec_card_fields <- function(fn, item = list(), ard = character(), defs = spec_c
 # group) and the item's (spec_card_fields()); each field is marked where
 # its value came from, and a value given in the fold moves its field up.
 #   item   the item: `args` (its arguments), `own_args`, `arg_from`
-#   ctx    what the card knows: `choices` (the columns offered), `cols` (a
+#   ctx    what the card knows: `choices` (the columns offered),
+#          `arg_choices` (an argument's own, by name: in place of
+#          `choices` for it), `cols` (a
 #          widths field's columns), `ard` (the values the ARD decides, by
 #          argument), `fixed_link` (the way to the ARD's step), `sources`
 #          (.choice_values()'s ctx, for the definitions' choice words)

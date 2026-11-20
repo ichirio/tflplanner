@@ -453,6 +453,41 @@ test_that("tflspec's columns decide: by / group_col a pick of the columns", {
   }
 })
 
+test_that("by offers the row keys, group_col nothing on an ARD's plan", {
+  skip_on_cran()
+  # plan_filter(by = ): table_plan(rows = )'s columns, which rtfreporter
+  # reads `by` among -- never the column key, the label or a heading
+  demog <- list(hierarchy = character(), layers = ".variable", row_label = ".label",
+                variables = data.frame(variable = c("AGE", "SEX", "RACE")))
+  expect_identical(.filter_by_keys(demog), "variable")
+  # (one variable: the rows have no key)
+  one <- demog
+  one$variables <- data.frame(variable = "AGE")
+  expect_identical(.filter_by_keys(one), character())
+  expect_identical(.filter_by_keys(utils::modifyList(demog, list(
+    layers = c("PARAM", "'Overall'", ".variable", "AVISIT"), row_label = "AVISIT"))),
+    c("PARAM", "variable"))
+  ae <- list(hierarchy = c("AEBODSYS", "AEDECOD"), row_keys = c("AEBODSYS", "AEDECOD"))
+  expect_identical(.filter_by_keys(ae), "AEBODSYS")
+  # the argument's own choices win over the card's columns (TRT01A, the
+  # column key, which plan_filter(by = ) refuses)
+  ctx <- list(choices = c(TRT01A = "TRT01A"), arg_choices = list(by = "variable"))
+  opts <- function(h, a) {
+    m <- regmatches(h, regexpr(sprintf('(?s)<select[^>]*id="c__%s".*?</select>', a), h, perl = TRUE))
+    sub('^<option value="([^"]*)".*$', "\\1", regmatches(m, gregexpr('<option value="[^"]*"', m))[[1L]])
+  }
+  it <- list(fn = "plan_filter", args = list(by = "variable"), own_args = list(by = "variable"))
+  o <- opts(html(spec_card("c", "plan_filter", it, ctx = ctx)), "by")
+  expect_true("variable" %in% o)
+  expect_false("TRT01A" %in% o)
+  # group_col: none (rtfreporter refuses it on an ARD's plan)
+  ctx <- list(choices = c("TRUE", "TRT01A"), arg_choices = list(group_col = character()))
+  it <- list(fn = "plan_row_group", args = list(group_col = "X", collapse = "TRT01A"),
+             own_args = list(group_col = "X", collapse = "TRT01A"))
+  h <- html(spec_card("c", "plan_row_group", it, ctx = ctx))
+  expect_identical(setdiff(opts(h, "group_col"), c("", "X")), character())
+})
+
 test_that("(none) follows the definition's unset: none for stop, offered for omit and step_off", {
   skip_on_cran()
   has_none <- function(h, a) grepl(sprintf('id="c__%s__none"', a), h, fixed = TRUE)
