@@ -595,10 +595,16 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
 
 # Where an ARD program's lines run in the app: as under its setup, with
 # cards', dplyr's and tflspec's functions (the setup attaches them), the
-# app's own session left as it is
-.ard_program_env <- function() {
+# app's own session left as it is.  `study`: the study's spec, when a program
+# reads study$adam_meta (adam_codes() of the helpers looks `study` up in the
+# environment they are made in, as a program finds it in the global one)
+.ard_program_env <- function(study = NULL) {
   # the functions the programs call (set_levels() ...), then the packages'
   e <- .helpers_env(globalenv())
+  if (inherits(study, "tfl_study_spec")) {
+    e$study <- list(adam_meta = study$adam_meta, codelists = study$codelists,
+                    adam_org = new.env(), adam = new.env())
+  }
   for (pk in c("tflspec", "dplyr", "cards")) {
     ns <- asNamespace(pk)
     e <- list2env(mget(getNamespaceExports(ns), envir = ns, inherits = TRUE),

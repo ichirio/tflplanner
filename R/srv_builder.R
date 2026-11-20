@@ -482,16 +482,19 @@
                      unique(c(print_cols, cols_offered)),
                    plan_row_group = c(stats::setNames("TRUE", t("Every row key (TRUE)")),
                                       stats::setNames(cols_offered, cols_offered)),
+                   # (texts, not columns: nothing offered)
+                   plan_empty = , plan_titles = , plan_footnotes = , plan_after = NULL,
                    cols_offered)
       wc <- if (identical(fn, "plan_columns")) .widths_cols(it$args$widths, ch)
       bform$form_cols[[it$path]] <- wc
       # (normalize_ard(): its hierarchy the ARD analysis's, read only, the
       # way to step 1 beside it)
-      body <- .plan_form_body(
-        card_id(it$path), fn, it, choices = ch, lang = lang, cols = wc,
-        ard = if (identical(fn, "normalize_ard")) list(hierarchy = st$hierarchy),
-        fixed_link = if (identical(fn, "normalize_ard"))
-          shiny::actionLink("b_norm_step1", sprintf(t("Step %s's analysis"), .step_no("ard")), class = "small ms-1"))
+      body <- spec_card(
+        card_id(it$path), fn, it, lang = lang,
+        ctx = list(choices = ch, cols = wc,
+                   ard = if (identical(fn, "normalize_ard")) list(hierarchy = st$hierarchy),
+                   fixed_link = if (identical(fn, "normalize_ard"))
+                     shiny::actionLink("b_norm_step1", sprintf(t("Step %s's analysis"), .step_no("ard")), class = "small ms-1")))
       # plan_filter(): its condition by the condition builder (the rows
       # kept: tables$keep_where), its switches as fields
       if (identical(fn, "plan_filter")) {
@@ -774,7 +777,8 @@
     for (it in bform$items) {
       if (!it$fn %in% .plan_form_fns ||
           !(isTRUE(it$present) || isTRUE(it$added))) next
-      r <- .plan_form_read(input, card_id(it$path), it$fn, cols = bform$form_cols[[it$path]])
+      r <- spec_card_read(input, card_id(it$path), it$fn,
+                          ctx = list(cols = bform$form_cols[[it$path]]))
       if (!is.null(r)) out[[it$path]] <- r
     }
     # (a form of its own: the other arguments' fields, the item's whole
@@ -820,7 +824,7 @@
       }
       args <- if (isTRUE(attr(now[[path]], "special"))) .special_args_put(it$args, now[[path]]) else
         if (dots) .dots_form_args(.args_plain_attr(now[[path]]), it, fn) else
-          .plan_form_args(now[[path]], it, fn)
+          spec_card_args(now[[path]], it, fn)
       if (.args_same_r(fn, args, it$args %||% list())) next
       p2 <- guarded(.builder_item_write(rv$p, bform$id, fn, args, k))
       if (is.null(p2)) next
