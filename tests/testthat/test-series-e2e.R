@@ -53,11 +53,19 @@ series_study <- function(home, id) {
 }
 
 # The input a def's card gets (.tpl_type()), from the def alone
-series_card_type <- function(input, type) {
+series_card_type <- function(input, type, choices = NULL) {
   if (identical(input, "table")) return("table")
+  # a condition, or any R: the R field
+  if (identical(input, "condition") || identical(type, "r")) return("r")
+  # a pick of source words (report_data, study_data, ...): a choice
+  if (identical(input, "pick") && length(unlist(choices)) && grepl("^(list<)?string>?$", type))
+    return(if (startsWith(type, "list<")) "picks" else "pick")
   if (startsWith(type, "enum[")) return("choice")
+  # (several free texts: the list field, a line each)
+  if (identical(type, "list<string>")) return("list")
   switch(type, logical = "flag", number = "number", `list<column>` = "vars",
-         column = "var", level = "levels", "text")
+         column = "var", level = "levels", `list<level>` = "levels",
+         if (startsWith(type, "list<")) "list" else "text")
 }
 
 # The report's YAML file as the app wrote it (one text)
@@ -96,13 +104,10 @@ series_e2e <- function(t, kind, args, ids, in_code = character(), home, gap = NU
   prm <- .tpl_shown(.tpl_params(name))
   if (!length(prm)) {
     later <- c(later, "cards: .tpl_params() has no params for a series template (needs tflplanner#702)")
-  } else if (!exists(".tpl_table_spec", asNamespace("tflplanner"), inherits = FALSE)) {
-    # (the table and pick cards of a series template's params come with #702)
-    later <- c(later, "cards: a series template's table and pick params (needs tflplanner#702)")
   } else {
     expect_identical(names(prm), defs$name)
     got <- vapply(prm, function(x) .tpl_type(x), "")
-    want <- stats::setNames(mapply(series_card_type, defs$input, defs$type), defs$name)
+    want <- stats::setNames(mapply(series_card_type, defs$input, defs$type, defs$choices), defs$name)
     expect_identical(got, want)
     expect_true(all(got[defs$input == "table"] == "table"))
   }
@@ -186,7 +191,7 @@ series_e2e <- function(t, kind, args, ids, in_code = character(), home, gap = NU
 # The known gap: tflspec's template expansion does not yet carry these
 # args, derives or conditions to the ARD (tflspec#826/#827).  Remove the
 # `gap =` of each test when tflspec is fixed.
-series_gap <- "waiting for the tflspec fix (template resolve: args, derives, conditions; tflspec#826/#827): "
+series_gap <- "waiting for the figure key (figure: {name, args}; tflspec#834/#835, tflplanner#713): "
 
 test_that("the series templates are all there, each with its definitions", {
   series_skip()
@@ -201,8 +206,7 @@ test_that("ae_soc_pt: a template report to its ARD (BIGN, AE_ANY, AE_L1, AE_L2)"
   series_skip()
   home <- local_home()
   series_e2e("ae_soc_pt", "table", list(by = "TRT01A", min_pct = 5),
-             ids = c("BIGN", "AE_ANY", "AE_L1", "AE_L2"), in_code = "keep_min_pct(5", home = home,
-             gap = series_gap)
+             ids = c("BIGN", "AE_ANY", "AE_L1", "AE_L2"), in_code = "keep_min_pct(5", home = home)
 })
 
 test_that("demog: a template report to its ARD (BIGN and a variable each)", {
@@ -245,8 +249,7 @@ test_that("lab_tox_shift: a template report to its ARD (BIGN, ALT_HIGH, HGB_LOW)
              list(by = "TRT01A", formats = list(n = 0, p = "xx.xx%"),
                   conditions = list(list(tox_dir = "High", param = "Alanine Aminotransferase (U/L)"),
                                     list(tox_dir = "Low", param = "Hemoglobin (g/L)"))),
-             ids = c("BIGN", "ALT_HIGH", "HGB_LOW"), in_code = "Hemoglobin (g/L)", home = home,
-             gap = series_gap)
+             ids = c("BIGN", "ALT_HIGH", "HGB_LOW"), in_code = "Hemoglobin (g/L)", home = home)
 })
 
 test_that("listing: a template report to its ARD (BIGN, the total N)", {

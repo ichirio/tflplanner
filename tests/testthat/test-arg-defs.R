@@ -22,6 +22,7 @@ mk_defs <- function(...) {
   d$free <- vapply(rows, get, NA, k = "free", d = NA)
   d$ordered <- vapply(rows, get, NA, k = "ordered", d = NA)
   d$columns <- I(lapply(rows, function(r) r$columns))
+  d$fixed_rows <- I(lapply(rows, function(r) r$fixed_rows))
   d$tier <- vapply(rows, get, "", k = "tier", d = "usual")
   d$description <- vapply(rows, get, "", k = "description", d = "")
   d
@@ -301,4 +302,190 @@ test_that("a series template's params and sections come from its defs", {
   expect_identical(.tpl_arg_section("s1/t1", "title"), "page")
   # (an argument the defs lack: today's lookup)
   expect_identical(.tpl_arg_section("s1/t1", "population"), "data")
+})
+
+test_that("a series template's table params (conditions, formats): the table field, read back as records", {
+  local_defs_reset()
+  # (the template's ALL row before the report's: tfl_arg_defs()'s fixed_rows,
+  # tflspec#824 -- text values, `!r` its code, a position a row)
+  all_row <- data.frame(subgroup = "ALL", subgroup_lvl = "ALL", where = "TRUE", stringsAsFactors = FALSE)
+  attr(all_row, "position") <- "before"
+  testthat::local_mocked_bindings(
+    tfl_arg_defs = function(fn = NULL, template = NULL) {
+      mk_defs(
+        list(name = "conditions", step = "analysis", input = "table",
+             type = "rows<subgroup,subgroup_lvl,where>", columns = "params", default = list(),
+             default_kind = "value", fixed_rows = all_row),
+        list(name = "formats", step = "analysis", input = "table", type = "map<string,number|string>",
+             choices = "stats", free = TRUE),
+        list(name = "odd", step = "analysis", input = "table", type = "call<rtf_col_header>"))
+    },
+    .package = "tflspec")
+  p <- .tpl_params("s1/fh")
+  expect_identical(p$conditions$type, "table")
+  expect_identical(p$formats$type, "table")
+  expect_identical(.tpl_type(p$conditions), "table")
+  expect_identical(.tpl_type(p$formats), "table")
+  # (a table input whose type is no table: as before)
+  expect_identical(.tpl_type(p$odd), "text")
+  # (the template's own rows: the def's; none for a def without them)
+  expect_identical(p$conditions$fixed_rows$subgroup, "ALL")
+  expect_null(p$formats$fixed_rows)
+  # the field: the type's fields its columns, where an R cell offered the dataset's columns
+  data <- list(ADSL = data.frame(USUBJID = "1", SEX = "F", AGEGR1 = "<65"))
+  ctx <- .tpl_table_ctx(data, "ADSL", args = list(), params = p)
+  expect_identical(ctx$vars("adsl_sub"), c("USUBJID", "SEX", "AGEGR1"))
+  df <- data.frame(subgroup = c("SEX", "SEX"), subgroup_lvl = c("F", "M"),
+                   where = c("SEX == \"F\"", "SEX == \"M\""), stringsAsFactors = FALSE)
+  df$where <- lapply(df$where, tflspec::tfl_r)
+  spec <- .tpl_table_spec(p$conditions, ctx, df)
+  expect_identical(spec$cols, c("subgroup", "subgroup_lvl", "where"))
+  expect_identical(spec$kinds[[3L]], "r")
+  expect_true("AGEGR1" %in% spec$choices[[3L]])
+  h <- as.character(.field_table("tpl_x__conditions", spec, df, fixed_rows = p$conditions$fixed_rows))
+  expect_match(h, "value=\"M\"", fixed = TRUE)
+  # (the ALL row read only, before the report's rows; "after": after them)
+  expect_match(h, "rp-tbl-fixed[^$]*rp-tbl-body")
+  expect_match(h, "<td class=\"rp-tbl-td rp-mono\">TRUE</td>", fixed = TRUE)
+  # (a row before, a row after: each where its position says)
+  two <- data.frame(subgroup = c("ALL", "OTHER"), subgroup_lvl = c("ALL", "OTHER"),
+                    where = c("TRUE", "is.na(SEX)"), stringsAsFactors = FALSE)
+  attr(two, "position") <- c("before", "after")
+  h <- as.character(.field_table("tpl_x__conditions", spec, df, fixed_rows = two))
+  expect_match(h, "rp-tbl-fixed[^$]*>TRUE<[^$]*rp-tbl-body[^$]*rp-tbl-fixed[^$]*is.na\\(SEX\\)")
+  # (the R code as written, not quoted as a string)
+  expect_false(grepl("&quot;TRUE&quot;", h, fixed = TRUE))
+  # read back: the field's state -> records; untouched it says the value it shows
+  st <- as.character(jsonlite::toJSON(.tbl_state(spec, df), auto_unbox = TRUE))
+  got <- .tpl_value(st, "table", p$conditions)
+  expect_length(got, 2L)
+  expect_identical(got[[2L]]$subgroup_lvl, "M")
+  expect_s3_class(got[[2L]]$where, "tfl_r")
+  expect_identical(.tpl_untouched(df, "table", p$conditions), got)
+  # (the data frame and its records read back compare the same; a row more does not)
+  expect_identical(.tpl_table_key(got, p$conditions), .tpl_table_key(df, p$conditions))
+  expect_false(identical(.tpl_table_key(got[1L], p$conditions), .tpl_table_key(df, p$conditions)))
+  expect_null(.tpl_value("not a state", "table", p$conditions))
+  # a map: its key and value; a number kept a number
+  st <- as.character(jsonlite::toJSON(list(shape = "map", cols = c("key", "value"),
+                                           kinds = c("text", "number_text"),
+                                           rows = list(c("mean", "1"), c("pct", "xx.x"))), auto_unbox = TRUE))
+  expect_identical(.tpl_value(st, "table", p$formats), list(mean = 1, pct = "xx.x"))
+  expect_identical(.tpl_table_key(list(mean = 1, pct = "xx.x"), p$formats),
+                   .tpl_table_key(.tpl_value(st, "table", p$formats), p$formats))
+})
+
+test_that("a series template's pick of source words: chosen from them (report_data, study_data)", {
+  defs <- mk_defs(
+    list(name = "from", input = "pick", choices = "report_data, study_data", free = FALSE),
+    list(name = "population", input = "pick", choices = "populations"),
+    list(name = "tags", input = "pick", type = "list<string>", choices = "report_data"),
+    list(name = "note", input = "text"))
+  prm <- .tpl_params_from_defs(defs)
+  expect_identical(vapply(prm, function(x) x$type, ""),
+                   c(from = "pick", population = "pick", tags = "pick", note = "text"))
+  expect_identical(.tpl_type(prm$from), "pick")
+  expect_identical(.tpl_type(prm$tags), "picks")
+  # the choices: the report's data and the study's, in two groups
+  data <- list(ADSL = data.frame(USUBJID = "1"), ADAE = data.frame(AEDECOD = "x"))
+  ctx <- .tpl_table_ctx(data, "ADAE", args = list(), populations = c(SAF = "SAFFL"))
+  ch <- .choice_values(prm$from$sources, ctx)
+  expect_identical(unname(unlist(ch[[1L]])), "ADAE")
+  expect_identical(unname(unlist(ch[[2L]])), c("ADSL", "ADAE"))
+  # (the report's `data` argument before its dataset)
+  ctx <- .tpl_table_ctx(data, "ADAE", args = list(data = "adsl"))
+  expect_identical(unname(.choice_values("report_data", ctx)), "ADSL")
+  expect_identical(unname(.choice_values(prm$population$sources,
+                                         .tpl_table_ctx(data, populations = c(SAF = "SAFFL")))), "SAFFL")
+  # the value read back: one a text, several a vector, none NULL
+  expect_identical(.tpl_value("ADSL", "pick", prm$from), "ADSL")
+  expect_null(.tpl_value("", "pick", prm$from))
+  expect_identical(.tpl_value(c("ADSL", "ADAE"), "picks", prm$tags), c("ADSL", "ADAE"))
+  expect_identical(.tpl_untouched(c("ADSL", "ADAE"), "picks", prm$tags), c("ADSL", "ADAE"))
+})
+
+test_that("a level def's choices word levels(<param>) gives the card the variable to read", {
+  defs <- mk_defs(
+    list(name = "category", input = "pick", type = "column", choices = "vars(ADSL)"),
+    list(name = "responder", input = "pick", type = "level", choices = "levels(category)", free = TRUE),
+    list(name = "ref", input = "pick", type = "level", choices = "levels(from_args(category))"),
+    list(name = "many", input = "pick", type = "list<level>", choices = "levels(SEX)"),
+    list(name = "other", input = "pick", type = "level"))
+  prm <- .tpl_params_from_defs(defs)
+  expect_identical(prm$responder$of, "category")
+  expect_identical(prm$ref$of, "category")
+  expect_identical(prm$many$of, "SEX")
+  expect_null(prm$other$of)
+  expect_null(prm$category$of)
+  expect_identical(.tpl_type(prm$responder), "levels")
+  expect_identical(.tpl_type(prm$many), "levels")
+  # the variable is the other param's value (or its default), its values the data's
+  d <- list(ADSL = data.frame(ARM = c("A", "B", "A"), SEX = c("F", "M", "F")))
+  expect_identical(.tpl_levels_of(prm$responder, prm, list(category = "ARM")), "ARM")
+  expect_identical(.tpl_levels(d, .tpl_levels_of(prm$responder, prm, list(category = "ARM"))), c("A", "B"))
+  expect_identical(.tpl_levels(d, .tpl_levels_of(prm$many, prm, list())), c("F", "M"))
+})
+
+test_that("a series template's level params (orr_subgroup responder, forest_hr ref) read a variable", {
+  skip_if_not("tfl_arg_defs" %in% getNamespaceExports("tflspec"))
+  ok <- tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/orr_subgroup")),
+                 error = function(e) FALSE)
+  skip_if_not(ok, "this tflspec has no series templates")
+  for (x in list(c("orr_subgroup", "responder"), c("forest_hr", "ref"))) {
+    prm <- .tpl_params(paste0("tflspec_v1/", x[[1L]]))
+    expect_identical(.tpl_type(prm[[x[[2L]]]]), "levels", info = x[[1L]])
+    expect_true(nzchar(prm[[x[[2L]]]]$of %||% ""), info = x[[1L]])
+  }
+})
+
+test_that("a map keyed by columns (demog analysis_ids) offers the data's columns as its keys", {
+  defs <- mk_defs(list(name = "analysis_ids", step = "analysis", input = "table",
+                       type = "map<column,string>", choices = "vars(adsl_sub)"))
+  prm <- .tpl_params_from_defs(defs)
+  expect_identical(.tpl_type(prm$analysis_ids), "table")
+  data <- list(ADSL = data.frame(AGE = 1, SEX = "F"))
+  ctx <- .tpl_table_ctx(data, "ADSL", args = list(), params = prm)
+  spec <- .tpl_table_spec(prm$analysis_ids, ctx)
+  expect_identical(spec$kinds[[1L]], "pick")
+  expect_identical(unname(spec$choices[[1L]]), c("AGE", "SEX"))
+})
+
+test_that("a condition / R param (lab_tox_shift record_where) is the R field: its text kept as R, not YAML", {
+  defs <- mk_defs(list(name = "record_where", step = "data", input = "condition", type = "r"),
+                  list(name = "other", step = "data", input = "text", type = "r"))
+  prm <- .tpl_params_from_defs(defs)
+  expect_identical(.tpl_type(prm$record_where), "r")
+  expect_identical(.tpl_type(prm$other), "r")
+  for (txt in c('AVAL > 2 & PARAMCD == "ALT"', "TRUE", "x: y")) {
+    v <- .tpl_value(txt, "r", prm$record_where)
+    expect_s3_class(v, "tfl_r")
+    expect_identical(as.character(unclass(v)), txt)
+    # (read back as the shown text, and untouched it is no edit)
+    expect_identical(.tpl_r_text(v), txt)
+    expect_identical(.tpl_untouched(v, "r", prm$record_where), v)
+  }
+  expect_null(.tpl_value("  ", "r", prm$record_where))
+  expect_identical(.tpl_r_text(TRUE), "TRUE")
+  html <- as.character(.tpl_r_field("a", "lab", tflspec::tfl_r("TRUE"), c("AVAL", "PARAMCD")))
+  expect_match(html, "rp-condition", fixed = TRUE)
+  expect_match(html, "<option value=\"AVAL\"", fixed = TRUE)
+  expect_match(html, "value=\"TRUE\"", fixed = TRUE)
+})
+
+test_that("every series template's condition / R params get the R field", {
+  skip_if_not("tfl_arg_defs" %in% getNamespaceExports("tflspec"))
+  ok <- tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/lab_tox_shift")),
+                 error = function(e) FALSE)
+  skip_if_not(ok, "this tflspec has no series templates")
+  n <- 0L
+  for (tp in c("ae_soc_pt", "demog", "forest_hr", "km_simple", "lab_tox_shift", "orr_subgroup", "stf_t02_demog")) {
+    prm <- tryCatch(.tpl_params(paste0("tflspec_v1/", tp)), error = function(e) list())
+    for (x in prm) {
+      isr <- identical(x$def$input, "condition") || identical(x$def$type, "r")
+      if (isr) n <- n + 1L
+      expect_identical(.tpl_type(x) == "r", isr, info = paste(tp, x$name))
+    }
+  }
+  expect_gte(n, 1L)
+  expect_identical(.tpl_type(.tpl_params("tflspec_v1/lab_tox_shift")$record_where), "r")
 })

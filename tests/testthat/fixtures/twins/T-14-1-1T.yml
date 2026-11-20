@@ -1,0 +1,52 @@
+id: T-14-1-1T
+kind: table
+label: Demographics (a template SPEC, tflspec_v1/demog; the twin of T-14-1-1C)
+common:
+  population: SAF
+  treatment: TRT01A
+codelists:
+  TRT01A:
+    - value: Drug X
+      label: Drug X 200 mg
+    - value: Control
+      label: Control 100 mg
+template:
+  name: tflspec_v1/demog
+  analysis:
+    by:
+      - TRT01A
+    continuous:
+      - AGE
+    categorical:
+      - AGEGR1
+      - SEX
+      - RACE
+      - ECOGBL
+    missing_row: false
+  content:
+    labels:
+      AGE: Age (years)
+      AGEGR1: Age group, n (%)
+      SEX: Sex, n (%)
+      RACE: Race, n (%)
+      ECOGBL: Baseline ECOG, n (%)
+    cells:
+      'n': '{N}'
+      Mean (SD): '{mean} ({sd})'
+      Median: '{median}'
+      Min, Max: '{min}, {max}'
+    max_rows: 30
+page:
+  titles:
+    '1':
+      center: Table 14.1.1
+    '2':
+      center: Demographic Characteristics
+  footnotes:
+    '1':
+      left: SD = Standard Deviation.
+  tokens:
+    OUTPUT_TITLE: Demographic Characteristics
+    OUTPUT_POPULATION: Safety Analysis Set
+style: standard
+

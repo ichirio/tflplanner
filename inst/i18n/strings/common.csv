@@ -72,7 +72,7 @@
 "error",""
 "todo",""
 "outdated",""
-"unsaved",""
+"unsaved","未保存"
 "ok",""
 "Choose a report to see its log.","帳票を選ぶとそのログを表示します。"
 "The definition has errors (see Definition check)","定義にエラーがあります（定義チェックの結果を参照）"

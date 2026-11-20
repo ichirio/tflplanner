@@ -62,6 +62,12 @@ $(document).on('shiny:connected', function() {
     var el = document.getElementById(id);
     if (!el) return;
     var box = $(el).closest('.shiny-input-container');
+    if ($(el).hasClass('rp-tbl')) {
+      $(el).find('tbody.rp-tbl-body').empty();
+      box.find('.none-note').addClass('none-on');
+      Shiny.setInputValue(id + '__none', true, {priority: 'event'});
+      return;
+    }
     if (el.type === 'checkbox') {
       el.checked = false;
       box.find('.none-note').addClass('none-on');
@@ -72,6 +78,10 @@ $(document).on('shiny:connected', function() {
     el.value = btn ? btn.textContent.trim() : '(none)';
     $(el).trigger('input').trigger('change').trigger('blur');
   };
+  // a table typed into is a value again
+  $(document).on('input change rp-tbl-change', '.tpl-tbl-field .rp-tbl', function() {
+    $(this).closest('.tpl-tbl-field').find('.none-note').removeClass('none-on');
+  });
   // a switch moved by hand is a value again
   $(document).on('change', '.tpl-flag-field input[type=checkbox]', function() {
     $(this).closest('.shiny-input-container').find('.none-note').removeClass('none-on');
