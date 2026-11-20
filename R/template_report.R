@@ -676,6 +676,9 @@
         .tpl_columns(data, dataset)
     },
     levels = function(what = NULL) .tpl_levels(data, as.character(what %||% NA_character_)[1L], dataset),
+    # (figure_style(palette), figure_style(marker): the colours and the marker
+    # shapes of the figure style)
+    figure_style = function(what = NULL) .fig_style_choices(what),
     args = args,
     params = names(params))
 }
