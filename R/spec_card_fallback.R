@@ -25,14 +25,7 @@
   # (tflspec's own definition reads them as text)
   r = list(
     plan_columns = "cell_format",
-    plan_paginate_cols = "col_header"),
-  # A map's table field where tflspec says only its type: the columns'
-  # headings (`heads`, the key's and the value's) and a new row's key
-  # (`new_key`) -- normalize_ard(stack = ) a name, "subgroup" for a new
-  # row, and its layers
-  table = list(
-    normalize_ard = list(stack = list(heads = c("Name", "Layers"), new_key = "subgroup"),
-                         combine = list(heads = c("Name", "Variables")))))
+    plan_paginate_cols = "col_header"))
 
 # the definitions with the fallback's types (the field the type says, not
 # the definition's input form)
@@ -42,8 +35,6 @@
   for (a in intersect(.spec_fallback$r[[fn]], names(sch$args))) {
     if (is.null(sch$args[[a]]$type)) sch$args[[a]]$type <- "r"
   }
-  tb <- .spec_fallback$table[[fn]]
-  for (a in intersect(names(tb), names(sch$args))) sch$args[[a]][names(tb[[a]])] <- tb[[a]]
   sch
 }
 

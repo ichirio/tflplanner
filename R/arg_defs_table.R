@@ -84,6 +84,26 @@
   tryCatch(.choice_values(sources, ctx, lang, values = values), error = function(e) character())
 }
 
+# A column's heading from its definition (tfl_arg_defs()'s `columns`: a
+# map's `key` and `value`, each with label_en / label_ja): the label in the
+# language (the English one translated by the app's texts when there is no
+# Japanese one); NULL when it has none -- the generic heading is then used
+.tbl_col_label <- function(cd, lang = "en") {
+  if (!is.list(cd)) return(NULL)
+  ok <- function(x) is.character(x) && length(x) == 1L && !is.na(x) && nzchar(x)
+  if (identical(lang, "ja") && ok(cd$label_ja)) return(cd$label_ja)
+  if (ok(cd$label_en)) return(tr(cd$label_en, lang))
+  NULL
+}
+
+# a new row's cells: the def's `new_row` (column: value) where it names a
+# column, else blank
+.tbl_new_row <- function(nr, cols, kinds) {
+  vapply(seq_along(cols), function(j) {
+    .tbl_cell_text(if (is.list(nr)) nr[[cols[[j]]]], kinds[[j]])
+  }, "")
+}
+
 # The table's columns: `cols` their names, `heads` their headings, `kinds`
 # their cells' kinds, `choices` each one's choices, `ordered` whether rows
 # move.  A map: the key (picked from the def's choices -- typed when the
@@ -102,13 +122,21 @@
     key_kind <- function(k) if (grepl("^column", k) && length(choices) && !isTRUE(def$free)) "pick" else "text"
     key_ch <- function(k) if (grepl("^column", k)) choices else character()
     vk <- .tbl_cell_kind(tt$value)
+    # (the def's `columns`: the outer key's label, and the inner map's own
+    # `columns` -- its key and value -- for the second and third)
+    dc <- if (is.list(def$columns)) def$columns else list()
+    ic <- if (is.list(dc$value$columns)) dc$value$columns else list()
+    heads <- c(.tbl_col_label(dc$key, lang) %||% tr(if (grepl("^column", tt$key)) "Column" else "Key", lang),
+               .tbl_col_label(ic$key, lang) %||% tr(if (grepl("^column", tt$key2)) "Second column" else "Key", lang),
+               .tbl_col_label(ic$value, lang) %||% tr(if (identical(vk, "list")) "Values" else "Value", lang))
+    kinds <- c(key_kind(tt$key), key_kind(tt$key2), vk)
+    # (a new row's key: the def's `new_row`, the outer table's `key`)
     return(list(shape = "map2", cols = c("key", "key2", "value"),
-                heads = c(tr(if (grepl("^column", tt$key)) "Column" else "Key", lang),
-                          tr(if (grepl("^column", tt$key2)) "Second column" else "Key", lang),
-                          tr(if (identical(vk, "list")) "Values" else "Value", lang)),
-                kinds = c(key_kind(tt$key), key_kind(tt$key2), vk),
+                heads = heads, kinds = kinds,
                 choices = list(key_ch(tt$key), key_ch(tt$key2), character()),
-                ordered = isTRUE(def$ordered)))
+                ordered = isTRUE(def$ordered),
+                new = .tbl_new_row(def$new_row[intersect(names(def$new_row), "key")], c("key", "key2", "value"),
+                                   kinds)))
   }
   if (identical(tt$shape, "map")) {
     vk <- .tbl_cell_kind(tt$value)
@@ -122,16 +150,17 @@
       if (grepl("^column", tt$key)) "Column" else "Key"
     val_head <- switch(vk, r = "R", list = "Values", "Value")
     heads <- c(tr(key_head, lang), if (identical(val_head, "R")) "R" else tr(val_head, lang))
-    # (the def's own headings, where it gives two)
-    dh <- as.character(unlist(def$heads))
-    if (length(dh) == 2L) heads <- tr(dh, lang)
+    # (the def's `columns`, key and value, each its label in the language)
+    dc <- if (is.list(def$columns)) def$columns else list()
+    heads <- c(.tbl_col_label(dc$key, lang) %||% heads[[1L]], .tbl_col_label(dc$value, lang) %||% heads[[2L]])
+    kinds <- c(kk, vk)
     return(list(shape = "map", cols = c("key", "value"), heads = heads,
-                kinds = c(kk, vk),
+                kinds = kinds,
                 choices = list(if (!val_ch) choices else character(),
                                if (val_ch) choices else character()),
                 ordered = isTRUE(def$ordered),
-                # (a new row's key: the def's, else blank)
-                new = c(as.character(def$new_key %||% "")[1L], "")))
+                # (a new row's values: the def's `new_row`, else blank)
+                new = .tbl_new_row(def$new_row, c("key", "value"), kinds)))
   }
   vk <- .tbl_cell_kind(tt$value)
   cdefs <- def$columns
@@ -192,9 +221,12 @@
   ks <- lapply(cols, kind_of)
   # (the optional columns not shown, in the columns' order, each with its kind)
   extra <- lapply(intersect(all_cols, hidden), function(k) c(list(col = k), kind_of(k)))
+  kinds <- vapply(ks, function(x) x$kind, "")
   list(shape = "rows", cols = cols, heads = cols,
-       kinds = vapply(ks, function(x) x$kind, ""), choices = lapply(ks, function(x) x$choices),
-       ordered = TRUE, extra = extra)
+       kinds = kinds, choices = lapply(ks, function(x) x$choices),
+       ordered = TRUE, extra = extra,
+       # (a new row's values: the def's `new_row`, a column by name)
+       new = .tbl_new_row(def$new_row, cols, kinds))
 }
 
 # ---- the value <-> the state -------------------------------------------------------

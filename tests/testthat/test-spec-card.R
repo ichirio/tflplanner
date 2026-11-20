@@ -550,6 +550,8 @@ norm_state_of <- function(h, a) {
 
 test_that("normalize_ard(): stack and combine a table of a name and its list, drop_contexts a select of several", {
   skip_on_cran()
+  skip_if_not("new_row" %in% names(tflspec::tfl_arg_defs(fn = "normalize_ard")),
+              "tflspec without the table columns (tflspec#881)")
   d <- spec_card_defs("normalize_ard")
   # (tflspec's types, not the fallback's R)
   for (a in c("stack", "combine", "drop_contexts")) {
@@ -593,7 +595,13 @@ test_that("normalize_ard(): stack and combine a table of a name and its list, dr
   }
   # Japanese: the headings translated
   hj <- html(spec_card("c", "normalize_ard", it, ctx = ctx, lang = "ja"))
-  expect_match(hj, sprintf("<th>%s</th>\n<th>%s</th>", tr("Name", "ja"), tr("Layers", "ja")), fixed = TRUE)
+  # (the headings are tflspec's `columns` labels, label_ja: none of tflplanner's)
+  st_cols <- with(tflspec::tfl_arg_defs(fn = "normalize_ard"), columns[[which(name == "stack")]])
+  expect_match(hj, sprintf("<th>%s</th>\n<th>%s</th>", st_cols$key$label_ja, st_cols$value$label_ja),
+               fixed = TRUE)
+  # no stand-in left: the new row comes from the definition's `new_row`
+  expect_null(.spec_fallback$table)
+  expect_identical(d$args$stack$new_row, list(key = "subgroup"))
   # read back as the page sends it: the same values, no change
   inp <- list(c__stack = norm_state_of(h, "stack"), c__combine = norm_state_of(h, "combine"),
               c__drop_contexts = c("attributes", "total_n"), c__overall = "")

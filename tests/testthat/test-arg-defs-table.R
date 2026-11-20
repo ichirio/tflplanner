@@ -119,15 +119,72 @@ test_that("a map<string, list<column>|string> (stack): the key typed, the value 
                          "<option value=\"ALL\" selected>ALL</option>\n",
                          "<option value=\"SEX\">SEX</option>"), fixed = TRUE)
   expect_match(h, "<option value=\"group2\">group2</option>", fixed = TRUE)
-  # (the def's headings and a new row's key)
-  h <- html(arg_field("c", "stack", "map<string, list<column>|string>",
-                      def = list(input = "table", heads = c("Name", "Layers"), new_key = "subgroup")))
-  expect_match(h, "<th>Name</th>\n<th>Layers</th>", fixed = TRUE)
+  # (the def's `columns`, as tfl_arg_defs() gives them: the headings in the
+  # language, and `new_row` a new row's values)
+  cols <- list(key = list(label_en = "Name", label_ja = "名前"),
+               value = list(label_en = "Layers", label_ja = "レイヤー"))
+  d <- list(input = "table", columns = cols, new_row = list(key = "subgroup"))
+  h <- html(arg_field("c", "stack", "map<string, list<column>|string>", def = d))
+  expect_match(h, "<th>Name</th>
+<th>Layers</th>", fixed = TRUE)
   tpl <- regmatches(h, regexpr("<template class=\"rp-tbl-tpl\">.*?</template>", h))
   expect_match(tpl, "value=\"subgroup\"", fixed = TRUE)
-  expect_match(html(arg_field("c", "stack", "map<string, list<column>|string>", lang = "ja",
-                              def = list(input = "table", heads = c("Name", "Layers")))),
-               "<th>\u540d\u524d</th>", fixed = TRUE)
+  expect_identical(.tbl_spec("map<string, list<column>|string>", def = d)$new, c("subgroup", ""))
+  hj <- html(arg_field("c", "stack", "map<string, list<column>|string>", lang = "ja", def = d))
+  expect_match(hj, "<th>名前</th>
+<th>レイヤー</th>", fixed = TRUE)
+  # (no Japanese label: the English one through the app's texts, as it is in en)
+  d2 <- d
+  d2$columns$key$label_ja <- NA_character_
+  expect_identical(.tbl_spec("map<string, list<column>|string>", def = d2, lang = "ja")$heads[[1L]],
+                   tr("Name", "ja"))
+  # (no `columns` and no `new_row`: the generic headings, a blank new row)
+  sp <- .tbl_spec("map<string, list<column>|string>", def = list(input = "table"))
+  expect_identical(sp$heads, c("Key", "Values"))
+  expect_identical(sp$new, c("", ""))
+  # (a column with a label of one side only: the other keeps its generic heading)
+  sp <- .tbl_spec("map<string,string>", def = list(columns = list(value = list(label_en = "Format"))))
+  expect_identical(sp$heads, c("Key", "Format"))
+  # (the labels of a map whose value is R: its own label, not "R")
+  sp <- .tbl_spec("map<column,r>", def = list(columns = list(key = list(label_en = "Variable"),
+                                                              value = list(label_en = "Value labels"))))
+  expect_identical(sp$heads, c("Variable", "Value labels"))
+  # (a `new_row` naming a value too)
+  sp <- .tbl_spec("map<string,string>", def = list(new_row = list(key = "a", value = "b")))
+  expect_identical(sp$new, c("a", "b"))
+})
+
+test_that("a map of maps: the headings from the outer and the inner `columns`, the outer key's new row", {
+  lab <- function(en, ja) list(label_en = en, label_ja = ja)
+  cols <- list(key = lab("Nested variable", "入れ子の変数"),
+               value = c(lab("Parent", "親"),
+                         list(columns = list(key = lab("Variable", "変数"),
+                                             value = lab("Value", "値")))))
+  d <- list(input = "table", columns = cols, new_row = list(key = "AGE"))
+  ty <- "map<column,map<column,string>>"
+  sp <- .tbl_spec(ty, def = d)
+  expect_identical(sp$shape, "map2")
+  expect_identical(sp$heads, c("Nested variable", "Variable", "Value"))
+  expect_identical(sp$new, c("AGE", "", ""))
+  sp <- .tbl_spec(ty, def = d, lang = "ja")
+  expect_identical(sp$heads, c("入れ子の変数", "変数", "値"))
+  # (the outer value's own label is not a column here: three columns, three headings)
+  expect_length(sp$heads, 3L)
+  # (no `columns`: the generic headings)
+  expect_identical(.tbl_spec(ty, def = list(input = "table"))$heads, c("Column", "Second column", "Value"))
+  # (the inner map only partly labelled)
+  sp <- .tbl_spec(ty, def = list(columns = list(key = lab("Nested variable", "x"),
+                                                value = list(columns = list(value = lab("Level", "y"))))))
+  expect_identical(sp$heads, c("Nested variable", "Second column", "Level"))
+})
+
+test_that("a rows<...> table's new row from the def's `new_row`", {
+  sp <- .tbl_spec("rows<a, b>", def = list(input = "table", new_row = list(b = "x")))
+  expect_identical(sp$new, c("", "x"))
+  h <- html(arg_field("c", "r", "rows<a, b>", def = list(input = "table", new_row = list(b = "x"))))
+  tpl <- regmatches(h, regexpr("<template class=\"rp-tbl-tpl\">.*?</template>", h))
+  expect_match(tpl, "value=\"x\"", fixed = TRUE)
+  expect_identical(.tbl_spec("rows<a, b>", def = list(input = "table"))$new, c("", ""))
 })
 
 test_that("a list cell reads back a list a row, one value kept a text (stack, combine)", {
