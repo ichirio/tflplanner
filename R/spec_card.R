@@ -382,6 +382,7 @@ spec_card_read <- function(input, id, fn, ctx = list(), defs = spec_card_defs(fn
     if (identical(defs$args[[k]]$type, "formula")) out[[k]] <- .formula_text(out[[k]])
     if (isTRUE(defs$args[[k]]$dots)) out[[k]] <- .spec_dots_read(fn, k, out[[k]])
     out[[k]] <- .spec_drawn_r_read(defs$args[[k]], out[[k]])
+    if (.type_num_or_word(defs$args[[k]]$type)) out[[k]] <- .num_or_word_value(out[[k]])
   }
   for (k in parts) {
     v <- .spec_parts[[defs$args[[k]]$type]]$read(input, id, k, ctx)

@@ -119,7 +119,8 @@
     return(wrap(shiny::p(class = "small text-muted mb-0",
                          t("A figure of your own R code is drawn at its own size: its content has no tfl_image."))))
   }
-  item <- list(fn = .fig_image_fn, args = own)
+  # (the report's own: each value marked so)
+  item <- list(fn = .fig_image_fn, args = own, own_args = own)
   sz <- tryCatch(.fig_size_of(p, output_id), error = function(e) NULL)
   native <- tryCatch(.fig_native_size(p, output_id), error = function(e) c(6.5, 4.5))
   said <- vapply(c("width_in", "height_in"), function(k) tolower(as.character(own[[k]] %||% "")), "")

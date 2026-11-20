@@ -148,3 +148,14 @@ test_that("the content step's tfl_image card: fields from tflspec's definitions,
     expect_no_match(output$page_form$html, "rtf_figures", fixed = TRUE)
   })
 })
+
+test_that("a number-or-word field (tfl_image width_in: inches or fit) is typed as text", {
+  expect_identical(.arg_kind("number|enum[fit]"), "string")
+  expect_identical(.arg_kind("number"), "number")
+  expect_identical(.num_or_word_value("6.5"), 6.5)
+  expect_identical(.num_or_word_value("fit"), "fit")
+  h <- as.character(spec_card("img", "tfl_image", list(fn = "tfl_image", args = list(width_in = "fit"),
+                                                       own_args = list(width_in = "fit"))))
+  expect_match(h, "type=\"text\" id=\"img__width_in\"", fixed = TRUE)
+  expect_no_match(h, "rp-badge-defaults", fixed = TRUE)
+})
