@@ -178,6 +178,24 @@ test_that("a map of maps: the headings from the outer and the inner `columns`, t
   expect_identical(sp$heads, c("Nested variable", "Second column", "Level"))
 })
 
+test_that("a rows<...> table's headings: the columns' labels by field name, else the field name", {
+  cd <- list(vars = list(label_en = "Variables", label_ja = "変数", type = "list<column>"),
+             label = list(label_en = "Label", label_ja = "ラベル", type = "string"),
+             width = list(type = "number"))
+  ty <- "rows<vars,label,width>"
+  sp <- .tbl_spec(ty, def = list(input = "table", columns = cd))
+  expect_identical(sp$cols, c("vars", "label", "width"))
+  expect_identical(sp$heads, c("Variables", "Label", "width"))
+  sp <- .tbl_spec(ty, def = list(input = "table", columns = cd), lang = "ja")
+  expect_identical(sp$heads, c("変数", "ラベル", "width"))
+  # (the label drawn as it is; a field with none keeps its name, monospace)
+  h <- html(arg_field("c", "a", ty, lang = "ja", def = list(input = "table", columns = cd)))
+  expect_match(h, "<th>変数</th>", fixed = TRUE)
+  expect_match(h, "<th class=\"rp-mono\">width</th>", fixed = TRUE)
+  # (no labels at all: the field names, as before)
+  expect_identical(.tbl_spec("rows<a, b>", def = list(input = "table"))$heads, c("a", "b"))
+})
+
 test_that("a rows<...> table's new row from the def's `new_row`", {
   sp <- .tbl_spec("rows<a, b>", def = list(input = "table", new_row = list(b = "x")))
   expect_identical(sp$new, c("", "x"))

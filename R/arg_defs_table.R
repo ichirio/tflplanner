@@ -222,7 +222,10 @@
   # (the optional columns not shown, in the columns' order, each with its kind)
   extra <- lapply(intersect(all_cols, hidden), function(k) c(list(col = k), kind_of(k)))
   kinds <- vapply(ks, function(x) x$kind, "")
-  list(shape = "rows", cols = cols, heads = cols,
+  # (the headings: each column's label from the def's `columns` in the
+  # language, else its field name)
+  heads <- vapply(cols, function(k) .tbl_col_label(cd[[k]], lang) %||% k, "")
+  list(shape = "rows", cols = cols, heads = unname(heads),
        kinds = kinds, choices = lapply(ks, function(x) x$choices),
        ordered = TRUE, extra = extra,
        # (a new row's values: the def's `new_row`, a column by name)
@@ -541,7 +544,8 @@
       class = "table table-sm rp-tbl-table",
       shiny::tags$thead(shiny::tags$tr(
         lapply(seq_len(n), function(j) {
-          shiny::tags$th(class = if (identical(spec$shape, "rows") || identical(spec$kinds[[j]], "r")) "rp-mono",
+          shiny::tags$th(class = if ((identical(spec$shape, "rows") && identical(spec$heads[[j]], spec$cols[[j]])) ||
+                                       identical(spec$kinds[[j]], "r")) "rp-mono",
                          spec$heads[[j]])
         }),
         shiny::tags$th(class = "rp-tbl-tools"))),
