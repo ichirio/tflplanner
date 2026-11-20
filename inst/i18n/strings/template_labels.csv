@@ -370,3 +370,5 @@
 "The parameter (PARAMCD) whose time to event is drawn.","イベントまでの時間を描くパラメータ（PARAMCD）。"
 "The breaks of the time axis (and the times of the number at risk); none for ggplot2's.","時間軸の目盛り（とリスク数を出す時点）。none = ggplot2 の既定。"
 "The number of subjects at risk under the curves.","曲線の下に出す、リスクのある被験者数。"
+"The text of each categorical variable's values, by variable (R; the study's code lists by name, study$codelists$<name>). A variable the report does not show is left out, and so is a list the study has not got.","カテゴリ変数ごとの値の表示（R。試験のコードリストを名前で指定: study$codelists$<名前>）。帳票に出さない変数と、試験に無いリストは除く。"
+"The label of each value of a variable, code to text ({SEX: {F: Female}}) or a study list (!r study$codelists$SEX); empty for the code list's labels.  It goes with labels in one plan_labels, a variable's heading kept.","変数の値ごとのラベル。コードから表示へ（{SEX: {F: Female}}）か試験のリスト（!r study$codelists$SEX）。空欄ならコードリストのラベル。labels と 1 つの plan_labels になり、変数の見出しは残る。"
