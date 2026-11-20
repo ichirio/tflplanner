@@ -194,6 +194,6 @@ test_that("the sample's T-14-1-5 nests the Asian sub-categories; T-14-1-6 has tw
                      c("AGE", "AGEGR1", "SEX", "RACE", "ASIANSUB", "ETHNIC"))
   }
   a5 <- ard_rows(s$planner, "analyses", "T-14-1-5")
-  expect_setequal(a5$analysis_id, c("GROUPN", "RACE", "ASIANSUB", "CONT", "CAT"))
-  expect_true(all(a5$overall[a5$analysis_id != "GROUPN"] %in% "TRUE"))
+  expect_setequal(a5$analysis_id, c("BIGN", "RACE", "ASIANSUB", "CONT", "CAT"))
+  expect_true(all(a5$overall[a5$analysis_id != "BIGN"] %in% "TRUE"))
 })

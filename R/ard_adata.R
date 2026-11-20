@@ -365,7 +365,7 @@
 #' @param data_id The name (lower case; also the object's name in the ARD
 #'   program).
 #' @param from A dataset, or an analysis data above.
-#' @param population_id,subjects_in,where,add,derive,keep,distinct,label The
+#' @param population_id,subjects_in,where,add,derive,keep,distinct The
 #'   other columns (`subjects_in`: an analysis data above whose subjects it
 #'   keeps, instead of `population_id`; `add`, `keep`, `distinct`: several
 #'   columns with `" | "` between them).
@@ -389,12 +389,12 @@
 #' @export
 set_analysis_data <- function(x, output_id, data_id, from, population_id = NA,
                               where = NA, add = NA, derive = NA,
-                              distinct = NA, label = NA, old = NULL,
+                              distinct = NA, old = NULL,
                               subjects_in = NA, keep = NA, code = NA) {
   if (.is_blank(output_id)) stop("An analysis data is a report's: give the report.", call. = FALSE)
   ad <- .adata_rows(x, output_id)
   row <- .normalize_ard_sheet(data.frame(
-    output_id = output_id, data_id = data_id, label = label, from = from,
+    output_id = output_id, data_id = data_id, from = from,
     population_id = population_id, subjects_in = subjects_in, where = where,
     add = add, derive = derive, keep = keep, distinct = distinct,
     code = code, stringsAsFactors = FALSE), "analysis_data")
@@ -494,7 +494,7 @@ import_analysis_data <- function(x, from_output, output_id, data_ids = NULL) {
 #'   own).
 #' @noRd
 name_analysis_data <- function(x, output_id, dataset, population_id,
-                               data_id, label = NA) {
+                               data_id) {
   a <- x$ard$analyses
   if (is.null(a$data)) a$data <- NA_character_
   same <- function(v, w) if (.is_blank(w)) .is_blank_v(v) else !.is_blank_v(v) & v == w
@@ -515,7 +515,7 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
   w <- unique(a$where[hit])
   common <- if (length(w) == 1L && !is.na(w)) w else NA_character_
   x <- set_analysis_data(x, output_id, data_id, from = ds_now, population_id = population_id,
-                         where = common, label = label)
+                         where = common)
   a$data[hit] <- data_id
   a$dataset[hit] <- NA
   a$population_id[hit] <- NA
@@ -552,10 +552,16 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
 
 # Where an ARD program's lines run in the app: as under its setup, with
 # cards', dplyr's and tflspec's functions (the setup attaches them), the
-# app's own session left as it is
-.ard_program_env <- function() {
+# app's own session left as it is.  `study`: the study's spec, when a program
+# reads study$adam_meta (adam_codes() of the helpers looks `study` up in the
+# environment they are made in, as a program finds it in the global one)
+.ard_program_env <- function(study = NULL) {
   # the functions the programs call (set_levels() ...), then the packages'
   e <- .helpers_env(globalenv())
+  if (inherits(study, "tfl_study_spec")) {
+    e$study <- list(adam_meta = study$adam_meta, codelists = study$codelists,
+                    adam_org = new.env(), adam = new.env())
+  }
   for (pk in c("tflspec", "dplyr", "cards")) {
     ns <- asNamespace(pk)
     e <- list2env(mget(getNamespaceExports(ns), envir = ns, inherits = TRUE),

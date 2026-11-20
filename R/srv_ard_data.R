@@ -248,10 +248,9 @@
         sprintf(t("Also kept to the population %s (population_id, as the sheet has it: SPEC shows it)."),
                 e$legacy_pop)),
       bslib::layout_columns(
-        col_widths = c(5, 7),
+        col_widths = 5,
         shiny::textInput("adata_id", argl("Name (used in the program)", "data_id"),
-                         blank_na(r$data_id), width = "100%"),
-        shiny::textInput("adata_label", t("Label"), blank_na(r$label), width = "100%")),
+                         blank_na(r$data_id), width = "100%")),
       shiny::uiOutput("adata_same"),
       shiny::div(
       id = "adata_gui", class = if (!.is_blank(r$code)) "rp-greyed",
@@ -428,7 +427,7 @@
     p <- rv$p
     if (!is.null(e$name)) {
       sp <- .an_data_split(e$name)
-      p <- name_analysis_data(p, ard_target(), sp$dataset, sp$pop, id, label = one(input$adata_label))
+      p <- name_analysis_data(p, ard_target(), sp$dataset, sp$pop, id)
       e$old <- id
     }
     from <- one(input$adata_from)
@@ -448,7 +447,7 @@
     p <- set_analysis_data(p, ard_target(), id, from = from, population_id = pop, subjects_in = subjects,
                            where = where, add = add,
                            derive = derive, keep = keep,
-                           distinct = distinct, label = one(input$adata_label),
+                           distinct = distinct,
                            old = e$old, code = code)
     suppressWarnings(.ard_spec(p$ard))
     p
@@ -610,9 +609,8 @@
     f <- input$adata_import_from
     shiny::req(f)
     ad <- .adata_rows(rv$p, f)
-    lab <- ifelse(.is_blank_v(ad$label), ad$data_id, paste(ad$data_id, "\u2014", ad$label))
     shiny::checkboxGroupInput("adata_import_ids", t("Its analysis data (what they are made from and kept to come with them)"),
-                              stats::setNames(ad$data_id, lab), selected = ad$data_id,
+                              stats::setNames(ad$data_id, ad$data_id), selected = ad$data_id,
                               width = "100%")
   })
   shiny::observeEvent(input$adata_import_ok, {
@@ -840,7 +838,7 @@
     a <- shiny::isolate(st_rows())
     kids <- a[.stack_kids(a, r$analysis_id), , drop = FALSE]
     fl <- .stack_flags_of(r$args)
-    # the report's own rows that count the subjects per group (GROUPN)
+    # the report's own rows that count the subjects per group (BIGN)
     groupn <- a$analysis_id[.stack_group_n(a, r)]
     js <- function(input, value) sprintf(
       "Shiny.setInputValue('%s', %s, {priority: 'event'});", input, value)
@@ -905,7 +903,7 @@
         shiny::tags$summary(class = "small", t("This analysis as code")),
         shiny::div(class = "rp-code", shiny::verbatimTextOutput("ard_an_code"))))
   })
-  # the stack counting the subjects per group while GROUPN does: said at once
+  # the stack counting the subjects per group while BIGN does: said at once
   output$ard_stack_n_note <- shiny::renderUI({
     st_drawn()
     r <- shiny::isolate(st_row())
@@ -1131,7 +1129,7 @@
     an_pick(s$analysis_id[1L])
     bump()
     if (isFALSE(.stack_flags_of(s$args[1L])$flags[[".by_stats"]])) {
-      notify(sprintf(t("%s does not count the subjects per group: the report's GROUPN does already (two would break the column headers' N). Delete GROUPN and tick it on %s to let the stack count them."),
+      notify(sprintf(t("%s does not count the subjects per group: the report's BIGN does already (two would break the column headers' N). Delete BIGN and tick it on %s to let the stack count them."),
                      s$analysis_id[1L], s$analysis_id[1L]))
     }
   })

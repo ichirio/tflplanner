@@ -81,6 +81,25 @@
        figures = p$fig_designs %||% list(), study = study)
 }
 
+# study.yml's top-level keys no planner writes (tflplanner's screens write
+# them into the file outside a save)
+.study_yml_not_planner <- c("series_settings", "ai")
+
+# A planner's spec with study.yml's blocks of .study_yml_not_planner its
+# text lacks taken from the study folder's file, as the file has them
+.spec_keep_file_blocks <- function(p, root) {
+  f <- file.path(root, .study_file)
+  txt <- p$spec$text[[.study_file]]
+  if (is.null(txt) || !file.exists(f)) return(p)
+  have <- .yaml_top_blocks(readLines(f, encoding = "UTF-8", warn = FALSE))
+  add <- setdiff(intersect(.study_yml_not_planner, names(have)), names(.yaml_top_blocks(txt)))
+  if (!length(add)) return(p)
+  p$spec$text[[.study_file]] <- c(txt, unlist(have[add], use.names = FALSE))
+  y <- tryCatch(tflspec::tfl_read_study_spec(root)$study, error = function(e) NULL)
+  if (!is.null(y) && !is.null(p$spec$study$study)) p$spec$study$study[add] <- y[add]
+  p
+}
+
 # The study's definition written as the YAML spec into its folder: the
 # view's edits taken into the spec (.spec_sync(): only the files they
 # change come from the bridge, the others keep the spec's text), study.yml
@@ -91,8 +110,13 @@
 # save_study() lists them: file, status; the planner, in step with the
 # spec now, is the attribute `planner`.
 .save_yaml_spec <- function(p, meta, root, own = function(rel) FALSE) {
+  whole <- is.null(p$spec)
   p <- .spec_sync(p, meta)
   attr(p, "changed") <- NULL
+  # (a planner with no spec is written whole: study.yml's blocks no planner
+  # writes -- the series card's series_settings:, the AI screens' ai: --
+  # kept from the file as it is)
+  if (whole) p <- .spec_keep_file_blocks(p, root)
   p$spec$study$dir <- normalizePath(root, "/", mustWork = FALSE)
   files <- .spec_write(p, root, own)
   attr(files, "planner") <- p

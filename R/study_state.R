@@ -85,6 +85,7 @@
     }
     q <- p
     q$sheets <- q$lf <- q$fig_designs <- q$spec <- NULL
+    q$study <- .program_key_study(p$study)
     .program_cache$cut <- list(sheets = lapply(p$sheets, cut), lf = lapply(p$lf, cut), rest = q,
                                in_step = !is.null(p$spec) && !is.null(p$spec$base) &&
                                  .same_planner(p$spec$base, p))
@@ -94,7 +95,34 @@
   mine <- function(parts) lapply(parts, function(x) list(x$all, x$shared, x[[id]]))
   list(ct$rest, sheets = mine(ct$sheets), lf = mine(ct$lf),
        fig = p$fig_designs[intersect(id, names(p$fig_designs))],
-       spec_output = p$spec$outputs[[id]], spec_study = p$spec$study, in_step = ct$in_step)
+       spec_output = p$spec$outputs[[id]], spec_study = .program_key_spec_study(p$spec$study),
+       in_step = ct$in_step)
+}
+
+# The study keys a report's program is written from (#738): the planner's
+# own study keys, .study_keys -- rounding (builder_content_code.R, the
+# digits' source), output_path (programs.R, the RTF's place), program_dir.
+# The study's own settings (treatment, sd_missing, adam_levels) reach a
+# program through the spec's study.yml settings: (kept whole below).
+.program_key_study <- function(study) {
+  if (is.null(study)) return(NULL)
+  study[intersect(unlist(.study_keys, use.names = FALSE), names(study))]
+}
+
+# The study's spec as a program reads it: study.yml without the study's
+# description fields and the save's stamps.  tflspec writes a report's code
+# from study.yml's settings: (spec_report.R, spec_setup.R, table_spec.R,
+# template defaults settings.<key>), series_settings:, tokens: and the rest
+# of the spec (defaults, styles, patterns, data); none of these fields.
+# Their values reach a page through the tokens sheet's study rows
+# (.meta_tokens()), which the key keeps.
+.program_key_unread <- c("title", "short_title", "compound", "phase", "description",
+                         "created", "updated", "tflplanner")
+.program_key_spec_study <- function(st) {
+  if (is.list(st) && is.list(st$study)) {
+    st$study <- st$study[setdiff(names(st$study), .program_key_unread)]
+  }
+  st
 }
 
 # its checksum, kept with it

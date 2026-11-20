@@ -58,7 +58,7 @@
 
 # The fields a def adds to a schema argument (.schema_of())
 .arg_def_fields <- c("input", "choices", "values", "free", "ordered", "columns", "step",
-                     "tier", "required", "default", "default_kind")
+                     "tier", "required", "unset", "default", "default_kind")
 
 # A schema entry with its arguments' definitions: each argument gains the
 # def's fields (.arg_def_fields) -- its label and help stay the schema's,
@@ -66,7 +66,9 @@
 # schema gives is kept.  No defs: the entry as it was.
 .schema_with_defs <- function(ent, defs) {
   if (is.null(ent) || !is.data.frame(defs) || !nrow(defs) || !length(ent$args)) return(ent)
-  for (a in intersect(names(ent$args), defs$name)) {
+  # (not `...`: tflspec's row of the dots describes them, a card has no
+  # field of them)
+  for (a in setdiff(intersect(names(ent$args), defs$name), "...")) {
     d <- .arg_def(defs, a)
     x <- ent$args[[a]] %||% list()
     for (k in setdiff(.arg_def_fields, c("default", "default_kind"))) {
@@ -241,10 +243,18 @@
 # A def's type as a template parameter's (tfl_param()'s type)
 .tpl_param_type <- function(d) {
   type <- d$type %||% "string"
+  # (a table of a map or rows: the table field, R/arg_defs_table.R)
+  if (identical(d$input, "table") && !is.null(.tbl_type(type))) return("table")
   if (length(d$values) && identical(d$input, "pick") && !grepl("^list<", type)) return("choice")
+  # (a condition, or any R: the R field -- its text kept as R, never read as YAML)
+  if (identical(d$input, "condition") || identical(type, "r")) return("r")
   if (grepl("^enum\\[", type)) return("choice")
   if (grepl("^(list<)?column>?$", type)) return("vars")
   if (grepl("^(list<)?level>?$", type)) return("levels")
+  # (a pick of names its source words give -- report_data, study_data,
+  # populations, ...: chosen from them, tflspec#821)
+  if (identical(d$input, "pick") && grepl("^(list<)?string>?$", type) &&
+      length(.choice_words(d$choices))) return("pick")
   if (identical(type, "logical")) return("flag")
   if (type %in% c("number", "integer")) return("number")
   if (grepl("^list<", type)) return("list")
@@ -269,6 +279,8 @@
          required = isTRUE(d$required),
          doc = if (length(d$description) && !is.na(d$description) && nzchar(d$description)) d$description,
          study = if (identical(kind, "study") && tagged) as.character(dv$value),
+         # (a !series K default: K, the series value it reads, .tpl_series_value())
+         series = if (identical(kind, "series") && tagged) as.character(unlist(dv$value))[1L],
          type = .tpl_param_type(d),
          multiple = grepl("^list<", d$type %||% ""),
          choices = if (length(vals)) as.character(unlist(vals)),
@@ -276,9 +288,40 @@
          step = if (identical(d$step, "data")) "data" else "call",
          hidden = identical(kind, "fixed"),
          arg_step = d$step, input = d$input, sources = d$choices,
-         free = d$free, ordered = d$ordered, default_kind = if (kind != "none") kind)
+         # (a level's variable: the one its choices word levels(<param>) names)
+         of = .tpl_levels_word(d),
+         free = d$free, ordered = d$ordered, default_kind = if (kind != "none") kind,
+         # (the def itself: a table's type, columns and choices)
+         def = d,
+         # (a table's rows the template writes itself -- forest_hr's ALL row
+         # before its conditions: tfl_arg_defs()'s fixed_rows, tflspec#824;
+         # shown read only, never written)
+         fixed_rows = .tpl_fixed_rows(d))
   })
   stats::setNames(out, defs$name)
+}
+
+# The variable a level def's choices read (its words levels(by),
+# levels(from_args(by))): a param's name or a column's, as levels' `of`;
+# NULL for any other def
+.tpl_levels_word <- function(d) {
+  if (!grepl("^(list<)?level>?$", d$type %||% "")) return(NULL)
+  w <- .choice_words(d$choices)
+  w <- w[vapply(w, function(x) identical(.choice_word_parse(x)$name, "levels"), NA)]
+  if (!length(w)) return(NULL)
+  a <- .choice_word_parse(w[[1L]])$args
+  if (!length(a)) return(NULL)
+  if (grepl("^from_args\\s*[(]", a[[1L]])) a <- .choice_word_parse(a[[1L]])$args
+  if (length(a)) a[[1L]]
+}
+
+# A def's fixed rows (a data frame, its attribute "position" "before" or
+# "after" the report's rows); NULL for none, or a tflspec that has no such
+# column yet
+.tpl_fixed_rows <- function(d) {
+  x <- d$fixed_rows
+  if (is.list(x) && !is.data.frame(x) && length(x) == 1L && is.data.frame(x[[1L]])) x <- x[[1L]]
+  if (is.data.frame(x) && nrow(x)) x
 }
 
 # the editor section of a def's step

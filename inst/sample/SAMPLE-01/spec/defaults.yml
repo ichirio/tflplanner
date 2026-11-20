@@ -1,7 +1,10 @@
 content:
   - normalize_ard: {}
   - plan_cells:
-      default: '{n:.0f} ({p:.1f%})'
+      default:
+        - !r n == 0 ~ "0"
+        - '{n:.0f} ({p:.1f%})'
+      na: '-'
   - plan_digits:
       rounding: sas
   - plan_col_header:
@@ -34,6 +37,45 @@ content:
         .values: 18.0
   - plan_style:
       align_count_pct: true
+# The study's code lists, by name: for display, referred to by name
+# (study$codelists$SEX); none reaches a report through extends:.
+codelists:
+  SEX:
+    - {value: F, label: Female}
+    - {value: M, label: Male}
+  AGEGR1:
+    - {value: '<65', label: <65 years}
+    - {value: '>=65', label: '>=65 years'}
+  RACE:
+    - {value: WHITE, label: White}
+    - {value: BLACK OR AFRICAN AMERICAN, label: Black or African American}
+    - {value: ASIAN, label: Asian}
+    - {value: AMERICAN INDIAN OR ALASKA NATIVE, label: American Indian or Alaska Native}
+    - {value: NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER, label: Native Hawaiian or Other Pacific Islander}
+    - {value: OTHER, label: Other}
+  ETHNIC:
+    - {value: HISPANIC OR LATINO, label: Hispanic or Latino}
+    - {value: NOT HISPANIC OR LATINO, label: Not Hispanic or Latino}
+    - {value: NOT REPORTED, label: Not Reported}
+# The ADaM metadata, in a define's shape (tfl_read_define()): each variable's
+# code list (its OID) and the code lists, a value a row.  The levels of
+# study$adam come from these (settings: adam_levels: codelists).
+adam_meta:
+  variables:
+    - {dataset: ADSL, variable: SEX, codelist: CL.SEX}
+    - {dataset: ADSL, variable: AGEGR1, codelist: CL.AGEGR1}
+    - {dataset: ADSL, variable: RACE, codelist: CL.RACE}
+  codelists:
+    - {codelist: CL.SEX, name: Sex, value: F, decode: Female, order: 1}
+    - {codelist: CL.SEX, name: Sex, value: M, decode: Male, order: 2}
+    - {codelist: CL.AGEGR1, name: Pooled Age Group 1, value: '<65', order: 1}
+    - {codelist: CL.AGEGR1, name: Pooled Age Group 1, value: '>=65', order: 2}
+    - {codelist: CL.RACE, name: Race, value: WHITE, order: 1}
+    - {codelist: CL.RACE, name: Race, value: BLACK OR AFRICAN AMERICAN, order: 2}
+    - {codelist: CL.RACE, name: Race, value: ASIAN, order: 3}
+    - {codelist: CL.RACE, name: Race, value: AMERICAN INDIAN OR ALASKA NATIVE, order: 4}
+    - {codelist: CL.RACE, name: Race, value: NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER, order: 5}
+    - {codelist: CL.RACE, name: Race, value: OTHER, order: 6}
 styles:
   standard:
     page:

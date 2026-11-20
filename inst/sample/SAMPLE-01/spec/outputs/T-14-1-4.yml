@@ -8,11 +8,10 @@ extends:
   - defaults
 data:
   - id: adsl_scrf
-    label: Screen failures
     from: ADSL
 ard:
   analyses:
-    - id: GROUPN
+    - id: BIGN
       method: categorical
       data: adsl_scrf
       variables:

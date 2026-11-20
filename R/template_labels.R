@@ -31,7 +31,6 @@
   any_grade = "Any-grade label",
   flags = "Flag rows",
   term = "Term variable",
-  data_label = "Analysis data label",
   analysis_id = "Analysis ID",
   analysis_label = "Analysis label",
   sort_by = "Column that orders terms",
@@ -52,6 +51,7 @@
   censor = "Censoring variable",
   event = "Event definition",
   time_unit = "Time unit",
+  days_per_month = "Days in a month",
   y_type = "Y axis type",
   y_percent = "Y axis in percent",
   ci = "Confidence interval display",
@@ -165,6 +165,11 @@
   analysis_ids = "Analysis ID of each depth",
   sort_column = "Column that orders the rows",
   empty_text = "Text when no record is left",
+  subject_vars = "ADSL variables added to each record",
+  param_var = "Parameter variable",
+  baseline_total = "Total row of the baseline categories",
+  post_total = "Total column of the post-baseline categories",
+  baseline_total_label = "Total row label",
   stub_name = "Row-title column name",
   stub_before = "Row-title column before the row keys",
   widths = "Column widths",
@@ -175,7 +180,13 @@
   blanks_counted = "Blank rows counted in a page's rows",
   border_header = "Rule round the column heading",
   border_group = "Rule under each block",
-  style = "Style set"
+  style = "Style set",
+  conditions = "Analysis rows",
+  subgroup_vars = "Variables the subgroup rows read",
+  responder = "Response category",
+  overall_label = "Any-record row label",
+  days_per_month = "Days per month",
+  record_where = "Worst record of each subject"
 )
 
 .tpl_doc_labels <- c(
@@ -185,5 +196,15 @@
   "the groups: a page each (an analyte, an arm), the summary's too" = "Variable that splits the pages",
   "the variables that divide the listing (`by_break`); the records are ordered by them first, then by `sort`" =
     "Variables that divide the listing",
-  "the Total column's heading" = "Total column heading"
+  "The variables that divide the listing (by_break); the records are ordered by them first. Empty for one listing." =
+    "Variables that divide the listing",
+  "the Total column's heading" = "Total column heading",
+  # (analysis_ids: "of each depth" is tflspec_hierarchy's; demog's and
+  # tflspec_summary's are per variable, tflspec_shift's per parameter)
+  "An analysis id for each variable; empty for the variable's name." = "Analysis ID of each variable",
+  "An analysis id for a parameter, keyed by its value (ALT); empty for the parameter's value." =
+    "Analysis ID of each parameter",
+  "The subgroup rows, one a subgroup level, after the ALL row." = "Subgroup rows",
+  "The group variable; one curve a group." = "Variable that splits the curves",
+  "The breaks of the time axis (and the times of the number at risk); none for ggplot2's." = "Time axis ticks"
 )

@@ -205,6 +205,17 @@
   invisible(f)
 }
 
+# A YAML file's top-level blocks, by key: each key's line to the next
+# top-level key's, as written (its tags, comments and quoting kept)
+.yaml_top_blocks <- function(lines) {
+  lines <- as.character(lines)
+  top <- grep("^[^[:space:]#-][^:]*:", lines)
+  if (!length(top)) return(list())
+  ends <- c(top[-1L] - 1L, length(lines))
+  keys <- gsub("^[\"']|[\"']$", "", sub(":.*$", "", lines[top]))
+  stats::setNames(lapply(seq_along(top), function(i) lines[top[i]:ends[i]]), keys)
+}
+
 # Which part of the spec a file is: study, data, defaults, toc,
 # pattern (its name) or output
 .spec_part <- function(rel) {
@@ -222,7 +233,38 @@
 # the bridge's text and what it reads as; the others keep the spec's.  The
 # result is in step (its base the view now).  The files changed are the
 # attribute `changed`.
+#
+# (kept for the last planner and fields asked for: the study tab's
+# plan_cells() card asks for the spec at each edit, twice, and a bridge
+# writes the whole study -- a select took a minute, #738)
+.spec_sync_cache <- new.env(parent = emptyenv())
 .spec_sync <- function(p, meta) {
+  k <- .spec_sync_cache
+  if (!is.null(k$out) && identical(k$meta, meta) && identical(k$p, p)) return(k$out)
+  out <- .spec_sync_run(p, meta)
+  k$out <- NULL
+  k$p <- p
+  k$meta <- meta
+  k$out <- out
+  out
+}
+
+# The base's bridge, kept while the base is the same (it is until the next
+# save or open: each edit bridged it again), its folder kept with it
+.spec_base_cache <- new.env(parent = emptyenv())
+.spec_bridge_base <- function(base, meta, style) {
+  k <- .spec_base_cache
+  key <- list(base, meta, style)
+  if (!is.null(k$was) && dir.exists(k$was$dir) && identical(k$key, key)) return(k$was)
+  if (!is.null(k$was)) unlink(k$was$dir, recursive = TRUE)
+  k$was <- k$key <- NULL
+  was <- .spec_bridge(base, meta, style)
+  k$key <- key
+  k$was <- was
+  was
+}
+
+.spec_sync_run <- function(p, meta) {
   sp <- p$spec
   body <- .planner_body(p)
   m <- .spec_meta(meta)
@@ -238,8 +280,7 @@
   if (is.null(sp) || is.null(sp$base)) {
     changed <- union(names(sp$text), names(now$text))
   } else {
-    was <- .spec_bridge(sp$base, sp$meta, style)
-    on.exit(unlink(was$dir, recursive = TRUE), add = TRUE)
+    was <- .spec_bridge_base(sp$base, sp$meta, style)
     rels <- union(names(was$text), names(now$text))
     changed <- rels[!vapply(rels, function(r) identical(was$text[[r]], now$text[[r]]), NA)]
   }
@@ -273,6 +314,7 @@
     if (is.null(sp$study)) sp$study <- new$study
     for (r in changed) {
       # (a file the bridge no longer writes: gone from the spec)
+      old_text <- sp$text[[r]]
       sp$text[[r]] <- now$text[[r]]
       part <- .spec_part(r)
       switch(part$kind,
@@ -301,6 +343,19 @@
             sp$text[[r]] <- .study_part_lines(sp$study, "patterns", nm)
           }
         },
+        study = {
+          # study.yml as the bridge writes it, with the blocks no planner
+          # writes (.study_yml_not_planner: series_settings:, ai:) kept as
+          # the spec's text has them
+          mine <- new$study$study
+          blocks <- .yaml_top_blocks(p$spec$text[[r]])
+          kept <- setdiff(intersect(.study_yml_not_planner, names(blocks)), names(mine))
+          if (length(kept)) {
+            sp$text[[r]] <- c(sp$text[[r]], unlist(blocks[kept], use.names = FALSE))
+            for (k in intersect(kept, names(sp$study$study))) mine[k] <- list(sp$study$study[[k]])
+          }
+          sp$study["study"] <- list(mine)
+        },
         {
           mine <- new$study[[part$kind]]
           styles_kept <- FALSE
@@ -315,7 +370,11 @@
           }
           sp$study[part$kind] <- list(mine)
           if (!identical(mine, new$study[[part$kind]]) || styles_kept) {
-            sp$text[[r]] <- .study_part_lines(sp$study, part$kind)
+            sp$text[[r]] <- .study_part_lines(sp$study, part$kind, old = old_text)
+          }
+          # (the bridge's file has no `codelists:` / `adam_meta:`: the spec's stay)
+          if (identical(part$kind, "defaults") && length(old_text)) {
+            sp$text[[r]] <- .keep_study_blocks(sp$text[[r]], old_text)
           }
         })
     }
@@ -679,7 +738,8 @@
   f <- tempfile("tflplanner-defaults", fileext = ".yml")
   on.exit(unlink(f), add = TRUE)
   tflspec::tfl_write_study_part(sp$study, "defaults", f)
-  sp$text[[rel]] <- readLines(f, encoding = "UTF-8", warn = FALSE)
+  sp$text[[rel]] <- .keep_study_blocks(readLines(f, encoding = "UTF-8", warn = FALSE),
+                                       sp$text[[rel]] %||% character())
   p$spec <- sp
   p$study[["rounding"]] <- v
   if (!is.null(p$spec$base)) p$spec$base$study[["rounding"]] <- v

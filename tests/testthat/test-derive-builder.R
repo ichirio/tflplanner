@@ -87,7 +87,7 @@ test_that("1-1: a column made in the form, saved as the sheet's derive", {
     session$setInputs(nav = "make", step = "ard", target = "DM")
     session$setInputs(ard_adata_pick = "adsl_saf")
     expect_match(output$drv_list$html, "Split by conditions", fixed = TRUE)
-    session$setInputs(adata_id = "adsl_saf", adata_label = "", adata_from = "ADSL",
+    session$setInputs(adata_id = "adsl_saf", adata_from = "ADSL",
                       adata_add = NULL, adata_keep = NULL, adata_distinct = NULL)
     # a group cut from AGE
     session$setInputs(drv_new = 1)

@@ -13,7 +13,7 @@ setup_planner <- function() {
   p$ard$populations <- data.frame(population_id = "SAF", dataset = "ADSL",
                                   where = "SAFFL == \"Y\"")
   p$ard$analyses <- data.frame(
-    output_id = c("DM", "DM"), analysis_id = c("GROUPN", "AGE"),
+    output_id = c("DM", "DM"), analysis_id = c("BIGN", "AGE"),
     method = c("categorical", "continuous"), population_id = "SAF",
     by = c(NA, "TRT01A"), variables = c("TRT01A", "AGE"))
   for (s in names(p$ard)) p$ard[[s]] <- .normalize_ard_sheet(p$ard[[s]], s)
@@ -421,10 +421,13 @@ test_that("the study's rounding is set once, in study_setup.R's part 2 (tflspec#
     expect_gt(grep("readRDS", part2)[1L], match(rnd, trimws(part2)))
     expect_false(any(grepl("readRDS(\"data/", part2, fixed = TRUE)))
     # and it runs from the study folder, the sample's data there
-    e <- new.env()
+    # (in the global environment, as a program sources it: the helpers'
+    # adam_codes() reads `study` there; what it made is removed again)
+    before <- ls(globalenv(), all.names = TRUE)
+    withr::defer(rm(list = setdiff(ls(globalenv(), all.names = TRUE), before), envir = globalenv()))
     withr::with_dir(s$path, {
-      sys.source(file.path(s$path, .study_setup_path()), envir = e, toplevel.env = e)
-      expect_true(is.data.frame(e$adsl))
+      sys.source(file.path(s$path, .study_setup_path()), envir = globalenv(), toplevel.env = globalenv())
+      expect_true(is.data.frame(get0("adsl", globalenv())) || is.data.frame(study$adam$adsl))
     })
   }
   # the ARD and report setups source it and do not set the rounding again
