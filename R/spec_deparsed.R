@@ -30,7 +30,7 @@
   where <- character()
   for (o in outputs) {
     tp <- o$template
-    w <- if (is.list(tp)) .deparsed_paths(tp$args, "template.args") else character()
+    w <- if (is.list(tp)) .deparsed_paths(.tpl_args_of(tp), "template.args") else character()
     items <- if (is.list(o$content) && !inherits(o$content, "tfl_r")) o$content else list()
     for (it in items) {
       if (!is.list(it)) next

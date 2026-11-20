@@ -153,7 +153,38 @@
 .tpl_of <- function(p, output_id) {
   o <- p$spec$outputs[[output_id]]
   if (is.null(o) || !is.list(o$template) || is.null(o$template$name)) return(NULL)
-  list(name = as.character(o$template$name), args = o$template$args %||% list())
+  list(name = as.character(o$template$name), args = .tpl_args_of(o$template))
+}
+
+# The steps a report may write its template's arguments under, as tflspec
+# reads them (`ard:` is the older name of `analysis:`)
+.tpl_arg_steps <- c("data", "analysis", "ard", "content", "page")
+
+# A report's template arguments as one map: the flat `args:` and the step
+# sections (`template: {name, analysis: {...}, content: {...}}`), as tflspec
+# reads them.  A step section is read only when it is a map and not one of
+# the template's own parameters (tflspec's .tr_given()); a name given in
+# both keeps the flat `args:` value.
+.tpl_args_of <- function(t) {
+  args <- as.list(t$args %||% list())
+  own <- tryCatch(names(.tpl_params(as.character(t$name)[1L])), error = function(e) character())
+  for (k in setdiff(intersect(.tpl_arg_steps, names(t)), own)) {
+    v <- t[[k]]
+    if (!is.list(v) || is.null(names(v))) next
+    for (a in setdiff(names(v), names(args))) args[a] <- list(v[[a]])
+  }
+  args
+}
+
+# A report's `template:` with its arguments written flat (`args:`), its
+# step sections dropped: the one form tflplanner writes
+.tpl_flat <- function(t, args) {
+  own <- tryCatch(names(.tpl_params(as.character(t$name)[1L])), error = function(e) character())
+  for (k in setdiff(intersect(.tpl_arg_steps, names(t)), own)) {
+    if (is.list(t[[k]]) && !is.null(names(t[[k]]))) t[[k]] <- NULL
+  }
+  t$args <- args
+  t
 }
 
 # The study's datasets, by dataset (upper case), read once a study folder:
@@ -955,7 +986,7 @@
   # (a template whose analysis set is the report's population (demog) holds
   # it in `common:`, not in its arguments)
   if (.tpl_pop_of_report(prm)) args$population <- NULL
-  o$template$args <- args
+  o$template <- .tpl_flat(o$template, args)
   o
 }
 
