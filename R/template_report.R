@@ -154,7 +154,6 @@
   d <- tflspec::tfl_copy_templates(dir, name)
   new <- d[d$status == "copied", , drop = FALSE]
   if (!nrow(new)) return(NULL)
-  .arg_defs_reset()
   sprintf(t("Copied the template %s into this study (%s): the study reads its own copy from now on; the series screen lists it."),
           name, file.path(study_layout()[["spec"]], "series", sub("/.*$", "", name)))
 }

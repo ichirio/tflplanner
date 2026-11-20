@@ -254,7 +254,6 @@
     # (the study's edits lost: asked before, so tflspec's warning is not said again)
     out <- tryCatch(suppressWarnings(.series_fn("tfl_recopy_templates")(dir, id)), error = fail)
     if (is.null(out)) return()
-    .arg_defs_reset()
     rv$copy_ver <- rv$copy_ver + 1L
     notify(sprintf(t("Copied %s again from the source."), id))
   }

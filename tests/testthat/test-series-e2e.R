@@ -24,7 +24,7 @@ series_skip <- function() {
   skip_if_not_installed("dplyr")
   # (the series files came with tflspec#818, the resolver and the settings
   # helpers with #824: a tflspec between the two has the one, not the other)
-  need <- c("tfl_arg_defs", "tfl_template_resolve", "tfl_series_settings_set")
+  need <- c("tfl_arg_defs", "tfl_template_resolve", "tfl_copy_templates", "tfl_series_values_set")
   have <- need %in% getNamespaceExports("tflspec")
   skip_if_not(all(have), paste0("this tflspec has no ", paste(need[!have], collapse = ", "),
                                 " (tflspec#824)"))
@@ -35,8 +35,9 @@ series_skip <- function() {
 
 # A study of tflspec's fictional ADaM data in the home `home`: ADLB with
 # the grade columns lab_tox_shift reads (by direction, from its ATOXGR /
-# BTOXGR); the series' efficacy set (FAS) the study's ITT
-series_study <- function(home, id) {
+# BTOXGR); the template `t` copied into it, as the Add dialog copies it;
+# the series' efficacy set (FAS) the study's ITT, in its copy of the series
+series_study <- function(home, id, t) {
   d <- file.path(studies_root(home), id)
   dir.create(file.path(d, "adam"), recursive = TRUE)
   for (x in c("adsl", "adae", "adtte", "adlb", "adrs")) {
@@ -48,7 +49,8 @@ series_study <- function(home, id) {
     saveRDS(df, file.path(d, "adam", paste0(x, ".rds")))
   }
   invisible(tflspec::tfl_ai_study_init(d, adam = "adam", study_id = id))
-  tflspec::tfl_series_settings_set(d, "tflspec_v1", list(population_efficacy = "ITT"))
+  tflspec::tfl_copy_templates(d, paste0("tflspec_v1/", t))
+  tflspec::tfl_series_values_set(d, "tflspec_v1", list(population_efficacy = "ITT"))
   suppressMessages(open_study(d, home = home))
 }
 
@@ -80,7 +82,7 @@ series_file <- function(p, id) paste(p$spec$text[[p$spec$where[[id]]]], collapse
 series_e2e <- function(t, kind, args, ids, in_code = character(), home, gap = NULL) {
   name <- paste0("tflspec_v1/", t)
   later <- character()
-  s <- series_study(home, paste0("SER-", toupper(gsub("_", "", t))))
+  s <- series_study(home, paste0("SER-", toupper(gsub("_", "", t))), t)
   p <- s$planner
   id <- paste0(switch(kind, table = "T", listing = "L", figure = "F"), "-SER-1")
 
