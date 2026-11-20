@@ -14,6 +14,8 @@
 #   edit either (ready() FALSE again for `settle` seconds).
 # - wrote(p): a write of the form's, `p` the study after it.
 # - changed(): the form has written since it was opened.
+# - rebase(p): the study saved, or its changes discarded: Undo goes back to
+#   `p` from now on (what the form wrote before is no longer its to undo).
 # - revert(now): `now` with what the form's writes changed put back
 #   (.form_restore()).
 .form_live <- function(session, settle = 1.5) {
@@ -32,6 +34,13 @@
   e$ready <- function() !is.null(e$t0) && as.numeric(Sys.time()) - e$t0 >= e$s
   e$wrote <- function(p) e$mine <- p
   e$changed <- function() !is.null(e$mine)
+  e$rebase <- function(p) {
+    if (!is.null(e$p0)) {
+      e$p0 <- p
+      e$mine <- NULL
+    }
+    invisible()
+  }
   e$revert <- function(now) .form_restore(now, e$p0, e$mine)
   e$close <- function() e$p0 <- e$mine <- e$t0 <- NULL
   e

@@ -300,7 +300,9 @@
     fm <- fm[nzchar(fm)]
     bad <- names(fm)[!.fmt_ok(fm)]
     if (length(bad)) {
-      return(st_say(sprintf(t("Not a format: %s"), paste(bad, collapse = ", "))))
+      return(st_say(paste(sprintf(t("%s: the format \"%s\" is not one (e.g. xx.x)"), bad, fm[bad]),
+                          collapse = " "),
+                    fields = st_id(paste0("f_", bad))))
     }
     # the analysis's variable-specific formats (AGE:mean=...) stay
     old <- .parse_formats(r$formats)

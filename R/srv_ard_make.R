@@ -143,9 +143,9 @@
     # the analyses of the report chosen, or of every report (an analysis
     # several reports use, BIGN, seen at once): then the grid is the whole
     # sheet with its output_id column, edited as such
-    tg_of <- function() if (by_report && !isTRUE(input$ard_all)) target() else ""
+    tg_of <- function() if (by_report && !isTRUE(input$ard_all)) ard_target() %||% target() else ""
     key <- shiny::reactive({
-      k <- paste("ard", sh, if (by_report) input$target, rv$ver, sep = "|")
+      k <- paste("ard", sh, if (by_report) ard_target(), rv$ver, sep = "|")
       if (by_report && isTRUE(input$ard_all)) paste0(k, "|all") else k
     })
     output[[out_id]] <- rhandsontable::renderRHandsontable({
@@ -178,7 +178,7 @@
   # the report's analysis data and the one open in 1-1 (not read yet by an
   # analysis, a new one for one)
   adata_grid_ids <- function() .adata_of_report(rv$p, ard_target())
-  adata_grid_key <- shiny::reactive(paste("adata_report", input$target, adata_pick() %||% "",
+  adata_grid_key <- shiny::reactive(paste("adata_report", ard_target(), adata_pick() %||% "",
                                           rv$ver, sep = "|"))
   output$hot_adata_report <- rhandsontable::renderRHandsontable({
     shiny::req(has_study())
@@ -246,8 +246,9 @@
   # drawing the form again (st_env$hold: the page keeps it, .tpl_js)
   st_live <- .form_live(session)
   st_msg <- shiny::reactiveVal(NULL)
-  st_say <- function(text, blocks = TRUE) {
-    st_msg(if (!is.null(text)) list(text = text, blocks = blocks))
+  # (`fields`: the inputs of the drawing whose values cannot be, marked so)
+  st_say <- function(text, blocks = TRUE, fields = NULL) {
+    st_msg(if (!is.null(text)) list(text = text, blocks = blocks, fields = fields))
     invisible()
   }
   st_write <- function(p, new_id, redraw = FALSE) {
@@ -273,7 +274,11 @@
   output$ard_stat_problem <- shiny::renderUI({
     m <- st_msg()
     if (is.null(m)) return(NULL)
-    shiny::div(class = "alert alert-warning small py-1 my-2", m$text)
+    shiny::tagList(
+      if (length(m$fields)) shiny::tags$style(shiny::HTML(paste0(
+        paste(sprintf("[id=\"%s\"]", m$fields), collapse = ", "),
+        " { border-color: var(--bs-form-invalid-border-color, #dc3545); }"))),
+      shiny::div(class = "alert alert-warning small py-1 my-2", m$text))
   })
   st_rows <- shiny::reactive({
     tg <- ard_target()
@@ -690,10 +695,10 @@
       shiny::uiOutput("ard_method_note"),
       bslib::layout_columns(
         col_widths = c(4, 8),
-        shiny::textInput(st_id("id"), with_tip(t("Analysis ID (a set of analyses)"), t("Several variables: in the ARD, one row per variable under the same ID.")), r$analysis_id),
-        shiny::textInput(st_id("label"), t("Label"), blank_na(r$label),
+        shiny::textInput(st_id("id"), with_tip(argl("Analysis ID (a set of analyses)", "analysis_id"), t("Several variables: in the ARD, one row per variable under the same ID.")), r$analysis_id),
+        shiny::textInput(st_id("label"), argl("Label", "label"), blank_na(r$label),
                          width = "100%")),
-      if (!inside) shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads, chosen from the definitions: a dataset (Data tab) kept to an analysis set (Populations tab), or an analysis data (the same, with more done to it). The population is part of the choice. The name is the one the program gives it.")),
+      if (!inside) shiny::selectInput(st_id("data"), with_tip(argl("Data", "data"), t("The rows the analysis reads, chosen from the definitions: a dataset (Data tab) kept to an analysis set (Populations tab), or an analysis data (the same, with more done to it). The population is part of the choice. The name is the one the program gives it.")),
                                       data_choices(r),
                                       selected = .an_data_value_row(r),
                                       width = "100%"),

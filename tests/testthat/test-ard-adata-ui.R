@@ -702,3 +702,171 @@ test_that("one Save: the analysis form applies its edits at once and has Undo", 
     expect_false(shiny::isolate(session$userData$dirty()))
   })
 })
+
+test_that("one Save: behind the question about unsaved changes the page stays on its report, and Cancel keeps Undo", {
+  local_home()
+  s <- create_study("OC", planner = add_output(adata_planner(), "AE"))
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  shiny::testServer(server_for("OC"), {
+    rv <- session$userData$rv
+    session$setInputs(nav = "make", step = "ard", target = "DM")
+    session$setInputs(ard_ol_pick = "AGE")
+    n <- session$userData$st_env$n
+    do.call(session$setInputs, stats::setNames(list("Age"), paste0("st", n, "_label")))
+    expect_true(shiny::isolate(session$userData$dirty()))
+    code <- output$ard_code
+    expect_false(grepl("AE has no analyses", code, fixed = TRUE))
+    # another report chosen: asked, and the page behind the question is
+    # still DM's (its code, its analysis form)
+    session$setInputs(target = "AE")
+    expect_identical(shiny::isolate(session$userData$current()), "DM")
+    expect_identical(output$ard_code, code)
+    # Cancel: the form as it was, its Undo too
+    session$setInputs(switch_cancel = 1)
+    session$setInputs(target = "DM")
+    expect_identical(session$userData$st_env$n, n)
+    session$setInputs(ard_an_revert = 1)
+    a <- ard_rows(rv$p, "analyses", "DM")
+    expect_true(is.na(a$label[a$analysis_id == "AGE"]))
+    expect_false(shiny::isolate(session$userData$dirty()))
+  })
+})
+
+test_that("one Save: after a discard or a save, the analysis form's Undo goes back to the study as it is then", {
+  local_home()
+  s <- create_study("OD", planner = adata_planner())
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  shiny::testServer(server_for("OD"), {
+    rv <- session$userData$rv
+    lab <- function() {
+      a <- ard_rows(rv$p, "analyses", "DM")
+      a$label[a$analysis_id == "AGE"]
+    }
+    set_in <- function(...) {
+      v <- list(...)
+      n <- session$userData$st_env$n
+      do.call(session$setInputs, stats::setNames(v, paste0("st", n, "_", names(v))))
+    }
+    session$setInputs(nav = "make", step = "ard", target = "DM")
+    session$setInputs(ard_ol_pick = "AGE")
+    set_in(label = "Age")
+    # opened again with the change unsaved, then discarded: Undo does not
+    # bring the discarded value back
+    session$setInputs(ard_ol_pick = "BIGN")
+    session$setInputs(ard_ol_pick = "AGE")
+    session$setInputs(discard = 1)
+    session$setInputs(discard_ok = 1)
+    expect_true(is.na(lab()))
+    set_in(label = "Years")
+    expect_identical(lab(), "Years")
+    session$setInputs(ard_an_revert = 1)
+    expect_true(is.na(lab()))
+    # saved: Undo goes back to what was saved
+    set_in(label = "Age")
+    session$setInputs(save = 1)
+    expect_false(shiny::isolate(session$userData$dirty()))
+    set_in(label = "Years")
+    expect_identical(lab(), "Years")
+    session$setInputs(ard_an_revert = 1)
+    expect_identical(lab(), "Age")
+    # a format that is not one: said with the value typed, the field marked
+    n <- session$userData$st_env$n
+    set_in(pick = "mean", f_mean = "abc")
+    h <- output$ard_stat_problem$html
+    expect_match(h, "mean: the format \"abc\" is not one (e.g. xx.x)", fixed = TRUE)
+    expect_match(h, sprintf("[id=\"st%d_f_mean\"]", n), fixed = TRUE)
+    a <- ard_rows(rv$p, "analyses", "DM")
+    expect_false(isTRUE(grepl("abc", a$formats[a$analysis_id == "AGE"], fixed = TRUE)))
+  })
+  k <- "%s: the format \"%s\" is not one (e.g. xx.x)"
+  expect_identical(sprintf(tr(k, "ja"), "mean", "abc"),
+                   "mean の書式 \"abc\" は使えません（例: xx.x）")
+})
+
+test_that("one Save: the data form keeps its Undo through a cancelled switch, starts it again after a discard, and says a bad name in the app's words", {
+  local_home()
+  p <- add_output(adata_planner(), "AE")
+  p <- set_analysis_data(p, "DM", "adsl_old", from = "ADSL", population_id = "SAF", where = "AGE >= 65")
+  s <- create_study("OE", planner = p)
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  shiny::testServer(server_for("OE"), {
+    rv <- session$userData$rv
+    keep <- function() .adata_rows(rv$p, "DM")$keep[1L]
+    session$setInputs(nav = "make", step = "ard", target = "DM")
+    session$setInputs(ard_adata_pick = "adsl_old")
+    # (the title: the name is the field right under it)
+    expect_false(grepl("Analysis data adsl_old", output$adata_detail$html, fixed = TRUE))
+    session$setInputs(adata_id = "adsl_old", adata_from = "ADSL", adata_subj = "",
+                      adata_add = NULL, adata_keep = NULL, adata_distinct = NULL,
+                      adata_code = "")
+    session$setInputs(adata_keep = c("USUBJID", "AGE"))
+    expect_identical(keep(), "USUBJID | AGE")
+    # another report chosen: asked, the form stays open behind the question
+    session$setInputs(target = "AE")
+    expect_match(output$adata_detail$html, "adata_revert", fixed = TRUE)
+    session$setInputs(switch_cancel = 1)
+    session$setInputs(target = "DM")
+    session$setInputs(adata_revert = 1)
+    expect_true(is.na(keep()))
+    # opened again with a change unsaved, then discarded: Undo goes back to
+    # the study as saved, not to the discarded value
+    session$setInputs(adata_keep = "USUBJID")
+    expect_identical(keep(), "USUBJID")
+    session$setInputs(ard_adata_pick = "adsl_old")
+    session$setInputs(ard_adata_pick = "adsl_old")
+    session$setInputs(discard = 1)
+    session$setInputs(discard_ok = 1)
+    expect_true(is.na(keep()))
+    session$setInputs(adata_keep = "AGE")
+    expect_identical(keep(), "AGE")
+    session$setInputs(adata_revert = 1)
+    expect_true(is.na(keep()))
+    # a name the definition refuses: said in the app's words, not applied
+    session$setInputs(adata_id = "Adsl old")
+    expect_match(output$adata_problem$html, "starts with a lower-case letter", fixed = TRUE)
+    expect_identical(.adata_rows(rv$p, "DM")$data_id, "adsl_old")
+    session$setInputs(adata_id = "adsl")
+    expect_match(output$adata_problem$html, "another object of the ARD program", fixed = TRUE)
+    expect_identical(.adata_rows(rv$p, "DM")$data_id, "adsl_old")
+  })
+})
+
+test_that("a data's name is checked by the definition's own rule, in words the app translates", {
+  p <- set_analysis_data(adata_planner(), "DM", "adsl_old", from = "ADSL", population_id = "SAF")
+  chk <- function(id, old = NULL) .adata_name_problem(p, "DM", id, old)
+  expect_null(chk("adsl_saf.2"))
+  expect_null(chk("adsl_old", old = "adsl_old"))
+  expect_identical(chk(""), "Give the analysis data a name.")
+  for (id in c("Adsl_saf", "adsl saf", "_x", "1x", "adsl-saf")) expect_match(chk(id), "lower-case letter", info = id)
+  expect_match(chk("if"), "keeps for itself")
+  for (id in c("adsl", "pop_saf", "data", "ard")) expect_match(chk(id), "another object", info = id)
+  expect_match(chk("adsl_old"), "already")
+  # the definition agrees: a name passed holds, one refused is refused
+  holds <- function(id) !inherits(try(suppressWarnings(.ard_spec(
+    set_analysis_data(p, "DM", id, from = "ADSL", population_id = "SAF")$ard)), silent = TRUE), "try-error")
+  expect_true(holds("adsl_saf.2"))
+  for (id in c("Adsl_saf", "if", "adsl", "pop_saf")) expect_false(holds(id), info = id)
+  # each in Japanese
+  ks <- c("Give the analysis data a name.",
+          "%s: a name starts with a lower-case letter and holds only lower-case letters, digits, _ and .",
+          "%s is a word R keeps for itself: give another name.",
+          "%s is the name of another object of the ARD program (a dataset, pop_<population>, data, population, ard ...): give another name.",
+          "%s: this report has an analysis data of that name already.")
+  for (k in ks) expect_false(identical(tr(k, "ja"), k), info = k)
+  expect_match(sprintf(tr(ks[2L], "ja"), "Adsl"), "英小文字で始め", fixed = TRUE)
+})
+
+test_that("the forms' labels name their SPEC column", {
+  local_home()
+  p <- set_analysis_data(adata_planner(), "DM", "adsl_old", from = "ADSL", population_id = "SAF")
+  s <- create_study("OL", planner = p)
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  shiny::testServer(server_for("OL"), {
+    session$setInputs(nav = "make", step = "ard", target = "DM")
+    session$setInputs(ard_ol_pick = "AGE")
+    h <- output$ard_stat_ui$html
+    for (x in c("(analysis_id)", "(label)", "(data)")) expect_match(h, x, fixed = TRUE)
+    session$setInputs(ard_adata_pick = "adsl_old")
+    expect_match(output$adata_detail$html, "(population_id)", fixed = TRUE)
+  })
+})

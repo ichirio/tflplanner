@@ -244,7 +244,7 @@
         shiny::selectInput("adata_from", argl("Made from", "from"), from_ch,
                            selected = blank_na(r$from), width = "100%"),
         shiny::selectInput("adata_pop", with_tip(
-          t("Population"),
+          argl("Population", "population_id"),
           t("The analysis set (Populations tab) this data is kept to, or a population flag of the data (SAFFL = Y). Make an analysis data only when the report needs more than a dataset kept to a set.")),
           pop_ch, selected = pop_now, width = "100%")),
       shiny::uiOutput("adata_pop_note"),
@@ -491,7 +491,7 @@
       sprintf(t("Used by: %s."), paste(c(u$analyses, u$data), collapse = ", ")), " ",
       t("A change makes these reports' ARD need making again."))
     adata_edit(list(old = id, note = note))
-    adata_form(as.list(ad[match(id, ad$data_id), ]), sprintf(t("Analysis data %s"), id))
+    adata_form(as.list(ad[match(id, ad$data_id), ]), t("Analysis data"))
   })
   shiny::observeEvent(input$ard_adata_name, {
     v <- input$ard_adata_name
@@ -616,9 +616,15 @@
     e <- adata_edit()
     # (no form open -- it was closed with the report it was for: nothing to write)
     if (is.null(e) || !adata_live$ready()) return(invisible())
+    # (the name, checked first: the definition's own message is English)
+    id <- trimws(input$adata_id %||% "")
+    bad <- .adata_name_problem(rv$p, ard_target(), id, e$old)
+    if (!is.null(bad)) {
+      return(adata_msg(list(level = "warning",
+                            text = if (grepl("%s", t(bad), fixed = TRUE)) sprintf(t(bad), id) else t(bad))))
+    }
     p <- tryCatch(adata_planner(), error = function(err) err)
     if (inherits(p, "error")) return(adata_msg(list(level = "warning", text = conditionMessage(p))))
-    id <- trimws(input$adata_id)
     kept <- character()
     if (is.null(e$old) && id %in% .adata_subject_level(p, ard_target())) {
       others <- setdiff(.adata_of_report(p, ard_target()), .adata_subject_level(p, ard_target()))
@@ -662,6 +668,34 @@
     adata_form_ui(NULL)
     adata_form(o$r, o$title)
   })
+  # The study saved, or its unsaved changes discarded: the forms' Undo goes
+  # back to it from now on (what they wrote before is not theirs to undo
+  # any more).  Discarded, the data form open is drawn again from the study
+  # (its fields said what went), or closed when its data went too; the
+  # analysis form is drawn again by the study's change itself.
+  # (called from the Save's and the Discard's own handlers)
+  forms_rebase <- function(discarded = FALSE) {
+    st_live$rebase(rv$p)
+    e <- adata_edit()
+    if (is.null(e)) return(invisible())
+    adata_live$rebase(rv$p)
+    ad <- .adata_rows(rv$p, ard_target())
+    k <- if (is.null(e$old)) NA_integer_ else match(e$old, ad$data_id)
+    if (!discarded) {
+      if (!is.na(k)) {
+        adata_live$orig <- list(r = as.list(ad[k, ]), title = t("Analysis data"),
+                                edit = e, pick = adata_pick())
+      }
+      return(invisible())
+    }
+    if (is.null(e$old)) return(invisible())
+    if (is.na(k)) return(adata_close())
+    adata_pick(e$old)
+    adata_edit(list(old = e$old, note = e$note))
+    adata_form_ui(NULL)
+    adata_form(as.list(ad[k, ]), t("Analysis data"))
+    invisible()
+  }
   # analysis data of another report copied into this one (the same names;
   # one the report has already gets _1 ...)
   shiny::observeEvent(input$ard_adata_import, {
@@ -920,9 +954,9 @@
         t("A stack: it runs the analyses inside it together (cards::ard_stack), in one call (the column headers' N too)."))),
       bslib::layout_columns(
         col_widths = c(4, 8),
-        shiny::textInput(st_id("id"), with_tip(t("Analysis ID (a set of analyses)"), t("Several variables: in the ARD, one row per variable under the same ID.")), r$analysis_id),
-        shiny::textInput(st_id("label"), t("Label"), blank_na(r$label), width = "100%")),
-      shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads, chosen from the definitions: a dataset (Data tab) kept to an analysis set (Populations tab), or an analysis data (the same, with more done to it). The population is part of the choice. The name is the one the program gives it.")),
+        shiny::textInput(st_id("id"), with_tip(argl("Analysis ID (a set of analyses)", "analysis_id"), t("Several variables: in the ARD, one row per variable under the same ID.")), r$analysis_id),
+        shiny::textInput(st_id("label"), argl("Label", "label"), blank_na(r$label), width = "100%")),
+      shiny::selectInput(st_id("data"), with_tip(argl("Data", "data"), t("The rows the analysis reads, chosen from the definitions: a dataset (Data tab) kept to an analysis set (Populations tab), or an analysis data (the same, with more done to it). The population is part of the choice. The name is the one the program gives it.")),
                          data_choices(r),
                          selected = .an_data_value_row(r),
                          width = "100%"),
@@ -1245,12 +1279,20 @@
     shiny::div(class = "alert alert-warning py-1 small mt-2",
                shiny::tags$pre(class = "mb-0", msg))
   })
-  # the output the sidebar names: a report, or an output the ARD
-  # definition has analyses for and the report list does not have yet
-  ard_target <- shiny::reactive({
+  # the output steps 1 and 2 show: the report open (current(), which the
+  # question about unsaved changes holds back while it is asked: the page
+  # behind it stays on the report before), or an output the ARD definition
+  # has analyses for and the report list does not have yet (the one the
+  # sidebar names).  Changed only when it changes (the list going to a
+  # report and back, the question cancelled, draws nothing again).
+  ard_target <- shiny::reactiveVal(NULL)
+  shiny::observe({
     tg <- target()
-    if (is.na(tg) || !nzchar(tg)) NULL else tg
-  })
+    cur <- current()
+    v <- if (is.na(tg) || !nzchar(tg)) NULL else
+      if (tg %in% shiny::isolate(rv$p$outputs$output_id)) cur %||% tg else tg
+    ard_target(v)
+  }, priority = 99)
   ard_scope_id <- shiny::reactive({
     if (identical(input$ard_scope, "study")) NULL else ard_target()
   })

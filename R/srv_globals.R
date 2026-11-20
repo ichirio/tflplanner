@@ -16,7 +16,7 @@ utils::globalVariables(c(
   "builder_templates", "bump", "cl_fig", "cl_lf", "current",
   "current_study", "data_choices", "data_counts", "data_files",
   "data_pill", "data_words", "data_words_list", "den_choices", "dirty",
-  "discard_now",
+  "discard_now", "forms_rebase",
   "do_preview", "do_save", "ds_sub", "exc_ver", "fig_ard_ui", "first_data",
   "first_subjects", "first_subjects_file", "fn_code", "fn_entries",
   "fn_label", "form_data", "go", "grids_drawn", "guarded", "has_study",
