@@ -31,8 +31,8 @@
   list(arg = "align", label = "Alignment", kind = "choice", choices = c("left", "center", "right")))
 
 # One card a function; its fields in the function's order (formals).  kind:
-# choice, number, pt (half points shown as points), text, logical, inches
-# (twips shown as inches, or fit).  `arg` is the YAML key.
+# choice, number, pt (half points shown as points), text, logical.  `arg`
+# is the YAML key.
 .pgs_fields <- list(
   rtf_page = list(
     list(arg = "paper_size", label = "Paper", kind = "choice",
@@ -79,23 +79,20 @@
     list(arg = "auto_title", label = "Title from the table's name", kind = "logical"),
     list(arg = "title_label_align", label = "Title's alignment", kind = "choice",
          choices = c("left", "center", "right"))),
-  rtf_figures = list(
-    list(arg = "width_twips", label = "Width (in)", kind = "inches"),
-    list(arg = "height_twips", label = "Height (in)", kind = "inches"),
-    list(arg = "align", label = "Alignment", kind = "choice", choices = c("left", "center", "right"))),
+  # (a figure's size, alignment, dpi and PNG device are no page setting:
+  # its content's tfl_image, the content step's card -- tflspec#874)
   rtf_titles = .pgs_band_fields,
   rtf_footnotes = .pgs_band_fields)
 
 # a card's meaning, its title "meaning (function())"
 .pgs_cards <- c(rtf_page = "Paper and margins", rtf_style = "Text defaults",
-                rtf_document = "Document", rtf_tables = "Table on the page",
-                rtf_figures = "Figure size")
+                rtf_document = "Document", rtf_tables = "Table on the page")
 
 # the call each card is in the program (tflspec writes rtf_page()'s
 # arguments as rtf_document(page = list(...)))
 .pgs_call_names <- c(rtf_page = "(rtf_document(page =))", rtf_style = "(rtf_document(style = rtf_style()))",
                      rtf_document = "(rtf_document())", rtf_tables = "(rtf_tables())",
-                     rtf_figures = "(rtf_figures())", rtf_titles = "(rtf_titles())",
+                     rtf_titles = "(rtf_titles())",
                      rtf_footnotes = "(rtf_footnotes())")
 
 .pgs_field <- function(fn, arg) {
@@ -317,10 +314,6 @@
   }
   if (identical(kind, "slots")) return(.slots_show(v))
   if (identical(kind, "pt")) return(.points(as.character(v)))
-  if (identical(kind, "inches")) {
-    n <- suppressWarnings(as.numeric(v))
-    return(if (is.na(n)) as.character(v) else format(round(n / 1440, 3)))
-  }
   if (is.logical(v)) return(if (isTRUE(v)) "TRUE" else "FALSE")
   as.character(v)[1L]
 }
@@ -339,12 +332,6 @@
     hp <- .half_points(v)
     if (is.na(hp)) stop("The size is a number of points (9, 10 ...).", call. = FALSE)
     return(as.integer(hp))
-  }
-  if (identical(kind, "inches")) {
-    if (identical(tolower(v), "fit")) return("fit")
-    n <- suppressWarnings(as.numeric(v))
-    if (is.na(n) || n <= 0) stop("A size is inches (5.5) or fit.", call. = FALSE)
-    return(as.integer(round(n * 1440)))
   }
   if (v %in% c("TRUE", "FALSE")) return(identical(v, "TRUE"))
   n <- suppressWarnings(as.numeric(v))

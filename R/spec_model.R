@@ -112,6 +112,9 @@
   }
   p <- .migrate_step_code(p, old)
   p <- .renamed_outputs(p)
+  # (a figure's size: its content's tfl_image, in the report sheet's cells
+  # the screens and programs read)
+  p <- .fig_image_view(p, study, outputs)
   attr(p, "not_converted") <- back$not_converted
   p
 }

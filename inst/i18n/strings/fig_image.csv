@@ -1,0 +1,5 @@
+"en","ja"
+"The figure on the page","ページ上の Figure"
+"A figure of your own R code is drawn at its own size: its content has no tfl_image.","自分の R コードの Figure は、そのものの大きさで描かれます（コンテンツに tfl_image はありません）。"
+"On the page: %s","ページ上: %s"
+"Width and height: blank, the study's (study.yml settings: figure:), else the figure's own size (the company's figure style for its kind), as rtfreporter places an image. A number: that size in inches. fit: the page's body (its width; its height less the titles and footnotes). The figure is drawn at this size, its text as its theme says; the dpi changes only its pixels.","幅と高さ: 空欄なら試験の設定（study.yml の settings: figure:）、それも無ければ Figure そのものの大きさ（会社の Figure のスタイルの、その種類の大きさ）。rtfreporter が画像を置くときと同じです。数字: その大きさ（インチ）。fit: ページの本文の大きさ（幅はそのまま、高さはタイトルと脚注を除いた分）。Figure はこの大きさで描かれ、文字の大きさはテーマのとおりです。dpi が変えるのは画素数だけです。"
