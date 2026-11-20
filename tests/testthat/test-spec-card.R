@@ -2,7 +2,7 @@
 # definitions -- tflspec's tfl_arg_defs() table -- and nothing else; what a
 # card reads back is what the SPEC's YAML keeps.
 
-html <- function(...) as.character(htmltools::tagList(...))
+html <- function(...) gsub("\n[ \t]+", "\n", as.character(htmltools::tagList(...)))
 # a function's definitions with no `key` tier (tflspec's from `visible:` /
 # `main:`): the fold decided by the tiers a test sets
 no_key <- function(d) {

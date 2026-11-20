@@ -3,7 +3,9 @@
 # offers its choices, shows the fixed rows read only, and reads back as the
 # type says; without a def the field and its reading are today's.
 
-html <- function(...) as.character(htmltools::tagList(...))
+# (the markup's indentation dropped: a tag on a line of its own, so the
+# expectations below name the tags one after another)
+html <- function(...) gsub("\n[ \t]+", "\n", as.character(htmltools::tagList(...)))
 
 # the state a drawn table field carries (data-state), as its input sends it
 tbl_state_of <- function(h) {
@@ -358,7 +360,8 @@ test_that("the table's words in Japanese", {
   h <- html(arg_field("c", "ards", "rows<map<string,list<column>>>", lang = "ja",
                       def = list(input = "table", columns = list(by = list(type = "list<column>"))),
                       fixed_rows = list(list(by = "X"))))
-  expect_match(h, "1 行に 1 つ", fixed = TRUE)
+  # (a list column is a select of several: its placeholder in the language)
+  expect_match(h, sprintf("data-placeholder=\"%s\"", tr("Add a value", "ja")), fixed = TRUE)
   expect_match(h, "テンプレートから", fixed = TRUE)
 })
 
