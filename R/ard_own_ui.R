@@ -195,9 +195,12 @@ own_function_checks <- function(study) {
     stringsAsFactors = FALSE), "analyses")
   code <- tflspec::tfl_ard_code(structure(a, class = "tfl_ard_spec"), part = "body")
   stop_at <- match("# ---- analyses ----", code)
-  # the analysis pipes its data into the call: `ard_try <- adsl_saf |>`
-  call <- code[grep("^ard_try <- ", code)[1L]]
-  obj <- sub("^ard_try <- ([A-Za-z0-9_.]+).*$", "\\1", call)
+  # the analysis pipes its data into the call: `.ard_try <- adsl_saf |>`
+  # (`ard_try` before tflspec#867)
+  call <- code[grep("^[.]?ard_try <- ", code)[1L]]
+  # (none found: the try says so, as a data error, not a try on NA)
+  if (is.na(call)) return("stop(\"the ARD program names no data for the analysis\")")
+  obj <- sub("^[.]?ard_try <- ([A-Za-z0-9_.]+).*$", "\\1", call)
   c(code[seq_len(stop_at - 1L)], paste(".data <-", obj))
 }
 

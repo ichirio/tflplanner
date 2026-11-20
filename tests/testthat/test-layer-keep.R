@@ -16,7 +16,7 @@ lk_home <- function(env = parent.frame()) {
 }
 
 # A study of two reports of one analysis of SEX: DM (the defaults) and DM2
-# (extends the legacy pattern pp, which holds a code list only, and uses the
+# (extends the legacy pattern pp, which holds a content step only, and uses the
 # page configuration Wide); defaults.yml has a code list, two content items and
 # the configurations Std (the study's default) and Wide (a title of its own;
 # with `wide = FALSE` the same page as Std); opened as the files say it
@@ -44,7 +44,8 @@ lk_study <- function(id, wide = TRUE, pattern = TRUE, style = TRUE) {
   x <- readLines(f)
   writeLines(append(x, "  style: Std", after = which(x == "settings:")), f)
   dir.create(file.path(sp, "patterns"), showWarnings = FALSE)
-  writeLines(c("codelists:", "  SEX: [{value: F, label: PatF}, {value: M, label: PatM}]"),
+  # (a pattern holds no code list since tflspec#857: a content step it is)
+  writeLines(c("content:", "  - plan_style: {align_count_pct: true}  # PatF PatM"),
              file.path(sp, "patterns", "pp.yml"))
   f <- file.path(sp, "outputs", "DM2.yml")
   x <- readLines(f)
@@ -57,12 +58,15 @@ lk_study <- function(id, wide = TRUE, pattern = TRUE, style = TRUE) {
 lk_file <- function(s, ...) readLines(file.path(s$path, "spec", ...), encoding = "UTF-8")
 
 # the labels of SEX in the spec in memory: the pattern's (id "DM2", which
-# extends pp) or the defaults' ("DM").  (.study_codelists() reads the sheet,
+# extends pp) or the study's ("DM": study$codelists$SEX, defaults.yml codelists:).  (.study_codelists() reads the sheet,
 # the reports' own lists: the layers' come with tflspec::tfl_report_codelists().)
 lk_label <- function(p, id) {
-  st <- .spec_study(p)
-  l <- if (identical(id, "DM2")) st$patterns$pp else st$defaults
-  vapply(l$codelists$SEX, function(e) e$label, "")
+  if (identical(id, "DM2")) {
+    # (the pattern's marker comment: it holds no code list)
+    return(if (any(grepl("PatF PatM", p$spec$text[["spec/patterns/pp.yml"]], fixed = TRUE)))
+      c("PatF", "PatM") else character())
+  }
+  unname(.spec_study(p)$codelists$SEX)
 }
 
 # a title row of a layer's, edited through the sheet
@@ -149,7 +153,7 @@ test_that("a legacy pattern that holds code lists only keeps its marker row", {
   # (a pattern with no page rows: its row of the report sheet is the marker)
   expect_true("@pp" %in% d$output_id)
   expect_identical(d$pattern[d$output_id == "DM2"], "@pp")
-  expect_true(any(grepl("^codelists:", s$planner$spec$text[["spec/patterns/pp.yml"]])))
+  expect_true(any(grepl("^content:", s$planner$spec$text[["spec/patterns/pp.yml"]])))
   expect_false(any(grepl("^page:", s$planner$spec$text[["spec/patterns/pp.yml"]])))
   # an edit of another report's page: the pattern's file and row stay
   s$planner <- .pgs_write(s$planner, "DM", list(titles = list(`1` = list(center = "Own"))))

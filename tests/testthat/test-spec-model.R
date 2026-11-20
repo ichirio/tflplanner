@@ -214,8 +214,9 @@ test_that("a planner with no spec is written whole, and gets one", {
   s <- suppressMessages(save_study(s, home = home))
   expect_false(is.null(s$planner$spec))
   expect_setequal(names(s$planner$spec$outputs), s$planner$outputs$output_id)
-  # the sample's files are what the bridge writes of it
-  expect_identical(changed_files(m0, spec_md5(s$path)), character())
+  # the sample's files are what the bridge writes of it, but defaults.yml's
+  # study-level `codelists:` / `adam_meta:` (the bridge has none: tflspec#857)
+  expect_identical(setdiff(changed_files(m0, spec_md5(s$path)), "spec/defaults.yml"), character())
 })
 
 test_that("a report's items say where each argument comes from (#417)", {
