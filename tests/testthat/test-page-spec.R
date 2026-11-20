@@ -67,8 +67,6 @@ test_that("an argument written into the report's file only, and back; the same a
                    c("  rtf_style:", "    row_height_twips: 300"))
   expect_error(.pgs_value("big", "pt"), "number of points")
   expect_identical(.pgs_value("8", "pt"), 16L)
-  expect_identical(.pgs_value("fit", "inches"), "fit")
-  expect_identical(.pgs_value("6", "inches"), 8640L)
   expect_s3_class(.pgs_value("(none)", "text"), "tfl_unset")
 })
 

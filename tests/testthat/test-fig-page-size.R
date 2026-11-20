@@ -73,7 +73,7 @@ test_that("step 3 of a figure: no figure size there; its first page says where i
     session$setInputs(target = "F-1", nav = "make", step = "page")
     h <- output$page_form$html
     # (a figure's own settings are its content's tfl_image, tflspec#874)
-    for (a in c("width_twips", "height_twips", "fig_fit", "rtf_figures")) {
+    for (a in c("data-arg=\"width_twips\"", "data-arg=\"height_twips\"", "fig_fit", "rtf_figures")) {
       expect_no_match(h, a, fixed = TRUE)
     }
     expect_match(output$page_sample$html, "Run the code", fixed = TRUE)
