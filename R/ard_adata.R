@@ -262,9 +262,11 @@
   a <- x$ard
   a$analysis_data <- .adata_rows(x, output_id)
   if (!id %in% a$analysis_data$data_id) return(character())
-  a$analysis_data$output_id <- rep(".try", nrow(a$analysis_data))
+  # the report's own id: the code shown starts with `report_id <- "<it>"`
+  out <- if (.is_blank(output_id)) ".try" else as.character(output_id)
+  a$analysis_data$output_id <- rep(out, nrow(a$analysis_data))
   a$analyses <- .normalize_ard_sheet(data.frame(
-    output_id = ".try", analysis_id = "TRY", method = "cards::ard_summary",
+    output_id = out, analysis_id = "TRY", method = "cards::ard_summary",
     data = id, variables = .adata_subject_key(x), stringsAsFactors = FALSE), "analyses")
   tryCatch(tflspec::tfl_ard_code(structure(a, class = "tfl_ard_spec"), part = "body"),
            error = function(e) character())

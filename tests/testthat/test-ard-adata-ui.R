@@ -604,6 +604,9 @@ test_that("step 1 of the sample's T-14-1-1: the set once, the name first, its co
                       adata_distinct = NULL, adata_code = "")
     code <- output$adata_code_view
     expect_match(code, "adsl_saf <- ", fixed = TRUE)
+    # the report's own id, not the placeholder the program is written with
+    expect_match(code, "^report_id <- \"T-14-1-1\"")
+    expect_no_match(code, ".try", fixed = TRUE)
     # saved as it was: the set, no condition
     session$setInputs(adata_save = 1)
     ad <- .adata_rows(session$userData$rv$p, "T-14-1-1")
