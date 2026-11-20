@@ -183,9 +183,19 @@
 # The columns a parameter chooses from: the dataset's the report reads
 # (its `data` argument or default), else every dataset's
 .tpl_columns <- function(data, dataset = NULL) {
+  .tpl_dataset_columns(data, dataset) %||% unique(unlist(lapply(data, names)))
+}
+
+# A dataset's columns, by its name or a template's data id (adsl_sub: its
+# dataset, ADSL -- as .tpl_vars_dataset() reads it); NULL when the study
+# has no such dataset
+.tpl_dataset_columns <- function(data, dataset) {
   ds <- toupper(as.character(dataset %||% "")[1L])
-  if (!is.na(ds) && nzchar(ds) && !is.null(data[[ds]])) return(names(data[[ds]]))
-  unique(unlist(lapply(data, names)))
+  if (is.na(ds) || !nzchar(ds)) return(NULL)
+  for (d in unique(c(ds, sub("_.*$", "", ds)))) {
+    if (!is.null(data[[d]])) return(names(data[[d]]))
+  }
+  NULL
 }
 
 # The dataset a series template's parameter takes its columns from: its
@@ -227,6 +237,7 @@
       levels = "levels",
       flag = "flag",
       number = "number",
+      r = "r",
       text = if (several) "chips" else "text",
       choice = if (several) "choices" else "choice",
       pick = if (several) "picks" else "pick",
@@ -249,6 +260,26 @@
     return(if (length(d) == 1L) "text" else "chips")
   }
   "list"
+}
+
+# An R parameter's value as the text its field shows (a tfl_r's text, a
+# string as it is, a logical or number as R writes it); "" for none
+.tpl_r_text <- function(x) {
+  if (is.null(x) || !length(x)) return("")
+  if (inherits(x, "tfl_r") || is.character(x)) return(paste(as.character(unclass(x)), collapse = "\n"))
+  paste(deparse(x, width.cutoff = 500L), collapse = " ")
+}
+
+# The R field of a template card (the one the builder's R conditions use:
+# monospace, the dataset's columns offered as it is typed); `id` its input id
+.tpl_r_field <- function(id, label, value, cols = character(), placeholder = NULL) {
+  dl <- paste0(id, "__dl")
+  w <- shiny::textInput(id, label, value = .tpl_r_text(value), width = "100%", updateOn = "blur",
+                        placeholder = placeholder)
+  w <- htmltools::tagQuery(w)$find("input")$addClass("rp-mono rp-condition")$
+    addAttrs(spellcheck = "false", list = if (length(cols)) dl)$allTags()
+  shiny::tagList(w, if (length(cols)) shiny::tags$datalist(
+    id = dl, lapply(unique(as.character(cols)), function(x) shiny::tags$option(value = x))))
 }
 
 # The variable whose values a levels parameter chooses from: its `of` -- a
@@ -550,6 +581,11 @@
     },
     list = , columns = .tpl_list_parse(v, prm),
     table = if (.tbl_is_state(v)) .tbl_read(v),
+    # (R as typed, never YAML: TRUE stays the text TRUE, `x: y` stays that text)
+    r = {
+      v <- trimws(paste(as.character(v), collapse = "\n"))
+      if (nzchar(v)) tflspec::tfl_r(v)
+    },
     {
       v <- trimws(paste(as.character(v), collapse = "\n"))
       # (YAML flow or `!r`: what .tpl_show() writes; a text that does not parse is kept as typed --
@@ -567,6 +603,7 @@
     flag = isTRUE(shown),
     number = .num_or_null(shown),
     text = if (is.null(shown)) "" else .tpl_show(shown),
+    r = .tpl_r_text(shown),
     list = , columns = .tpl_list_text(shown, prm),
     table = .tpl_table_state(shown, prm),
     vars = , chips = , choices = , picks = as.character(shown %||% character()),
@@ -608,30 +645,98 @@
 }
 
 # What a template card knows for a table's choices (the ctx of
-# .choice_values()): the columns of a dataset (vars(<data>); the report's
-# dataset when it names none or one the study lacks -- a template's own
-# data id, adsl_sub), a variable's values, the card's arguments and the
-# template's params
+# .choice_values()): the columns of a data row (vars(<id>): the dataset its
+# `from` reads, .tpl_data_rows(); else a dataset of that name, else the one
+# its id begins with -- adsl_sub: ADSL; else the report's dataset), a
+# variable's values, the card's arguments and the template's params.
+# `rows`: the template's data rows and the report's own (.tpl_data_rows());
+# their ids are the report's data (report_data), NULL: the report's dataset
 .tpl_table_ctx <- function(data, dataset = NULL, args = list(), params = list(),
-                           populations = NULL) {
+                           populations = NULL, rows = NULL) {
   ds <- function(x) {
     x <- toupper(as.character(unlist(x)))
     unique(x[!is.na(x) & nzchar(x)])
   }
+  has_rows <- is.data.frame(rows) && nrow(rows) > 0L
   list(
-    # (the source words of a pick: the study's data, the report's -- its
-    # `data` argument, else its dataset -- and the study's analysis sets)
+    # (the source words of a pick: the study's data, the report's -- the ids
+    # of its data rows (tflspec's arg defs: a data row's id), else its `data`
+    # argument or dataset -- and the study's analysis sets)
     study_data = ds(names(data)),
-    report_data = ds(c(args$data, if (is.null(args$data)) dataset)),
+    report_data = if (has_rows) unique(rows$id) else ds(c(args$data, if (is.null(args$data)) dataset)),
     populations = populations,
+    # (vars(adsl_sub): the data row's dataset's columns -- not every
+    # dataset's: its `from`, else the dataset its id names or begins with,
+    # else the report's dataset)
     vars = function(what = NULL) {
-      w <- toupper(as.character(what %||% "")[1L])
-      if (!is.na(w) && nzchar(w) && is.data.frame(data[[w]])) names(data[[w]]) else
+      w <- as.character(what %||% "")[1L]
+      k <- if (has_rows && !is.na(w)) match(w, rows$id) else NA_integer_
+      from <- if (!is.na(k)) rows$from[[k]]
+      .tpl_dataset_columns(data, from) %||% .tpl_dataset_columns(data, w) %||%
         .tpl_columns(data, dataset)
     },
     levels = function(what = NULL) .tpl_levels(data, as.character(what %||% NA_character_)[1L], dataset),
     args = args,
     params = names(params))
+}
+
+# A series template's file (<series>/templates/<template>.yml), NULL for
+# none (a template of tflspec's registry, a series not found)
+.tpl_series_file <- function(name, lister = .tpl_series_lister()) {
+  if (!is.character(name) || length(name) != 1L || !grepl("^[^/]+/[^/]+$", name)) return(NULL)
+  s <- if (is.function(lister)) tryCatch(lister(), error = function(e) NULL)
+  if (!is.data.frame(s) || !nrow(s)) return(NULL)
+  parts <- strsplit(name, "/", fixed = TRUE)[[1L]]
+  path <- s$path[match(parts[[1L]], s$name)]
+  if (!length(path) || is.na(path)) return(NULL)
+  f <- file.path(path, "templates", paste0(parts[[2L]], ".yml"))
+  if (file.exists(f)) f
+}
+
+# A template report's data rows: the template's `data:` rows and the
+# report's own (its `data:` rows, a list of maps with an id), each its id and
+# the dataset it reads (`from`; a "{param}" is the report's argument or the
+# param's default, NA when neither says).  A data frame (id, from), no rows
+# for a template with none.
+.tpl_data_rows <- function(name, args = list(), params = list(), own = NULL,
+                           file = .tpl_series_file(name)) {
+  keep <- function(x) x
+  tpl <- if (!is.null(file)) {
+    y <- tryCatch(yaml::read_yaml(file, handlers = list(r = keep, series = keep, study = keep,
+                                                        fixed = keep, unset = function(x) NULL)),
+                  error = function(e) NULL)
+    if (is.list(y$data) && is.null(names(y$data))) y$data
+  }
+  mine <- if (is.list(own) && length(own) && is.null(names(own))) own
+  rows <- Filter(function(r) is.list(r) && length(r$id) == 1L && !is.na(r$id), c(tpl, mine))
+  fill <- function(x) {
+    x <- as.character(unlist(x))
+    if (length(x) != 1L || is.na(x)) return(NA_character_)
+    m <- regmatches(x, regexec("^[{]([A-Za-z][A-Za-z0-9_.]*)[}]$", x))[[1L]]
+    if (length(m) == 2L) {
+      v <- as.character(unlist(args[[m[[2L]]]] %||% params[[m[[2L]]]]$default))
+      return(if (length(v) && !is.na(v[[1L]]) && nzchar(v[[1L]])) v[[1L]] else NA_character_)
+    }
+    x
+  }
+  out <- data.frame(id = vapply(rows, function(r) as.character(r$id), ""),
+                    from = vapply(rows, function(r) fill(r$from), ""),
+                    stringsAsFactors = FALSE)
+  out[!duplicated(out$id), , drop = FALSE]
+}
+
+# The value a `!series K` default takes (canon 2026-11-16: the study's
+# series_settings.<series>.K, else the series' values.K) -- NULL for a
+# param whose default is no series value, a template of no series, or a
+# tflspec that cannot say.  `study`: the study spec (rv$p$spec$study, its
+# study.yml in $study), as .tpl_study_value() takes it
+.tpl_series_value <- function(study, name, prm) {
+  key <- as.character(prm$series %||% "")[1L]
+  if (is.na(key) || !nzchar(key) || !is.character(name) || !grepl("/", name, fixed = TRUE)) return(NULL)
+  yml <- if (is.list(study$study)) study$study else list()
+  v <- tryCatch(tflspec::tfl_series_settings(yml, sub("/.*$", "", name)),
+                error = function(e) NULL)
+  if (is.list(v)) v[[key]]
 }
 
 # The args with one argument set (NULL, or the default itself: taken away)

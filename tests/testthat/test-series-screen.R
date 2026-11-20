@@ -270,6 +270,8 @@ test_that("the Study tab has the card, and its texts have their Japanese", {
   expect_gt(length(lits), 20L)
   s <- .strings()
   expect_identical(setdiff(lits, s$en), character())
+  # (each with its Japanese: "unsaved" was English on the ja screen)
+  expect_identical(s$en[s$en %in% lits & (is.na(s$ja) | !nzchar(s$ja))], character())
   expect_false(any(grepl("\u6c34\u6e96", s$ja[s$en %in% lits])))
 })
 
@@ -283,5 +285,63 @@ test_that("the app's server starts the card on the open study", {
     expect_match(html_of(output$series_card), "series_list", fixed = TRUE)
     expect_match(html_of(output$series_values), "Values of tflspec_v1", fixed = TRUE)
     expect_match(html_of(output$series_lock), "No spec/series.lock yet", fixed = TRUE)
+  }))
+})
+
+test_that("the card's save of study.yml is the app's own: the next save goes through; an outside edit still stops it (gui-checks-1 D1)", {
+  local_home()
+  two_studies()
+  f <- fake_series(NULL)
+  # tfl_series_settings_set() as tflspec: the block written into study.yml
+  set <- f$fns$tfl_series_settings_set
+  f$fns$tfl_series_settings_set <- function(study_dir, series, values) {
+    set(study_dir, series, values)
+    p <- file.path(study_dir, "study.yml")
+    lines <- readLines(p, encoding = "UTF-8", warn = FALSE)
+    at <- grep("^series_settings:", lines)
+    if (length(at)) {
+      top <- grep("^[^[:space:]#][^:]*:", lines)
+      nxt <- top[top > at[1L]]
+      lines <- lines[-seq(at[1L], if (length(nxt)) nxt[1L] - 1L else length(lines))]
+    }
+    new <- strsplit(sub("\n$", "", yaml::as.yaml(list(series_settings = f$st$block))), "\n")[[1L]]
+    writeLines(c(lines, new), p, useBytes = TRUE)
+    invisible(p)
+  }
+  local_series(f$fns)
+  block_of <- function(path) yaml::read_yaml(file.path(path, "study.yml"))$series_settings
+  suppressWarnings(shiny::testServer(server_for("S1"), {
+    rv <- session$userData$rv
+    path <- rv$study$path
+    session$flushReact()
+    session$setInputs(series_change = list(key = "total", n = 1))
+    session$setInputs(series_edit_4 = "true")
+    session$setInputs(series_save = 1L)
+    expect_identical(block_of(path)$tflspec_v1$total, TRUE)
+    # the app's own write: no change outside it, and nothing unsaved
+    expect_true(all(spec_status("S1")$status == "same"))
+    expect_identical(rv$p, rv$saved)
+    expect_true(any(grepl("^series_settings:", rv$p$spec$text[["study.yml"]])))
+    # the next save goes through and keeps the block
+    rv$p$outputs$description[1] <- "changed here"
+    session$setInputs(save = 1)
+    expect_identical(open_study("S1")$planner$outputs$description[1], "changed here")
+    expect_identical(block_of(path)$tflspec_v1$total, TRUE)
+    expect_true(all(spec_status("S1")$status == "same"))
+    # back to the series and saved, then saved again: the same
+    session$setInputs(series_back = list(key = "total", n = 2))
+    session$setInputs(series_save = 2L)
+    expect_null(block_of(path)$tflspec_v1$total)
+    rv$p$outputs$description[1] <- "again"
+    session$setInputs(save = 2)
+    expect_identical(open_study("S1")$planner$outputs$description[1], "again")
+    expect_true(all(spec_status("S1")$status == "same"))
+    # an edit made outside the app: still stops the save
+    cat("# edited outside\n", file = file.path(path, "study.yml"), append = TRUE)
+    rv$p$outputs$description[1] <- "not saved"
+    session$setInputs(save = 3)
+    st <- spec_status("S1")
+    expect_identical(st$status[st$file == "study.yml"], "changed")
+    expect_identical(open_study("S1")$planner$outputs$description[1], "again")
   }))
 })

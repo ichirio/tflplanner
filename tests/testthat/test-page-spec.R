@@ -174,7 +174,8 @@ test_that("style: the page configuration chosen; one made, renamed, removed", {
   # (and the default one: not changed)
   expect_null(q$spec$study$styles$standard$page$rtf_page$orientation)
   r <- .pgs_rename_pattern(p, "compact", "Small")
-  expect_setequal(texts_changed(p, r), c("spec/defaults.yml", "spec/outputs/T-14-3-1.yml"))
+  expect_setequal(texts_changed(p, r), c("spec/defaults.yml", "spec/outputs/T-14-3-1.yml",
+                                        "spec/outputs/T-14-3-1C.yml"))
   expect_identical(r$spec$outputs[["T-14-3-1"]]$style, "Small")
   expect_identical(.pgs_arg(.pgs_spec(r), "T-14-3-1", "rtf_page", "margin_top_in")$from, "style:Small")
   # (the setup's objects are named by the configuration: header_Small)
