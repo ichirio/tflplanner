@@ -222,8 +222,7 @@ test_that("1-1: one list, a new analysis data, kept to another's subjects", {
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL)
     ad <- .adata_rows(rv$p, "DM")
     expect_identical(ad$subjects_in[ad$data_id == "adsl_old"], "adsl_saf")
-    # a click marks it, and the buttons name it
-    session$setInputs(ard_adata_pick = "adsl_old")
+    # made, it is the one marked, and the buttons name it
     h <- output$ard_adata$html
     expect_match(h, "Copy adsl_old", fixed = TRUE)
     expect_match(h, "aria-selected=\"true\"", fixed = TRUE)

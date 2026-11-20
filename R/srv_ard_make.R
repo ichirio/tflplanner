@@ -259,6 +259,9 @@
     rv$p <- p
     st_live$wrote(p)
     st_live$id <- new_id
+    a <- p$ard$analyses
+    k <- which(a$output_id %in% shiny::isolate(ard_target()) & a$analysis_id %in% new_id)[1L]
+    st_live$row <- as.list(a[k, , drop = FALSE])
     an_pick(new_id)
     bump()
     TRUE
@@ -613,6 +616,8 @@
     if (isTRUE(st_env$hold)) return(shiny::HTML("<!--rp-keep-->"))
     # another analysis opened: what Undo goes back to; the same one drawn
     # again: the values the page sends back first are not an edit
+    # (the row the form shows: an edit is written over it only)
+    st_live$row <- as.list(r)
     if (!identical(st_live$id, r$analysis_id)) {
       st_live$open(rv$p)
       st_live$id <- st_live$orig <- r$analysis_id

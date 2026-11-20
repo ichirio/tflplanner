@@ -227,6 +227,10 @@
     if (is.null(id) || !identical(st_live$id, id)) return(invisible())
     r <- tryCatch(st_row(), error = function(e) NULL)
     if (is.null(r) || !identical(r$analysis_id, id)) return(invisible())
+    # (the row changed by another hand since the form was drawn -- written
+    # as code, grouped into a stack ...: the form is drawn again from it,
+    # its values are not written over it)
+    if (!identical(as.list(r), st_live$row)) return(invisible())
     g <- function(x) input[[st_id(x)]]
     one_val <- function(v) {
       v <- trimws(paste(v %||% character(), collapse = " | "))
@@ -315,18 +319,21 @@
     if (!.ard_args_same(new_args, r$args)) a$args[i] <- new_args
     fd <- form_data(r)
     a <- .an_data_write(a, i, fd)
-    a$where[i] <- one_val(where)
-    a$by[i] <- one_val(g("by"))
+    # (a field not on screen (yet) keeps the row's value)
+    if (!is.null(g("where"))) a$where[i] <- one_val(where)
+    if (!is.null(g("by"))) a$by[i] <- one_val(g("by"))
     if (!is.null(g("overall"))) {
       if (is.null(a$overall)) a$overall <- NA_character_
       a$overall[i] <- if (isTRUE(g("overall"))) "TRUE" else NA_character_
     }
     if (!is.null(g("strata"))) a$strata[i] <- one_val(g("strata"))
     if (!is.null(g("den"))) a$denominator[i] <- one_val(g("den"))
-    a$variables[i] <- one_val(g("vars"))
-    a$statistics[i] <- one_val(pick)
-    a$formats[i] <- if (length(fm))
-      paste(paste0(names(fm), "=", fm), collapse = " | ") else NA
+    if (!is.null(g("vars"))) a$variables[i] <- one_val(g("vars"))
+    if (!is.null(g("pick"))) {
+      a$statistics[i] <- one_val(pick)
+      a$formats[i] <- if (length(fm))
+        paste(paste0(names(fm), "=", fm), collapse = " | ") else NA
+    }
     if (identical(a$method[i], "custom") && !is.null(g("code"))) a$code[i] <- one_val(g("code"))
     # it becomes a stack: what it computed goes into one inside it
     to_stack <- identical(a$method[i], .stack_fn) && !identical(r$method, .stack_fn)
