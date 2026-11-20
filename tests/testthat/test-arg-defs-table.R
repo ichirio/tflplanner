@@ -60,7 +60,7 @@ test_that("a map<column,r> (derive): a new column's name = R, the columns offere
                "c__derive__isr", fixed = TRUE)
 })
 
-test_that("a map<column,list<level>> (levels): a column picked, its values one a line", {
+test_that("a map<column,list<level>> (levels): a column picked, its values a select of several", {
   d <- list(input = "table", choices = "vars(from_args(data))")
   h <- html(arg_field("c", "levels", "map<column,list<level>>", def = d, ctx = ctx,
                       value = list(SEX = c("M", "F"))))
@@ -68,8 +68,10 @@ test_that("a map<column,list<level>> (levels): a column picked, its values one a
   expect_match(h, "<th>Values</th>", fixed = TRUE)
   expect_match(h, "<select class=\"form-select form-select-sm rp-tbl-cell\">", fixed = TRUE)
   expect_match(h, "<option value=\"SEX\" selected>SEX</option>", fixed = TRUE)
-  expect_match(h, "rp-tbl-list\" rows=\"2\" placeholder=\"One per line\" spellcheck=\"false\">M\nF</textarea>",
+  expect_match(h, "<select class=\"form-select form-select-sm rp-tbl-cell rp-tbl-multi\" multiple data-placeholder=\"Add a value\">",
                fixed = TRUE)
+  expect_match(h, "<option value=\"M\" selected>M</option>\n<option value=\"F\" selected>F</option>", fixed = TRUE)
+  expect_identical(jsonlite::fromJSON(tbl_state_of(h))$rows[1L, ], c("SEX", "M\nF"))
   # (free: the key typed, the columns offered)
   h <- html(arg_field("c", "levels", "map<column,list<level>>", def = c(d, free = TRUE), ctx = ctx))
   expect_false(grepl("<select class=\"form-select form-select-sm rp-tbl-cell\"", h, fixed = TRUE))
@@ -99,10 +101,50 @@ test_that("a map<string, list<column>|string> (stack): the key typed, the value 
   h <- html(arg_field("c", "stack", "map<string, list<column>|string>", def = list(input = "table"),
                       value = list(subgroup = c("SEX", "AGEGR1"))))
   expect_match(h, "<th>Key</th>", fixed = TRUE)
+  expect_match(h, "<th>Values</th>", fixed = TRUE)
   expect_match(h, "value=\"subgroup\"", fixed = TRUE)
-  expect_match(h, ">SEX\nAGEGR1</textarea>", fixed = TRUE)
-  # (no choices: no Add a value)
-  expect_false(grepl("rp-tbl-add\"", h, fixed = TRUE))
+  expect_match(h, "<option value=\"SEX\" selected>SEX</option>\n<option value=\"AGEGR1\" selected>AGEGR1</option>",
+               fixed = TRUE)
+  # (selectize's script and style come with it)
+  deps <- htmltools::findDependencies(arg_field("c", "stack", "map<string, list<column>|string>",
+                                                def = list(input = "table")))
+  expect_true("selectize" %in% vapply(deps, function(x) x$name, ""))
+  # the choices offered to the value (a key that is a name, a value of
+  # columns), a value they lack kept, in its order; the key typed
+  h <- html(arg_field("c", "stack", "map<string, list<column>|string>", def = list(input = "table"),
+                      choices = c("ALL", "SEX", "AGEGR1", "group2"),
+                      value = list(subgroup = c("AGEGR1 * SEX", "ALL"))))
+  expect_false(grepl("<select class=\"form-select form-select-sm rp-tbl-cell\">", h, fixed = TRUE))
+  expect_match(h, paste0("<option value=\"AGEGR1 * SEX\" selected>AGEGR1 * SEX</option>\n",
+                         "<option value=\"ALL\" selected>ALL</option>\n",
+                         "<option value=\"SEX\">SEX</option>"), fixed = TRUE)
+  expect_match(h, "<option value=\"group2\">group2</option>", fixed = TRUE)
+  # (the def's headings and a new row's key)
+  h <- html(arg_field("c", "stack", "map<string, list<column>|string>",
+                      def = list(input = "table", heads = c("Name", "Layers"), new_key = "subgroup")))
+  expect_match(h, "<th>Name</th>\n<th>Layers</th>", fixed = TRUE)
+  tpl <- regmatches(h, regexpr("<template class=\"rp-tbl-tpl\">.*?</template>", h))
+  expect_match(tpl, "value=\"subgroup\"", fixed = TRUE)
+  expect_match(html(arg_field("c", "stack", "map<string, list<column>|string>", lang = "ja",
+                              def = list(input = "table", heads = c("Name", "Layers")))),
+               "<th>\u540d\u524d</th>", fixed = TRUE)
+})
+
+test_that("a list cell reads back a list a row, one value kept a text (stack, combine)", {
+  ty <- "map<string, list<column>|string>"
+  v <- list(subgroup = c("ALL", "SEX", "AGEGR1", "AGEGR1 * SEX"), sub2 = "group2, group3")
+  expect_identical(round_trip(ty, list(input = "table"), v), v)
+  v <- list(worst_gr = c("ATOXGRL", "ATOXGRH"), base_gr = c("BTOXGRL", "BTOXGRH"))
+  expect_identical(round_trip("map<string, list<column>>", list(input = "table"), v), v)
+  # (a list read from the YAML, a list of texts: the same values)
+  expect_identical(round_trip(ty, list(input = "table"), list(subgroup = list("ALL", "SEX"))),
+                   list(subgroup = c("ALL", "SEX")))
+  # the page's state: one value a line, a comma kept in its value
+  st <- list(shape = "map", cols = list("key", "value"), kinds = list("text", "list"),
+             rows = list(list("subgroup", "ALL\nAGEGR1 * SEX"), list("sub2", "group2, group3"),
+                         list("", "SEX"), list("empty", "")))
+  expect_identical(.tbl_read(as.character(jsonlite::toJSON(st, auto_unbox = TRUE))),
+                   list(subgroup = c("ALL", "AGEGR1 * SEX"), sub2 = "group2, group3"))
 })
 
 test_that("a rows<map<string,string|r>> (conditions): the params as columns, where as R, the ALL row read only", {
@@ -227,9 +269,9 @@ test_that("a rows<map<string,list<column>>> (ards): each column's own def, its c
                       value = list(list(by = "TRT01A", variables = c("AGE", "SEX")))))
   expect_match(h, "<th class=\"rp-mono\">by</th>", fixed = TRUE)
   expect_match(h, "<th class=\"rp-mono\">variables</th>", fixed = TRUE)
-  expect_match(h, ">AGE\nSEX</textarea>", fixed = TRUE)
-  expect_match(h, "rp-tbl-add", fixed = TRUE)
-  expect_match(h, "+ Add a value", fixed = TRUE)
+  expect_match(h, "<option value=\"AGE\" selected>AGE</option>\n<option value=\"SEX\" selected>SEX</option>",
+               fixed = TRUE)
+  expect_match(h, "rp-tbl-multi", fixed = TRUE)
   expect_match(h, "<option value=\"TRT01A\">TRT01A</option>", fixed = TRUE)
 })
 

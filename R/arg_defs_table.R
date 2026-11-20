@@ -15,8 +15,9 @@
 #
 # A cell's kind: "text" (a text field, the choices offered as it is typed),
 # "pick" (a select of the choices), "r" (R, monospace, the columns offered),
-# "number_text" (a number, else text), "list" (several values, one a line,
-# in order; a select beside it adds one of the choices).
+# "number_text" (a number, else text), "list" (several values in order: a
+# select of several, the choices offered and a value typed -- its state one
+# value a line).
 
 # ---- the type -> the table's columns -------------------------------------------
 
@@ -112,16 +113,25 @@
   if (identical(tt$shape, "map")) {
     vk <- .tbl_cell_kind(tt$value)
     to_value <- identical(vk, "r")
-    kk <- if (!to_value && length(choices)) (if (isTRUE(def$free)) "text" else "pick") else "text"
+    # (the choices the value's where the key is a name and the value a list
+    # of columns: normalize_ard(stack = ) a name, its layers picked)
+    val_ch <- to_value || (!grepl("^column", tt$key) && identical(vk, "list") &&
+                             .type_has_column(tt$value))
+    kk <- if (!val_ch && length(choices)) (if (isTRUE(def$free)) "text" else "pick") else "text"
     key_head <- if (to_value && grepl("^column", tt$key)) "New column" else
       if (grepl("^column", tt$key)) "Column" else "Key"
     val_head <- switch(vk, r = "R", list = "Values", "Value")
-    return(list(shape = "map", cols = c("key", "value"),
-                heads = c(tr(key_head, lang), if (identical(val_head, "R")) "R" else tr(val_head, lang)),
+    heads <- c(tr(key_head, lang), if (identical(val_head, "R")) "R" else tr(val_head, lang))
+    # (the def's own headings, where it gives two)
+    dh <- as.character(unlist(def$heads))
+    if (length(dh) == 2L) heads <- tr(dh, lang)
+    return(list(shape = "map", cols = c("key", "value"), heads = heads,
                 kinds = c(kk, vk),
-                choices = list(if (!to_value) choices else character(),
-                               if (to_value) choices else character()),
-                ordered = isTRUE(def$ordered)))
+                choices = list(if (!val_ch) choices else character(),
+                               if (val_ch) choices else character()),
+                ordered = isTRUE(def$ordered),
+                # (a new row's key: the def's, else blank)
+                new = c(as.character(def$new_key %||% "")[1L], "")))
   }
   vk <- .tbl_cell_kind(tt$value)
   cdefs <- def$columns
@@ -349,6 +359,36 @@
   shiny::tagList(shiny::tags$option(value = "", blank), items, keep)
 }
 
+# a list cell's text (one value a line) as its values, in order
+.tbl_list_values <- function(text) {
+  v <- trimws(strsplit(paste(text, collapse = "\n"), "\n", fixed = TRUE)[[1L]])
+  unique(v[nzchar(v)])
+}
+
+# A list cell's options: its values first, selected, in their order (the
+# select keeps them so; a value the choices lack is one of them, as typed),
+# then the other choices (groups as optgroups)
+.tbl_multi_options <- function(choices, selected = character()) {
+  opt <- function(v, lab, sel = FALSE) shiny::tags$option(value = v, selected = if (sel) NA, lab)
+  grouped <- is.list(choices) && !is.null(names(choices))
+  labs <- if (grouped) do.call(c, unname(lapply(choices, .choice_vec))) else .choice_vec(choices)
+  rest <- function(x) {
+    x <- .choice_vec(x)
+    x <- x[!x %in% selected]
+    Map(opt, unname(x), names(x))
+  }
+  shiny::tagList(
+    lapply(selected, function(v) {
+      i <- match(v, labs)
+      opt(v, if (is.na(i)) v else names(labs)[[i]], sel = TRUE)
+    }),
+    if (grouped) {
+      lapply(names(choices), function(g) shiny::tags$optgroup(label = g, rest(choices[[g]])))
+    } else {
+      rest(choices)
+    })
+}
+
 # one cell's control (no id: the table is the one input); `ph` a light
 # candidate shown while it is blank (a series value, .field_table())
 .tbl_cell <- function(kind, text, dl = NULL, choices = NULL, lang = "en", ph = NULL) {
@@ -360,13 +400,9 @@
                               .tbl_options(choices, text)),
     r = shiny::tags$input(type = "text", class = paste(base, "rp-mono rp-tbl-r"), value = text,
                           placeholder = ph %||% "R", spellcheck = "false", list = dl),
-    list = shiny::tagList(
-      shiny::tags$textarea(class = paste(base, "rp-tbl-list"), rows = "2",
-                           placeholder = ph %||% tr("One per line", lang), spellcheck = "false", text),
-      if (length(choices)) {
-        shiny::tags$select(class = "form-select form-select-sm rp-tbl-add", title = tr("Add a value", lang),
-                           .tbl_options(choices, "", blank = paste0("+ ", tr("Add a value", lang))))
-      }),
+    list = shiny::tags$select(class = "form-select form-select-sm rp-tbl-cell rp-tbl-multi", multiple = NA,
+                              `data-placeholder` = ph %||% tr("Add a value", lang),
+                              .tbl_multi_options(choices, .tbl_list_values(text))),
     number_text = shiny::tags$input(type = "text", class = paste(base, "rp-tbl-num"), value = text,
                                     inputmode = "decimal", placeholder = ph),
     shiny::tags$input(type = "text", class = base, value = text, list = dl, placeholder = ph))
@@ -460,7 +496,9 @@
                                                      t("From the template"))))
     }))
   st <- .tbl_state(spec, value)
-  shiny::div(
+  # (a list cell is a selectize the page's script makes: its script and style)
+  deps <- if ("list" %in% c(spec$kinds, vapply(spec$extra, function(x) x$kind, ""))) .tbl_selectize_deps()
+  out <- shiny::div(
     class = paste("rp-tbl", paste0("rp-tbl-", spec$shape)), id = fid,
     `data-shape` = spec$shape,
     `data-cols` = as.character(jsonlite::toJSON(spec$cols)),
@@ -480,7 +518,7 @@
                         if (!length(body)) .tbl_empty_row(n, lang),
                         lapply(body, function(r) .tbl_row(spec, r$cells, dls, lang, ph = r$ph, cand = r$cand))),
       fixed_body(after)),
-    shiny::tags$template(class = "rp-tbl-tpl", .tbl_row(spec, rep("", n), dls, lang)),
+    shiny::tags$template(class = "rp-tbl-tpl", .tbl_row(spec, spec$new %||% rep("", n), dls, lang)),
     lists,
     shiny::tags$button(type = "button", class = "btn btn-link btn-sm rp-tbl-addrow",
                        paste0("+ ", t("Add a row"))),
@@ -499,4 +537,10 @@
                            `data-col` = x$col, `data-kind` = x$kind,
                            paste0("+ ", t("Add the column:"), " ", x$col)))
     }))
+  if (length(deps)) htmltools::attachDependencies(out, deps, append = TRUE) else out
+}
+
+# selectize's script and style, as shiny's selectizeInput() brings them
+.tbl_selectize_deps <- function() {
+  htmltools::findDependencies(shiny::selectizeInput("rp_tbl_dep", NULL, character()))
 }

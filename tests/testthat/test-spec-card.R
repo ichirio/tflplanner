@@ -532,3 +532,97 @@ test_that("a label by language: its ja, else the English by the app's texts", {
   expect_identical(.label_text(list(en = "Table structure"), "ja"), tr("Table structure", "ja"))
   expect_identical(.label_text(list(en = "Table structure", ja = NA_character_), "en"), "Table structure")
 })
+
+
+# normalize_ard()'s stack, combine and drop_contexts: fields of their own
+# definitions (a table of a name and its list, a select of several), no
+# longer R only
+norm_state_of <- function(h, a) {
+  m <- regmatches(h, regexpr(sprintf('(?s)<div class="rp-tbl rp-tbl-map" id="c__%s".*?data-state="[^"]*"', a),
+                             h, perl = TRUE))
+  x <- sub('^.*data-state="([^"]*)"$', "\\1", m)
+  for (p in list(c("&quot;", "\""), c("&#39;", "'"), c("&lt;", "<"), c("&gt;", ">"),
+                 c("&#10;", "\n"), c("&amp;", "&"))) {
+    x <- gsub(p[[1L]], p[[2L]], x, fixed = TRUE)
+  }
+  x
+}
+
+test_that("normalize_ard(): stack and combine a table of a name and its list, drop_contexts a select of several", {
+  skip_on_cran()
+  d <- spec_card_defs("normalize_ard")
+  # (tflspec's types, not the fallback's R)
+  for (a in c("stack", "combine", "drop_contexts")) {
+    expect_identical(d$args[[a]]$type, tflspec::tfl_schema("normalize_ard")$args[[a]]$type, info = a)
+    expect_false(identical(.arg_kind(d$args[[a]]$type), "r"), info = a)
+  }
+  expect_false("normalize_ard" %in% names(.spec_fallback$type))
+  ch <- c("TRT01A", "SEX", "AGEGR1")
+  ctx <- list(choices = ch, arg_choices = .norm_arg_choices(ch, c("TRT01A", "SEX", "AGEGR1"),
+                                                            list(variables = data.frame(variable = "AVAL")),
+                                                            list(contexts = c("tabulate", "attributes"))))
+  expect_identical(ctx$arg_choices$stack, c("ALL", "TRT01A", "SEX", "AGEGR1", "group2", "group3"))
+  expect_identical(ctx$arg_choices$combine, c("TRT01A", "SEX", "AGEGR1", "AVAL"))
+  expect_identical(ctx$arg_choices$drop_contexts, c("attributes", "total_n", "tabulate"))
+  args <- list(stack = list(subgroup = c("ALL", "SEX", "AGEGR1", "AGEGR1 * SEX"), sub2 = "group2, group3"),
+               combine = list(worst_gr = c("ATOXGRL", "ATOXGRH")),
+               drop_contexts = c("attributes", "total_n"))
+  it <- list(fn = "normalize_ard", args = args, own_args = args)
+  h <- html(spec_card("c", "normalize_ard", it, ctx = ctx))
+  # stack: Name and Layers; a new row "subgroup"; its layers offered ALL,
+  # the columns and the group slots, a crossing typed kept as it is
+  expect_match(h, '<div class="rp-tbl rp-tbl-map" id="c__stack"', fixed = TRUE)
+  expect_match(h, "<th>Name</th>\n<th>Layers</th>", fixed = TRUE)
+  expect_match(h, '<option value="AGEGR1 * SEX" selected>AGEGR1 * SEX</option>', fixed = TRUE)
+  expect_match(h, '<option value="group2, group3" selected>group2, group3</option>', fixed = TRUE)
+  expect_match(h, '<option value="group3">group3</option>', fixed = TRUE)
+  tpl <- regmatches(h, regexpr('(?s)<template class="rp-tbl-tpl">.*?</template>', h, perl = TRUE))
+  expect_match(tpl, 'value="subgroup"', fixed = TRUE)
+  # combine: Name and Variables, the columns and the variables offered
+  expect_match(h, '<div class="rp-tbl rp-tbl-map" id="c__combine"', fixed = TRUE)
+  expect_match(h, "<th>Name</th>\n<th>Variables</th>", fixed = TRUE)
+  expect_match(h, '<option value="AVAL">AVAL</option>', fixed = TRUE)
+  # drop_contexts: a select of several, the contexts offered, another typed
+  expect_match(h, 'id="c__drop_contexts"[^>]*multiple', perl = TRUE)
+  expect_match(h, '<option value="tabulate">tabulate</option>', fixed = TRUE)
+  expect_match(h, '"create"\s*:\s*true', perl = TRUE)
+  # (no R switch: their types take no R -- the card's Edit as R is the way)
+  for (a in c("stack", "combine", "drop_contexts")) {
+    expect_false(grepl(sprintf('id="c__%s__isr"', a), h, fixed = TRUE), info = a)
+    expect_false(grepl(sprintf('data-arg="%s"[^>]*rp-field-r\\b', a), h), info = a)
+  }
+  # Japanese: the headings translated
+  hj <- html(spec_card("c", "normalize_ard", it, ctx = ctx, lang = "ja"))
+  expect_match(hj, sprintf("<th>%s</th>\n<th>%s</th>", tr("Name", "ja"), tr("Layers", "ja")), fixed = TRUE)
+  # read back as the page sends it: the same values, no change
+  inp <- list(c__stack = norm_state_of(h, "stack"), c__combine = norm_state_of(h, "combine"),
+              c__drop_contexts = c("attributes", "total_n"), c__overall = "")
+  r <- spec_card_read(inp, "c", "normalize_ard")
+  expect_identical(r$stack, args$stack)
+  expect_identical(r$combine, args$combine)
+  expect_identical(r$drop_contexts, args$drop_contexts)
+  expect_identical(spec_card_args(r, it, "normalize_ard"), args)
+  # a row edited: its list written, the other rows kept
+  st <- jsonlite::fromJSON(inp$c__stack, simplifyVector = FALSE)
+  st$rows[[1L]][[2L]] <- "ALL\nSEX"
+  inp$c__stack <- as.character(jsonlite::toJSON(st, auto_unbox = TRUE))
+  r <- spec_card_read(inp, "c", "normalize_ard")
+  expect_identical(r$stack, list(subgroup = c("ALL", "SEX"), sub2 = "group2, group3"))
+  expect_identical(args_to_r("normalize_ard", r["stack"]),
+                   'normalize_ard(stack = list(subgroup = c("ALL", "SEX"), sub2 = "group2, group3"))')
+})
+
+test_that("normalize_ard(): a stack written as R keeps its R switch and reads back as R", {
+  skip_on_cran()
+  R <- tflspec::tfl_r
+  args <- list(stack = R('list(subgroup = list("ALL", c("AGEGR1", "SEX")))'))
+  it <- list(fn = "normalize_ard", args = args, own_args = args)
+  h <- html(spec_card("c", "normalize_ard", it))
+  expect_match(h, 'id="c__stack__isr" class="rp-isr" checked', fixed = TRUE)
+  expect_match(h, 'value="list(subgroup = list(&quot;ALL&quot;, c(&quot;AGEGR1&quot;, &quot;SEX&quot;)))"',
+               fixed = TRUE)
+  r <- spec_card_read(list(c__stack__isr = TRUE, c__stack__r = as.character(unclass(args$stack)),
+                           c__overall = ""), "c", "normalize_ard")
+  expect_identical(r$stack, args$stack)
+  expect_identical(spec_card_args(r, it, "normalize_ard"), args)
+})

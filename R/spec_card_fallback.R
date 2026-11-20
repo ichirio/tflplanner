@@ -10,14 +10,12 @@
 
 .spec_fallback <- list(
   # The type a field is drawn by where tflspec's input form has no field
-  # here yet: "r" a value typed as R -- a list of text or of whole numbers
-  # typed in one box (input: text), a map whose value is a list or a text
-  # (input: table); "widths" a number a column (the part
+  # here yet: "r" a value typed as R -- a list of text or of whole numbers typed in
+  # one box (input: text); "widths" a number a column (the part
   # .spec_parts$widths); plan_cell_style()'s looks the schema's type drawn
   # as an enum (tfl_arg_defs() gives a union's enum no values).  The
   # definition's input form is not used for these.
   type = list(
-    normalize_ard = c(drop_contexts = "r", stack = "r", combine = "r"),
     plan_cell_style = c(bold = .spec_cell_look, italic = .spec_cell_look),
     plan_columns = c(widths = "widths", column_widths_twips = "r"),
     plan_titles = c(pages = "r"),
@@ -27,7 +25,14 @@
   # (tflspec's own definition reads them as text)
   r = list(
     plan_columns = "cell_format",
-    plan_paginate_cols = "col_header"))
+    plan_paginate_cols = "col_header"),
+  # A map's table field where tflspec says only its type: the columns'
+  # headings (`heads`, the key's and the value's) and a new row's key
+  # (`new_key`) -- normalize_ard(stack = ) a name, "subgroup" for a new
+  # row, and its layers
+  table = list(
+    normalize_ard = list(stack = list(heads = c("Name", "Layers"), new_key = "subgroup"),
+                         combine = list(heads = c("Name", "Variables")))))
 
 # the definitions with the fallback's types (the field the type says, not
 # the definition's input form)
@@ -37,6 +42,8 @@
   for (a in intersect(.spec_fallback$r[[fn]], names(sch$args))) {
     if (is.null(sch$args[[a]]$type)) sch$args[[a]]$type <- "r"
   }
+  tb <- .spec_fallback$table[[fn]]
+  for (a in intersect(names(tb), names(sch$args))) sch$args[[a]][names(tb[[a]])] <- tb[[a]]
   sch
 }
 

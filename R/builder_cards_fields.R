@@ -139,7 +139,10 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
   control <- switch(
     kind,
     column = .field_select(fid, choices, value, multiple = FALSE, lang = lang, placeholder = default),
-    list = .field_select(fid, choices, value, multiple = TRUE, lang = lang, placeholder = default),
+    # (a list typed -- a def's text form, normalize_ard(drop_contexts = ):
+    # the choices offered, another value typed)
+    list = .field_select(fid, choices, value, multiple = TRUE, lang = lang, placeholder = default,
+                         create = identical(form, "text")),
     enum = .field_enum(fid, .type_enum(type), value, default, lang, labels = .enum_labels[[arg]]),
     number = .field_number(fid, value, default, step = "any"),
     integer = .field_number(fid, value, default, step = "1", min = "0"),
