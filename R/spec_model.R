@@ -112,6 +112,9 @@
   }
   p <- .migrate_step_code(p, old)
   p <- .renamed_outputs(p)
+  # (a figure's size: its content's tfl_image, in the report sheet's cells
+  # the screens and programs read)
+  p <- .fig_image_view(p, study, outputs)
   attr(p, "not_converted") <- back$not_converted
   p
 }
@@ -314,6 +317,7 @@
     if (is.null(sp$study)) sp$study <- new$study
     for (r in changed) {
       # (a file the bridge no longer writes: gone from the spec)
+      old_text <- sp$text[[r]]
       sp$text[[r]] <- now$text[[r]]
       part <- .spec_part(r)
       switch(part$kind,
@@ -369,7 +373,11 @@
           }
           sp$study[part$kind] <- list(mine)
           if (!identical(mine, new$study[[part$kind]]) || styles_kept) {
-            sp$text[[r]] <- .study_part_lines(sp$study, part$kind)
+            sp$text[[r]] <- .study_part_lines(sp$study, part$kind, old = old_text)
+          }
+          # (the bridge's file has no `codelists:` / `adam_meta:`: the spec's stay)
+          if (identical(part$kind, "defaults") && length(old_text)) {
+            sp$text[[r]] <- .keep_study_blocks(sp$text[[r]], old_text)
           }
         })
     }
@@ -733,7 +741,8 @@
   f <- tempfile("tflplanner-defaults", fileext = ".yml")
   on.exit(unlink(f), add = TRUE)
   tflspec::tfl_write_study_part(sp$study, "defaults", f)
-  sp$text[[rel]] <- readLines(f, encoding = "UTF-8", warn = FALSE)
+  sp$text[[rel]] <- .keep_study_blocks(readLines(f, encoding = "UTF-8", warn = FALSE),
+                                       sp$text[[rel]] %||% character())
   p$spec <- sp
   p$study[["rounding"]] <- v
   if (!is.null(p$spec$base)) p$spec$base$study[["rounding"]] <- v

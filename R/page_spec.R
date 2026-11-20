@@ -31,8 +31,8 @@
   list(arg = "align", label = "Alignment", kind = "choice", choices = c("left", "center", "right")))
 
 # One card a function; its fields in the function's order (formals).  kind:
-# choice, number, pt (half points shown as points), text, logical, inches
-# (twips shown as inches, or fit).  `arg` is the YAML key.
+# choice, number, pt (half points shown as points), text, logical.  `arg`
+# is the YAML key.
 .pgs_fields <- list(
   rtf_page = list(
     list(arg = "paper_size", label = "Paper", kind = "choice",
@@ -79,23 +79,20 @@
     list(arg = "auto_title", label = "Title from the table's name", kind = "logical"),
     list(arg = "title_label_align", label = "Title's alignment", kind = "choice",
          choices = c("left", "center", "right"))),
-  rtf_figures = list(
-    list(arg = "width_twips", label = "Width (in)", kind = "inches"),
-    list(arg = "height_twips", label = "Height (in)", kind = "inches"),
-    list(arg = "align", label = "Alignment", kind = "choice", choices = c("left", "center", "right"))),
+  # (a figure's size, alignment, dpi and PNG device are no page setting:
+  # its content's tfl_image, the content step's card -- tflspec#874)
   rtf_titles = .pgs_band_fields,
   rtf_footnotes = .pgs_band_fields)
 
 # a card's meaning, its title "meaning (function())"
 .pgs_cards <- c(rtf_page = "Paper and margins", rtf_style = "Text defaults",
-                rtf_document = "Document", rtf_tables = "Table on the page",
-                rtf_figures = "Figure size")
+                rtf_document = "Document", rtf_tables = "Table on the page")
 
 # the call each card is in the program (tflspec writes rtf_page()'s
 # arguments as rtf_document(page = list(...)))
 .pgs_call_names <- c(rtf_page = "(rtf_document(page =))", rtf_style = "(rtf_document(style = rtf_style()))",
                      rtf_document = "(rtf_document())", rtf_tables = "(rtf_tables())",
-                     rtf_figures = "(rtf_figures())", rtf_titles = "(rtf_titles())",
+                     rtf_titles = "(rtf_titles())",
                      rtf_footnotes = "(rtf_footnotes())")
 
 .pgs_field <- function(fn, arg) {
@@ -317,10 +314,6 @@
   }
   if (identical(kind, "slots")) return(.slots_show(v))
   if (identical(kind, "pt")) return(.points(as.character(v)))
-  if (identical(kind, "inches")) {
-    n <- suppressWarnings(as.numeric(v))
-    return(if (is.na(n)) as.character(v) else format(round(n / 1440, 3)))
-  }
   if (is.logical(v)) return(if (isTRUE(v)) "TRUE" else "FALSE")
   as.character(v)[1L]
 }
@@ -339,12 +332,6 @@
     hp <- .half_points(v)
     if (is.na(hp)) stop("The size is a number of points (9, 10 ...).", call. = FALSE)
     return(as.integer(hp))
-  }
-  if (identical(kind, "inches")) {
-    if (identical(tolower(v), "fit")) return("fit")
-    n <- suppressWarnings(as.numeric(v))
-    if (is.na(n) || n <= 0) stop("A size is inches (5.5) or fit.", call. = FALSE)
-    return(as.integer(round(n * 1440)))
   }
   if (v %in% c("TRUE", "FALSE")) return(identical(v, "TRUE"))
   n <- suppressWarnings(as.numeric(v))
@@ -546,18 +533,46 @@ $", "", yaml::as.yaml(list(tokens = tokens))), "
   rel <- if (identical(part, "patterns")) {
     file.path(study_layout()[["spec"]], "patterns", paste0(name, ".yml"))
   } else file.path(study_layout()[["spec"]], paste0(part, ".yml"))
-  sp$text[[rel]] <- .study_part_lines(sp$study, part, name)
+  sp$text[[rel]] <- .study_part_lines(sp$study, part, name, old = sp$text[[rel]])
   sp$text <- sp$text[sort(names(sp$text), method = "radix")]
   p$spec <- sp
   .spec_view_study_page(p)
 }
 
-# A study part's file text, as tflspec writes it from the study's spec
-.study_part_lines <- function(study, part, name = NULL) {
+# A study part's file text, as tflspec writes it from the study's spec.
+# `old`: the file's text before, whose study-level `codelists:` and
+# `adam_meta:` blocks of defaults.yml are kept as they were when the writer
+# does not give them (tfl_write_study_part() writes the layer and the styles
+# only; the app has no editor for either block yet).
+.study_part_lines <- function(study, part, name = NULL, old = NULL) {
   f <- tempfile("tflplanner-part", fileext = ".yml")
   on.exit(unlink(f), add = TRUE)
   tflspec::tfl_write_study_part(study, part, f, name = name)
-  readLines(f, encoding = "UTF-8", warn = FALSE)
+  lines <- readLines(f, encoding = "UTF-8", warn = FALSE)
+  if (identical(part, "defaults") && length(old)) lines <- .keep_study_blocks(lines, old)
+  lines
+}
+
+# `lines` with the top-level blocks `codelists:` and `adam_meta:` of `old`
+# (the key's line to the next top-level key, the comment lines above the key
+# included) added where `lines` has no such key
+.keep_study_blocks <- function(lines, old) {
+  top <- grepl("^[A-Za-z_][A-Za-z0-9_]*:", old)
+  for (k in c("codelists", "adam_meta")) {
+    if (any(grepl(paste0("^", k, ":"), lines))) next
+    i <- which(grepl(paste0("^", k, ":"), old))[1L]
+    if (is.na(i)) next
+    nxt <- which(top & seq_along(old) > i)
+    j <- if (length(nxt)) nxt[1L] - 1L else length(old)
+    # (the comment lines just above the next key belong to it)
+    while (j > i && grepl("^#", old[j])) j <- j - 1L
+    from <- i
+    while (from > 1L && grepl("^#", old[from - 1L])) from <- from - 1L
+    # (before `styles:`, as the sample's file has them)
+    at <- which(grepl("^styles:", lines))[1L]
+    lines <- if (is.na(at)) c(lines, old[from:j]) else append(lines, old[from:j], after = at - 1L)
+  }
+  lines
 }
 
 # The view's study rows of the report sheets (the study's default page

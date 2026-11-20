@@ -93,11 +93,12 @@ arg_more <- function(id, fn, used = character(), schema = NULL, lang = "en",
 
 # An argument's help in the (i): what it means, when it is used, an
 # example -- the schema's (its `help`, else its description), else
-# tflspec's -- in the language; NULL for none
+# tflspec's -- in the language (a help by language, list(en, ja), its
+# `lang`'s, as a label's: .label_text()); NULL for none
 .arg_help <- function(fn, arg, schema = NULL, lang = "en") {
   a <- (schema %||% .schema_of(fn))$args[[arg]]
   h <- a$help %||% a$description %||% .schema_help(fn, arg)
-  if (is.null(h)) NULL else tr(h, lang)
+  .label_text(h, lang)
 }
 
 # the schema of a function, when tflspec has one: its function-level
