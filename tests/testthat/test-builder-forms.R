@@ -191,7 +191,8 @@ test_that("plan_filter(): its condition for the condition builder, any and paren
   skip_on_cran()
   expect_identical(.plan_form_main("plan_filter"), c("any", "parents"))
   sch <- .plan_form_schema("plan_filter")
-  expect_identical(sch$args$by$type, "r")
+  # (by: a select of the table's columns, tflspec's column pick)
+  expect_identical(sch$args$by$type, "column")
   expect_null(.filter_where_text(NULL))
   expect_identical(.filter_where_text(tflspec::tfl_r("p >= 0.05")), "p >= 0.05")
   expect_identical(.filter_where_text(list(tflspec::tfl_r("p >= 0.05"), tflspec::tfl_r("n > 2"))),
@@ -447,8 +448,9 @@ test_that("plan_paginate_group(), plan_paginate_cols(), plan_row_group(): a form
   expect_setequal(.plan_form_main("plan_paginate_cols"),
                    c("every", "fit", "at", "keep", "cut_by", "order", "allow_span_break"))
   expect_identical(.plan_form_main("plan_row_group"), c("mode", "collapse"))
-  # given as R: under Other arguments, saved
-  expect_identical(.plan_form_schema("plan_row_group")$args$group_col$type, "r")
+  # group_col a select of the table's columns (tflspec's column pick);
+  # col_header given as R: under Other arguments, saved
+  expect_identical(.plan_form_schema("plan_row_group")$args$group_col$type, "column")
   expect_identical(.plan_form_schema("plan_paginate_cols")$args$col_header$type, "r")
   # the fields in the function's order (its formals)
   expect_identical(.plan_form_schema("plan_paginate_cols")$visible,
@@ -571,7 +573,7 @@ test_that("plan_cell_style(): cols, where, the looks as fields, each call its ow
   for (a in c("cols", "header", "where", "bold", "italic", "align", "color", "background")) {
     expect_match(h, sprintf('id="c__%s"', a), fixed = TRUE)
   }
-  expect_match(h, "Arguments not in the code", fixed = TRUE)
+  expect_match(h, "More settings", fixed = TRUE)
   # blank fields: nothing (the header's check unticked is its default)
   inp <- list(c__cols = NULL, c__header = FALSE, c__where = "", c__bold = "", c__italic = "",
               c__align = "", c__color = "", c__background = "")
