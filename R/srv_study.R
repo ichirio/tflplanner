@@ -1429,9 +1429,9 @@
       shiny::selectInput(
         "study_adam_levels",
         with_tip(t("ADaM levels (settings.adam_levels)"),
-                 t("Whether study$adam gets the levels of the study's code lists (codelists) or not (none). Either way a blank is NA, and study$adam_org is the file as it is. With none, a report's own levels: / labels: still apply, and naming a study code list is an error.")),
+                 t("Whether study$adam gets the levels of the study's ADaM metadata (codelists: defaults.yml adam_meta:) or not (none). Either way a blank is NA, and study$adam_org is the file as it is. With none, a report's own levels: / labels: still apply.")),
         stats::setNames(c("codelists", "none"),
-                        t(c("codelists: apply the study's code list levels to the ADaM",
+                        t(c("codelists: apply the levels of adam_meta to the ADaM",
                             "none: do not apply them"))),
         selected = .study_adam_levels(shiny::isolate(rv$p))),
       shiny::h6(with_tip(t("Every report's header"),
