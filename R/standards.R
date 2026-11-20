@@ -541,10 +541,12 @@ company_standards <- function(home = tflplanner_home()) {
 }
 
 # The values a figure style offers a pick (choices: figure_style(<what>)):
-# "palette" the palettes' colours, "marker" the markers' shapes
+# "palette" the palettes' colours, "marker" the markers' shapes -- of the
+# figure style in use, tflspec::tfl_fig_style() (what a figure draws with),
+# in their written order
 .fig_style_choices <- function(what = NULL) {
   w <- as.character(what %||% "")[1L]
-  st <- tryCatch(.std_fig_style(), error = function(e) NULL)
+  st <- tryCatch(tflspec::tfl_fig_style(), error = function(e) NULL)
   tab <- switch(w, palette = st$colors, marker = st$markers)
   col <- switch(w, palette = "colour", marker = "shape")
   if (is.null(col) || !is.data.frame(tab) || !col %in% names(tab)) return(NULL)
