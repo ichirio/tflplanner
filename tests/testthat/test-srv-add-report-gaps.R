@@ -529,8 +529,8 @@ test_that("demog's preview reads the study standard the report resolves with: it
   expect_true("Characteristic" %in% hdr)
   # (the categorical rows' values, indented: hard spaces taken away)
   txt <- trimws(gsub(" ", " ", unlist(lapply(pages[[1L]]$data, as.character)), fixed = TRUE))
-  # (labelled by the sample study's list study$codelists$SEX, demog's value_labels)
-  expect_true(all(c("Female", "Male") %in% txt))
+  # (raw codes for now: whether the study list should label them is #759)
+  expect_true(all(c("F", "M") %in% txt))
 })
 
 test_that("the dialog shows a key argument open under the required ones, marked, and counts only the rest in the fold", {
