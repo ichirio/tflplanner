@@ -10,7 +10,8 @@ mk_defs <- function(...) {
   rows <- list(...)
   get <- function(r, k, d) if (is.null(r[[k]])) d else r[[k]]
   d <- data.frame(name = vapply(rows, function(r) r$name, ""), stringsAsFactors = FALSE)
-  d$label_key <- paste0("x.", d$name)
+  d$label_en <- NA_character_
+  d$label_ja <- NA_character_
   d$step <- vapply(rows, get, "", k = "step", d = "content")
   d$input <- vapply(rows, get, "", k = "input", d = "text")
   d$type <- vapply(rows, get, "", k = "type", d = "string")
