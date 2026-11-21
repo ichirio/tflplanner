@@ -1121,14 +1121,14 @@
           block(part),
           if (none) shiny::p(class = "small text-muted mb-0", t("This template has no arguments in this step.")))))
     }
-    # (the head: the required arguments empty in any step, with the step's number)
+    # (the head: the required arguments empty in any step, with the step's name)
     head_missing <- if (length(miss_all)) shiny::div(
       class = "alert alert-danger py-1 small mb-0 w-100",
       sprintf(t("Required arguments are empty: %s. The preview waits for them."),
               paste(vapply(miss_all, function(a) {
                 sec <- if (identical(a, "population") && .tpl_pop_of_report(prm_all)) "data" else
                   .tpl_arg_section(tp$name, a)
-                sprintf("%s (%s)", a, sprintf(t("step %s"), .step_no(sec)))
+                sprintf("%s (%s)", a, t(.step_labels[[sec]]))
               }, ""), collapse = ", ")))
     others <- .tpl_list(kind)$name
     bslib::card(
