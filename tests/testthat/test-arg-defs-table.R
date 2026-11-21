@@ -52,8 +52,12 @@ test_that("a map<column,r> (derive): a new column's name = R, the columns offere
   # (ordered: the rows move)
   expect_match(html(arg_field("c", "derive", "map<column,r>", def = c(d, ordered = TRUE), ctx = ctx)),
                "rp-tbl-up", fixed = TRUE)
-  # (no R field of the whole value is lost: the R switch stays)
-  expect_match(h, "c__derive__isr", fixed = TRUE)
+  # (no R switch of the whole value: a map is not an R expression's type, its
+  # cells are -- canon 17dfbb8; a whole value that is R keeps its switch)
+  expect_false(grepl("c__derive__isr", h, fixed = TRUE))
+  expect_match(html(arg_field("c", "derive", "map<column,r>", def = d, ctx = ctx,
+                              value = tflspec::tfl_r("list(A = quote(x))"))),
+               "c__derive__isr", fixed = TRUE)
 })
 
 test_that("a map<column,list<level>> (levels): a column picked, its values one a line", {
@@ -319,7 +323,7 @@ test_that("a schema function's table argument draws and reads through its tfl_ar
   testthat::local_mocked_bindings(
     tfl_schema = function(fn = NULL) if (identical(fn, "plan_x")) sch,
     tfl_arg_defs = function(fn = NULL, template = NULL) {
-      d <- data.frame(name = "derive", label_key = "x.derive", step = "data", input = "table",
+      d <- data.frame(name = "derive", label_en = NA_character_, step = "data", input = "table",
                       type = "map<column,r>", required = FALSE, stringsAsFactors = FALSE)
       d$default <- I(list(NULL))
       d$default_kind <- NA_character_
@@ -342,6 +346,59 @@ test_that("a schema function's table argument draws and reads through its tfl_ar
   expect_match(h, "<option value=\"AGE\"></option>", fixed = TRUE)
   input <- stats::setNames(list(tbl_state_of(h)), "c__derive")
   expect_identical(builder_card_read(input, "c", schema = s, args = "derive"), list(derive = v))
+})
+
+test_that("an empty table says (none) in a light line that is never read back", {
+  d <- list(input = "table", choices = "vars(from_args(from))")
+  empty_line <- "<tr class=\"rp-tbl-empty\">\\s*<td class=\"rp-tbl-none\" colspan=\"3\">\\(none\\)</td>\\s*</tr>"
+  # (no rows: the line, one cell across the key, the value and the tools)
+  h <- html(arg_field("c", "derive", "map<column,r>", def = d, ctx = ctx))
+  expect_match(h, empty_line, perl = TRUE)
+  expect_match(h, "data-none=\"(none)\"", fixed = TRUE)
+  body <- regmatches(h, regexpr("(?s)<tbody class=\"rp-tbl-body\">.*?</tbody>", h, perl = TRUE))
+  expect_match(body, "rp-tbl-empty", fixed = TRUE)
+  expect_false(grepl("rp-tbl-row", body, fixed = TRUE))
+  # (not in the row template Add a row copies)
+  tpl <- regmatches(h, regexpr("(?s)<template class=\"rp-tbl-tpl\">.*?</template>", h, perl = TRUE))
+  expect_false(grepl("rp-tbl-empty", tpl, fixed = TRUE))
+  # (the state read back: nothing)
+  st <- tbl_state_of(h)
+  expect_false(grepl("(none)", st, fixed = TRUE))
+  expect_null(.tbl_read(st))
+  expect_null(round_trip("map<column,r>", d, NULL, ctx = ctx))
+  # (Japanese)
+  hj <- html(arg_field("c", "derive", "map<column,r>", def = d, ctx = ctx, lang = "ja"))
+  expect_match(hj, tr("(none)", "ja"), fixed = TRUE)
+  # (rows: no line)
+  h <- html(arg_field("c", "derive", "map<column,r>", def = d, ctx = ctx,
+                      value = list(AGE2 = tflspec::tfl_r("AGE * 2"))))
+  expect_false(grepl("rp-tbl-empty", h, fixed = TRUE))
+  # (a rows<...> with the template's fixed rows but none of its own: the
+  # line under the fixed rows, across its columns)
+  all <- list(list(subgroup = "ALL", subgroup_lvl = "ALL", where = tflspec::tfl_r("TRUE")))
+  h <- html(arg_field("c", "conditions", "rows<map<string,string|r>>",
+                      def = list(input = "table", columns = "params"),
+                      ctx = c(ctx["params"], list(vars = c("SEX", "AGE"))), fixed_rows = all))
+  expect_match(h, "<td class=\"rp-tbl-none\" colspan=\"4\">(none)</td>", fixed = TRUE)
+  expect_lt(regexpr("rp-tbl-fixed", h), regexpr("rp-tbl-empty", h))
+  expect_null(.tbl_read(tbl_state_of(h)))
+})
+
+test_that("the table's JS: tblValue reads only .rp-tbl-row, the (none) line comes and goes, the script parses", {
+  js <- .builder_cards_js
+  expect_match(js, "find('tbody.rp-tbl-body > tr.rp-tbl-row')", fixed = TRUE)
+  # (Add a row removes the line, the last row's delete puts it back, an
+  # optional column widens it)
+  expect_match(js, "body.children('tr.rp-tbl-empty').remove();", fixed = TRUE)
+  expect_match(js, "!body.children('tr.rp-tbl-row').length", fixed = TRUE)
+  expect_match(js, "tr.rp-tbl-empty > td", fixed = TRUE)
+  expect_match(js, "this.colSpan + 1", fixed = TRUE)
+  node <- Sys.which("node")
+  skip_if(!nzchar(node), "node is not available")
+  f <- withr::local_tempfile(fileext = ".js")
+  writeLines(js, f)
+  out <- suppressWarnings(system2(node, c("--check", shQuote(f)), stdout = TRUE, stderr = TRUE))
+  expect_null(attr(out, "status"), label = paste(out, collapse = "\n"))
 })
 
 test_that("a map of maps (tflspec_summary's nest, value_labels): a row each inner entry, read back nested", {

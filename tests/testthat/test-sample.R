@@ -10,10 +10,10 @@ test_that("the sample study is copied, registered and written", {
   expect_equal(normalizePath(dirname(s$path), "/"),
                normalizePath(root, "/"))
   expect_setequal(s$planner$outputs$output_id,
-                  c("T-14-0-1", "T-14-1-1", "T-14-1-1S", "T-14-1-2", "T-14-1-3",
+                  c("T-14-0-1", "T-14-1-1", "T-14-1-1S", "T-14-1-1C", "T-14-1-2", "T-14-1-3",
                     "T-14-1-4", "T-14-1-5", "T-14-1-6", "T-14-2-1",
                     "T-14-2-3", "T-14-2-2",
-                    "T-14-3-1", "L-16-2-7", "F-14-2-1", "F-14-2-2", "F-14-2-3",
+                    "T-14-3-1", "T-14-3-1C", "L-16-2-7", "F-14-2-1", "F-14-2-2", "F-14-2-3",
                     "F-14-2-4"))
   expect_true(nrow(s$planner$ard$analyses) > 0)
   # the figure made with the designer: the KM template, one layer added;
@@ -70,8 +70,8 @@ test_that("the sample's T-14-1-1S is T-14-1-1's ARD as one ard_stack", {
   # one ard_stack() call in its program
   code <- readLines(file.path(s$path, "programs/ard/T-14-1-1S.R"))
   expect_identical(sum(grepl("  ard_stack(", code, fixed = TRUE)), 1L)
-  # its ARD under a name that is not a function's (ard_demog, not ard_stack)
-  expect_true(any(startsWith(code, "ard_demog <- ")))
+  # its ARD under a name that is not a function's (.ard_demog -- tflspec#867 -- not ard_stack)
+  expect_true(any(startsWith(code, ".ard_demog <- ")))
   expect_false(any(grepl(".total_n = TRUE", code, fixed = TRUE)))
   # the ARD tab: the stack's own form, an analysis inside says so
   shiny::testServer(server_for("SAMPLE-01"), {

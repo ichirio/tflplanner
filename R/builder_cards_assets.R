@@ -102,7 +102,10 @@ button[onclick*='tpl_revert'] { white-space: nowrap; flex-shrink: 0; }
 .rp-tbl-list { resize: vertical; min-height: 2.2em; }
 .rp-tbl-add { margin-top: .15rem; font-size: 12px; padding: 0 .3rem; color: #6b7280; }
 .rp-tbl-ro td { color: #6b7280; background: var(--bs-tertiary-bg, #f6f7f9); }
+.rp-tbl-table td.rp-tbl-none { color: #9ca3af; font-size: 12.5px; }
 .rp-tbl-addrow { padding: 0; font-size: 12.5px; text-decoration: none; }
+.rp-tbl-cand:has(td:nth-last-child(2) .rp-tbl-cell:placeholder-shown) td:first-child .rp-tbl-cell {
+  color: var(--bs-secondary-color, #9ca3af); }
 .rp-group { margin-bottom: .35rem; }
 .rp-group-label { font-size: 12.5px; font-weight: 600; color: #4b5563; margin-bottom: .1rem; }
 .rp-group-row { display: flex; gap: .6rem; flex-wrap: wrap; }
@@ -117,6 +120,10 @@ button[onclick*='tpl_revert'] { white-space: nowrap; flex-shrink: 0; }
 .rp-more-body { padding-left: .6rem; margin-top: .2rem; }
 .rp-more:not(.rp-open) .rp-more-search { display: none; }
 .rp-more:not(.rp-open) .rp-more-body > .rp-field:not(.rp-has-value) { display: none; }
+.rp-more:not(.rp-open) .rp-more-group > .rp-field:not(.rp-has-value) { display: none; }
+.rp-more:not(.rp-open) .rp-more-group:not(:has(.rp-field.rp-has-value)) { display: none; }
+.rp-more-group:not(:has(.rp-field)), .rp-args-up > .rp-group[data-group]:not(:has(.rp-field)) { display: none; }
+.rp-more-group > .rp-group-label { margin-top: .3rem; }
 .rp-more-search { margin-bottom: .3rem; max-width: 18em; }
 .rp-more .rp-field.rp-hidden { display: none !important; }
 .rp-nav-hint { font-size: 12.5px; color: #4b5563; background: var(--bs-tertiary-bg, #f6f7f9);
@@ -223,6 +230,7 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
     var box = $(this).closest('.rp-tbl'), tpl = box.children('template.rp-tbl-tpl')[0];
     if (!tpl) return;
     var body = box.find('tbody.rp-tbl-body').first();
+    body.children('tr.rp-tbl-empty').remove();
     body.append(document.importNode(tpl.content, true));
     body.children('tr').last().find('.rp-tbl-cell').first().trigger('focus');
     box.trigger('rp-tbl-change');
@@ -251,18 +259,39 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
     };
     add('data-cols', col);
     add('data-kinds', String(btn.data('kind')));
+    box.find('tbody.rp-tbl-body > tr.rp-tbl-empty > td').each(function() {
+      this.colSpan = this.colSpan + 1;
+    });
     btn.remove();
     box.trigger('rp-tbl-change');
   });
+  // the last row deleted: the empty table's light \"(none)\" line again (one
+  // cell across the heading's columns; no .rp-tbl-row, so never read back)
   $(document).on('click', '.rp-tbl-del', function() {
-    var box = $(this).closest('.rp-tbl');
+    var box = $(this).closest('.rp-tbl'), body = $(this).closest('tbody.rp-tbl-body');
     $(this).closest('tr').remove();
+    if (body.length && !body.children('tr.rp-tbl-row').length && !body.children('tr.rp-tbl-empty').length) {
+      var td = $('<td class=\"rp-tbl-none\"></td>').text(box.attr('data-none') || '(none)');
+      td.attr('colspan', box.find('thead tr').first().children('th').length);
+      body.append($('<tr class=\"rp-tbl-empty\"></tr>').append(td));
+    }
     box.trigger('rp-tbl-change');
   });
   $(document).on('click', '.rp-tbl-up, .rp-tbl-down', function() {
     var tr = $(this).closest('tr');
     if ($(this).hasClass('rp-tbl-up')) tr.prev('.rp-tbl-row').before(tr); else tr.next('.rp-tbl-row').after(tr);
     tr.closest('.rp-tbl').trigger('rp-tbl-change');
+  });
+  // a template card's table left: the focus out of it (and not back within
+  // a moment, longer than the input's debounce) -- the card may be drawn
+  // again now, never while someone types in it (R/srv_add_report.R)
+  $(document).on('focusout', '.rp-tbl', function() {
+    var box = this;
+    if (!box.id || box.id.indexOf('tpl_') !== 0) return;
+    setTimeout(function() {
+      if (box.contains(document.activeElement)) return;
+      if (window.Shiny && Shiny.setInputValue) Shiny.setInputValue('tpl_tbl_left', box.id, {priority: 'event'});
+    }, 400);
   });
   // a list cell's Add a value: the choice one more line
   $(document).on('change', '.rp-tbl-add', function() {
@@ -314,15 +343,20 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
       var r = order.indexOf(String(g.data('arg')));
       if (r >= 0 && r < rank) after = $(this);
     });
-    if (after) after.after(el); else if (wrap) box.prepend(el); else box.children('.rp-more-search').length ? box.children('.rp-more-search').after(el) : box.prepend(el);
+    var head = box.children('.rp-more-search, .rp-group-label').last();
+    if (after) after.after(el); else if (wrap) box.prepend(el); else head.length ? head.after(el) : box.prepend(el);
   }
   $(document).on('focusout', '.rp-plan-args .rp-field', function() {
     var f = $(this);
     setTimeout(function() {
       if (f[0].contains(document.activeElement)) return;
       var card = f.closest('.rp-plan-args');
-      var up = card.find('.rp-args-up .rp-group-row').first();
-      var low = card.find('.rp-more-body').first();
+      // (a card with groups: the field stays in its own group, above or in the fold)
+      var grp = f.closest('[data-group]').attr('data-group');
+      var up = grp ? card.find('.rp-args-up .rp-group').filter(function() { return this.getAttribute('data-group') === grp; }).find('.rp-group-row').first()
+                   : card.find('.rp-args-up .rp-group-row').first();
+      var low = grp ? card.find('.rp-more-body .rp-more-group').filter(function() { return this.getAttribute('data-group') === grp; }).first()
+                    : card.find('.rp-more-body').first();
       if (!up.length || !low.length) return;
       var order = (card.find('[data-formals]').first().attr('data-formals') || '').split(',');
       var below = f.closest('.rp-more-body').length > 0;

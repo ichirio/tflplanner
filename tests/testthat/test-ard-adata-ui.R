@@ -189,9 +189,10 @@ test_that("1-1: one list, a new analysis data, kept to another's subjects", {
     # a new analysis data: the name first; an analysis set's condition put in
     session$setInputs(ard_adata_new = 1)
     f <- output$adata_detail$html
-    # what it is made from and its analysis set first, the name after them
+    # the name first (the program assigns to it), then what it is made
+    # from and its analysis set
+    expect_lt(regexpr("adata_id", f), regexpr("adata_from", f))
     expect_lt(regexpr("adata_from", f), regexpr("adata_pop", f))
-    expect_lt(regexpr("adata_pop", f), regexpr("adata_id", f))
     expect_match(f, "adata_cond", fixed = TRUE)
     # the words: a filter; the condition as R, the whole data as R
     expect_match(f, "Filter (a condition)", fixed = TRUE)
@@ -384,20 +385,10 @@ test_that("the names tflplanner gives: <dataset>_<population>[_<PARAMCD>], one r
   expect_identical(.adata_suggest(p, "DM", "ADAE", NA, 'AESER == "Y"'), "adae")
 })
 
-test_that("1-1's analysis set: the condition's first row, from the study's sets and the data's flags", {
+test_that("1-1's analysis set: the Population field, from the study's sets and the data's flags", {
   expect_identical(.population_id_for("PPROTFL"), "PP")
   expect_identical(.population_id_for("SAFFL", "SAF"), "SAF2")
   expect_identical(.adata_name_from("ADAE", NA, pop = "SAF"), "adae_saf")
-  # the first term: put in, replaced (an analysis set's), taken out
-  known <- c('SAFFL == "Y"', 'PPROTFL == "Y"')
-  expect_identical(.cond_set_first(NA, 'SAFFL == "Y"', known), 'SAFFL == "Y"')
-  expect_identical(.cond_set_first('SAFFL == "Y" & AGE >= 65', 'PPROTFL == "Y"', known),
-                   'PPROTFL == "Y" & AGE >= 65')
-  expect_identical(.cond_set_first('AGE >= 65', 'SAFFL == "Y"', known), 'SAFFL == "Y" & AGE >= 65')
-  expect_identical(.cond_set_first('SAFFL == "Y" & (A == 1 | B == 2)', NA, known), "(A == 1 | B == 2)")
-  expect_true(is.na(.cond_set_first('SAFFL == "Y"', NA, known)))
-  expect_identical(.cond_set_first("not R (", 'SAFFL == "Y"', known), "not R (")
-  expect_identical(.cond_first('SAFFL == "Y" & AGE >= 65'), 'SAFFL == "Y"')
   local_home()
   p <- adata_planner()
   s <- create_study("PO", planner = p)
@@ -408,15 +399,16 @@ test_that("1-1's analysis set: the condition's first row, from the study's sets 
     session$setInputs(nav = "make", step = "ard", target = "DM")
     session$setInputs(ard_adata_new = 1)
     f <- output$adata_detail$html
-    # a new data: the study's first analysis set, as the condition's first row
+    # a new data: the study's first analysis set, in the Population field
+    # only -- the filter field does not repeat its condition
     expect_match(f, "<option value=\"pop:SAF\" selected>", fixed = TRUE)
     cond <- session$userData$adata_cond
-    expect_identical(shiny::isolate(cond$value()), 'SAFFL == "Y"')
+    expect_true(is.na(shiny::isolate(cond$value())))
     # the data's flags that are no analysis set: offered as well
     expect_match(f, "flag:PPROTFL", fixed = TRUE)
     expect_false(grepl("flag:\"", f, fixed = TRUE))
     session$setInputs(adata_from = "ADSL", adata_pop = "flag:PPROTFL")
-    expect_identical(shiny::isolate(cond$value()), 'PPROTFL == "Y"')
+    expect_true(is.na(shiny::isolate(cond$value())))
     # saved: the condition, no population_id
     session$setInputs(adata_id = "adsl_pp", adata_subj = "", adata_add = NULL,
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL, adata_code = "")
@@ -448,7 +440,9 @@ test_that("1-1's analysis set: the condition's first row, from the study's sets 
                       adata_keep = NULL, adata_distinct = NULL, adata_code = "")
     session$flushReact()
     expect_match(output$adata_same$html, "adsl_65, already there", fixed = TRUE)
-    # the row changed ("!="): a condition like the others, no population_id
+    # no analysis set, and the flag's other value: a condition like the
+    # others, no population_id
+    session$setInputs(adata_pop = ".none")
     cond$value('SAFFL != "Y"')
     cond$key(shiny::isolate(cond$key()) + 1L)
     session$setInputs(adata_id = "adsl_notsaf")
@@ -475,6 +469,19 @@ test_that("an analysis set's condition taken out of a condition, and put in", {
   expect_identical(.cond_put_pop(NA, 'SAFFL == "Y"'), 'SAFFL == "Y"')
   expect_true(is.na(.cond_put_pop("not R (", 'SAFFL == "Y"')))
   expect_true(is.na(.cond_put_pop("AGE >= 65", NA)))
+  # the filter field without the set's rows, and the whole condition again
+  expect_true(.cond_leads('SAFFL == "Y" & AGE >= 65', 'SAFFL == "Y"'))
+  expect_false(.cond_leads('AGE >= 65 & SAFFL == "Y"', 'SAFFL == "Y"'))
+  expect_false(.cond_leads(NA, 'SAFFL == "Y"'))
+  expect_identical(.cond_drop_lead('SAFFL == "Y" & AGE >= 65', 'SAFFL == "Y"'), "AGE >= 65")
+  expect_true(is.na(.cond_drop_lead('SAFFL == "Y"', 'SAFFL == "Y"')))
+  expect_identical(.cond_drop_lead("AGE >= 65", 'SAFFL == "Y"'), "AGE >= 65")
+  expect_identical(.cond_with_pop("AGE >= 65", 'SAFFL == "Y"'), 'SAFFL == "Y" & AGE >= 65')
+  expect_identical(.cond_with_pop(NA, 'SAFFL == "Y"'), 'SAFFL == "Y"')
+  # (the set's row written in the filter too: not twice)
+  expect_identical(.cond_with_pop('SAFFL == "Y" & AGE >= 65', 'SAFFL == "Y"'), 'SAFFL == "Y" & AGE >= 65')
+  expect_identical(.cond_with_pop("AGE >= 65", NA), "AGE >= 65")
+  expect_identical(.cond_with_pop("not R (", 'SAFFL == "Y"'), 'SAFFL == "Y" & (not R ()')
   ad <- data.frame(data_id = c("adsl_saf", "adsl_x"), from = "ADSL", population_id = c("SAF", "SAF"),
                    subjects_in = NA, where = c(NA, "AGE>=65"), add = c(NA, "TRT01A"))
   expect_identical(.adata_same_as(ad, "ADSL", "SAF", NA, NA), "adsl_saf")
@@ -494,7 +501,8 @@ test_that("1-1: a population_id the sheet has is the condition's first row", {
     session$setInputs(nav = "make", step = "ard", target = "DM")
     session$setInputs(ard_adata_pick = "adsl_old")
     expect_false(grepl("Also kept to the population", output$adata_detail$html, fixed = TRUE))
-    expect_identical(shiny::isolate(session$userData$adata_cond$value()), 'SAFFL == "Y" & AGE >= 65')
+    # (the set's condition is the Population field's: the filter has the rest)
+    expect_identical(shiny::isolate(session$userData$adata_cond$value()), "AGE >= 65")
     session$setInputs(adata_id = "adsl_old", adata_from = "ADSL", adata_subj = "",
                       adata_add = NULL, adata_derive = "", adata_keep = NULL, adata_distinct = NULL,
                       adata_code = "")
@@ -577,5 +585,33 @@ test_that("an analysis data form does not stay open on another report", {
     session$setInputs(target = "DM")
     session$setInputs(ard_adata_name = "|SAF")
     expect_match(output$adata_detail$html, "adata_id", fixed = TRUE)
+  })
+})
+
+test_that("step 1 of the sample's T-14-1-1: the set once, the name first, its code shown", {
+  home <- local_home()
+  s <- suppressMessages(create_sample_study(run = FALSE))
+  shiny::testServer(server_for(s$meta$study_id), {
+    session$setInputs(nav = "make", step = "ard", target = "T-14-1-1")
+    session$setInputs(ard_adata_pick = "adsl_saf")
+    f <- output$adata_detail$html
+    expect_lt(regexpr("adata_id", f), regexpr("adata_from", f))
+    # the analysis set SAF in the Population field; the filter has no
+    # SAFFL == "Y" of its own
+    expect_match(f, "<option value=\"pop:SAF\" selected>", fixed = TRUE)
+    expect_true(is.na(shiny::isolate(session$userData$adata_cond$value())))
+    session$setInputs(adata_id = "adsl_saf", adata_from = "ADSL", adata_subj = "",
+                      adata_add = NULL, adata_derive = "", adata_keep = NULL,
+                      adata_distinct = NULL, adata_code = "")
+    code <- output$adata_code_view
+    expect_match(code, "adsl_saf <- ", fixed = TRUE)
+    # the report's own id, not the placeholder the program is written with
+    expect_match(code, "^report_id <- \"T-14-1-1\"")
+    expect_no_match(code, ".try", fixed = TRUE)
+    # saved as it was: the set, no condition
+    session$setInputs(adata_save = 1)
+    ad <- .adata_rows(session$userData$rv$p, "T-14-1-1")
+    expect_identical(ad$population_id[ad$data_id == "adsl_saf"], "SAF")
+    expect_true(is.na(ad$where[ad$data_id == "adsl_saf"]))
   })
 })

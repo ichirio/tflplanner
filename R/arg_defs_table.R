@@ -311,6 +311,26 @@
 
 # ---- the field --------------------------------------------------------------------
 
+# The rows a table draws: the value's (`rows`, cell texts), and with
+# `candidates` (a map's entries, shown light) the candidates' keys in their
+# order -- the value's row of that key in its place, its value's placeholder
+# the candidate's; a key the value lacks a candidate row (key, blank value) --
+# then the value's other rows.  Each a list(cells, ph, cand).
+.tbl_cand_rows <- function(spec, rows, candidates = NULL) {
+  plain <- lapply(rows, function(r) list(cells = r, ph = NULL, cand = FALSE))
+  if (!identical(spec$shape, "map") || !length(candidates) || is.null(names(candidates)) ||
+      inherits(candidates, c("tfl_r", "tfl_unset"))) return(plain)
+  cand <- .tbl_rows(spec, candidates)
+  keys <- vapply(rows, function(r) r[[1L]], "")
+  used <- integer()
+  out <- lapply(cand, function(cr) {
+    k <- match(cr[[1L]], keys)
+    if (!is.na(k)) used <<- c(used, k)
+    list(cells = if (is.na(k)) c(cr[[1L]], "") else rows[[k]], ph = c("", cr[[2L]]), cand = is.na(k))
+  })
+  c(out, plain[setdiff(seq_along(rows), used)])
+}
+
 # a select's options: the blank, then the choices (groups as optgroups),
 # the value kept when the choices lack it
 .tbl_options <- function(choices, selected = "", blank = "") {
@@ -329,35 +349,40 @@
   shiny::tagList(shiny::tags$option(value = "", blank), items, keep)
 }
 
-# one cell's control (no id: the table is the one input)
-.tbl_cell <- function(kind, text, dl = NULL, choices = NULL, lang = "en") {
+# one cell's control (no id: the table is the one input); `ph` a light
+# candidate shown while it is blank (a series value, .field_table())
+.tbl_cell <- function(kind, text, dl = NULL, choices = NULL, lang = "en", ph = NULL) {
   base <- "form-control form-control-sm rp-tbl-cell"
+  if (!is.null(ph) && (is.na(ph) || !nzchar(ph))) ph <- NULL
   switch(
     kind,
     pick = shiny::tags$select(class = "form-select form-select-sm rp-tbl-cell",
                               .tbl_options(choices, text)),
     r = shiny::tags$input(type = "text", class = paste(base, "rp-mono rp-tbl-r"), value = text,
-                          placeholder = "R", spellcheck = "false", list = dl),
+                          placeholder = ph %||% "R", spellcheck = "false", list = dl),
     list = shiny::tagList(
       shiny::tags$textarea(class = paste(base, "rp-tbl-list"), rows = "2",
-                           placeholder = tr("One per line", lang), spellcheck = "false", text),
+                           placeholder = ph %||% tr("One per line", lang), spellcheck = "false", text),
       if (length(choices)) {
         shiny::tags$select(class = "form-select form-select-sm rp-tbl-add", title = tr("Add a value", lang),
                            .tbl_options(choices, "", blank = paste0("+ ", tr("Add a value", lang))))
       }),
     number_text = shiny::tags$input(type = "text", class = paste(base, "rp-tbl-num"), value = text,
-                                    inputmode = "decimal"),
-    shiny::tags$input(type = "text", class = base, value = text, list = dl))
+                                    inputmode = "decimal", placeholder = ph),
+    shiny::tags$input(type = "text", class = base, value = text, list = dl, placeholder = ph))
 }
 
-# one row: its cells and its buttons (up, down when the rows move; remove)
-.tbl_row <- function(spec, cells, dls, lang = "en") {
+# one row: its cells and its buttons (up, down when the rows move; remove).
+# `ph`: each cell's light candidate (NULL: none); `cand`: a row that is a
+# candidate only (a series value the report does not give: its key light too)
+.tbl_row <- function(spec, cells, dls, lang = "en", ph = NULL, cand = FALSE) {
   t <- function(x) tr(x, lang)
   shiny::tags$tr(
-    class = "rp-tbl-row",
+    class = paste("rp-tbl-row", if (isTRUE(cand)) "rp-tbl-cand"),
     lapply(seq_along(spec$cols), function(j) {
       shiny::tags$td(class = paste0("rp-tbl-td rp-tbl-k-", spec$kinds[[j]]),
-                     .tbl_cell(spec$kinds[[j]], cells[[j]] %||% "", dls[[j]], spec$choices[[j]], lang))
+                     .tbl_cell(spec$kinds[[j]], cells[[j]] %||% "", dls[[j]], spec$choices[[j]], lang,
+                               ph = if (length(ph) >= j) ph[[j]]))
     }),
     shiny::tags$td(
       class = "rp-tbl-tools",
@@ -368,6 +393,14 @@
                            `aria-label` = t("Move down"), "\u2193")),
       shiny::tags$button(type = "button", class = "btn btn-link btn-sm rp-tbl-del", title = t("Remove the row"),
                          `aria-label` = t("Remove the row"), "\u00d7")))
+}
+
+# The light line an empty table's body shows ("(none)"), one cell across
+# the columns and the tools; no row of the value (no .rp-tbl-row: never read
+# back), gone when a row is added and back when the last one goes (the JS)
+.tbl_empty_row <- function(n, lang = "en") {
+  shiny::tags$tr(class = "rp-tbl-empty",
+                 shiny::tags$td(class = "rp-tbl-none", colspan = n + 1L, tr("(none)", lang)))
 }
 
 # The template's rows with an R column's text as its R (tflspec gives a
@@ -384,10 +417,16 @@
 }
 
 # The table field: a header of the columns, the fixed rows (read only, before
-# or after them), the rows of the value, a blank row's template and Add a row.  Its
+# or after them), the rows of the value ("(none)" when it has none), a
+# blank row's template and Add a row.  Its
 # state as it is drawn rides in data-state (the input's first value is the
-# same, read from the cells).
-.field_table <- function(fid, spec, value, fixed_rows = NULL, lang = "en") {
+# same, read from the cells).  `candidates`: a map's entries shown light, as
+# candidates (a !series default, canon 1.39): an entry the value does not
+# give a row of its key and a blank value whose placeholder is the
+# candidate's; one it gives shows its own value, the candidate's behind it
+# (cleared, the candidate shows again).  Blank values are not read back, so
+# only the entries typed over are the value.
+.field_table <- function(fid, spec, value, fixed_rows = NULL, lang = "en", candidates = NULL) {
   t <- function(x) tr(x, lang)
   n <- length(spec$cols)
   # (a column of text or R with choices: its datalist, offered as it is typed)
@@ -400,6 +439,7 @@
                                                function(x) shiny::tags$option(value = x)))
   })
   rows <- .tbl_rows(spec, value)
+  body <- .tbl_cand_rows(spec, rows, candidates)
   # (the template's rows, read only: before the report's or after them, a
   # row as its "position" says -- tflspec's tfl_arg_defs() fixed_rows, their
   # values text, an R column's its code)
@@ -426,6 +466,7 @@
     `data-cols` = as.character(jsonlite::toJSON(spec$cols)),
     `data-kinds` = as.character(jsonlite::toJSON(spec$kinds)),
     `data-state` = as.character(jsonlite::toJSON(st)),
+    `data-none` = t("(none)"),
     shiny::tags$table(
       class = "table table-sm rp-tbl-table",
       shiny::tags$thead(shiny::tags$tr(
@@ -436,7 +477,8 @@
         shiny::tags$th(class = "rp-tbl-tools"))),
       fixed_body(!after),
       shiny::tags$tbody(class = "rp-tbl-body",
-                        lapply(rows, function(cells) .tbl_row(spec, cells, dls, lang))),
+                        if (!length(body)) .tbl_empty_row(n, lang),
+                        lapply(body, function(r) .tbl_row(spec, r$cells, dls, lang, ph = r$ph, cand = r$cand))),
       fixed_body(after)),
     shiny::tags$template(class = "rp-tbl-tpl", .tbl_row(spec, rep("", n), dls, lang)),
     lists,

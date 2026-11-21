@@ -394,7 +394,7 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
   # as a program runs under the study's setup: the functions it calls
   # (order_levels() ... from the study's own programs/study_helpers.R, else
   # tflspec's) and the packages it attaches, the app's session left as it is
-  env <- new.env(parent = .ard_program_env())
+  env <- new.env(parent = .ard_program_env(sp$study))
   .source_study_helpers(env, study_dir)
   eval(parse(text = unlist(dc, use.names = FALSE), keep.source = FALSE), envir = env)
   # (a plain data frame: the plan reads columns it may not have by `$`)

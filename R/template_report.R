@@ -153,7 +153,81 @@
 .tpl_of <- function(p, output_id) {
   o <- p$spec$outputs[[output_id]]
   if (is.null(o) || !is.list(o$template) || is.null(o$template$name)) return(NULL)
-  list(name = as.character(o$template$name), args = o$template$args %||% list())
+  list(name = as.character(o$template$name), args = .tpl_args_of(o$template))
+}
+
+# The steps a report may write its template's arguments under, as tflspec
+# reads them (`ard:` is the older name of `analysis:`)
+.tpl_arg_steps <- c("data", "analysis", "ard", "content", "page")
+
+# A report's template arguments as one map: the flat `args:` and the step
+# sections (`template: {name, analysis: {...}, content: {...}}`), as tflspec
+# reads them.  A step section is read only when it is a map and not one of
+# the template's own parameters (tflspec's .tr_given()); a name given in
+# both keeps the flat `args:` value.
+.tpl_args_of <- function(t) {
+  args <- as.list(t$args %||% list())
+  own <- tryCatch(names(.tpl_params(as.character(t$name)[1L])), error = function(e) character())
+  for (k in setdiff(intersect(.tpl_arg_steps, names(t)), own)) {
+    v <- t[[k]]
+    if (!is.list(v) || is.null(names(v))) next
+    for (a in setdiff(names(v), names(args))) args[a] <- list(v[[a]])
+  }
+  args
+}
+
+# The step sections a report's `template:` has (maps, not one of the
+# template's own parameters), in the file's order
+.tpl_step_secs <- function(t) {
+  own <- tryCatch(names(.tpl_params(as.character(t$name)[1L])), error = function(e) character())
+  ks <- setdiff(intersect(names(t), .tpl_arg_steps), own)
+  ks[vapply(ks, function(k) is.list(t[[k]]) && !is.null(names(t[[k]])), NA)]
+}
+
+# A report's `template:` with its arguments written in the form the file
+# already uses: flat stays flat (`args:`); by step stays by step, an
+# argument in the section (or the flat `args:`) it was in, a new one in the
+# section of its `step:` (tfl_arg_defs(template =)), else flat.  `by_step`:
+# write a report with no arguments yet by step (a new report, the canon's
+# form).  An emptied section is dropped (tflspec reads `analysis: {}` as an
+# argument).
+.tpl_write_args <- function(t, args, by_step = FALSE) {
+  secs <- .tpl_step_secs(t)
+  if (!length(secs) && !(by_step && !length(t$args))) {
+    t$args <- args
+    return(t)
+  }
+  name <- as.character(t$name)[1L]
+  old <- lapply(stats::setNames(secs, secs), function(k) t[[k]])
+  flat_old <- names(t$args %||% list())
+  out <- old
+  out[] <- list(list())
+  flat <- list()
+  for (a in names(args)) {
+    k <- if (a %in% flat_old) NA_character_ else {
+      w <- secs[vapply(secs, function(k) a %in% names(old[[k]]), NA)]
+      if (length(w)) w[[1L]] else .tpl_arg_step(name, a, secs)
+    }
+    if (is.na(k)) flat[a] <- list(args[[a]]) else out[[k]][a] <- list(args[[a]])
+  }
+  # (the file's order kept, a new argument after it)
+  keep_order <- function(x, was) x[c(intersect(was, names(x)), setdiff(names(x), was))]
+  for (k in secs) {
+    out[[k]] <- keep_order(out[[k]], names(old[[k]]))
+    t[[k]] <- NULL
+  }
+  t$args <- if (length(flat)) keep_order(flat, flat_old)
+  for (k in names(out)) if (length(out[[k]])) t[[k]] <- out[[k]]
+  t
+}
+
+# The section a template's argument is written in by step: its `step:`
+# (an older file's `ard:` for the analysis step); NA when the template does
+# not say
+.tpl_arg_step <- function(name, arg, secs = character()) {
+  st <- as.character(.arg_def(.tpl_defs(name), arg)$step %||% NA_character_)[1L]
+  if (is.na(st) || !st %in% .tpl_arg_steps) return(NA_character_)
+  if (identical(st, "analysis") && "ard" %in% secs && !"analysis" %in% secs) "ard" else st
 }
 
 # The study's datasets, by dataset (upper case), read once a study folder:
@@ -237,6 +311,7 @@
       levels = "levels",
       flag = "flag",
       number = "number",
+      r = "r",
       text = if (several) "chips" else "text",
       choice = if (several) "choices" else "choice",
       pick = if (several) "picks" else "pick",
@@ -259,6 +334,26 @@
     return(if (length(d) == 1L) "text" else "chips")
   }
   "list"
+}
+
+# An R parameter's value as the text its field shows (a tfl_r's text, a
+# string as it is, a logical or number as R writes it); "" for none
+.tpl_r_text <- function(x) {
+  if (is.null(x) || !length(x)) return("")
+  if (inherits(x, "tfl_r") || is.character(x)) return(paste(as.character(unclass(x)), collapse = "\n"))
+  paste(deparse(x, width.cutoff = 500L), collapse = " ")
+}
+
+# The R field of a template card (the one the builder's R conditions use:
+# monospace, the dataset's columns offered as it is typed); `id` its input id
+.tpl_r_field <- function(id, label, value, cols = character(), placeholder = NULL) {
+  dl <- paste0(id, "__dl")
+  w <- shiny::textInput(id, label, value = .tpl_r_text(value), width = "100%", updateOn = "blur",
+                        placeholder = placeholder)
+  w <- htmltools::tagQuery(w)$find("input")$addClass("rp-mono rp-condition")$
+    addAttrs(spellcheck = "false", list = if (length(cols)) dl)$allTags()
+  shiny::tagList(w, if (length(cols)) shiny::tags$datalist(
+    id = dl, lapply(unique(as.character(cols)), function(x) shiny::tags$option(value = x))))
 }
 
 # The variable whose values a levels parameter chooses from: its `of` -- a
@@ -560,6 +655,11 @@
     },
     list = , columns = .tpl_list_parse(v, prm),
     table = if (.tbl_is_state(v)) .tbl_read(v),
+    # (R as typed, never YAML: TRUE stays the text TRUE, `x: y` stays that text)
+    r = {
+      v <- trimws(paste(as.character(v), collapse = "\n"))
+      if (nzchar(v)) tflspec::tfl_r(v)
+    },
     {
       v <- trimws(paste(as.character(v), collapse = "\n"))
       # (YAML flow or `!r`: what .tpl_show() writes; a text that does not parse is kept as typed --
@@ -577,6 +677,7 @@
     flag = isTRUE(shown),
     number = .num_or_null(shown),
     text = if (is.null(shown)) "" else .tpl_show(shown),
+    r = .tpl_r_text(shown),
     list = , columns = .tpl_list_text(shown, prm),
     table = .tpl_table_state(shown, prm),
     vars = , chips = , choices = , picks = as.character(shown %||% character()),
@@ -618,30 +719,98 @@
 }
 
 # What a template card knows for a table's choices (the ctx of
-# .choice_values()): the columns of a dataset (vars(<data>); the report's
-# dataset when it names none or one the study lacks -- a template's own
-# data id, adsl_sub), a variable's values, the card's arguments and the
-# template's params
+# .choice_values()): the columns of a data row (vars(<id>): the dataset its
+# `from` reads, .tpl_data_rows(); else a dataset of that name, else the one
+# its id begins with -- adsl_sub: ADSL; else the report's dataset), a
+# variable's values, the card's arguments and the template's params.
+# `rows`: the template's data rows and the report's own (.tpl_data_rows());
+# their ids are the report's data (report_data), NULL: the report's dataset
 .tpl_table_ctx <- function(data, dataset = NULL, args = list(), params = list(),
-                           populations = NULL) {
+                           populations = NULL, rows = NULL) {
   ds <- function(x) {
     x <- toupper(as.character(unlist(x)))
     unique(x[!is.na(x) & nzchar(x)])
   }
+  has_rows <- is.data.frame(rows) && nrow(rows) > 0L
   list(
-    # (the source words of a pick: the study's data, the report's -- its
-    # `data` argument, else its dataset -- and the study's analysis sets)
+    # (the source words of a pick: the study's data, the report's -- the ids
+    # of its data rows (tflspec's arg defs: a data row's id), else its `data`
+    # argument or dataset -- and the study's analysis sets)
     study_data = ds(names(data)),
-    report_data = ds(c(args$data, if (is.null(args$data)) dataset)),
+    report_data = if (has_rows) unique(rows$id) else ds(c(args$data, if (is.null(args$data)) dataset)),
     populations = populations,
-    # (vars(adsl_sub): the template's data id, its dataset's columns -- not
-    # every dataset's)
+    # (vars(adsl_sub): the data row's dataset's columns -- not every
+    # dataset's: its `from`, else the dataset its id names or begins with,
+    # else the report's dataset)
     vars = function(what = NULL) {
-      .tpl_dataset_columns(data, what) %||% .tpl_columns(data, dataset)
+      w <- as.character(what %||% "")[1L]
+      k <- if (has_rows && !is.na(w)) match(w, rows$id) else NA_integer_
+      from <- if (!is.na(k)) rows$from[[k]]
+      .tpl_dataset_columns(data, from) %||% .tpl_dataset_columns(data, w) %||%
+        .tpl_columns(data, dataset)
     },
     levels = function(what = NULL) .tpl_levels(data, as.character(what %||% NA_character_)[1L], dataset),
     args = args,
     params = names(params))
+}
+
+# A series template's file (<series>/templates/<template>.yml), NULL for
+# none (a template of tflspec's registry, a series not found)
+.tpl_series_file <- function(name, lister = .tpl_series_lister()) {
+  if (!is.character(name) || length(name) != 1L || !grepl("^[^/]+/[^/]+$", name)) return(NULL)
+  s <- if (is.function(lister)) tryCatch(lister(), error = function(e) NULL)
+  if (!is.data.frame(s) || !nrow(s)) return(NULL)
+  parts <- strsplit(name, "/", fixed = TRUE)[[1L]]
+  path <- s$path[match(parts[[1L]], s$name)]
+  if (!length(path) || is.na(path)) return(NULL)
+  f <- file.path(path, "templates", paste0(parts[[2L]], ".yml"))
+  if (file.exists(f)) f
+}
+
+# A template report's data rows: the template's `data:` rows and the
+# report's own (its `data:` rows, a list of maps with an id), each its id and
+# the dataset it reads (`from`; a "{param}" is the report's argument or the
+# param's default, NA when neither says).  A data frame (id, from), no rows
+# for a template with none.
+.tpl_data_rows <- function(name, args = list(), params = list(), own = NULL,
+                           file = .tpl_series_file(name)) {
+  keep <- function(x) x
+  tpl <- if (!is.null(file)) {
+    y <- tryCatch(yaml::read_yaml(file, handlers = list(r = keep, series = keep, study = keep,
+                                                        fixed = keep, unset = function(x) NULL)),
+                  error = function(e) NULL)
+    if (is.list(y$data) && is.null(names(y$data))) y$data
+  }
+  mine <- if (is.list(own) && length(own) && is.null(names(own))) own
+  rows <- Filter(function(r) is.list(r) && length(r$id) == 1L && !is.na(r$id), c(tpl, mine))
+  fill <- function(x) {
+    x <- as.character(unlist(x))
+    if (length(x) != 1L || is.na(x)) return(NA_character_)
+    m <- regmatches(x, regexec("^[{]([A-Za-z][A-Za-z0-9_.]*)[}]$", x))[[1L]]
+    if (length(m) == 2L) {
+      v <- as.character(unlist(args[[m[[2L]]]] %||% params[[m[[2L]]]]$default))
+      return(if (length(v) && !is.na(v[[1L]]) && nzchar(v[[1L]])) v[[1L]] else NA_character_)
+    }
+    x
+  }
+  out <- data.frame(id = vapply(rows, function(r) as.character(r$id), ""),
+                    from = vapply(rows, function(r) fill(r$from), ""),
+                    stringsAsFactors = FALSE)
+  out[!duplicated(out$id), , drop = FALSE]
+}
+
+# The value a `!series K` default takes (canon 2026-11-16: the study's
+# series_settings.<series>.K, else the series' values.K) -- NULL for a
+# param whose default is no series value, a template of no series, or a
+# tflspec that cannot say.  `study`: the study spec (rv$p$spec$study, its
+# study.yml in $study), as .tpl_study_value() takes it
+.tpl_series_value <- function(study, name, prm) {
+  key <- as.character(prm$series %||% "")[1L]
+  if (is.na(key) || !nzchar(key) || !is.character(name) || !grepl("/", name, fixed = TRUE)) return(NULL)
+  yml <- if (is.list(study$study)) study$study else list()
+  v <- tryCatch(tflspec::tfl_series_settings(yml, sub("/.*$", "", name)),
+                error = function(e) NULL)
+  if (is.list(v)) v[[key]]
 }
 
 # The args with one argument set (NULL, or the default itself: taken away)
@@ -860,7 +1029,7 @@
   # (a template whose analysis set is the report's population (demog) holds
   # it in `common:`, not in its arguments)
   if (.tpl_pop_of_report(prm)) args$population <- NULL
-  o$template$args <- args
+  o$template <- .tpl_write_args(o$template, args)
   o
 }
 
@@ -881,16 +1050,17 @@
 }
 
 # ---- the page: a template report's steps -----------------------------------------
-# A template report is made in three steps -- "1 Analysis data", "2 Template"
-# (the content step, the ARD step hidden: its ARD and content arguments) and
-# "3 Page and output" -- a code SPEC report in four; never by its kind.  The server
-# says which at once when the report changes (rp-tpl-mode, a custom
-# message: sent before the flush that draws the report), and the page
-# shows "Loading ..." over the steps until that flush is done
-# (rp-report-ready): the report before it, or the code SPEC's builder, is
-# never seen in its place.  `.rp-tpl-only` / `.rp-code-only` are shown by
-# the mode.
-.tpl_step_labels <- c(data = "1 Analysis data", content = "2 Template", page = "3 Page and output")
+# A template report is made in the four steps of a code SPEC report (data,
+# analysis, content, page: .step_labels); each step's card has the
+# arguments whose `step:` is that step, and the template's own card is
+# above the steps.  The server says at once whether the report is a
+# template report when it changes (rp-tpl-mode, a custom message: sent
+# before the flush that draws the report), and the page shows "Loading ..."
+# over the steps until that flush is done (rp-report-ready): the report
+# before it, or the code SPEC's builder, is never seen in its place.
+# `.rp-tpl-only` / `.rp-code-only` are shown by the mode.
+# (a step's word in its card's heading: the step's name without its number)
+.tpl_step_word <- c(data = "data", ard = "analysis", content = "content", page = "page")
 
 .tpl_css <- "
 body:not(.rp-tpl) .rp-tpl-only, body.rp-tpl .rp-code-only { display: none !important; }
@@ -899,7 +1069,8 @@ body.rp-adding::before { content: attr(data-loading); position: fixed; inset: 0;
   background: var(--bs-body-bg, #fff); color: #6c757d; padding: 6rem 2rem; font-size: .95rem; }
 
 body.rp-switching .rp-report-loading { display: block; }
-body.rp-switching #step ~ .tab-content, body.rp-switching #report_head, #report_head.rp-stale {
+body.rp-switching #step ~ .tab-content, body.rp-switching #report_head, #report_head.rp-stale,
+body.rp-switching #tpl_head {
   visibility: hidden; }
 /* an argument at its default reads like any other: its tag says so, no fading;
    only a choice left empty ('(default)', '(not chosen)': no value) stays light */
@@ -918,6 +1089,9 @@ body.rp-switching #step ~ .tab-content, body.rp-switching #report_head, #report_
 .rp-card.rp-card-flash { outline: 3px solid rgba(13,110,253,0); outline-offset: 2px;
   animation: rp-card-flash 1.8s ease-out 1; }
 .rp-add-menu .dropdown-menu { max-height: 60vh; overflow-y: auto; }
+/* the analysis step of a template report: its card only (the code SPEC's
+   definition, its own R program and Update preview are a code report's) */
+body.rp-tpl #step_ard > :not(.rp-tpl-only) { display: none !important; }
 /* room below the last card: a card added at the end can come to the top */
 .rp-builder-cards { padding-bottom: 45vh; }
 /* the right pane (SPEC | Code | Result, ARD): it does not scroll itself --
@@ -999,19 +1173,6 @@ $(document).on('shiny:connected', function() {
     if (x.id) document.body.setAttribute('data-rp-id', x.id);
     headCheck();
     $('body').toggleClass('rp-tpl', !!x.tpl);
-    // (the ARD step: a template report's is in its step 1)
-    var ard = $('#step a[data-value=\"ard\"]');
-    ard.parent().toggleClass('d-none', !!x.tpl);
-    if (x.tpl && ard.hasClass('active')) {
-      $('#step a[data-value=\"content\"]').tab('show');
-      Shiny.setInputValue('step', 'content');
-    }
-    if (x.names) {
-      $('.rp-step-name').each(function() {
-        var k = $(this).attr('data-step');
-        if (x.names[k]) $(this).text(x.names[k]);
-      });
-    }
     // (the right pane's ARD tabs: a template report's; rp-ard-tabs says
     // whether it makes an ARD once the report is known)
     if (!x.tpl) rpArdTabs(false);

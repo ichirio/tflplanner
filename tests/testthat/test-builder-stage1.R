@@ -212,17 +212,18 @@ test_that("normalize_ard(): a form card -- the hierarchy a field marked From the
   expect_match(h, 'id="n__overall"', fixed = TRUE)
   expect_match(h, 'value="Any TEAE"', fixed = TRUE)
   expect_match(h, ">This table<", fixed = TRUE)
-  # the arguments the code writes above, the rest below, each in the
-  # function's order -- the same fields as any table's
+  # the arguments the code writes and the key ones (tflspec's: stack) above,
+  # the rest below, each in the function's order -- the same fields as any
+  # table's
   args <- gsub('data-arg="|"', "", regmatches(h, gregexpr('data-arg="[^"]+"', h))[[1L]])
-  expect_identical(args, c("hierarchy", "overall", "keys", "drop_contexts", "drop_key_variables",
-                           "stack", "stack_sep", "stack_nest", "combine"))
-  expect_match(h, "Arguments not in the code (7)", fixed = TRUE)
+  expect_identical(args, c("hierarchy", "overall", "stack", "keys", "drop_contexts",
+                           "drop_key_variables", "stack_sep", "stack_nest", "combine"))
+  expect_match(h, "More settings (6)", fixed = TRUE)
   expect_false(grepl("rp-badge-unsaved", h, fixed = TRUE))
-  # a summary table's (the study's defaults: none): every argument below
+  # a summary table's (the study's defaults: none): every argument below but the key ones (overall, stack)
   i0 <- item(builder_items(p, "T-14-1-1"), "normalize_ard")
   h0 <- html(.plan_form_body("n", "normalize_ard", i0, ard = list(hierarchy = character())))
-  expect_match(h0, "Arguments not in the code (9)", fixed = TRUE)
+  expect_match(h0, "More settings (7)", fixed = TRUE)
   # its hierarchy an ordinary field below (the code does not write it)
   expect_false(grepl("data-ard=", h0, fixed = TRUE))
   expect_match(h0, 'id="n__hierarchy"', fixed = TRUE)
@@ -260,7 +261,7 @@ test_that("normalize_ard(): a form card -- the hierarchy a field marked From the
   expect_match(hj, "ARD を Table を作りやすい形に整えます。", fixed = TRUE)
   expect_match(hj, "カテゴリの値は .label（行の文字）になります。", fixed = TRUE)
   # every argument's help under Other arguments is said in Japanese too
-  helps <- unlist(lapply(names(.plan_meaning), function(fn)
+  helps <- unlist(lapply(.plan_verbs, function(fn)
     lapply(.schema_of(fn)$args, `[[`, "help")), use.names = FALSE)
   miss <- unique(helps[vapply(helps, tr, "", lang = "ja") == helps])
   expect_length(miss, 0L)
@@ -285,7 +286,7 @@ test_that("the layout cards' forms: their fields, the study's defaults marked, e
     for (a in want[[fn]]) expect_match(h, sprintf('id="c__%s"', a), fixed = TRUE, info = paste(fn, a))
     # (the arguments the code does not write: below, when there are any)
     if (length(setdiff(.plan_form_schema(fn)$formals, c(names(it$args), .data_args)))) {
-      expect_match(h, "Arguments not in the code", fixed = TRUE, info = fn)
+      expect_match(h, "More settings", fixed = TRUE, info = fn)
     }
   }
   # the kinds of field: a choice, a number, a check
@@ -452,7 +453,7 @@ test_that("in the app: a switch writes and takes away; Add; the variables shown;
       expect_no_match(tp, paste0('id="b', bf$n, x, '"'), fixed = TRUE)
     }
     expect_no_match(h, "Order of the column variables", fixed = TRUE)
-    expect_match(tp, "A variable not here is added in the ARD analysis.", fixed = TRUE)
+    expect_match(tp, "A variable not here is added to the analysis in the analysis step.", fixed = TRUE)
     # "+ Add a card" below the cards: a verb with no usual value -- its
     # card, on, waiting, lit
     h <- output$builder_form$html
@@ -584,7 +585,7 @@ test_that("the values' order, data first: this table's, the code list's, the ARD
                    "ARD \u306e\u9806\uff08\u56e0\u5b50\u306e\u6c34\u6e96\u9806\uff09\u3067\u3059\u3002")
   w <- .level_order_text(list(source = "codelist", differs = TRUE), "ja")
   expect_true(w$warn)
-  expect_match(w$text, tr("The code list's order (the Analysis data step).", "ja"), fixed = TRUE)
+  expect_match(w$text, tr("The code list's order (the data step).", "ja"), fixed = TRUE)
   expect_match(w$text, tr("The ARD's order differs from the code list's; the table uses the code list's.", "ja"),
                fixed = TRUE)
   expect_true(.level_order_text(list(source = "seen"))$warn)

@@ -42,7 +42,7 @@ test_that("a Rework is in the saved program after normalize_ard(), and its `data
   h <- sample_in_home()
   r <- rework_run(h, "data <- data[data$variable != \"RACE\", ]")
   prog <- readLines(file.path(r$s$path, "programs", "tfl", "T-14-1-1.R"), warn = FALSE)
-  i <- match("# normalize and rework", prog)
+  i <- .normalize_at(prog)
   expect_false(is.na(i))
   expect_identical(prog[i + 1:2], c("data <- ard |> normalize_ard()",
                                     "data <- data[data$variable != \"RACE\", ]"))

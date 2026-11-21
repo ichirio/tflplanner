@@ -195,10 +195,13 @@ test_that("Add from a template writes the report with its template, the argument
     expect_identical(add_nav(shown, "step"), "content")
     # the panes of a template table
     session$setInputs(target = "T-ZZ-5", nav = "make", step = "content", content_nav = "content")
-    expect_match(add_html(output$tpl_card$html), 'id="tpl_demog__total"', fixed = TRUE)
-    expect_match(add_text(output$tpl_card_data$html), "Analysis data", fixed = TRUE)
+    expect_match(add_html(output$tpl_card_ard$html), 'id="tpl_demog__total"', fixed = TRUE)
+    # the template itself: one card above the steps
+    expect_match(add_text(output$tpl_card_head$html), "Convert to code", fixed = TRUE)
+    expect_false(grepl("Convert to code", add_text(output$tpl_card$html), fixed = TRUE))
+    expect_match(add_text(output$tpl_card_data$html), "Template arguments: data", fixed = TRUE)
     expect_match(add_text(output$tpl_card_data$html), "Analysis set (population)", fixed = TRUE)
-    expect_false(grepl("Template arguments (page)", add_text(output$tpl_card_page$html), fixed = TRUE))
+    expect_false(grepl("Template arguments: page", add_text(output$tpl_card_page$html), fixed = TRUE))
     expect_match(add_text(output$tpl_spec_yaml$html), "spec/outputs/T-ZZ-5.yml", fixed = TRUE)
     expect_match(add_text(output$tpl_spec_yaml$html), "name: demog", fixed = TRUE)
     expect_match(add_text(output$tpl_spec_yaml$html), "Expanded (read only)", fixed = TRUE)
@@ -531,6 +534,7 @@ test_that("demog's preview reads the study standard the report resolves with: it
   expect_true("Characteristic" %in% hdr)
   # (the categorical rows' values, indented: hard spaces taken away)
   txt <- trimws(gsub(" ", " ", unlist(lapply(pages[[1L]]$data, as.character)), fixed = TRUE))
+  # (raw codes for now: whether the study list should label them is #759)
   expect_true(all(c("F", "M") %in% txt))
 })
 
