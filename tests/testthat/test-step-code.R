@@ -338,7 +338,7 @@ test_that("a step's code editor and the whole app UI build (in English and Japan
 
 test_that("a listing's ARD step is shut to its message; a code figure's data step says why it is empty", {
   skip_on_cran()
-  fig_msg <- "This figure is its own R program: it reads its data in the Content step."
+  fig_msg <- "This figure is its own R program: it reads its data in the content step."
   for (lang in c("en", "ja")) {
     html <- as.character(app_ui(lang))
     # the ARD step is one frame; the page script shuts all of it but the note

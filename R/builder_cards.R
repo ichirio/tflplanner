@@ -60,9 +60,14 @@ builder_label <- function(meaning, name, kind = c("fn", "arg"), lang = "en") {
 .label_text <- function(label, lang = "en") {
   if (is.null(label)) return(NULL)
   if (is.list(label)) {
-    x <- label[[lang]] %||% label$en %||% NULL
-    if (is.null(x)) return(NULL)
-    return(as.character(x))
+    ok <- function(x) !is.null(x) && length(x) == 1L && !is.na(x) && nzchar(x)
+    x <- label[[lang]]
+    if (ok(x)) return(as.character(x))
+    # (none in the language -- tflspec's label_ja NA: the English, by the
+    # app's texts)
+    x <- label[["en"]]
+    if (!ok(x)) return(NULL)
+    return(tr(as.character(x), lang))
   }
   if (!is.character(label) || !length(label) || !nzchar(label[[1L]])) return(NULL)
   tr(label[[1L]], lang)

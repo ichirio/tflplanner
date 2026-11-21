@@ -24,7 +24,7 @@
 "It ran: %d table page(s), %d figure(s).","実行できました：Table %d ページ、Figure %d 枚。"
 "It reads the ARD taken in (%s).","取り込んだ ARD（%s）を読みます。"
 "Its ARD definition has %d analyses (built).","ARD の定義に解析が %d 件あります（作成済み）。"
-"Its ARD definition has %d analyses, not built yet: build them in step %s (ARD).","ARD の定義に解析が %d 件ありますが、まだ作っていません。手順 %s（ARD）で作ってください。"
+"Its ARD definition has %d analyses, not built yet: build them in step %s (analysis).","ARD の定義に解析が %d 件ありますが、まだ作っていません。手順 %s（analysis）で作ってください。"
 "`ard` is this report's rows of the ARD (a cards ARD); normalize_ard(ard) makes it a table's shape.","`ard` は、この帳票の行だけの ARD（cards の形）です。normalize_ard(ard) で Table の形になります。"
 "Add %s to the data it reads.","読むデータに %s を足してください。"
 "No file for: %s","ファイルがありません：%s"

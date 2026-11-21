@@ -42,7 +42,7 @@ test_that("the card's top group: a key argument stays up at its default, another
 
 test_that("the series base templates' arguments have a heading and its Japanese", {
   s <- .strings()
-  for (t in c("tflspec_hierarchy", "tflspec_listing", "tflspec_shift", "km_cards", "tflspec_listing_summary")) {
+  for (t in c("tflspec_hierarchy", "tflspec_listing", "tflspec_shift", "km_cards", "tflspec_event", "tflspec_by_visit", "tflspec_pk_conc", "tflspec_listing_summary")) {
     d <- tryCatch(tflspec::tfl_arg_defs(template = paste0("tflspec_v1/", t)), error = function(e) NULL)
     if (!is.data.frame(d)) next
     doc <- if (is.null(d$description)) rep("", nrow(d)) else d$description
@@ -52,4 +52,34 @@ test_that("the series base templates' arguments have a heading and its Japanese"
   }
   expect_false(identical(tr("Listing of records", "ja"), "Listing of records"))
   expect_identical(tr("Variables that divide the listing", "ja") == "Variables that divide the listing", FALSE)
+})
+
+test_that("every tflspec_v1 template's arguments, help tips and label have their Japanese", {
+  skip_if_not("tfl_series_list" %in% getNamespaceExports("tflspec"))
+  dir <- system.file("series", "tflspec_v1", "templates", package = "tflspec")
+  skip_if_not(nzchar(dir), "this tflspec has no tflspec_v1 series")
+  s <- .strings()
+  has_ja <- s$en[!is.na(s$ja) & nzchar(s$ja)]
+  for (t in paste0("tflspec_v1/", sub("[.]yml$", "", list.files(dir, "[.]yml$")))) {
+    d <- tryCatch(tflspec::tfl_arg_defs(template = t), error = function(e) NULL)
+    if (!is.data.frame(d)) next
+    doc <- if (is.null(d$description)) rep("", nrow(d)) else d$description
+    short <- ifelse(doc %in% names(.tpl_doc_labels), .tpl_doc_labels[doc], .tpl_arg_labels[d$name])
+    expect_identical(d$name[is.na(short)], character(), info = t)
+    expect_identical(setdiff(short[!is.na(short)], has_ja), character(), info = t)
+    expect_identical(setdiff(doc[!is.na(doc) & nzchar(doc)], has_ja), character(), info = t)
+  }
+  # (the Add dialog's line of each series template)
+  lab <- .tpl_series_templates()$label
+  expect_identical(setdiff(lab[nzchar(lab)], has_ja), character())
+  # (analysis_ids: "each depth" is tflspec_hierarchy's alone)
+  head_of <- function(t) {
+    x <- .tpl_params(paste0("tflspec_v1/", t))$analysis_ids
+    if (x$doc %in% names(.tpl_doc_labels)) .tpl_doc_labels[[x$doc]] else .tpl_arg_labels[["analysis_ids"]]
+  }
+  expect_identical(head_of("demog"), "Analysis ID of each variable")
+  expect_identical(head_of("tflspec_summary"), "Analysis ID of each variable")
+  expect_identical(head_of("tflspec_hierarchy"), "Analysis ID of each depth")
+  # (the series card's unsaved mark)
+  expect_identical(tr("unsaved", "ja"), "未保存")
 })

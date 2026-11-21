@@ -247,7 +247,7 @@
                          sprintf(t("It reads %s's ARD."), st$id)),
       own = shiny::div(class = if (st$built) "small text-success" else "small text-warning",
                        if (st$built) sprintf(t("Its ARD definition has %d analyses (built)."), st$n) else
-                         sprintf(t("Its ARD definition has %d analyses, not built yet: build them in step %s (ARD)."), st$n, .step_no("ard"))),
+                         sprintf(t("Its ARD definition has %d analyses, not built yet: build them in step %s (analysis)."), st$n, .step_no("ard"))),
       none = shiny::div(class = "small text-muted",
                         t("No ARD: `ard` is not in reach (add analyses, or take an ARD in, to have it).")))
     shiny::tagList(line, if (!identical(st$kind, "none")) shiny::div(
@@ -324,7 +324,7 @@
   output$dc_result <- shiny::renderUI(uc_result())
   output$cc_result <- shiny::renderUI(uc_result())
   # The listing's form, drawn once in two places: its data (the dataset and
-  # the condition) in the Analysis data step, the rest (type, rows per page,
+  # the condition) in the data step, the rest (type, rows per page,
   # code lists, order) in Content.  One reactive makes both, so the inputs
   # are drawn together (their ids share the counter) and read together.
   lf_form_parts <- shiny::reactive({
