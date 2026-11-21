@@ -1648,7 +1648,6 @@
 "Read data through the report's datasets and its ARD switch, and call packages as pkg::fn(): the program reads the data and owns the session.","データは帳票のデータセットと ARD のスイッチで読み、パッケージは pkg::fn() で呼んでください。データを読むのもセッションを整えるのもプログラムの役目です。"
 "The %s code of %s uses ard, but the report does not read its ARD.","%2$s の %1$s のコードが ard を使っていますが、帳票が ARD を読んでいません。"
 "Turn its ARD on (step 1) or take ard out of the code.","ARD を使う設定にする（手順 1）か、コードから ard を外してください。"
-"Fit to the page","ページに合わせる"
 "The resolution only: pixels = inches x dpi. Its size on the page is step 3's (its own size, fit to the page, or inches); the dpi does not change it.","解像度だけです: 画素数 = インチ x dpi。ページ上の大きさは手順 3 のもの（Figure そのもの、ページに合わせる、またはインチ）で、dpi では変わりません。"
 "table / listing / figure; blank: table. A step of the report may be its own code instead (data_code, content_code).","table / listing / figure。空欄: table。帳票の手順は、代わりに自分のコードにもできます（data_code、content_code）。"
 "A figure report: the figure's width on the page -- a number of inches, or fit (the page's body); drawn and placed so (rtf_figures(width_twips = )). Blank: the figure's own size, as rtfreporter places it (tfl_fig_page_size()).","Figure の帳票: ページ上の Figure の幅。インチの数字か fit（ページの本文）。この幅で描いて置きます（rtf_figures(width_twips = )）。空欄: Figure そのものの大きさ（rtfreporter が置くとおり。tfl_fig_page_size()）。"

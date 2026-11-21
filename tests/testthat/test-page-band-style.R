@@ -14,7 +14,8 @@ test_that("rtf_titles / rtf_footnotes have their style's fields, the size first"
     args <- vapply(.pgs_fields[[fn]], `[[`, "", "arg")
     expect_identical(args, c("font_size_half_points", "row_height_twips", "markup", "font", "align"))
   }
-  expect_true("align" %in% vapply(.pgs_fields$rtf_figures, `[[`, "", "arg"))
+  # (a figure's alignment is its content's tfl_image, not the page's: tflspec#874)
+  expect_null(.pgs_fields$rtf_figures)
 })
 
 test_that("the titles' card: the size shown, the rest folded until the page says them", {
