@@ -18,6 +18,8 @@ gc717_study <- function(home, id, args) {
   }
   invisible(tflspec::tfl_ai_study_init(d, adam = "adam", study_id = id))
   s <- suppressMessages(open_study(d, home = home))
+  # (copied into the study first, as the Add dialog does)
+  invisible(tflspec::tfl_copy_templates(d, "tflspec_v1/demog"))
   o <- tflspec::tfl_output("T-717-1", "table", template = list(name = "tflspec_v1/demog", args = args))
   s$planner <- suppressWarnings(.spec_add_output(s$planner, o))
   suppressMessages(save_study(s))

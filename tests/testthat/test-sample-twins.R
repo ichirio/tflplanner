@@ -38,6 +38,9 @@ twin_add_templates <- function(s, home) {
                                             population = o$common$population)))
   }
   yaml::write_yaml(toc, toc_file)
+  # (the study reads only its own copies of the templates, as the Add
+  # dialog makes them)
+  invisible(tflspec::tfl_copy_templates(s$path))
   suppressMessages(reload_from_spec(s, home = home))
 }
 

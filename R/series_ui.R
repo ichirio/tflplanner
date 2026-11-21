@@ -1,8 +1,11 @@
 # The Template series card (Study tab): what it draws.  A series (tflspec's
 # template series: series.yml's `values:` and its templates) is read by
-# tflspec; the study's own values for it are study.yml's
-# `series_settings: {<series>: {...}}`; spec/series.lock pins what the study
-# was made with.  The server is R/srv_series.R.
+# tflspec from its source (the company's folders, tflspec's own).  A study
+# reads only its own copy of the series and of each template its reports use
+# (<study>/spec/series/<series>/: series.yml, templates/<name>.yml and
+# tflspec's copied.yml; canon 2026-11-19): the study's values are its copy's
+# `values:`, and each copied file's state against its source is listed.
+# The server is R/srv_series.R.
 
 # whether this tflspec has template series (an older one has none)
 .series_available <- function() {
@@ -113,19 +116,14 @@
 }
 
 # The chosen series' values beside the study's: one row a key, the study's
-# value an input while it is changed here.  `draft`: the study's block as
-# edited (key -> YAML text); a key of the block the series does not have is
-# shown too (never dropped).
+# value an input while it is changed here.  `draft`: the study's own values
+# as edited (key -> YAML text: its copy's values that differ from the
+# source's); a key of the study's copy the source does not have is shown too
+# (never dropped).
 .series_values_ui <- function(values, draft, saved, t = identity) {
   keys <- union(names(values), names(draft))
   if (!length(keys)) {
     return(shiny::p(class = "small text-muted", t("This series has no values.")))
-  }
-  act <- function(id, key, label) {
-    shiny::tags$button(
-      type = "button", class = "btn btn-sm btn-link p-0", `data-key` = key,
-      onclick = sprintf("Shiny.setInputValue('%s', {key: this.dataset.key, n: Date.now()}, {priority: 'event'});", id),
-      label)
   }
   rows <- lapply(seq_along(keys), function(i) {
     k <- keys[i]
@@ -148,53 +146,95 @@
           shiny::span(class = "text-muted", "-")
         }),
       shiny::tags$td(
-        if (mine) act("series_back", k, t("Back to the series value")) else
-          if (has) act("series_change", k, t("Change for this study"))))
+        if (mine) .series_act("series_back", k, t("Back to the series value")) else
+          if (has) .series_act("series_change", k, t("Change for this study"))))
   })
   shiny::tags$table(
     class = "table table-sm small align-middle mb-2",
     shiny::tags$thead(shiny::tags$tr(
       shiny::tags$th(t("Key")), shiny::tags$th(t("Series value (values:)")),
-      shiny::tags$th(t("This study's value (series_settings:)")),
+      shiny::tags$th(t("This study's value (its copy's values:)")),
       shiny::tags$th(""))),
     shiny::tags$tbody(rows))
 }
 
-# spec/series.lock as a table: a row a series (its file's md5 and its
-# templates'), and the file as written below it
-.series_lock_ui <- function(lock, text, notes = character(), t = identity) {
-  out <- list()
-  if (length(notes)) {
-    out <- c(out, list(shiny::div(
-      class = "alert alert-warning small py-1 px-2 mb-2",
-      shiny::tags$ul(class = "mb-0 ps-3", lapply(notes, shiny::tags$li)))))
+# a link-like button that says its key to the server (`id`: the input)
+.series_act <- function(id, key, label, class = "btn btn-sm btn-link p-0") {
+  shiny::tags$button(
+    type = "button", class = class, `data-key` = key,
+    onclick = sprintf("Shiny.setInputValue('%s', {key: this.dataset.key, n: Date.now()}, {priority: 'event'});", id),
+    label)
+}
+
+# A copied file's state (tflspec's tfl_template_status() `status`), in words
+.series_status_label <- function(status, t = identity) {
+  lab <- c(same = t("Same as the source"),
+           source_changed = t("The source has changed"),
+           study_changed = t("Changed in this study"),
+           both_changed = t("Changed in both the source and this study"),
+           source_missing = t("The source is missing"))
+  out <- unname(lab[status])
+  ifelse(is.na(out), status, out)
+}
+
+# a status the study's own edits of a copy are in (a copy again loses them)
+.series_own_edits <- function(status) status %in% c("study_changed", "both_changed")
+
+# The study's copies (tfl_template_status()) as a table: a row a copied file
+# -- the template ("<series>/<name>"; series.yml for the series' own file),
+# where it was copied from, when, and its state in words.  A template whose
+# copy is not the source's (its source still there) offers its differences
+# and a copy again from the source.
+.series_copies_ui <- function(d, t = identity) {
+  if (is.null(d) || !NROW(d)) {
+    return(shiny::p(class = "small text-muted",
+                    t("This study has no copies yet: adding a report from a template copies it into the study (tfl_copy_templates).")))
   }
-  if (is.null(text)) {
-    return(shiny::tagList(c(out, list(shiny::p(
-      class = "small text-muted", t("No spec/series.lock yet: nothing is pinned."))))))
-  }
-  rows <- lapply(names(lock), function(s) {
-    x <- lock[[s]]
-    tpl <- x$templates
+  rows <- lapply(seq_len(nrow(d)), function(i) {
+    tpl <- d$template[i]
+    id <- if (is.na(tpl)) NA_character_ else paste0(d$series[i], "/", tpl)
+    st <- d$status[i]
+    acts <- !is.na(id) && !st %in% c("same", "source_missing")
     shiny::tags$tr(
-      shiny::tags$td(shiny::tags$code(s)),
-      shiny::tags$td(shiny::tags$code(as.character(x$path %||% ""))),
-      shiny::tags$td(shiny::tags$code(as.character(x$series %||% ""))),
-      shiny::tags$td(if (length(tpl)) {
-        lapply(names(tpl), function(n) shiny::div(
-          shiny::tags$code(n), " ", shiny::span(class = "text-muted", as.character(tpl[[n]]))))
-      }))
+      class = if (!identical(st, "same")) "table-warning",
+      shiny::tags$td(shiny::tags$code(if (is.na(id)) paste0(d$series[i], "/series.yml") else id)),
+      shiny::tags$td(shiny::tags$code(class = "small", as.character(d$from[i]))),
+      shiny::tags$td(as.character(d$copied_at[i])),
+      shiny::tags$td(.series_status_label(st, t)),
+      shiny::tags$td(class = "text-nowrap", if (acts) shiny::tagList(
+        .series_act("series_diff", id, t("Show the differences")),
+        " ",
+        .series_act("series_recopy", id, t("Copy again from the source")))))
   })
-  shiny::tagList(c(out, list(
-    shiny::tags$table(
-      class = "table table-sm small mb-1",
-      shiny::tags$thead(shiny::tags$tr(
-        shiny::tags$th(t("Series (name)")), shiny::tags$th(t("Folder (path)")),
-        shiny::tags$th(t("series.yml's md5 (series)")),
-        shiny::tags$th(t("Templates' md5 (templates)")))),
-      shiny::tags$tbody(rows)),
-    shiny::tags$details(
-      class = "small",
-      shiny::tags$summary(t("spec/series.lock as written")),
-      shiny::tags$pre(class = "small mb-0", paste(text, collapse = "\n"))))))
+  shiny::tags$table(
+    class = "table table-sm small align-middle mb-1",
+    shiny::tags$thead(shiny::tags$tr(
+      shiny::tags$th(t("Template (template)")), shiny::tags$th(t("Copied from (from)")),
+      shiny::tags$th(t("Copied at (copied_at)")), shiny::tags$th(t("Status (status)")),
+      shiny::tags$th(""))),
+    shiny::tags$tbody(rows))
+}
+
+# tfl_template_diff()'s lines (" " both, "-" the copy only, "+" the source
+# only; its two header lines dropped) as a block, the changed lines marked
+.series_diff_ui <- function(lines, t = identity) {
+  body <- lines[!lines %in% c("--- copy", "+++ source")]
+  mark <- substr(body, 1L, 1L)
+  if (!length(body) || all(mark == " ")) {
+    return(shiny::p(class = "small text-muted", t("No differences.")))
+  }
+  cls <- ifelse(mark == "-", "rp-diff-copy", ifelse(mark == "+", "rp-diff-source", ""))
+  shiny::tagList(
+    shiny::p(class = "small mb-1",
+             shiny::span(class = "rp-diff-copy", t("- this study's copy only")), "  ",
+             shiny::span(class = "rp-diff-source", t("+ the source only"))),
+    shiny::tags$style(shiny::HTML(paste(
+      ".rp-diff-copy{background:#fde2e1;color:#8a1c14}",
+      ".rp-diff-source{background:#dcf5e3;color:#14602f}",
+      ".rp-diff pre{margin:0}"))),
+    shiny::div(class = "rp-code rp-diff",
+               style = "max-height:60vh;overflow:auto",
+               shiny::tags$pre(class = "small mb-0", lapply(seq_along(body), function(i) {
+                 shiny::div(class = cls[i], body[i])
+               }))))
 }

@@ -260,6 +260,9 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
 }
 
 app_server <- function(input, output, session, start) {
+  # (moved when a template is copied into the study: the series card's
+  # list of the study's copies is read again, R/srv_series.R)
+  tpl_copies_ver <- shiny::reactiveVal(0L)
   .srv_part(.srv_study, environment())
   .srv_part(.srv_report_list, environment())
   .srv_part(.srv_ard_figure, environment())

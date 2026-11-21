@@ -556,3 +556,33 @@ test_that("the dialog shows a key argument open under the required ones, marked,
     }
   })
 })
+
+# ---- Add from a series template: the study's copy (tflspec#879) ------------------------------
+
+test_that("Add from a series template copies it into the study and says so", {
+  skip_if_not("tfl_copy_templates" %in% getNamespaceExports("tflspec"), "this tflspec has no study copies (tflspec#879)")
+  id <- sample_for_add("TCOPY")
+  shown <- watch_add()
+  shiny::testServer(server_for(id), {
+    rv <- session$userData$rv
+    dir <- rv$study$path
+    nm <- "tflspec_v1/demog"
+    session$setInputs(add = 1, modal_type = "table", modal_how = "template", modal_id = "TC-1",
+                      modal_desc = "", modal_tpl_table = nm)
+    do.call(session$setInputs, stats::setNames(list("TRT01A"), paste0("mtpl_", .tpl_id_part(nm), "__by")))
+    session$setInputs(add_ok = 1)
+    expect_true("T-TC-1" %in% rv$p$outputs$output_id)
+    expect_true(file.exists(.tpl_copy_file(dir, nm)))
+    expect_true(any(grepl("Copied the template tflspec_v1/demog into this study", add_notes(shown), fixed = TRUE)))
+    expect_match(add_html(output$series_copies$html), "tflspec_v1/demog", fixed = TRUE)
+    # a second report from it: the copy there, nothing said
+    n <- length(shown$notes)
+    session$setInputs(add = 2, modal_type = "table", modal_how = "template", modal_id = "TC-2",
+                      modal_desc = "", modal_tpl_table = nm)
+    do.call(session$setInputs, stats::setNames(list("TRT01A"), paste0("mtpl_", .tpl_id_part(nm), "__by")))
+    session$setInputs(add_ok = 2)
+    expect_true("T-TC-2" %in% rv$p$outputs$output_id)
+    new <- add_notes(shown)[seq_len(length(shown$notes) - n) + n]
+    expect_false(any(grepl("Copied the template", new, fixed = TRUE)))
+  })
+})
