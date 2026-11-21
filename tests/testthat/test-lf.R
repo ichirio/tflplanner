@@ -54,7 +54,8 @@ test_that("a figure with no design reads its data; its content its code", {
   code <- data_lines(p, "F1")
   expect_true("adsl <- readRDS(\"data/adam/adsl.rds\")" %in% code)
   expect_true("content <- report_content(content)" %in% code)
-  expect_true("  rtf_figures(content)" %in% program_code(p, "F1"))
+  # (placed at the figure style standard's size: tflspec#883)
+  expect_match(paste(program_code(p, "F1"), collapse = "\n"), "rtf_figures\\(\\s*content[,)]")
   expect_true(any(startsWith(data_lines(p, "F1"), "content <- fig_sized(content, ")))
 })
 

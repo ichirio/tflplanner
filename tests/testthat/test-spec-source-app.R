@@ -209,3 +209,26 @@ test_that("Restore from a backup: listed, shown, the study as it is now kept fir
     expect_identical(nrow(list_spec_backups("SA-1")), 2L)
   })
 })
+
+test_that("a study.yml with the old settings: figure: opens with tflspec's message, the file as it was (tflspec#883)", {
+  skip_if_not(exists("tfl_image_defaults", envir = asNamespace("tflspec")),
+              "tflspec still reads settings: figure:")
+  local_home()
+  s <- spec_app_study()
+  f <- file.path(s$path, .study_file)
+  old <- readLines(f, encoding = "UTF-8")
+  at <- grep("^settings:", old)
+  new <- if (length(at)) append(old, c("  figure:", "    width_in: 7"), after = at[1L])
+         else c(old, "settings:", "  figure:", "    width_in: 7")
+  writeLines(new, f, useBytes = TRUE)
+  shiny::testServer(server_for("SA-1"), {
+    rv <- session$userData$rv
+    expect_identical(rv$spec$status, "invalid")
+    session$setInputs(nav = "study")
+    h <- output$spec_card$html
+    expect_match(h, "settings: figure: is no more", fixed = TRUE)
+    expect_match(h, "figure_style", fixed = TRUE)
+  })
+  # (tflplanner does not rewrite the user's file)
+  expect_identical(readLines(f, encoding = "UTF-8"), new)
+})
