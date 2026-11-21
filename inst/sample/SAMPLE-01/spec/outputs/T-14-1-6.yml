@@ -149,13 +149,12 @@ content:
         - ASIANSUB
         - ETHNIC
   - plan_labels:
-      variable:
-        AGE: Age (years)
-        AGEGR1: Age group, n (%)
-        SEX: Sex, n (%)
-        RACE: Race, n (%)
-        ASIANSUB: Asian sub-category, n (%)
-        ETHNIC: Ethnicity, n (%)
+      AGE: Age (years)
+      AGEGR1: Age group, n (%)
+      SEX: Sex, n (%)
+      RACE: Race, n (%)
+      ASIANSUB: Asian sub-category, n (%)
+      ETHNIC: Ethnicity, n (%)
   - plan_paginate_rows:
       max_rows: 45
 page:

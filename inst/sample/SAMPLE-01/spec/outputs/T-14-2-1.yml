@@ -59,10 +59,9 @@ content:
         Median: '{median:.1f}'
         Min, Max: '{min:.0f}, {max:.0f}'
   - plan_labels:
-      variable:
-        BASE: Baseline (mmHg)
-        AVAL: Week 24, cycle 9 day 1 (mmHg)
-        CHG: Change from baseline (mmHg)
+      BASE: Baseline (mmHg)
+      AVAL: Week 24, cycle 9 day 1 (mmHg)
+      CHG: Change from baseline (mmHg)
   - plan_paginate_rows:
       max_rows: 30
       split: group_safe
