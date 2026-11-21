@@ -84,7 +84,7 @@
   shiny::observeEvent(list(adata_cond()$expr, adata_pop_cur(), input$adata_subj_on,
                            input$adata_from), {
     e <- adata_edit()
-    shiny::req(!is.null(e), is.null(e$old), identical(input$adata_id, e$suggested))
+    shiny::req(!is.null(e), adata_fresh(e), identical(input$adata_id, e$suggested))
     root <- adata_root(input$adata_from)
     nm <- .adata_name_from(root, adata_where_now(), rv$p$ard$populations,
                            pop = adata_pop_name())
@@ -244,7 +244,7 @@
         shiny::selectInput("adata_from", argl("Made from", "from"), from_ch,
                            selected = blank_na(r$from), width = "100%"),
         shiny::selectInput("adata_pop", with_tip(
-          t("Population"),
+          argl("Population", "population_id"),
           t("The analysis set (Populations tab) this data is kept to, or a population flag of the data (SAFFL = Y). Make an analysis data only when the report needs more than a dataset kept to a set.")),
           pop_ch, selected = pop_now, width = "100%")),
       shiny::uiOutput("adata_pop_note"),
@@ -309,10 +309,14 @@
                              resize = "vertical"),
         .btn("adata_code_start", t("Start from the generated code"),
              class = "btn-sm btn-outline-secondary")),
+      # (no Save of its own: an edit is applied at once, the top-right Save
+      # writes the files; a value that cannot be is said here, not applied)
+      shiny::uiOutput("adata_problem"),
       shiny::div(
         class = "d-flex gap-2 mt-2 align-items-center",
-        .btn("adata_save", t("Save"), class = "btn-sm btn-primary"),
-        .btn("adata_close", t("Close"), class = "btn-sm btn-outline-secondary"))))
+        .btn("adata_revert", t("Undo"), class = "btn-sm btn-outline-secondary",
+             title = t("Back to the values when the form was opened")))))
+    adata_live_open(r, title)
     output$adata_preview_out <- shiny::renderUI(NULL)
     output$adata_preview_tbl <- shiny::renderTable(NULL)
   }
@@ -346,7 +350,7 @@
   }, ignoreInit = TRUE)
   shiny::observeEvent(input$adata_from, {
     e <- adata_edit()
-    shiny::req(!is.null(e), is.null(e$old), is.null(e$name), length(e$cands))
+    shiny::req(!is.null(e), adata_fresh(e), is.null(e$name), length(e$cands))
     shiny::updateCheckboxInput(session, "adata_subj_on",
                                value = !adata_root(input$adata_from) %in% adata_pop_ds())
   }, ignoreInit = TRUE)
@@ -407,13 +411,16 @@
   # the same data already there: said, so it is not made twice
   output$adata_same <- shiny::renderUI({
     e <- adata_edit()
-    shiny::req(!is.null(e), is.null(e$old), is.null(e$name))
+    shiny::req(!is.null(e), adata_fresh(e), is.null(e$name))
     more <- c(input$adata_add, adata_derive_now(), input$adata_keep,
               input$adata_distinct, input$adata_code)
     shiny::req(!any(nzchar(trimws(more))))
     subjects <- adata_subj_value()
     ps <- adata_pop_split(subjects)
-    same <- .adata_same_as(.adata_rows(rv$p, ard_target()), one_of(input$adata_from), ps$pop, subjects, ps$where)
+    # (once made by this form: the others than itself)
+    rows <- .adata_rows(rv$p, ard_target())
+    if (!is.null(e$old)) rows <- rows[rows$data_id != e$old, , drop = FALSE]
+    same <- .adata_same_as(rows, one_of(input$adata_from), ps$pop, subjects, ps$where)
     if (is.na(same)) return(NULL)
     shiny::div(class = "alert alert-info small py-1 mb-2",
                sprintf(t("%s, already there, is this same data: no need to make it again (in the analyses, choose %s)."),
@@ -472,7 +479,6 @@
     adata_edit(list(old = NULL, suggested = nm))
     adata_form(list(from = from, data_id = nm), t("New analysis data"))
   })
-  shiny::observeEvent(input$adata_close, adata_close())
   shiny::observeEvent(input$ard_adata_pick, {
     id <- input$ard_adata_pick
     if (identical(shiny::isolate(adata_pick()), id)) return(adata_close())
@@ -485,7 +491,7 @@
       sprintf(t("Used by: %s."), paste(c(u$analyses, u$data), collapse = ", ")), " ",
       t("A change makes these reports' ARD need making again."))
     adata_edit(list(old = id, note = note))
-    adata_form(as.list(ad[match(id, ad$data_id), ]), sprintf(t("Analysis data %s"), id))
+    adata_form(as.list(ad[match(id, ad$data_id), ]), t("Analysis data"))
   })
   shiny::observeEvent(input$ard_adata_name, {
     v <- input$ard_adata_name
@@ -506,7 +512,7 @@
     common <- if (length(w) == 1L) w else NA
     note <- shiny::div(
       class = "alert alert-secondary small py-1",
-      sprintf(t("On saving, this report's analyses %s read this data."),
+      sprintf(t("At the first edit, this report's analyses %s read this data."),
               paste(on$analysis_id, collapse = ", ")), " ",
       if (!is.na(common)) sprintf(t("The condition they all have, %s, moves from them to the data (each one's own conditions stay)."),
                                   common))
@@ -520,7 +526,7 @@
       nm <- .adata_suggest(rv$p, ard_target(), from, sp$pop, common)
     }
     adata_form(list(data_id = nm, from = from, population_id = sp$pop, where = common),
-               sprintf(t("%s (no name yet: saving names it)"), data_words(sp$dataset, sp$pop)))
+               sprintf(t("%s (no name yet: an edit names it)"), data_words(sp$dataset, sp$pop)))
   })
   shiny::observeEvent(input$adata_code_start, {
     shiny::req(!is.null(adata_edit()))
@@ -585,13 +591,40 @@
                    shiny::tableOutput("adata_preview_tbl")))
     })
   })
-  shiny::observeEvent(input$adata_save, {
-    # (no form open -- it was closed with the report it was for: nothing to write)
-    shiny::req(!is.null(adata_edit()))
-    p <- tryCatch(adata_planner(), error = function(e) e)
-    if (inherits(p, "error")) return(notify(conditionMessage(p), "warning"))
+  # The form's fields applied as they are edited (no Save of its own, as the
+  # template fields): the checks the Save made are made at each edit, and a
+  # value that cannot be is said in the form and not applied.  A new data
+  # (or a report's data being named) is made at its first edit; the form
+  # then changes it.
+  adata_live <- .form_live(session)
+  adata_msg <- shiny::reactiveVal(NULL)
+  output$adata_problem <- shiny::renderUI({
+    m <- adata_msg()
+    if (is.null(m)) return(NULL)
+    shiny::div(class = paste("small py-1 mb-2 alert", if (identical(m$level, "info")) "alert-info" else "alert-warning"),
+               m$text)
+  })
+  adata_live_open <- function(r, title) {
+    adata_live$open(rv$p)
+    adata_live$orig <- list(r = r, title = title, edit = adata_edit(), pick = adata_pick())
+    adata_msg(NULL)
+  }
+  # a new form's data, also once made by it (its name still follows its
+  # condition while not edited)
+  adata_fresh <- function(e) is.null(e$old) || isTRUE(e$made)
+  adata_apply <- function() {
     e <- adata_edit()
-    id <- trimws(input$adata_id)
+    # (no form open -- it was closed with the report it was for: nothing to write)
+    if (is.null(e) || !adata_live$ready()) return(invisible())
+    # (the name, checked first: the definition's own message is English)
+    id <- trimws(input$adata_id %||% "")
+    bad <- .adata_name_problem(rv$p, ard_target(), id, e$old)
+    if (!is.null(bad)) {
+      return(adata_msg(list(level = "warning",
+                            text = if (grepl("%s", t(bad), fixed = TRUE)) sprintf(t(bad), id) else t(bad))))
+    }
+    p <- tryCatch(adata_planner(), error = function(err) err)
+    if (inherits(p, "error")) return(adata_msg(list(level = "warning", text = conditionMessage(p))))
     kept <- character()
     if (is.null(e$old) && id %in% .adata_subject_level(p, ard_target())) {
       others <- setdiff(.adata_of_report(p, ard_target()), .adata_subject_level(p, ard_target()))
@@ -599,17 +632,70 @@
       kept <- attr(p, "kept")
       attr(p, "kept") <- NULL
     }
+    adata_msg(if (length(kept)) list(level = "info", text = sprintf(
+      t("%s are kept to the subjects of %s now (untick it in their form if one should not be)."),
+      paste(kept, collapse = ", "), id)))
+    if (.same_planner(p, rv$p)) return(invisible())
     rv$p <- p
-    adata_close()
+    adata_live$wrote(p)
+    # (made or named now: the form changes it from here on)
+    if (is.null(e$old) && is.null(e$name)) e$made <- TRUE
+    e$old <- id
+    e$name <- NULL
+    adata_edit(e)
+    adata_pick(id)
     bump()
-    if (length(kept)) {
-      notify(sprintf(t("%s are kept to the subjects of %s now (untick it in their form if one should not be)."),
-                     paste(kept, collapse = ", "), id))
-    }
-    notify(if (!is.null(e$name)) {
-      sprintf(t("%s is made; %s read it now."), id, paste(e$reads, collapse = ", "))
-    } else if (is.null(e$old)) sprintf(t("%s is made."), id) else sprintf(t("%s is changed."), id))
+  }
+  shiny::observe({
+    # every field of the form, and the condition and the columns made as
+    # their parts give them
+    list(input$adata_id, input$adata_from, input$adata_pop, input$adata_subj_on,
+         input$adata_subj, input$adata_add, input$adata_keep, input$adata_distinct,
+         input$adata_code, adata_pop_cur())
+    tryCatch(list(adata_cond()$expr, adata_drv$text()), error = function(e) NULL)
+    shiny::isolate(adata_apply())
   })
+  shiny::observeEvent(input$adata_revert, {
+    o <- adata_live$orig
+    shiny::req(!is.null(adata_edit()), !is.null(o))
+    if (adata_live$changed()) {
+      rv$p <- adata_live$revert(rv$p)
+      bump()
+    }
+    adata_pick(o$pick)
+    adata_edit(o$edit)
+    # (drawn anew: the fields say the values they had)
+    adata_form_ui(NULL)
+    adata_form(o$r, o$title)
+  })
+  # The study saved, or its unsaved changes discarded: the forms' Undo goes
+  # back to it from now on (what they wrote before is not theirs to undo
+  # any more).  Discarded, the data form open is drawn again from the study
+  # (its fields said what went), or closed when its data went too; the
+  # analysis form is drawn again by the study's change itself.
+  # (called from the Save's and the Discard's own handlers)
+  forms_rebase <- function(discarded = FALSE) {
+    st_live$rebase(rv$p)
+    e <- adata_edit()
+    if (is.null(e)) return(invisible())
+    adata_live$rebase(rv$p)
+    ad <- .adata_rows(rv$p, ard_target())
+    k <- if (is.null(e$old)) NA_integer_ else match(e$old, ad$data_id)
+    if (!discarded) {
+      if (!is.na(k)) {
+        adata_live$orig <- list(r = as.list(ad[k, ]), title = t("Analysis data"),
+                                edit = e, pick = adata_pick())
+      }
+      return(invisible())
+    }
+    if (is.null(e$old)) return(invisible())
+    if (is.na(k)) return(adata_close())
+    adata_pick(e$old)
+    adata_edit(list(old = e$old, note = e$note))
+    adata_form_ui(NULL)
+    adata_form(as.list(ad[k, ]), t("Analysis data"))
+    invisible()
+  }
   # analysis data of another report copied into this one (the same names;
   # one the report has already gets _1 ...)
   shiny::observeEvent(input$ard_adata_import, {
@@ -868,9 +954,9 @@
         t("A stack: it runs the analyses inside it together (cards::ard_stack), in one call (the column headers' N too)."))),
       bslib::layout_columns(
         col_widths = c(4, 8),
-        shiny::textInput(st_id("id"), with_tip(t("Analysis ID (a set of analyses)"), t("Several variables: in the ARD, one row per variable under the same ID.")), r$analysis_id),
-        shiny::textInput(st_id("label"), t("Label"), blank_na(r$label), width = "100%")),
-      shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads, chosen from the definitions: a dataset (Data tab) kept to an analysis set (Populations tab), or an analysis data (the same, with more done to it). The population is part of the choice. The name is the one the program gives it.")),
+        shiny::textInput(st_id("id"), with_tip(argl("Analysis ID (a set of analyses)", "analysis_id"), t("Several variables: in the ARD, one row per variable under the same ID.")), r$analysis_id),
+        shiny::textInput(st_id("label"), argl("Label", "label"), blank_na(r$label), width = "100%")),
+      shiny::selectInput(st_id("data"), with_tip(argl("Data", "data"), t("The rows the analysis reads, chosen from the definitions: a dataset (Data tab) kept to an analysis set (Populations tab), or an analysis data (the same, with more done to it). The population is part of the choice. The name is the one the program gives it.")),
                          data_choices(r),
                          selected = .an_data_value_row(r),
                          width = "100%"),
@@ -917,11 +1003,10 @@
       shiny::div(
         class = "d-flex flex-wrap gap-2 align-items-center mt-2",
         .btn("ard_stack_add", t("Add an analysis inside"), class = "btn-sm btn-outline-primary"),
-        .btn("ard_stat_apply", t("Apply to the analysis"), class = "btn-sm btn-primary")),
-      shiny::tags$details(
-        class = "mt-2", open = NA,
-        shiny::tags$summary(class = "small", t("This analysis as code")),
-        shiny::div(class = "rp-code", shiny::verbatimTextOutput("ard_an_code"))))
+        st_revert_btn()),
+      # (no Apply of its own: an edit is applied at once; a value that
+      # cannot be is said here)
+      shiny::uiOutput("ard_stat_problem"))
   })
   # the stack counting the subjects per group while BIGN does: said at once
   output$ard_stack_n_note <- shiny::renderUI({
@@ -1194,12 +1279,20 @@
     shiny::div(class = "alert alert-warning py-1 small mt-2",
                shiny::tags$pre(class = "mb-0", msg))
   })
-  # the output the sidebar names: a report, or an output the ARD
-  # definition has analyses for and the report list does not have yet
-  ard_target <- shiny::reactive({
+  # the output steps 1 and 2 show: the report open (current(), which the
+  # question about unsaved changes holds back while it is asked: the page
+  # behind it stays on the report before), or an output the ARD definition
+  # has analyses for and the report list does not have yet (the one the
+  # sidebar names).  Changed only when it changes (the list going to a
+  # report and back, the question cancelled, draws nothing again).
+  ard_target <- shiny::reactiveVal(NULL)
+  shiny::observe({
     tg <- target()
-    if (is.na(tg) || !nzchar(tg)) NULL else tg
-  })
+    cur <- current()
+    v <- if (is.na(tg) || !nzchar(tg)) NULL else
+      if (tg %in% shiny::isolate(rv$p$outputs$output_id)) cur %||% tg else tg
+    ard_target(v)
+  }, priority = 99)
   ard_scope_id <- shiny::reactive({
     if (identical(input$ard_scope, "study")) NULL else ard_target()
   })
