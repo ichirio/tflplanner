@@ -48,6 +48,7 @@ jobs:
           TESTTHAT_CPUS: 4
         shell: Rscript {0}
         run: |
+          options(testthat.progress.max_fails = 100000)
           pkg <- read.dcf("DESCRIPTION", fields = "Package")[1L, 1L]
           library(pkg, character.only = TRUE)
           testthat::test_dir("tests/testthat", package = pkg, load_package = "installed",
