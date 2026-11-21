@@ -85,3 +85,51 @@ test_that("a preview log held open by its program is not read as failed, then is
   px$wait()
   expect_true(.log_failed(f))
 })
+
+test_that("a study field no program reads makes no program again; adam_levels makes them all (#738)", {
+  skip_on_cran()
+  home <- local_home()
+  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(save_study(s, home = home))
+  ids <- output_ids(s$planner)
+  setup_file <- file.path(s$path, .study_setup_path())
+  setup <- readLines(setup_file, encoding = "UTF-8")
+  n <- 0L
+  orig <- program_code
+  local_mocked_bindings(program_code = function(...) {
+    n <<- n + 1L
+    orig(...)
+  })
+  # the saved planner's programs are kept (the save made them)
+  for (id in ids) .program_code_last(s$planner, id)
+  expect_identical(n, 0L)
+  # the short title: study.yml's and the setup's, no report's
+  s$meta$short_title <- "A shorter title"
+  s <- suppressMessages(save_study(s, home = home))
+  expect_identical(n, 0L)
+  setup2 <- readLines(setup_file, encoding = "UTF-8")
+  expect_true(any(grepl("A shorter title", setup2, fixed = TRUE)))
+  expect_true(all(s$files$status[s$files$file %in% file.path(s$path, study_layout()[["programs_tfl"]],
+                                                             vapply(ids, function(id) report_info(s$planner, id)$program, ""))] == "unchanged"))
+  # adam_levels: none -- study.yml's settings, which tflspec reads for every
+  # report (its code lists checked against it) and for the setup's ADaM line
+  s$planner$study[["adam_levels"]] <- "none"
+  s <- suppressMessages(save_study(s, home = home))
+  expect_identical(n, length(ids))
+  expect_false(identical(readLines(setup_file, encoding = "UTF-8"), setup2))
+})
+
+test_that("the program key leaves out only study.yml's description fields and stamps (#738)", {
+  st <- structure(list(study = list(study_id = "S", title = "T", short_title = "t", compound = "C",
+                                    phase = "2", description = "D", created = "x", updated = "y",
+                                    tflplanner = "0", settings = list(adam_levels = "none", treatment = "TRT01P"),
+                                    tokens = list(COMPANY = "Co"), series_settings = list(a = 1))),
+                  class = "tfl_study_spec")
+  k <- .program_key_spec_study(st)
+  expect_s3_class(k, "tfl_study_spec")
+  expect_setequal(names(k$study), c("study_id", "settings", "tokens", "series_settings"))
+  expect_identical(k$study$settings, st$study$settings)
+  expect_identical(.program_key_study(c(rounding = "sas", output_path = "o", program_dir = "p",
+                                        treatment = "X", adam_levels = "none", sd_missing = "")),
+                   c(rounding = "sas", output_path = "o", program_dir = "p"))
+})

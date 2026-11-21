@@ -546,18 +546,46 @@ $", "", yaml::as.yaml(list(tokens = tokens))), "
   rel <- if (identical(part, "patterns")) {
     file.path(study_layout()[["spec"]], "patterns", paste0(name, ".yml"))
   } else file.path(study_layout()[["spec"]], paste0(part, ".yml"))
-  sp$text[[rel]] <- .study_part_lines(sp$study, part, name)
+  sp$text[[rel]] <- .study_part_lines(sp$study, part, name, old = sp$text[[rel]])
   sp$text <- sp$text[sort(names(sp$text), method = "radix")]
   p$spec <- sp
   .spec_view_study_page(p)
 }
 
-# A study part's file text, as tflspec writes it from the study's spec
-.study_part_lines <- function(study, part, name = NULL) {
+# A study part's file text, as tflspec writes it from the study's spec.
+# `old`: the file's text before, whose study-level `codelists:` and
+# `adam_meta:` blocks of defaults.yml are kept as they were when the writer
+# does not give them (tfl_write_study_part() writes the layer and the styles
+# only; the app has no editor for either block yet).
+.study_part_lines <- function(study, part, name = NULL, old = NULL) {
   f <- tempfile("tflplanner-part", fileext = ".yml")
   on.exit(unlink(f), add = TRUE)
   tflspec::tfl_write_study_part(study, part, f, name = name)
-  readLines(f, encoding = "UTF-8", warn = FALSE)
+  lines <- readLines(f, encoding = "UTF-8", warn = FALSE)
+  if (identical(part, "defaults") && length(old)) lines <- .keep_study_blocks(lines, old)
+  lines
+}
+
+# `lines` with the top-level blocks `codelists:` and `adam_meta:` of `old`
+# (the key's line to the next top-level key, the comment lines above the key
+# included) added where `lines` has no such key
+.keep_study_blocks <- function(lines, old) {
+  top <- grepl("^[A-Za-z_][A-Za-z0-9_]*:", old)
+  for (k in c("codelists", "adam_meta")) {
+    if (any(grepl(paste0("^", k, ":"), lines))) next
+    i <- which(grepl(paste0("^", k, ":"), old))[1L]
+    if (is.na(i)) next
+    nxt <- which(top & seq_along(old) > i)
+    j <- if (length(nxt)) nxt[1L] - 1L else length(old)
+    # (the comment lines just above the next key belong to it)
+    while (j > i && grepl("^#", old[j])) j <- j - 1L
+    from <- i
+    while (from > 1L && grepl("^#", old[from - 1L])) from <- from - 1L
+    # (before `styles:`, as the sample's file has them)
+    at <- which(grepl("^styles:", lines))[1L]
+    lines <- if (is.na(at)) c(lines, old[from:j]) else append(lines, old[from:j], after = at - 1L)
+  }
+  lines
 }
 
 # The view's study rows of the report sheets (the study's default page
