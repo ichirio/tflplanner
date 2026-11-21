@@ -724,9 +724,10 @@
 # its id begins with -- adsl_sub: ADSL; else the report's dataset), a
 # variable's values, the card's arguments and the template's params.
 # `rows`: the template's data rows and the report's own (.tpl_data_rows());
-# their ids are the report's data (report_data), NULL: the report's dataset
+# their ids are the report's data (report_data), NULL: the report's dataset;
+# `study` the study's folder (its figure style's choices)
 .tpl_table_ctx <- function(data, dataset = NULL, args = list(), params = list(),
-                           populations = NULL, rows = NULL) {
+                           populations = NULL, rows = NULL, study = NULL) {
   ds <- function(x) {
     x <- toupper(as.character(unlist(x)))
     unique(x[!is.na(x) & nzchar(x)])
@@ -750,6 +751,9 @@
         .tpl_columns(data, dataset)
     },
     levels = function(what = NULL) .tpl_levels(data, as.character(what %||% NA_character_)[1L], dataset),
+    # (figure_style(palette), figure_style(marker): the colours and the marker
+    # shapes of the study's figure style, `study` its folder)
+    figure_style = function(what = NULL) .fig_style_choices(what, study),
     args = args,
     params = names(params))
 }
