@@ -69,7 +69,7 @@
 
 # The fields a def adds to a schema argument (.schema_of())
 .arg_def_fields <- c("input", "choices", "values", "free", "ordered", "columns", "step",
-                     "tier", "required", "default", "default_kind")
+                     "tier", "required", "unset", "default", "default_kind")
 
 # A schema entry with its arguments' definitions: each argument gains the
 # def's fields (.arg_def_fields) -- its label and help stay the schema's,
@@ -77,7 +77,9 @@
 # schema gives is kept.  No defs: the entry as it was.
 .schema_with_defs <- function(ent, defs) {
   if (is.null(ent) || !is.data.frame(defs) || !nrow(defs) || !length(ent$args)) return(ent)
-  for (a in intersect(names(ent$args), defs$name)) {
+  # (not `...`: tflspec's row of the dots describes them, a card has no
+  # field of them)
+  for (a in setdiff(intersect(names(ent$args), defs$name), "...")) {
     d <- .arg_def(defs, a)
     x <- ent$args[[a]] %||% list()
     for (k in setdiff(.arg_def_fields, c("default", "default_kind"))) {

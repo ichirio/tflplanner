@@ -23,10 +23,11 @@
   titles = "titles", footnotes = "footnotes", tokens = "tokens: your own")
 
 # The steps of making a report (the Make a report tab), by their tab values:
-# their names here only, so a name changes in one place (and its Japanese).
-# A template report has three of them (.tpl_step_labels).
-.step_labels <- c(data = "1 Analysis data", ard = "2 ARD", content = "3 Content",
-                  page = "4 Page and output")
+# their names here only, so a name changes in one place.  A code SPEC report
+# and a template report have the same four, named by the SPEC's parts
+# (data, analysis, content, page), in English on the Japanese screen too.
+.step_labels <- c(data = "1 data", ard = "2 analysis", content = "3 content",
+                  page = "4 page")
 
 # a step's number, from .step_labels (a message names a step by it)
 .step_no <- function(step) sub(" .*$", "", .step_labels[[step]])

@@ -1,6 +1,7 @@
-# A report's ARD takes the code lists it inherits from its layers (the study
-# defaults, a pattern), as tflspec's helper gives them (tflspec #655): the
-# programs, builds and hashes all read them through .study_codelists().
+# A report's ARD takes the code lists it has of its own (the codelists sheet):
+# no layer gives it one since tflspec#857 (the study's lists are
+# study$codelists, the ADaM levels come from study$adam_meta).  The programs,
+# builds and hashes all read them through .study_codelists().
 # Fictional data (cards::ADSL).
 
 skip_on_cran()
@@ -52,8 +53,8 @@ cl_study <- function(id, file = TRUE) {
       file = file.path(sp, "defaults.yml"), append = TRUE)
   dir.create(file.path(sp, "patterns"))
   # (a pattern holds no page: that is a page configuration's, tflspec PP-1b)
-  writeLines(c("codelists:", paste0("  ", cl_trt),
-               "  SEX: [{value: F, label: PatF}, {value: M, label: PatM}]"),
+  # (a pattern holds no code list: tflspec#857)
+  writeLines(c("content:", "  - plan_style: {align_count_pct: true}"),
              file.path(sp, "patterns", "pp.yml"))
   f <- file.path(sp, "outputs", "DM2.yml")
   writeLines(sub("^  - defaults$", "  - patterns/pp", readLines(f)), f)
@@ -139,30 +140,24 @@ test_that("a left-over spec/codelists.yml is ignored: its lists reach no report 
   expect_false(grepl("ANRIND", txt, fixed = TRUE))
 })
 
-test_that("a report takes its layers' lists: defaults, a pattern; its own list wins", {
+test_that("a report has its own lists only: no layer (defaults, a pattern) gives it one", {
   cl_home()
   s <- cl_study("CL2")
   cl <- .study_codelists(s$planner)
-  expect_identical(cl_labels(cl, "DM", "SEX"), c("DefF", "DefM"))
-  expect_identical(sort(unique(cl$variable[cl$output_id == "DM"])), "SEX")
-  expect_identical(cl_labels(cl, "DM2", "SEX"), c("PatF", "PatM"))
-  expect_identical(cl$value[cl$output_id == "DM2" & cl$variable == "TRT01A"],
-                   c("Placebo", "Xanomeline Low Dose", "Xanomeline High Dose"))
-  # (DM3 has the defaults' list too: its own is the one)
+  expect_identical(unique(cl$output_id), "DM3")
+  expect_identical(cl_labels(cl, "DM", "SEX"), character())
+  expect_identical(cl_labels(cl, "DM2", "SEX"), character())
   expect_identical(cl_labels(cl, "DM3", "SEX"), c("OwnF", "OwnM"))
   # the sheet's columns, character like its rows
   expect_identical(names(cl), names(s$planner$sheets$codelists))
   expect_true(all(vapply(cl, is.character, NA)))
   # the programs
-  prog <- cl_ard(s, "DM")
-  expect_true("cl_sex <- c(F = \"DefF\", M = \"DefM\")" %in% prog)
-  expect_true("cl_trt01a <- c(\"Placebo\", \"Xanomeline Low Dose\", \"Xanomeline High Dose\")" %in%
-                cl_ard(s, "DM2"))
+  expect_false(any(grepl("^cl_sex <- ", cl_ard(s, "DM"))))
+  expect_false(any(grepl("^cl_sex <- ", cl_ard(s, "DM2"))))
   expect_true("cl_sex <- c(F = \"OwnF\", M = \"OwnM\")" %in% cl_ard(s, "DM3"))
-  expect_false(any(grepl("^cl_trt01a <- ", prog)))
 })
 
-test_that("an own list edited in the sheet wins at once; one removed there is the layer's again, or none", {
+test_that("an own list edited in the sheet wins at once; one removed there is none", {
   cl_home()
   s <- cl_study("CL3")
   p <- s$planner
@@ -172,18 +167,12 @@ test_that("an own list edited in the sheet wins at once; one removed there is th
   expect_false(identical(.planner_body(p), p$spec$base))
   cl <- .study_codelists(p)
   expect_identical(cl_labels(cl, "DM", "SEX"), c("EditM", "EditF"))
-  # DM3: the own list removed in the sheet: the report has none of its own
-  # any more, so the defaults' list is its list again (not the spec's copy
-  # of the own one)
+  # DM3: the own list removed in the sheet: the report has none (the
+  # defaults' list is study$codelists, not the report's)
   p$sheets$codelists <- p$sheets$codelists[!p$sheets$codelists$output_id %in% "DM3", , drop = FALSE]
   expect_identical(nrow(sheet_rows(p, "codelists", "DM3")), 0L)
   cl <- .study_codelists(p)
-  expect_identical(cl_labels(cl, "DM3", "SEX"), c("DefF", "DefM"))
-  expect_identical(cl_labels(cl, "DM2", "SEX"), c("PatF", "PatM"))
-  # a report removed from the sheets has no layer rows either
-  q <- p
-  q$outputs <- q$outputs[q$outputs$output_id != "DM2", , drop = FALSE]
-  expect_false("DM2" %in% .study_codelists(q)$output_id)
+  expect_identical(cl_labels(cl, "DM3", "SEX"), character())
 })
 
 test_that("an own list with no layer behind it, removed in the sheet, gives no rows and does not come back from the spec", {
@@ -205,25 +194,11 @@ test_that("a report that cannot be resolved does not stop the lists: the sheet's
   s <- cl_study("CL4")
   p <- s$planner
   p$spec$outputs[["DM2"]]$extends <- "patterns/nothing_here"
-  expect_error(tflspec::tfl_report_codelists(p$spec$study, p$spec$outputs))
   cl <- expect_no_error(.study_codelists(p))
   expect_identical(unique(cl$output_id), "DM3")
 })
 
-test_that("the lists are asked of tflspec once for the same spec", {
-  cl_home()
-  s <- cl_study("CL5")
-  p <- s$planner
-  a <- .study_codelists(p)
-  k <- .report_codelists_cache$value
-  expect_identical(.study_codelists(p), a)
-  expect_identical(.report_codelists_cache$value, k)
-  # another list in a layer: asked again
-  p$spec$study$defaults$codelists$SEX[[1L]]$label <- "Girls"
-  expect_identical(cl_labels(.study_codelists(p), "DM", "SEX")[1L], "Girls")
-})
-
-test_that("the ARD built from the layers' lists is built, not outdated (programs, tflspec's build, the batch's hash)", {
+test_that("the ARD built with a report's own lists is built, not outdated (programs, tflspec's build, the batch's hash)", {
   cl_home()
   s <- save_study(cl_study("CL6"))
   # the ARD program of the planner
@@ -241,10 +216,6 @@ test_that("the ARD built from the layers' lists is built, not outdated (programs
   h <- tflspec::tfl_ard_spec_hash(spec, "DM", dir = s$path,
                                   codelists = .study_codelists(s$planner))
   expect_identical(h, st$definition[st$output_id == "DM"])
-  # (and as it would be with the sheet's rows only)
-  own <- s$planner$sheets$codelists
-  own <- own[!is.na(own$output_id), , drop = FALSE]
-  expect_false(identical(h, tflspec::tfl_ard_spec_hash(spec, "DM", dir = s$path, codelists = own)))
 })
 
 test_that("no spec: the sheet's lists as they are", {
@@ -259,7 +230,7 @@ test_that("no spec: the sheet's lists as they are", {
   expect_identical(.study_codelists(p), p$sheets$codelists)
 })
 
-test_that("the code lists' screen reads the sheet's rows of its report: the layers' lists are not shown", {
+test_that("the code lists' screen reads the sheet's rows of its report", {
   cl_home()
   s <- cl_study("CL7")
   p <- s$planner
@@ -267,7 +238,7 @@ test_that("the code lists' screen reads the sheet's rows of its report: the laye
   expect_identical(nrow(sheet_rows(p, "codelists", "DM")), 0L)
   expect_identical(nrow(sheet_rows(p, "codelists", "DM2")), 0L)
   expect_identical(sheet_rows(p, "codelists", "DM3")$label, c("OwnF", "OwnM"))
-  expect_gt(sum(.study_codelists(p)$output_id == "DM"), 0L)
+  expect_identical(sum(.study_codelists(p)$output_id == "DM"), 0L)
 })
 
 # ---- spec/codelists.yml: left over, ignored -----------------------------------
@@ -317,40 +288,20 @@ test_that("a program is written with the view ahead of the spec, like the one fr
     # (DM2 extends a pattern with no normalize_ard(): its two paths differ
     # there, not in the lists)
     if (id != "DM2") expect_identical(cl_body(cl_unlabel(b)), cl_body(cl_unlabel(a)))
-    if (id == "DM") {
-      expect_true(any(grepl("plan_labels(SEX = c(F = \"DefF\", M = \"DefM\"))", a, fixed = TRUE)))
-    }
   }
 })
 
-test_that("the sheets path takes no inherited list a variable the ARD does not read would write", {
-  cl_home()
-  s <- cl_study("CL12")
-  p <- s$planner
-  cat("  AGEGR1: [{value: '<65', label: Young}, {value: '>=65', label: Old}]\n",
-      file = file.path(s$path, "spec", "defaults.yml"), append = TRUE)
-  p <- open_study("CL12")$planner
-  ahead <- cl_ahead(p)
-  expect_true("AGEGR1" %in% .study_codelists(p)$variable)
-  expect_identical(cl_body(program_code(ahead, "DM")),
-                   cl_body(cl_unlabel(program_code(p, "DM"))))
-  expect_false(any(grepl("agegr1", program_code(ahead, "DM"), ignore.case = TRUE)))
-  # (the spec path leaves it out too: a layer's list is a report's only for
-  # a variable its ARD reads, tflspec's tfl_resolve_output())
-  expect_false(any(grepl("Young", program_code(p, "DM"), fixed = TRUE)))
-})
-
-test_that("the ARS reads a report's inherited lists: a condition on a label stops", {
+test_that("the ARS reads a report's own lists: a condition on a label stops", {
   # tflspec #796: the data hold the codes, so a `where` written with a label
   # stops in the ARS as in the ARD program, and says the code to write
   cl_home()
   s <- cl_study("CL13")
   p <- s$planner
-  i <- which(p$ard$analyses$output_id == "DM2" & p$ard$analyses$analysis_id == "AGE")
-  p$ard$analyses$where[i] <- "SEX == \"PatF\""
+  i <- which(p$ard$analyses$output_id == "DM3" & p$ard$analyses$analysis_id == "AGE")
+  p$ard$analyses$where[i] <- "SEX == \"OwnF\""
   s$planner <- p
-  # (PatF is the pattern's label of F, a list DM2 has from its layer only)
-  expect_error(.ars_build(s), "SEX: write \"F\" for \"PatF\"", fixed = TRUE)
+  # (OwnF is DM3's own label of F)
+  expect_error(.ars_build(s), "SEX: write \"F\" for \"OwnF\"", fixed = TRUE)
 })
 
 test_that("the study is saved after an edit, and spec/codelists.yml is left as it is", {

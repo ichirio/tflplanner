@@ -47,7 +47,7 @@ test_that("a template card's switch with no default is drawn off: its first FALS
   shiny::testServer(server_for(id), {
     rv <- session$userData$rv
     session$setInputs(target = "T-717-1", nav = "make", step = "content", content_nav = "content")
-    expect_match(paste(as.character(output$tpl_card$html), collapse = ""), "tpl_tflspec_v1_demog__total", fixed = TRUE)
+    expect_match(tpl_cards_html(output), "tpl_tflspec_v1_demog__total", fixed = TRUE)
     before <- .tpl_of(rv$p, "T-717-1")$args
     session$setInputs(`tpl_tflspec_v1_demog__total` = FALSE)
     expect_identical(.tpl_of(rv$p, "T-717-1")$args, before)
