@@ -23,8 +23,11 @@ test_that("a label is the meaning and the name; the name alone without a meaning
   # the schema's label by language, the English translated by tr()
   expect_match(html(builder_label(list(en = "Lines", ja = "\u7dda"), "geom_line", "fn", lang = "ja")),
                "\u7dda", fixed = TRUE)
+  # (no ja: the English by the app's texts)
   expect_match(html(builder_label(list(en = "Lines"), "geom_line", "fn", lang = "ja")),
-               ">Lines<", fixed = TRUE)
+               paste0(">", tr("Lines", "ja"), "<"), fixed = TRUE)
+  expect_match(html(builder_label(list(en = "Lines", ja = NA_character_), "geom_line", "fn", lang = "ja")),
+               paste0(">", tr("Lines", "ja"), "<"), fixed = TRUE)
   expect_match(html(builder_label("Column", "cols", "arg", lang = "ja")), "\u5217", fixed = TRUE)
   # a meaning that says the name already (a translation "... (rounding)"):
   # the name once
@@ -82,8 +85,15 @@ test_that("a field is chosen by its type, with its R switch and its (i)", {
                       required = TRUE, help = "The keys across."))
   expect_match(h, 'class="rp-field rp-field-list rp-field-required"', fixed = TRUE)
   expect_match(h, 'id="c1__cols"', fixed = TRUE)
-  expect_match(h, 'id="c1__cols__r"', fixed = TRUE)
-  expect_match(h, 'id="c1__cols__isr"', fixed = TRUE)
+  # (the R switch only where the type takes an R expression: canon 17dfbb8)
+  expect_false(grepl('id="c1__cols__r"', h, fixed = TRUE))
+  expect_false(grepl('id="c1__cols__isr"', h, fixed = TRUE))
+  hr <- html(arg_field("c1", "breaks", "list<number>|r"))
+  expect_match(hr, 'id="c1__breaks__r"', fixed = TRUE)
+  expect_match(hr, 'id="c1__breaks__isr"', fixed = TRUE)
+  # (a value that is R already keeps its switch, whatever the type)
+  expect_match(html(arg_field("c1", "cols", "list<column>", value = tflspec::tfl_r("names(x)"))),
+               'id="c1__cols__isr" class="rp-isr" checked', fixed = TRUE)
   expect_match(h, 'aria-label="The keys across."', fixed = TRUE)
   expect_match(h, "rp-req", fixed = TRUE)
   expect_match(h, "(cols)", fixed = TRUE)
