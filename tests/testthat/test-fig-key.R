@@ -111,7 +111,7 @@ test_that("the program is tflspec's call, the model's fit first", {
   expect_false(any(grepl("^plot <- ggplot\\(\\)", code)))
   # (placed and drawn at its size: the study's figure style for its type,
   # tflspec#883)
-  expect_true(any(grepl("rtf_figures(content", code, fixed = TRUE)))
+  expect_match(paste(code, collapse = "\n"), "rtf_figures\\(\\s*content,\\s*width_twips = ")
   # it reads as R
   expect_no_error(parse(text = code))
 })

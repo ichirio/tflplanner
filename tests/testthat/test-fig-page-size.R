@@ -9,22 +9,24 @@ test_that("a figure's program draws it at its size on the page", {
   p <- set_step_code(p, "F-1", "content", "content <- ggplot2::ggplot(adsl)")
   code <- program_code(p, "F-1")
   # blank: its own size (a figure of its own code: rtfreporter's 6.5 x 4.5),
-  # placed as rtfreporter places it
+  # placed at the figure style standard's size (no study: tflspec's
+  # built-in one, 7.3 x 4.2 -- tflspec#883)
   sized <- code[startsWith(code, "content <- fig_sized(content, ")]
   expect_length(sized, 1L)
   expect_true(grepl("width_in = 6.5, height_in = 4.5,", sized, fixed = TRUE))
-  expect_true("  rtf_figures(content)" %in% code)
+  one <- function(code) paste(code, collapse = "\n")
+  expect_match(one(code), "rtf_figures\\(\\s*content,\\s*width_twips = 10512,\\s*height_twips = 6048")
   expect_true(any(grepl("6.5 x 4.5 in (its own size)", code, fixed = TRUE)))
   # fit: the page's body (letter landscape, margins 0.75): 9.5 wide
   f <- set_page_cell(p, "report", "figure_width_in", "F-1", "fit")
   expect_identical(.fig_size_of(f, "F-1")$width_in, 9.5)
   expect_identical(.fig_size_of(f, "F-1")$mode[["width"]], "fit")
-  expect_true(any(grepl("rtf_figures(content, width_twips = 13680", program_code(f, "F-1"), fixed = TRUE)))
+  expect_match(one(program_code(f, "F-1")), "rtf_figures\\(\\s*content,\\s*width_twips = 13680")
   # inches: that
   q <- set_page_cell(p, "report", "figure_width_in", "F-1", "6")
   expect_identical(.fig_size_of(q, "F-1")$width_in, 6)
   expect_true(any(grepl("content <- fig_sized(content, width_in = 6,", program_code(q, "F-1"), fixed = TRUE)))
-  expect_true(any(grepl("rtf_figures(content, width_twips = 8640", program_code(q, "F-1"), fixed = TRUE)))
+  expect_match(one(program_code(q, "F-1")), "rtf_figures\\(\\s*content,\\s*width_twips = 8640")
   expect_silent(parse(text = program_code(q, "F-1")))
 })
 
