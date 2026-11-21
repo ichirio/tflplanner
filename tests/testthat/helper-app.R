@@ -1,9 +1,6 @@
-# Shared by the app's tests: a home of its own, two studies, a server
-
-# started on one of them.
-
-
-
+# Shared by the app's tests: a home of its own, two studies, a server
+# started on one of them.
+
 local_home <- function(env = parent.frame()) {
   home <- withr_tempdir(env)
   local_code_context(env)
