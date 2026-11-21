@@ -1,16 +1,13 @@
 # Standard R-CMD-check workflow, derived from r-lib/actions examples.
 # Matrix covers the platforms and R versions CRAN expects.
 on:
+  # (not next: the user, 2026-11-22 -- the full check runs once, when next
+  # goes into main; a release from a frozen next is run by hand first)
   push:
-    branches: [main, master, next]
+    branches: [main, master]
   # (a pull request into next runs quick-check.yaml instead)
   pull_request:
     branches-ignore: [next]
-  # nightly, on next (a schedule runs the default branch's copy of this file;
-  # each job checks out next): every test, the slow files the quick check
-  # leaves out among them
-  schedule:
-    - cron: '0 18 * * *'
   workflow_dispatch:
 
 name: R-CMD-check
