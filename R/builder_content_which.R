@@ -30,7 +30,7 @@
   .plan_tier_cache[[fn]] <- tr
   tr
 }
-.plan_tier_fns <- function(tier, fns = names(.plan_meaning)) {
+.plan_tier_fns <- function(tier, fns = .plan_verbs) {
   fns[vapply(fns, function(f) identical(.plan_tier(f), tier), NA)]
 }
 
@@ -122,7 +122,7 @@
 # shown (a verb is one card) and the required
 .plan_addable <- function(items, template = FALSE) {
   shown <- vapply(items, function(it) it$fn, "")
-  setdiff(names(.plan_meaning), c(if (template) .tpl_inner_fns else .plan_tier_fns("required"), shown))
+  setdiff(.plan_verbs, c(if (template) .tpl_inner_fns else .plan_tier_fns("required"), shown))
 }
 
 # "+ Add a card": every verb of the plan in the pipe's order (the schema's
@@ -133,7 +133,7 @@
 .plan_add_menu <- function(items, made = character(), template = FALSE) {
   shown <- vapply(items, function(it) it$fn, "")
   rank <- function(f) as.numeric(.schema_of(f)$rank %||% 500)
-  fns <- names(.plan_meaning)
+  fns <- .plan_verbs
   fns <- setdiff(fns, if (template) .tpl_inner_fns else .plan_tier_fns("required"))
   fns <- fns[order(vapply(fns, rank, 0))]
   group <- if (template) ifelse(fns %in% made, "made", "new") else rep("new", length(fns))
@@ -203,7 +203,7 @@
 # seen is a warning (check it).  A list: `text` (the sentences), `warn`.
 .level_order_words <- c(
   ard = "The ARD's order (its factor levels).",
-  codelist = "The code list's order (the Analysis data step).",
+  codelist = "The code list's order (the data step).",
   seen = "Check this order: the data do not give one (no factor, no numeric twin such as TRT01AN), so it is the ARD's.",
   differs = "The ARD's order differs from the code list's; the table uses the code list's.")
 

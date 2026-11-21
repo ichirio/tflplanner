@@ -1,0 +1,28 @@
+id: T-14-3-1T
+kind: table
+label: TEAEs by SOC / PT (a template SPEC, tflspec_v1/ae_soc_pt; the twin of T-14-3-1C)
+common:
+  population: SAF
+codelists:
+  TRT01A:
+    - value: Drug X
+    - value: Control
+template:
+  name: tflspec_v1/ae_soc_pt
+  analysis:
+    by:
+      - TRT01A
+  content:
+    max_rows: 22
+page:
+  footer:
+    '1':
+      left: Subjects are counted once per system organ class and once per preferred
+        term.
+  tokens:
+    OUTPUT_TITLE: Treatment-Emergent Adverse Events by System Organ Class and Preferred
+      Term
+    OUTPUT_POPULATION: Safety Analysis Set
+style: compact
+note: TEAE by SOC / PT, frequency descending
+

@@ -90,6 +90,9 @@ body.rp-tpl :is(#table_right, #fig_right, #lf_right) .rp-lab-plain { display: no
 .rp-code-view .rp-code-tools { position: absolute; right: .5rem; top: .35rem; z-index: 2; }
 .rp-code-view pre { counter-reset: rp-line; padding-top: 1.8rem; }
 .rp-code-view pre .rp-ln { counter-increment: rp-line; display: block; }
+/* a data step's code: a long line wraps in the pane (its column clips
+   what is wider, so a scrollbar would not show) */
+#adata_code_view { white-space: pre-wrap; overflow-wrap: anywhere; }
 .rp-code-view pre .rp-ln::before { content: counter(rp-line); display: inline-block;
   width: 3em; margin-right: .75em; text-align: right; color: #9ca3af;
   -webkit-user-select: none; user-select: none; }

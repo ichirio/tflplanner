@@ -19,9 +19,35 @@ tpl_demog_output <- function(id = "T-99") {
 
 test_that("no templates from tflspec is an empty list of them", {
   testthat::local_mocked_bindings(tfl_templates = function(...) stop("none"), .package = "tflspec")
+  # (and no series: their templates are listed too)
+  testthat::local_mocked_bindings(.tpl_series_lister = function() NULL)
   x <- .tpl_list("table")
   expect_identical(names(x), c("name", "kind"))
   expect_identical(nrow(x), 0L)
+})
+
+test_that("a series' templates are listed by kind, \"<series>/<template>\", with their labels", {
+  d <- tempfile("series")
+  dir.create(file.path(d, "demo_v1", "templates"), recursive = TRUE)
+  on.exit(unlink(d, recursive = TRUE), add = TRUE)
+  w <- function(f, x) writeLines(x, file.path(d, "demo_v1", "templates", f))
+  w("dm.yml", c("# demo", "template: dm", "label: Demographics", "params: {}"))
+  w("km.yml", c("template: km", "label: KM curves", "figure: km_curves"))
+  w("lst.yml", c("template: lst", "label: A listing", "style: !series style_listing"))
+  lister <- function() data.frame(name = c("demo_v1", "demo_v1"), label = "Demo", released = NA,
+                                  path = file.path(d, "demo_v1"), source = c("option", "package"))
+  x <- .tpl_series_templates(lister)
+  expect_identical(x$name, c("demo_v1/dm", "demo_v1/km", "demo_v1/lst"))
+  expect_identical(x$kind, c("table", "figure", "listing"))
+  expect_identical(x$label, c("Demographics", "KM curves", "A listing"))
+  expect_identical(.tpl_desc_of("demo_v1/km", x), "KM curves")
+  expect_identical(.tpl_desc_of("demog", x), .tpl_desc[["demog"]])
+  expect_identical(.tpl_desc_of("no/such", x), "")
+  # (no series, or a tflspec without them: none)
+  expect_identical(nrow(.tpl_series_templates(NULL)), 0L)
+  expect_identical(nrow(.tpl_series_templates(function() stop("no"))), 0L)
+  # (a name with "/" as a part of an input's id)
+  expect_identical(.tpl_id_part("demo_v1/dm"), "demo_v1_dm")
 })
 
 test_that("the templates of a kind nobody has are an empty list too", {
@@ -330,4 +356,24 @@ test_that("a template that hides its analysis set takes it from the report's pop
   # (not an empty argument of the card: the report's `population:` says it)
   expect_identical(.tpl_missing("demog", list(by = "TRT01A")), character())
   expect_identical(.tpl_missing("demog", list()), "by")
+})
+
+test_that("a table field's column choices are the template's data's, not every dataset's (gui-checks-1 D3)", {
+  data <- list(ADSL = data.frame(USUBJID = "1", AGE = 1, SEX = "F"),
+               ADAE = data.frame(USUBJID = "1", AEDECOD = "x"))
+  # a template's data id is its dataset's columns; a name the study lacks, all
+  expect_identical(.tpl_columns(data, "adsl_sub"), c("USUBJID", "AGE", "SEX"))
+  expect_identical(.tpl_columns(data, "ADAE"), c("USUBJID", "AEDECOD"))
+  expect_identical(.tpl_columns(data, NULL), c("USUBJID", "AGE", "SEX", "AEDECOD"))
+  expect_identical(.tpl_columns(data, "ADVS"), c("USUBJID", "AGE", "SEX", "AEDECOD"))
+  # tflspec_v1/demog's labels (map<column,string>, choices vars(adsl_sub)),
+  # the card's dataset none: ADSL's
+  labels <- list(name = "labels", def = list(type = "map<column,string>", input = "table",
+                                             choices = "vars(adsl_sub)"))
+  ctx <- .tpl_table_ctx(data, NULL, args = list(), params = list(labels = labels))
+  expect_identical(ctx$vars("adsl_sub"), c("USUBJID", "AGE", "SEX"))
+  spec <- .tpl_table_spec(labels, ctx, NULL, "en")
+  ch <- unlist(spec$choices)
+  expect_true("AGE" %in% ch)
+  expect_false("AEDECOD" %in% ch)
 })

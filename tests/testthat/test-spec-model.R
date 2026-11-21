@@ -214,8 +214,9 @@ test_that("a planner with no spec is written whole, and gets one", {
   s <- suppressMessages(save_study(s, home = home))
   expect_false(is.null(s$planner$spec))
   expect_setequal(names(s$planner$spec$outputs), s$planner$outputs$output_id)
-  # the sample's files are what the bridge writes of it
-  expect_identical(changed_files(m0, spec_md5(s$path)), character())
+  # the sample's files are what the bridge writes of it, but defaults.yml's
+  # study-level `codelists:` / `adam_meta:` (the bridge has none: tflspec#857)
+  expect_identical(setdiff(changed_files(m0, spec_md5(s$path)), "spec/defaults.yml"), character())
 })
 
 test_that("a report's items say where each argument comes from (#417)", {
@@ -811,4 +812,40 @@ test_that("sd_missing set and then removed leaves no line", {
   s$planner$study[["sd_missing"]] <- NA_character_
   s <- suppressMessages(save_study(s, home = home))
   expect_false(any(grepl("sd_missing", readLines(file.path(s$path, "study.yml")))))
+})
+
+test_that("an edit's spec is bridged once, and the base once until it changes (#738)", {
+  skip_on_cran()
+  s <- model_sample()
+  home <- getOption("tflplanner.home")
+  s <- suppressMessages(open_study("SAMPLE-01", home = home))
+  rm(list = ls(.spec_sync_cache), envir = .spec_sync_cache)
+  rm(list = ls(.spec_base_cache), envir = .spec_base_cache)
+  orig <- .spec_bridge
+  n <- 0L
+  local_mocked_bindings(.spec_bridge = function(...) {
+    n <<- n + 1L
+    orig(...)
+  })
+  p <- s$planner
+  p$study[["adam_levels"]] <- "none"
+  # the study tab's plan_cells() card asks twice for each edit
+  a <- .spec_now(p)
+  expect_identical(.spec_now(p), a)
+  expect_identical(n, 2L)
+  expect_true(any(grepl("adam_levels: none", a$text[["study.yml"]], fixed = TRUE)))
+  # the next edit: its own bridge only, the base's kept
+  p$study[["treatment"]] <- "TRT01P"
+  b <- .spec_now(p)
+  expect_identical(n, 3L)
+  expect_true(any(grepl("treatment: TRT01P", b$text[["study.yml"]], fixed = TRUE)))
+  # saved: the new base is bridged when an edit asks for it
+  s$planner <- p
+  s <- suppressMessages(save_study(s, home = home))
+  q <- s$planner
+  q$study[["treatment"]] <- NA_character_
+  m <- n
+  d <- .spec_now(q)
+  expect_identical(n, m + 2L)
+  expect_false(any(grepl("treatment: TRT01P", d$text[["study.yml"]], fixed = TRUE)))
 })

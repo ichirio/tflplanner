@@ -61,7 +61,7 @@ test_that("a flag's (none) stays when the card is drawn again, its default TRUE 
     rv <- session$userData$rv
     args <- function() .tpl_of(rv$p, "T-TPL")$args
     session$setInputs(target = "T-TPL", nav = "make", step = "content", content_nav = "content")
-    expect_match(output$tpl_card$html, "tpl_ae_soc_pt__any_row", fixed = TRUE)
+    expect_match(tpl_cards_html(output), "tpl_ae_soc_pt__any_row", fixed = TRUE)
     session$setInputs(tpl_ae_soc_pt__any_row = TRUE, tpl_ae_soc_pt__total = FALSE)
     expect_null(args()$any_row)
     # any_row's (none), then the card drawn again says the switch off
@@ -90,7 +90,7 @@ test_that("a template param whose default is unset shows (none), one per widget 
   s <- .unset_study()
   shiny::testServer(function(input, output, session) app_server(input, output, session, s), {
     session$setInputs(target = "L-TPL", nav = "make", step = "content", content_nav = "content")
-    h <- output$tpl_card_lf$html
+    h <- tpl_cards_html(output, "tpl_card_lf")
     # a select: "(none)" first and selected, the blank "(default)" no longer
     sel <- .select_of(h, "tpl_listing__by_break")
     expect_match(sel, '<option value="(none)" selected>(none: not passed)</option>', fixed = TRUE)
@@ -120,10 +120,10 @@ test_that("choosing (none) writes tfl_unset into template.args; another value or
     rv <- session$userData$rv
     session$setInputs(target = "L-TPL", nav = "make", step = "content", content_nav = "content")
     # a select (by_break: default "page")
-    expect_match(.select_of(output$tpl_card_lf$html, "tpl_listing__by_break"), 'value="page" selected', fixed = TRUE)
+    expect_match(.select_of(tpl_cards_html(output, "tpl_card_lf"), "tpl_listing__by_break"), 'value="page" selected', fixed = TRUE)
     session$setInputs(tpl_listing__by_break = "(none)")
     expect_s3_class(.tpl_of(rv$p, "L-TPL")$args$by_break, "tfl_unset")
-    expect_match(.select_of(output$tpl_card_lf$html, "tpl_listing__by_break"),
+    expect_match(.select_of(tpl_cards_html(output, "tpl_card_lf"), "tpl_listing__by_break"),
                  '<option value="(none)" selected>(none: not passed)</option>', fixed = TRUE)
     # a text (by_heading: no default)
     session$setInputs(tpl_listing__by_heading = "(none)")
@@ -181,10 +181,10 @@ test_that("a flag's (none) button is its own input; the switch turned on is a va
   shiny::testServer(function(input, output, session) app_server(input, output, session, s), {
     rv <- session$userData$rv
     session$setInputs(target = "L-TPL", nav = "make", step = "content", content_nav = "content")
-    expect_false(grepl("none-note none-on", output$tpl_card_lf$html, fixed = TRUE))
+    expect_false(grepl("none-note none-on", tpl_cards_html(output, "tpl_card_lf"), fixed = TRUE))
     session$setInputs(tpl_listing__flagx__none = TRUE)
     expect_s3_class(.tpl_of(rv$p, "L-TPL")$args$flagx, "tfl_unset")
-    expect_match(output$tpl_card_lf$html, "none-note none-on", fixed = TRUE)
+    expect_match(tpl_cards_html(output, "tpl_card_lf"), "none-note none-on", fixed = TRUE)
     session$setInputs(tpl_listing__flagx__none = FALSE, tpl_listing__flagx = TRUE)
     expect_identical(.tpl_of(rv$p, "L-TPL")$args$flagx, TRUE)
   })

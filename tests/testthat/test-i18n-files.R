@@ -15,7 +15,7 @@ test_that("the translation files hold each text once", {
 
 test_that("only the words that stay English have no Japanese, and no row is a fragment", {
   s <- .strings()
-  stay <- c("output_id", "KB", "TODO", "ARD", "error", "todo", "outdated", "unsaved",
+  stay <- c("output_id", "KB", "TODO", "ARD", "error", "todo", "outdated",
             "ok", "OK", "RTF")
   expect_identical(setdiff(s$en[!nzchar(s$ja)], stay), character())
   # the long rows that were cut at a comma (their tail was a row of its own) hold their end

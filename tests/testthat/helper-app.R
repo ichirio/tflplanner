@@ -26,3 +26,12 @@ server_for <- function(study) {
   start <- open_study(study)
   function(input, output, session) app_server(input, output, session, start)
 }
+
+# A template report's argument cards of every step, as one text: an
+# argument is drawn in the step its `step:` names (data, analysis, content,
+# page), the content step's card `main`
+tpl_cards_html <- function(output, main = "tpl_card") {
+  one <- function(o) tryCatch(paste(as.character(output[[o]]$html), collapse = ""),
+                              error = function(e) "")
+  paste(vapply(c("tpl_card_data", "tpl_card_ard", main, "tpl_card_page"), one, ""), collapse = " ")
+}

@@ -10,40 +10,15 @@
 
 # ---- meanings ---------------------------------------------------------------
 
-# What each verb is for, the card's label beside its name, until the
-# schema says (`label`); in English, translated by tr()
-.plan_meaning <- c(
-  normalize_ard = "Normalize the ARD",
-  table_plan = "Table structure",
-  plan_cells = "Statistics in the cells",
-  plan_digits = "Decimals and rounding",
-  plan_levels = "Level order",
-  plan_labels = "Display names",
-  plan_nest = "Rows under another value",
-  plan_total = "Total column",
-  plan_compare = "Comparison columns",
-  plan_stat_groups = "Groups of statistics",
-  plan_sort = "Row order",
-  plan_filter = "Row filter",
-  plan_hide = "Hidden columns",
-  plan_col_header = "Column header",
-  plan_stub = "Row label column",
-  plan_blanks = "Blank rows",
-  plan_paginate_rows = "Page breaks by rows",
-  plan_paginate_group = "A page per group",
-  plan_paginate_cols = "Column pages",
-  plan_row_group = "Row groups",
-  plan_columns = "Column widths and alignment",
-  plan_style = "Table style",
-  plan_cell_style = "Cell styles",
-  plan_append = "A part under the table")
+# The table's plan verbs, the cards a table's content has
+.plan_verbs <- c("normalize_ard", "table_plan", "plan_cells", "plan_digits", "plan_levels",
+                 "plan_labels", "plan_nest", "plan_total", "plan_compare", "plan_stat_groups",
+                 "plan_sort", "plan_filter", "plan_hide", "plan_col_header", "plan_stub",
+                 "plan_blanks", "plan_paginate_rows", "plan_paginate_group", "plan_paginate_cols",
+                 "plan_row_group", "plan_columns", "plan_style", "plan_cell_style", "plan_append")
 
-# a verb's meaning: the schema's label, else the table above; NULL for none
-.verb_meaning <- function(fn) {
-  lab <- .schema_of(fn)$label
-  if (!is.null(lab)) return(lab)
-  if (fn %in% names(.plan_meaning)) .plan_meaning[[fn]] else NULL
-}
+# a verb's meaning: the schema's label (`label: {en, ja}`); NULL for none
+.verb_meaning <- function(fn) .schema_of(fn)$label
 
 # an argument's meaning: the schema's label (tflspec::tfl_schema()); NULL
 # for none

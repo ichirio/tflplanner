@@ -177,24 +177,6 @@
   c(list(e), out)
 }
 
-# The first term of a condition, as R writes it (NA: none, or not R)
-.cond_first <- function(where) {
-  tm <- .cond_terms(where)
-  if (!length(tm)) NA_character_ else deparse1(tm[[1L]])
-}
-
-# A condition whose first term is `first`: a first term among `known` (an
-# analysis set's) is replaced, else `first` goes before the rest; `first`
-# NA takes a known first term out.  A condition that is not R stays.
-.cond_set_first <- function(where, first, known = character()) {
-  tm <- .cond_terms(where)
-  if (is.null(tm)) return(where)
-  kn <- vapply(known, function(k) .cond_first(k), "")
-  if (length(tm) && deparse1(tm[[1L]]) %in% kn) tm <- tm[-1L]
-  if (!.is_blank(first)) tm <- c(list(str2lang(first)), tm)
-  .cond_join(tm)
-}
-
 # Terms put back as one condition (NA: none)
 .cond_join <- function(tm) {
   if (!length(tm)) return(NA_character_)
@@ -227,6 +209,67 @@
   wt <- .cond_terms(where)
   if (!length(pt) || is.null(wt)) return(NA_character_)
   .cond_join(c(pt, wt))
+}
+
+# Whether a condition's first rows are `lead`'s rows, as they are
+.cond_leads <- function(where, lead) {
+  pt <- .cond_terms(lead)
+  wt <- .cond_terms(where)
+  if (!length(pt) || is.null(wt) || length(wt) < length(pt)) return(FALSE)
+  k <- seq_along(pt)
+  identical(unname(vapply(wt[k], deparse1, "")), unname(vapply(pt, deparse1, "")))
+}
+
+# A condition without `lead`'s rows when it starts with them (the filter
+# field shows the rest: the analysis set's condition is the Population
+# field's, not written twice); else as it is
+.cond_drop_lead <- function(where, lead) {
+  if (!.cond_leads(where, lead)) return(if (.is_blank(where)) NA_character_ else where)
+  .cond_join(.cond_terms(where)[-seq_along(.cond_terms(lead))])
+}
+
+# The whole condition: the analysis set's (`pop_where`) first, then the
+# filter field's rows (the set's rows there once more are not repeated).
+# A filter that is not R is put after it as it is.
+.cond_with_pop <- function(rest, pop_where) {
+  rest <- if (.is_blank(rest)) NA_character_ else rest
+  if (.is_blank(pop_where)) return(rest)
+  rest <- .cond_drop_lead(rest, pop_where)
+  if (.is_blank(rest)) return(pop_where)
+  w <- .cond_put_pop(rest, pop_where)
+  if (is.na(w)) paste0(pop_where, " & (", rest, ")") else w
+}
+
+# The program's lines that make the analysis data `id` of a report: the
+# datasets read, the analysis sets and the data it is made from, then it
+# (NA: it cannot be written; no `id`: the report's last).  The report's
+# own code generator (tflspec::tfl_ard_code()), as "Start from the
+# generated code" uses it.
+.adata_code_view <- function(x, output_id, id = NULL) {
+  ad <- .adata_rows(x, output_id)
+  if (!nrow(ad)) return(NA_character_)
+  if (is.null(id) || .is_blank(id)) id <- ad$data_id[nrow(ad)]
+  code <- .adata_body_code(x, output_id, id)
+  k <- which(startsWith(code, paste0(id, " <- ")))
+  if (!length(k)) return(NA_character_)
+  paste(code[seq_len(k[1L])], collapse = "
+")
+}
+
+# The body of the program of a report's analysis data read by one
+# analysis of `id` (character(0): it cannot be written)
+.adata_body_code <- function(x, output_id, id) {
+  a <- x$ard
+  a$analysis_data <- .adata_rows(x, output_id)
+  if (!id %in% a$analysis_data$data_id) return(character())
+  # the report's own id: the code shown starts with `report_id <- "<it>"`
+  out <- if (.is_blank(output_id)) ".try" else as.character(output_id)
+  a$analysis_data$output_id <- rep(out, nrow(a$analysis_data))
+  a$analyses <- .normalize_ard_sheet(data.frame(
+    output_id = out, analysis_id = "TRY", method = "cards::ard_summary",
+    data = id, variables = .adata_subject_key(x), stringsAsFactors = FALSE), "analyses")
+  tryCatch(tflspec::tfl_ard_code(structure(a, class = "tfl_ard_spec"), part = "body"),
+           error = function(e) character())
 }
 
 # An analysis data already there that is this same data (made from the
@@ -552,10 +595,16 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
 
 # Where an ARD program's lines run in the app: as under its setup, with
 # cards', dplyr's and tflspec's functions (the setup attaches them), the
-# app's own session left as it is
-.ard_program_env <- function() {
+# app's own session left as it is.  `study`: the study's spec, when a program
+# reads study$adam_meta (adam_codes() of the helpers looks `study` up in the
+# environment they are made in, as a program finds it in the global one)
+.ard_program_env <- function(study = NULL) {
   # the functions the programs call (set_levels() ...), then the packages'
   e <- .helpers_env(globalenv())
+  if (inherits(study, "tfl_study_spec")) {
+    e$study <- list(adam_meta = study$adam_meta, codelists = study$codelists,
+                    adam_org = new.env(), adam = new.env())
+  }
   for (pk in c("tflspec", "dplyr", "cards")) {
     ns <- asNamespace(pk)
     e <- list2env(mget(getNamespaceExports(ns), envir = ns, inherits = TRUE),
@@ -568,19 +617,11 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
 # the lines that write it, its name last (the value of the code); NA when
 # the program cannot be written yet
 .adata_code_start <- function(x, output_id, id) {
-  a <- x$ard
-  a$analysis_data <- .adata_rows(x, output_id)
-  a$analysis_data$output_id <- rep(".try", nrow(a$analysis_data))
-  a$analyses <- .normalize_ard_sheet(data.frame(
-    output_id = ".try", analysis_id = "TRY", method = "cards::ard_summary",
-    data = id, variables = .adata_subject_key(x), stringsAsFactors = FALSE), "analyses")
-  code <- tryCatch(tflspec::tfl_ard_code(structure(a, class = "tfl_ard_spec"),
-                                         part = "body"),
-                   error = function(e) NULL)
-  if (is.null(code)) return(NA_character_)
+  code <- .adata_body_code(x, output_id, id)
   mine <- code[startsWith(code, paste0(id, " <- "))]
   if (!length(mine)) return(NA_character_)
-  paste(c(mine, id), collapse = "\n")
+  paste(c(mine, id), collapse = "
+")
 }
 
 # Its records and subjects, as words (`words`: records, one_row): one row a
