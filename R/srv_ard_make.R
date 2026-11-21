@@ -623,7 +623,8 @@
     # again: the values the page sends back first are not an edit
     # (the row the form shows: an edit is written over it only)
     st_live$row <- as.list(r)
-    if (!identical(st_live$id, r$analysis_id)) {
+    again <- identical(st_live$id, r$analysis_id)
+    if (!again) {
       st_live$open(rv$p)
       st_live$id <- st_live$orig <- r$analysis_id
       st_msg(NULL)
@@ -631,6 +632,13 @@
       st_live$wait()
     }
     st_env$n <- st_env$n + 1L
+    # the same analysis drawn again (its own write of another function, the
+    # one a search found): the setting the search's word means stays offered
+    o <- if (again) shiny::isolate(fn_offer())
+    if (!is.null(o) && identical(o$n, st_env$n - 1L)) {
+      o$n <- st_env$n
+      fn_offer(o)
+    }
     st_drawn(st_env$n)
     st_method(r$method)
     e <- fn_entries(r$method)

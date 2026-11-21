@@ -56,7 +56,7 @@ test_that("the ARD tab: the outline, a stack's form, one inside it, grouping and
     expect_true("BIGN" %in% a$analysis_id)
     expect_identical(a$by[a$analysis_id == "CONT"], "TRT01A")
     # T2 one by one: grouped again from CONT's form, BIGN left as it is
-    session$setInputs(target = "T2")
+    open_report(session, "T2")
     session$setInputs(ard_ol_pick = "CONT")
     expect_match(output$ard_stat_ui$html, "ard_stack_group")
     session$setInputs(ard_stack_group = 1)

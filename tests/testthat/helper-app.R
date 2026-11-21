@@ -32,6 +32,20 @@ server_for <- function(study) {
   }
 }
 
+# Another report opened in a server_for() session.  With unsaved changes
+# the app asks first (Save, Discard or Cancel: the forms apply their edits
+# at once); a test that goes on with its edits answers Save, as a user who
+# keeps them does.  Not asked (nothing unsaved): only the report opened.
+open_report <- function(session, target, ...) {
+  session$setInputs(target = target, ...)
+  if (!identical(shiny::isolate(session$userData$current()), target)) {
+    n <- (session$userData$switch_saves %||% 0) + 1
+    session$userData$switch_saves <- n
+    session$setInputs(switch_save = n)
+  }
+  invisible()
+}
+
 # A template report's argument cards of every step, as one text: an
 # argument is drawn in the step its `step:` names (data, analysis, content,
 # page), the content step's card `main`
