@@ -165,6 +165,11 @@ details.ard-fn[open] .ard-fn-closed, details.ard-fn:not([open]) .ard-fn-open { d
 .rp-split.rp-lay-one.rp-show-def > :nth-child(2),
 .rp-split.rp-lay-one.rp-show-out > :nth-child(1) { display: none !important; }
 .rhandsontable.html-widget { overflow: hidden; }
+/* step 1's Result: the analysis data's first rows, a cell on one line;
+   the pane scrolls down, the table sideways */
+.rp-adata-preview { overflow-x: auto; }
+.rp-adata-preview table { margin-bottom: 0; }
+.rp-adata-preview th, .rp-adata-preview td { white-space: nowrap; }
 .rp-grip { height: 8px; margin: 2px 0 4px; cursor: ns-resize;
   border-radius: 4px; background: var(--bs-tertiary-bg, #eef0f3);
   background-image: linear-gradient(90deg, transparent 45%, #9ca3af 45%,
@@ -454,6 +459,14 @@ app_ui <- function(lang = "en") {
                     shiny::p(class = "small text-muted mb-1",
                              t("The rows of analysis_data this report reads, every column, as in the workbook: what the form does not show is written here. A new data's row comes when it is saved.")),
                     rhandsontable::rHandsontableOutput("hot_adata_report"))),
+                # the program's lines that make the data (the form as it is)
+                bslib::nav_panel(
+                  t("Code"), value = "code",
+                  shiny::div(
+                    class = "pt-2",
+                    shiny::p(class = "small text-muted mb-1",
+                             t("The R the report's program makes this analysis data with (the form as it is now, not saved yet): the datasets and analysis sets it reads, then it.")),
+                    code_view("adata_code_view", lang))),
                 bslib::nav_panel(
                   t("Result"), value = "result",
                   shiny::div(
