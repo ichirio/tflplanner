@@ -107,7 +107,6 @@ test_that("the form picks a function, fills its arguments and writes args", {
     inp[[id("fn_cat")]] <- "Summaries"
     do.call(session$setInputs, inp)
     expect_false(grepl("ard_categorical_ci", output$ard_fn_list$html, fixed = TRUE))
-    session$setInputs(ard_stat_apply = 1)
     r <- ard_rows(rv$p, "analyses", "T1")
     r <- r[r$analysis_id == "CAT", ]
     expect_identical(r$method, "cardx::ard_categorical_ci")
@@ -119,7 +118,6 @@ test_that("the form picks a function, fills its arguments and writes args", {
     inp[[id("a_conf.level")]] <- "0.9"
     inp[[id("args_other")]] <- "max.iterations = 20"
     do.call(session$setInputs, inp)
-    session$setInputs(ard_stat_apply = 2)
     r <- ard_rows(rv$p, "analyses", "T1")
     expect_identical(r$args[r$analysis_id == "CAT"],
                      'method = "wilson", conf.level = 0.9, weights = W, max.iterations = 20')
@@ -135,7 +133,6 @@ test_that("the form picks a function, fills its arguments and writes args", {
     session$setInputs(hot_ard_analyses_select = list(select = list(r = 2L)))
     inp <- list(); inp[[id("fn_pick")]] <- "cardx::ard_continuous_ci"
     do.call(session$setInputs, inp)
-    session$setInputs(ard_stat_apply = 3)
     r <- ard_rows(rv$p, "analyses", "T1")
     expect_identical(r$method[r$analysis_id == "CONT"], "cardx::ard_continuous_ci")
     expect_true(is.na(r$args[r$analysis_id == "CONT"]))

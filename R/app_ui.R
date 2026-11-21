@@ -457,7 +457,7 @@ app_ui <- function(lang = "en") {
                   shiny::div(
                     class = "pt-2",
                     shiny::p(class = "small text-muted mb-1",
-                             t("The rows of analysis_data this report reads, every column, as in the workbook: what the form does not show is written here. A new data's row comes when it is saved.")),
+                             t("The rows of analysis_data this report reads, every column, as in the workbook: what the form does not show is written here. A new data's row comes at its first edit.")),
                     rhandsontable::rHandsontableOutput("hot_adata_report"))),
                 # the program's lines that make the data (the form as it is)
                 bslib::nav_panel(

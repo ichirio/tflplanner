@@ -205,3 +205,4 @@
 "Whether study$adam gets the levels of the study's ADaM metadata (codelists: defaults.yml adam_meta:) or not (none). Either way a blank is NA, and study$adam_org is the file as it is. With none, a report's own levels: / labels: still apply.","study$adam に試験の ADaM メタデータ（defaults.yml の adam_meta:）の水準を当てる（codelists）か、当てない（none）かを選びます。どちらでも空欄は NA になり、study$adam_org はファイルのままです。none の時も帳票が自分で書いた levels: / labels: は効きます。"
 "codelists: apply the levels of adam_meta to the ADaM","codelists: adam_meta の水準を ADaM に当てる"
 "none: do not apply them","none: 当てない"
+"Save them before opening %s, or discard them (every unsaved change of the study goes).","%s を開く前に保存するか、破棄してください（試験の保存していない変更がすべて消えます）。"

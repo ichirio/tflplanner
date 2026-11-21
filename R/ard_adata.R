@@ -375,6 +375,31 @@
     .adata_rows(x, output_id)$data_id, "data", "population", "ard", "ards", "status")
 }
 
+# What is wrong with `id` as the name of report `output_id`'s analysis data
+# (`old`: the one the form changes), said before the ARD definition is
+# checked (its messages are English): a text to translate, with `%s` for
+# the name, or NULL.  The rule is the definition's (tflspec's
+# tfl_ard_spec(): a lower-case letter first, then lower-case letters,
+# digits, _ or . -- a syntactic R name -- and not the name of another
+# object of the program).
+.adata_name_problem <- function(x, output_id, id, old = NULL) {
+  if (is.null(id) || is.na(id) || !nzchar(id)) return("Give the analysis data a name.")
+  if (!grepl("^[a-z][a-z0-9_.]*$", id)) {
+    return("%s: a name starts with a lower-case letter and holds only lower-case letters, digits, _ and .")
+  }
+  if (make.names(id) != id) return("%s is a word R keeps for itself: give another name.")
+  rn <- function(v) make.names(tolower(v))
+  taken <- c(rn(x$ard$datasets$dataset), paste0("pop_", rn(x$ard$populations$population_id)),
+             "data", "population", "ard", "ards", "status")
+  if (id %in% taken) {
+    return("%s is the name of another object of the ARD program (a dataset, pop_<population>, data, population, ard ...): give another name.")
+  }
+  if (!identical(id, old) && id %in% .adata_rows(x, output_id)$data_id) {
+    return("%s: this report has an analysis data of that name already.")
+  }
+  NULL
+}
+
 .adata_suggest <- function(x, output_id, from, population_id = NA, where = NA) {
   base <- .adata_default_name(from, population_id, where)
   if (!grepl("^[a-z]", base)) base <- paste0("d_", base)

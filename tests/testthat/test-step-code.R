@@ -262,7 +262,7 @@ test_that("a report's own code runs out of the app; the line of an error is said
     session$setInputs(fig_ard_kind = "none", cc_run = 1)
     expect_match(output$cc_result$html, "It ran", fixed = TRUE)
     # the other report: its error's line, and the dataset to add
-    session$setInputs(target = "F-2")
+    open_report(session, "F-2")
     session$setInputs(cc_run = 1)
     h <- output$cc_result$html
     expect_match(h, "Line 3 of the content step", fixed = TRUE)
@@ -274,7 +274,7 @@ test_that("a report's own code runs out of the app; the line of an error is said
     session$setInputs(mode_drop = 1)
     expect_true(is.na(step_code(rv$p, "F-2", "content")))
     # a table's data step as code: its editor shown, the switch says so
-    session$setInputs(target = "F-1", step = "ard", data_mode = "code")
+    open_report(session, "F-1", step = "ard", data_mode = "code")
     expect_identical(output$data_is_code, "yes")
   })
 })
