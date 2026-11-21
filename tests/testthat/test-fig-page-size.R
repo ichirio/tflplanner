@@ -9,22 +9,24 @@ test_that("a figure's program draws it at its size on the page", {
   p <- set_step_code(p, "F-1", "content", "content <- ggplot2::ggplot(adsl)")
   code <- program_code(p, "F-1")
   # blank: its own size (a figure of its own code: rtfreporter's 6.5 x 4.5),
-  # placed as rtfreporter places it
+  # placed at the figure style standard's size (no study: tflspec's
+  # built-in one, 7.3 x 4.2 -- tflspec#883)
   sized <- code[startsWith(code, "content <- fig_sized(content, ")]
   expect_length(sized, 1L)
   expect_true(grepl("width_in = 6.5, height_in = 4.5,", sized, fixed = TRUE))
-  expect_true("  rtf_figures(content)" %in% code)
+  one <- function(code) paste(code, collapse = "\n")
+  expect_match(one(code), "rtf_figures\\(\\s*content,\\s*width_twips = 10512,\\s*height_twips = 6048")
   expect_true(any(grepl("6.5 x 4.5 in (its own size)", code, fixed = TRUE)))
   # fit: the page's body (letter landscape, margins 0.75): 9.5 wide
   f <- set_page_cell(p, "report", "figure_width_in", "F-1", "fit")
   expect_identical(.fig_size_of(f, "F-1")$width_in, 9.5)
   expect_identical(.fig_size_of(f, "F-1")$mode[["width"]], "fit")
-  expect_true(any(grepl("rtf_figures(content, width_twips = 13680", program_code(f, "F-1"), fixed = TRUE)))
+  expect_match(one(program_code(f, "F-1")), "rtf_figures\\(\\s*content,\\s*width_twips = 13680")
   # inches: that
   q <- set_page_cell(p, "report", "figure_width_in", "F-1", "6")
   expect_identical(.fig_size_of(q, "F-1")$width_in, 6)
   expect_true(any(grepl("content <- fig_sized(content, width_in = 6,", program_code(q, "F-1"), fixed = TRUE)))
-  expect_true(any(grepl("rtf_figures(content, width_twips = 8640", program_code(q, "F-1"), fixed = TRUE)))
+  expect_match(one(program_code(q, "F-1")), "rtf_figures\\(\\s*content,\\s*width_twips = 8640")
   expect_silent(parse(text = program_code(q, "F-1")))
 })
 
@@ -62,7 +64,7 @@ test_that("fig_sized() draws a ggplot at the size given, and leaves the rest", {
   expect_s3_class(e$fig_sized(data.frame(a = 1), 6, 4), "data.frame")
 })
 
-test_that("step 3 of a figure: its size, and its first page says where its figure comes from", {
+test_that("step 3 of a figure: no size on the page (its content's tfl_image), its first page says where its figure comes from", {
   skip_on_cran()
   local_home()
   p <- add_output(new_planner(), "F-1", type = "figure")
@@ -73,23 +75,11 @@ test_that("step 3 of a figure: its size, and its first page says where its figur
     rv <- session$userData$rv
     session$setInputs(target = "F-1", nav = "make", step = "page")
     h <- output$page_form$html
-    expect_match(h, "data-arg=\"width_twips\"", fixed = TRUE)
-    expect_match(h, "(its own: 6.5 x 4.5)", fixed = TRUE)
-    expect_match(h, "data-act=\"fig_fit\"", fixed = TRUE)
-    expect_no_match(h, "data-act=\"fig_native\"", fixed = TRUE)
+    # (a figure's size, alignment and dpi are its content's tfl_image, not
+    # the page's: tflspec#874 -- the page writes no rtf_figures size)
+    expect_no_match(h, "data-arg=\"width_twips\"", fixed = TRUE)
+    expect_no_match(h, "data-act=\"fig_fit\"", fixed = TRUE)
+    expect_no_match(h, "data-fn=\"rtf_figures\"", fixed = TRUE)
     expect_match(output$page_sample$html, "Run the code", fixed = TRUE)
-    session$setInputs(pg_edit = list(kind = "arg", fn = "rtf_figures", arg = "width_twips",
-                                     value = "6", target = "F-1"))
-    expect_identical(page_value_from(rv$p, "report", "figure_width_in", "F-1")$value, "6")
-    # fit to the page: both fit; its own size: both blank again
-    session$setInputs(pg_act = list(act = "fig_fit", target = "F-1"))
-    expect_identical(page_value_from(rv$p, "report", "figure_width_in", "F-1")$value, "fit")
-    expect_identical(page_value_from(rv$p, "report", "figure_height_in", "F-1")$value, "fit")
-    expect_match(output$page_form$html, "data-act=\"fig_native\"", fixed = TRUE)
-    session$setInputs(pg_act = list(act = "fig_native", target = "F-1"))
-    expect_false(identical(page_value_from(rv$p, "report", "figure_width_in", "F-1")$from, "own"))
-    # a table: no figure size
-    session$setInputs(target = "T-1")
-    expect_no_match(output$page_form$html, "width_twips", fixed = TRUE)
   })
 })

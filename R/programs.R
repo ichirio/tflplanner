@@ -766,8 +766,15 @@ program_code <- function(x, output_id, date = Sys.Date()) {
                 .report_path_code(tflspec::tfl_report_path(y$output, study = y$study),
                                   output_id)))
     } else {
+      # (a figure: placed as its YAML report is -- the study's figure style
+      # for its design's type, its design's tfl_image: tflspec#883; the
+      # study the planner holds, none for a planner without a spec)
+      fig <- identical(.resolve_row(x, "report", output_id)$type, "figure")
+      st <- if (fig && inherits(x$spec$study, "tfl_study_spec")) x$spec$study
       c(.report_id_code(tflspec::tfl_report_code(sp, output_id, content = content,
-                                                 setup = .uses_report_setup(x)), output_id),
+                                                 setup = .uses_report_setup(x), study = st,
+                                                 figure = if (fig) fig_design(x, output_id)),
+                        output_id),
         sprintf("generate_rtfreport(doc, %s, overwrite = TRUE)",
                 .report_path_code(tflspec::tfl_report_path(sp, output_id), output_id)))
     },

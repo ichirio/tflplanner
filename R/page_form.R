@@ -577,9 +577,6 @@ $(document).on('shiny:value', function(e) {
   card <- function(title, call = NULL, ...) shiny::div(
     class = "pg-card",
     shiny::h6(title, if (!is.null(call)) shiny::tagList(" ", shiny::span(class = "pg-fn", call))), ...)
-  fig <- lapply(c("width_twips", "height_twips"), function(a) .pgs_arg(sp, id, "rtf_figures", a))
-  fig_said <- vapply(fig, function(a) tolower(as.character(a$value %||% "")), "")
-  fig_own <- vapply(fig, function(a) identical(a$from, "own"), NA)
   # the band's size, then its other style the page says; the rest folded
   size <- function(fn) {
     fs <- .pgs_fields[[fn]]
@@ -612,17 +609,10 @@ $(document).on('shiny:value', function(e) {
     .page_fn_ui(sp, id, "rtf_document", t, kind,
                 fields = Filter(function(f) !f$arg %in% .page_paper_moved$rtf_document,
                                 .pgs_fields$rtf_document)),
-    # the content's call: rtf_tables() for a table or a listing, rtf_figures()
-    # for a figure (a pattern's or Standard's: both)
+    # the content's call: rtf_tables() for a table or a listing (a figure's
+    # own settings -- its size, alignment, dpi -- are its content's
+    # tfl_image, not the page's: tflspec#874)
     if (!identical(kind, "figure")) .page_fn_ui(sp, id, "rtf_tables", t, kind),
-    if (!report || identical(kind, "figure")) .page_fn_ui(
-      sp, id, "rtf_figures", t, kind,
-      extra = shiny::div(class = "d-flex flex-wrap gap-2 align-items-center",
-        if (report) shiny::span(class = "pg-from", sprintf(t("(its own: %s)"),
-          paste(format(.fig_native_size(x, id)), collapse = " x "))),
-        if (!all(fig_said == "fit")) .pg_btn("fig_fit", t("Fit to the page")),
-        if (any(fig_own)) .pg_btn("fig_native", t("Its own size")),
-        help_tip(t("Blank: the figure's own size (the company's figure style for its kind; a figure of your own code, 6.5 x 4.5 in), as rtfreporter places an image. A number: that size in inches. fit: the page's body (its width; its height less the titles and footnotes). The figure is drawn at this size, its text as its theme says; the dpi (step 2) changes only its pixels.")))),
     card(t("Header"), "(rtf_section(header =))", .page_lines_ui(sp, id, "header", t, kind)),
     card(shiny::tagList(t("Titles"), " ", .page_heading_ui(sp, id, t)), "(rtf_titles())",
          size("rtf_titles"), .page_lines_ui(sp, id, "titles", t, kind), .page_insert_ui(sp, id, t)),
