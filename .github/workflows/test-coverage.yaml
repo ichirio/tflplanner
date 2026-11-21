@@ -8,9 +8,6 @@ on:
   # (a pull request into next runs quick-check.yaml instead)
   pull_request:
     branches-ignore: [next]
-  # nightly, on next (each job checks out next)
-  schedule:
-    - cron: '0 18 * * *'
   workflow_dispatch:
 
 name: test-coverage
