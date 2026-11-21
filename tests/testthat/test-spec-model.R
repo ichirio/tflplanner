@@ -1,5 +1,7 @@
 # The study's model is its YAML spec; the sheets are a view of it (#407 B1)
 
+skip_if_quick()  # slow: not in the quick check of a PR into next (helper.R)
+
 model_sample <- function(env = parent.frame()) {
   home <- withr_tempdir(env)
   old <- options(tflplanner.home = home)
