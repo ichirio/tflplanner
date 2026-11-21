@@ -130,7 +130,7 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
   switch(src$kind,
     none = if (.fig_reads_ard(design, output_id)) c(
       "# the design reads an ARD (`ard`), but the figure has none",
-      sprintf("stop(\"%s reads an ARD: choose it in the figure's step %s (ARD).\")", output_id, .step_no("ard")),
+      sprintf("stop(\"%s reads an ARD: choose it in the figure's step %s (analysis).\")", output_id, .step_no("ard")),
       ""),
     own = , table = {
       prog <- file.path(study_layout()[["programs_ard"]], .ard_prog_name(src$id))
