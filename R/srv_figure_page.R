@@ -569,11 +569,6 @@
     page_write(guarded(switch(a$act,
       reset = .pgs_set_arg(p, id, a$fn, a$arg, NULL),
       none = .pgs_set_arg(p, id, a$fn, a$arg, tflspec::tfl_unset()),
-      # a figure's size: both fit to the page, or both its own (none)
-      fig_fit = .pgs_set_arg(.pgs_set_arg(p, id, "rtf_figures", "width_twips", "fit"),
-                             id, "rtf_figures", "height_twips", "fit"),
-      fig_native = .pgs_set_arg(.pgs_set_arg(p, id, "rtf_figures", "width_twips", NULL),
-                                id, "rtf_figures", "height_twips", NULL),
       # a line of the layers below made the target's own, to change
       own = {
         r <- .pgs_lines(.pgs_spec(p), id, a$band)

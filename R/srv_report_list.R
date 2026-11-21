@@ -234,25 +234,21 @@
         t(moves[[to]]))))
   })
   shiny::observeEvent(input$report_move, go(input$report_move))
-  # the steps' names: the kind's own (a figure's "1 Data", "2 Figure")
-  shiny::observe({
-    k <- report_kind()
-    # (a template report's two steps: R/template_report.R)
-    id <- current()
-    tpl <- !is.null(id) && !is.null(.tpl_of(rv$p, id))
-    session$sendCustomMessage("rp-step-names", tpl_names(tpl, k))
-  })
   # the tabs this kind of report has nothing on, faded (still clickable)
   shiny::observe({
     k <- report_kind()
     idle <- .type_idle_tabs[[k]] %||% character()
     src <- if (identical(k, "figure") && !is.null(current())) .fig_ard_source(rv$p, current())
     if (!is.null(src) && src$kind != "none") idle <- setdiff(idle, "ard")
+    # (a template listing: its analysis step has the template's arguments)
+    tpl <- !is.null(current()) && !is.null(.tpl_of(rv$p, current()))
+    if (tpl) idle <- setdiff(idle, "ard")
     session$sendCustomMessage("rp-idle-tabs", as.list(idle))
-    # a listing has no ARD: its tab is shut, and says why
+    # a code SPEC listing has no ARD: its tab is shut, and says why
+    shut <- identical(k, "listing") && !tpl
     session$sendCustomMessage("rp-step-disable", list(
-      step = "ard", disabled = identical(k, "listing"),
-      title = if (identical(k, "listing")) t("A listing has no ARD") else ""))
+      step = "ard", disabled = shut,
+      title = if (shut) t("A listing has no ARD") else ""))
     # the ARD definition: a figure's only when it has its own analyses
     session$sendCustomMessage("rp-ard-def", !identical(k, "figure") ||
                                 identical(src$kind, "own"))
