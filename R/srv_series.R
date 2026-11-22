@@ -33,14 +33,22 @@
 
 # A value as tflspec's tfl_series_values_set() is to write it (it writes
 # with yaml::as.yaml()): a tagged one (the source's !study K, !fixed v ...)
-# as its YAML text, which as.yaml() writes as it is; a single true / false
-# as true / false (as.yaml()'s own is yes / no)
+# as its value with the tag as the "tag" attribute, which as.yaml() writes
+# as the tag (a "verbatim" text that starts with "!" is quoted: a string,
+# not the tag); inside a list the same; a single true / false as true /
+# false (as.yaml()'s own is yes / no)
 .series_value_out <- function(v) {
-  if (inherits(v, c("tfl_series_ref", "tfl_study_ref", "tfl_fixed_ref", "tfl_unset"))) {
-    return(structure(.series_flow(v), class = "verbatim"))
-  }
+  tag <- function(x, t) structure(x, tag = t)
+  if (inherits(v, "tfl_series_ref")) return(tag(as.character(v$key), "!series"))
+  if (inherits(v, "tfl_study_ref")) return(tag(as.character(v$key), "!study"))
+  if (inherits(v, "tfl_fixed_ref")) return(tag(.series_value_out(v$value), "!fixed"))
+  if (inherits(v, "tfl_unset")) return(tag("", "!unset"))
   if (is.logical(v) && length(v) == 1L && !is.na(v) && is.null(names(v))) {
     return(structure(if (v) "true" else "false", class = "verbatim"))
+  }
+  if (is.list(v) && !is.object(v)) {
+    out <- lapply(v, function(x) if (is.null(x)) x else .series_value_out(x))
+    return(if (identical(out, v)) v else out)
   }
   v
 }

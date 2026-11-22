@@ -83,6 +83,11 @@ create_sample_study <- function(root = studies_root(home), run = TRUE,
   for (k in names(given)) if (!is.null(given[[k]])) meta[[k]] <- given[[k]]
   meta$created <- format(Sys.Date())
   .write_meta(meta, path)
+  # (its template reports read the study's copies: tflspec's templates
+  # copied in, as adding a template report from the app copies one)
+  if ("tfl_copy_templates" %in% getNamespaceExports("tflspec")) {
+    invisible(tflspec::tfl_copy_templates(path))
+  }
   s <- register_study(path, home)
   s <- .sample_study_words(s)
   s <- save_study(s, home = home)

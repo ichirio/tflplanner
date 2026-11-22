@@ -24,6 +24,8 @@ tff_study <- function(home, id, args, template = "tflspec_v1/demog") {
   s <- suppressMessages(open_study(d, home = home))
   o <- tflspec::tfl_output("T-TF-1", "table", template = list(name = template, args = args))
   s$planner <- suppressWarnings(.spec_add_output(s$planner, o))
+  # (a template report reads the study's copy: copied as the app copies it)
+  if ("tfl_copy_templates" %in% getNamespaceExports("tflspec")) invisible(.tpl_copy_into_study(d, template))
   suppressMessages(save_study(s))
   id
 }

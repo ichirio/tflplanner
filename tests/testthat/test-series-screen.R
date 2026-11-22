@@ -145,6 +145,13 @@ test_that("a value is shown as one line of YAML and reads back the same", {
   expect_identical(.series_edit_text("x"), "x")
   # what tfl_series_values_set() is given: a tag and a flag as YAML text
   expect_identical(yaml::as.yaml(list(a = .series_value_out(study))), "a: !study sponsor.name\n")
+  # (read back as the tags, not as text that starts with "!")
+  back <- yaml::yaml.load(yaml::as.yaml(list(a = .series_value_out(study), b = .series_value_out(fixed),
+                                             c = .series_value_out(list(d = study)))),
+                          handlers = list(study = function(x) paste("study", x),
+                                          fixed = function(x) list(fixed = x)))
+  expect_identical(back, list(a = "study sponsor.name", b = list(fixed = list(N = 0L)),
+                              c = list(d = "study sponsor.name")))
   expect_identical(yaml::as.yaml(list(a = .series_value_out(TRUE))), "a: true\n")
   expect_identical(.series_value_out(list(N = 0L)), list(N = 0L))
 })
@@ -436,7 +443,8 @@ test_that("a template copied into a study: said once, the cards read the copy, t
     expect_match(h, "Changed in this study", fixed = TRUE)
     expect_match(h, 'data-key="tflspec_v1/demog"', fixed = TRUE)
     session$setInputs(series_diff = list(key = "tflspec_v1/demog", n = 1))
-    expect_match(shown$modals[length(shown$modals)], "The arm the study&#39;s copy says.", fixed = TRUE)
+    # (the apostrophe as it is, or escaped: htmltools versions differ)
+    expect_match(shown$modals[length(shown$modals)], "The arm the study(&#39;|')s copy says[.]")
     # a value of the study's copy, saved, read back
     expect_match(html_of(output$series_values), "Defaults shared by the tflspec_v1 series' templates (values:)", fixed = TRUE)
     session$setInputs(series_change = list(key = "total_label", n = 2))
