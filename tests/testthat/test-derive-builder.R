@@ -113,7 +113,6 @@ test_that("1-1: a column made in the form, saved as the sheet's derive", {
     session$setInputs(drv_ok = 2)
     expect_match(output$drv_list$html, "OLD = ifelse(AGE &gt;= 75, &quot;Y&quot;, &quot;N&quot;)", fixed = TRUE)
     # saved: the first as it was written (not opened), then the two made
-    session$setInputs(adata_save = 1)
     d <- .adata_rows(rv$p, "DM")$derive
     expect_identical(d, paste(
       "G = ifelse(AGE < 65, \"a\", ifelse(AGE < 75, \"b\", \"c\"))",

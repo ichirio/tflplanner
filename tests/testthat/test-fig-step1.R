@@ -1,5 +1,5 @@
-# A figure's steps (#293, #514): "1 Analysis data", its data steps (list and
-# form); "2 ARD", the numbers from an ARD (optional); "3 Content", the
+# A figure's steps (#293, #514): "1 data", its data steps (list and
+# form); "2 analysis", the numbers from an ARD (optional); "3 content", the
 # settings and the layers, laid out Design | Edit | Preview.
 
 # (slow: its tests write study folders or start the app -- run on CI
@@ -7,7 +7,7 @@
 skip_on_cran()
 
 test_that("every kind has the same steps; only a listing's ARD is idle", {
-  expect_identical(unname(.step_labels[c("data", "ard")]), c("1 Analysis data", "2 ARD"))
+  expect_identical(unname(.step_labels[c("data", "ard")]), c("1 data", "2 analysis"))
   expect_false("ard" %in% .type_idle_tabs$figure)
   expect_true("ard" %in% .type_idle_tabs$listing)
 })
@@ -54,7 +54,7 @@ test_that("a figure without a design: step 1 says where to start it", {
   create_study("S1", planner = p)
   shiny::testServer(server_for("S1"), {
     session$setInputs(target = "F1", nav = "make", step = "data")
-    expect_match(output$pd_data_body$html, "start it in step 3 (Content)", fixed = TRUE)
+    expect_match(output$pd_data_body$html, "start it in step 3 (content)", fixed = TRUE)
   })
 })
 

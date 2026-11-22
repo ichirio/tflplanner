@@ -149,7 +149,6 @@ test_that("step 1: the report's analysis set chosen, its data made, 1-1 starts f
     expect_match(output$adata_pop_note$html, "is not ADSL's for", fixed = TRUE)
     session$setInputs(adata_id = "adae_flag", adata_add = NULL,
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL, adata_code = "")
-    session$setInputs(adata_save = 1)
     r <- .adata_rows(rv$p, "T1")
     r <- r[r$data_id == "adae_flag", ]
     expect_true(is.na(r$population_id))

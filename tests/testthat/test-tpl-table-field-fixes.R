@@ -158,7 +158,7 @@ test_that("a demog card: its columns ADSL's, its denominator a data row, formats
   shiny::testServer(server_for(id), {
     rv <- session$userData$rv
     session$setInputs(target = "T-TF-1", nav = "make", step = "content", content_nav = "content")
-    card <- function() paste(as.character(output$tpl_card$html), collapse = "")
+    card <- function() tpl_cards_html(output)
     html <- card()
     # (1) the labels' columns: ADSL's only
     lab <- tff_field(html, "tpl_tflspec_v1_demog__labels")

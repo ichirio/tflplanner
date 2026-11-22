@@ -178,16 +178,16 @@
     changed <- !identical(rv$draft, rv$saved)
     shiny::tagList(
       shiny::h6(class = "mt-3 mb-1",
-                with_tip(sprintf(t("Values of %s (values:)"), x$name),
+                with_tip(sprintf(t("Defaults shared by the %s series' templates (values:)"), x$name),
                          t("The series' values as written (a tag as written: !series, !study, !fixed, !unset). A value changed for this study is kept in study.yml's series_settings; the templates read it first."))),
       if (length(x$path)) shiny::p(class = "small text-muted mb-1", shiny::tags$code(x$path)),
       if (is.null(dir)) {
         shiny::tagList(
-          .series_values_ui(x$values, list(), list(), t),
+          .series_values_ui(x$values, list(), list(), t, x$descriptions),
           shiny::p(class = "small text-muted", t("Open a study to change its values.")))
       } else {
         shiny::tagList(
-          .series_values_ui(x$values, rv$draft, rv$saved, t),
+          .series_values_ui(x$values, rv$draft, rv$saved, t, x$descriptions),
           shiny::div(
             class = "d-flex gap-2 align-items-center",
             .btn("series_save", t("Save this study's values (tfl_series_settings_set)"),
