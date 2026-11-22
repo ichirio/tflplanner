@@ -587,7 +587,7 @@ test_that("normalize_ard(): stack and combine a table of a name and its list, dr
   # drop_contexts: a select of several, the contexts offered, another typed
   expect_match(h, 'id="c__drop_contexts"[^>]*multiple', perl = TRUE)
   expect_match(h, '<option value="tabulate">tabulate</option>', fixed = TRUE)
-  expect_match(h, '"create"\s*:\s*true', perl = TRUE)
+  expect_match(h, '"create"\\s*:\\s*true', perl = TRUE)
   # (no R switch: their types take no R -- the card's Edit as R is the way)
   for (a in c("stack", "combine", "drop_contexts")) {
     expect_false(grepl(sprintf('id="c__%s__isr"', a), h, fixed = TRUE), info = a)
