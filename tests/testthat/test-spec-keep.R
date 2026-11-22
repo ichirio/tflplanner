@@ -6,6 +6,7 @@
 # (slow: its tests write study folders or start the app -- run on CI
 # and locally with NOT_CRAN=true, not in CRAN's check)
 skip_on_cran()
+skip_if_quick()  # slow: not in the quick check of a PR into next (helper.R)
 
 # what rhandsontable sends when one cell of a grid drawn by the app is
 # changed: the grid's own rows (as the browser has them), one cell new
@@ -225,7 +226,7 @@ test_that("step 2, the listing form: what it cannot show stays as written", {
     session$setInputs(target = "L1", nav = "make", step = "content",
                       content_nav = "content", lf_right = "result")
     expect_match(output$lf_data_form$html, "ADXX", fixed = TRUE)
-    # the dataset and the condition are the Analysis data step's; the rest
+    # the dataset and the condition are the data step's; the rest
     # (type, rows per page, order) the Content step's: each drawn once
     expect_match(output$lf_data_form$html, "Condition (R)", fixed = TRUE)
     expect_false(grepl("_dataset", output$lf_form$html, fixed = TRUE))

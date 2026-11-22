@@ -13,7 +13,7 @@ fk_study <- function(name = "km_curves", env = parent.frame()) {
   old <- options(tflplanner.home = home)
   do.call(on.exit, list(substitute(options(old)), add = TRUE), envir = env)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   f <- file.path(s$path, "spec", "outputs", "F-9.yml")
   writeLines(c("id: F-9", "kind: figure", "label: KM by arm", "extends:", "  - defaults",
                "data:", "  - id: adsl_sub", "    population: SAF",

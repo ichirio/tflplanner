@@ -4,6 +4,8 @@
 # -- driven through shiny::testServer() on the whole app, as the other server
 # tests do.
 
+skip_if_quick()  # slow: not in the quick check of a PR into next (helper.R)
+
 # what the server showed and where it went, instead of the screen: the notes,
 # the dialogs (as text) and the tabs chosen
 watch_add <- function(env = parent.frame()) {
@@ -193,10 +195,13 @@ test_that("Add from a template writes the report with its template, the argument
     expect_identical(add_nav(shown, "step"), "content")
     # the panes of a template table
     session$setInputs(target = "T-ZZ-5", nav = "make", step = "content", content_nav = "content")
-    expect_match(add_html(output$tpl_card$html), 'id="tpl_demog__total"', fixed = TRUE)
-    expect_match(add_text(output$tpl_card_data$html), "Analysis data", fixed = TRUE)
+    expect_match(add_html(output$tpl_card_ard$html), 'id="tpl_demog__total"', fixed = TRUE)
+    # the template itself: one card above the steps
+    expect_match(add_text(output$tpl_card_head$html), "Convert to code", fixed = TRUE)
+    expect_false(grepl("Convert to code", add_text(output$tpl_card$html), fixed = TRUE))
+    expect_match(add_text(output$tpl_card_data$html), "Template arguments: data", fixed = TRUE)
     expect_match(add_text(output$tpl_card_data$html), "Analysis set (population)", fixed = TRUE)
-    expect_false(grepl("Template arguments (page)", add_text(output$tpl_card_page$html), fixed = TRUE))
+    expect_false(grepl("Template arguments: page", add_text(output$tpl_card_page$html), fixed = TRUE))
     expect_match(add_text(output$tpl_spec_yaml$html), "spec/outputs/T-ZZ-5.yml", fixed = TRUE)
     expect_match(add_text(output$tpl_spec_yaml$html), "name: demog", fixed = TRUE)
     expect_match(add_text(output$tpl_spec_yaml$html), "Expanded (read only)", fixed = TRUE)
@@ -506,7 +511,7 @@ test_that("demog with no population: no ARD run and no error note, the preview w
 test_that("demog's preview reads the study standard the report resolves with: its count cells and arm headings", {
   skip_on_cran()
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   o <- tflspec::tfl_output("T-DM", "table", label = "Demog", common = list(population = "SAF"),
                            template = list(name = "demog",
                                            args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))

@@ -12,7 +12,7 @@ sample_rows <- function(x, part, sheet, id = "T-14-3-1", cols) {
 }
 
 starter_from_sample <- function(...) {
-  s <- suppressMessages(create_sample_study(run = FALSE))
+  s <- suppressMessages(sample_study_copy())
   adae <- readRDS(file.path(s$path, "data/adam/adae.rds"))
   adsl <- readRDS(file.path(s$path, "data/adam/adsl.rds"))
   p <- first_hierarchy_table(new_planner(), "T-14-3-1", "data/adam/adae.rds", adae,
