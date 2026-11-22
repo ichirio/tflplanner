@@ -2,6 +2,8 @@
 # definition, the report list's and the study folder's own, the facts of
 # the data kept in the store, the messages in the app's language.
 
+skip_if_quick()  # slow: not in the quick check of a PR into next (helper.R)
+
 .rv_sample <- function(env = parent.frame()) {
   home <- withr_tempdir(env)
   old <- options(tflplanner.home = home)

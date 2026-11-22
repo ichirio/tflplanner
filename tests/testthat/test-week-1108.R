@@ -5,6 +5,7 @@
 # ARD (#602) and the stale-say window of the template card (#596).
 
 skip_on_cran()
+skip_if_quick()  # slow: not in the quick check of a PR into next (helper.R)
 
 # the program of a report, run in its own R from the study folder
 run_program <- function(s, id, dir = "tfl") {
@@ -41,7 +42,7 @@ test_that("a Rework is in the saved program after normalize_ard(), and its `data
   h <- sample_in_home()
   r <- rework_run(h, "data <- data[data$variable != \"RACE\", ]")
   prog <- readLines(file.path(r$s$path, "programs", "tfl", "T-14-1-1.R"), warn = FALSE)
-  i <- match("# normalize and rework", prog)
+  i <- .normalize_at(prog)
   expect_false(is.na(i))
   expect_identical(prog[i + 1:2], c("data <- ard |> normalize_ard()",
                                     "data <- data[data$variable != \"RACE\", ]"))

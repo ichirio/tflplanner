@@ -609,6 +609,8 @@
     bnew$ids <- character()
     rv$study <- s
     rv$p <- rv$saved <- s$planner
+    # (the forms' Undo: back to the study as saved from now on)
+    forms_rebase()
     # (the widths the save gave reports: drawn, but not others' changes)
     merged <- !.same_planner(.study_spec_keys(mine), s$planner_saved %||% s$planner)
     if (merged || !.same_planner(.study_spec_keys(mine), s$planner)) bump()
@@ -747,16 +749,21 @@
   })
   shiny::observeEvent(input$discard_ok, {
     shiny::removeModal()
+    discard_now()
+  })
+  discard_now <- function() {
     held$p <- held$before <- NULL
     rv$p <- rv$saved
     rv$meta <- rv$saved_meta
+    # (the forms' Undo: back to the study as saved from now on)
+    forms_rebase(discarded = TRUE)
     guarded(.drop_draft(rv$study$meta$study_id))
     # (the screens drawn again from it: the cards, the code, the preview)
     rv$bver <- rv$bver + 1L
     rv$ard_ver <- rv$ard_ver + 1L
     bump()
     notify(t("The changes were discarded: the study is as it was last saved."))
-  })
+  }
   # [Close]: tflplanner stops -- where it runs on this computer only (an
   # app on a server is not one user's to stop).  Unsaved changes are asked
   # about first: save and close, close without saving, or cancel.  The same

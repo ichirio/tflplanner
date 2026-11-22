@@ -110,6 +110,14 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
     stop("Two reports share the program ", paste(dup, collapse = ", "),
          "; give each its own `program` on the report sheet.", call. = FALSE)
   }
+  # A save that stops part way (a report whose program cannot be written
+  # ...) writes nothing: the files it wrote before it stopped are put back
+  # as they were, and the record of what is on disk is not touched -- the
+  # next save does not take its own half-written files for changes made
+  # outside the app (#751)
+  snap <- .save_snapshot(root)
+  done <- FALSE
+  on.exit(if (!done) .save_rollback(root, snap), add = TRUE)
   meta <- study$meta[.study_fields]
   old_meta <- tryCatch(.read_meta(root), error = function(e) list())
   meta$created <- old_meta$created %||% format(Sys.Date())
@@ -153,11 +161,43 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
                  .save_batch_programs(p, root))
   study$meta <- .read_meta(root)[.study_fields]
   .write_state(study, home)
+  done <- TRUE
   .set_config("last_study", study$meta$study_id, home)
   study$files <- files
   # why no ARD program was written, or NULL (the app says it)
   study$ard_problem <- ard_problem
   invisible(study)
+}
+
+# The files a save writes: those at the study's top (study.yml ...), and
+# under spec/ and programs/ (paths relative to the study)
+.save_files_now <- function(root) {
+  top <- list.files(root, all.files = TRUE, no.. = TRUE)
+  top <- top[!dir.exists(file.path(root, top))]
+  sub <- unlist(lapply(c("spec", "programs"), function(d) {
+    if (!dir.exists(file.path(root, d))) return(character())
+    file.path(d, list.files(file.path(root, d), recursive = TRUE, all.files = TRUE))
+  }))
+  c(top, sub)
+}
+# them as they are now (their bytes)
+.save_snapshot <- function(root) {
+  rel <- .save_files_now(root)
+  stats::setNames(lapply(rel, function(r) {
+    f <- file.path(root, r)
+    readBin(f, "raw", file.size(f))
+  }), rel)
+}
+# them put back as the snapshot had them: a file the save made goes
+.save_rollback <- function(root, snap) {
+  unlink(file.path(root, setdiff(.save_files_now(root), names(snap))))
+  for (r in names(snap)) {
+    f <- file.path(root, r)
+    if (file.exists(f) && identical(readBin(f, "raw", file.size(f)), snap[[r]])) next
+    dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+    writeBin(snap[[r]], f)
+  }
+  invisible()
 }
 
 # A study of an earlier version kept its report programs in programs/ and
