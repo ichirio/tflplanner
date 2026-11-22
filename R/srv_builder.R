@@ -490,8 +490,12 @@
       # plan_filter(by = ) a row key, table_plan(rows = )'s; group_col
       # none -- rtfreporter refuses it on an ARD's plan, whose groups are
       # its outermost row key)
+      # (normalize_ard(): stack's layers ALL, the columns and the ARD's
+      # group slots; combine's the columns and the variables; the contexts
+      # dropped the ARD's)
       arg_ch <- switch(fn, plan_filter = list(by = .filter_by_keys(st)),
-                       plan_row_group = list(group_col = character()))
+                       plan_row_group = list(group_col = character()),
+                       normalize_ard = .norm_arg_choices(ch, keys, st, m))
       body <- spec_card(
         card_id(it$path), fn, it, lang = lang,
         ctx = list(choices = ch, arg_choices = arg_ch,

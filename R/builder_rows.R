@@ -117,6 +117,22 @@
   unique(l)
 }
 
+# normalize_ard()'s own choices (ctx$arg_choices): stack's layers -- ALL
+# (the overall stratum), the columns offered (`ch`) and the ARD's group
+# slots after the first (group2 ...: whatever the ARD has there); combine's
+# the columns and the analysis's variables; drop_contexts the contexts --
+# attributes and total_n (the default's), then the ARD's (`m$contexts`)
+.norm_arg_choices <- function(ch, keys = character(), st = list(), m = list()) {
+  v <- st$variables
+  vars <- as.character(if (is.data.frame(v)) v$variable else unlist(v))
+  slots <- paste0("group", seq.int(2L, max(3L, length(keys))))
+  ch <- as.character(unlist(ch))
+  keep <- function(x) unique(x[!is.na(x) & nzchar(x)])
+  list(stack = keep(c("ALL", ch, slots)),
+       combine = keep(c(ch, vars)),
+       drop_contexts = keep(c("attributes", "total_n", as.character(unlist(m$contexts)))))
+}
+
 # a layer that is a constant heading ('"Overall"', ~"Worst grade"), not a key
 .is_heading <- function(x) grepl("^[\"'~]", x)
 

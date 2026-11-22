@@ -99,8 +99,7 @@ button[onclick*='tpl_revert'] { white-space: nowrap; flex-shrink: 0; }
 .rp-tbl-table td.rp-tbl-tools, .rp-tbl-table th.rp-tbl-tools { width: 1%; white-space: nowrap; }
 .rp-tbl-tools .btn { padding: 0 .2rem; text-decoration: none; color: #6b7280; }
 .rp-tbl-k-r .rp-tbl-cell { font-family: Consolas, 'Courier New', monospace; }
-.rp-tbl-list { resize: vertical; min-height: 2.2em; }
-.rp-tbl-add { margin-top: .15rem; font-size: 12px; padding: 0 .3rem; color: #6b7280; }
+.rp-tbl-td .selectize-control.rp-tbl-multi { min-width: 12rem; }
 .rp-tbl-ro td { color: #6b7280; background: var(--bs-tertiary-bg, #f6f7f9); }
 .rp-tbl-table td.rp-tbl-none { color: #9ca3af; font-size: 12.5px; }
 .rp-tbl-addrow { padding: 0; font-size: 12.5px; text-decoration: none; }
@@ -202,21 +201,39 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
   // a table field (R/arg_defs_table.R): the whole table one input, its
   // state as JSON -- the shape, the columns, their kinds and the rows'
   // cells (the fixed rows on top are not in it)
+  // (a list cell, a select of several: its values one a line, in order;
+  // the control selectize puts beside it has its class too, so only the
+  // input, the select and the textarea are cells)
   function tblValue(el) {
     var rows = [];
     $(el).find('tbody.rp-tbl-body > tr.rp-tbl-row').each(function() {
       var r = [];
-      $(this).find('.rp-tbl-cell').each(function() { r.push(String($(this).val() || '')); });
+      $(this).find('input.rp-tbl-cell, select.rp-tbl-cell, textarea.rp-tbl-cell').each(function() {
+        var v = this.selectize ? this.selectize.getValue() : $(this).val();
+        if (Array.isArray(v)) v = v.join(String.fromCharCode(10));
+        r.push(String(v || ''));
+      });
       rows.push(r);
     });
     var parse = function(k) { try { return JSON.parse(el.getAttribute(k) || '[]'); } catch (e) { return []; } };
     return JSON.stringify({shape: el.getAttribute('data-shape'), cols: parse('data-cols'),
                            kinds: parse('data-kinds'), rows: rows});
   }
+  // a list cell made a selectize: several values in order, the choices
+  // offered, another typed (a comma kept in it: group2, group3)
+  function tblMulti(scope) {
+    if (!$.fn.selectize) return;
+    $(scope).find('select.rp-tbl-multi').not('.selectized').each(function() {
+      var plugins = ['remove_button'];
+      if ($.fn.sortable) plugins.push('drag_drop');
+      $(this).selectize({create: true, persist: false, delimiter: String.fromCharCode(1),
+                         plugins: plugins, placeholder: this.getAttribute('data-placeholder') || ''});
+    });
+  }
   if (window.Shiny && Shiny.InputBinding) {
     var tblBinding = new Shiny.InputBinding();
     $.extend(tblBinding, {
-      find: function(scope) { return $(scope).find('.rp-tbl'); },
+      find: function(scope) { var els = $(scope).find('.rp-tbl'); tblMulti(els); return els; },
       getValue: function(el) { return tblValue(el); },
       subscribe: function(el, cb) {
         $(el).on('input.rpTbl change.rpTbl rp-tbl-change.rpTbl', function() { cb(true); });
@@ -232,7 +249,8 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
     var body = box.find('tbody.rp-tbl-body').first();
     body.children('tr.rp-tbl-empty').remove();
     body.append(document.importNode(tpl.content, true));
-    body.children('tr').last().find('.rp-tbl-cell').first().trigger('focus');
+    tblMulti(body.children('tr').last());
+    body.children('tr').last().find('input.rp-tbl-cell, select.rp-tbl-cell').first().trigger('focus');
     box.trigger('rp-tbl-change');
   });
   // an optional column's button (\"params, analysis_id?\"): its cell in every
@@ -251,6 +269,7 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
     box.find('tbody.rp-tbl-fixed > tr').each(function() {
       $(this).children('td.rp-tbl-tools').before('<td class=\"rp-tbl-td\"></td>');
     });
+    tblMulti(box.find('tbody.rp-tbl-body'));
     var rtpl = box.children('template.rp-tbl-tpl')[0];
     if (rtpl) $(rtpl.content).find('tr').children('td.rp-tbl-tools').before(cell());
     var add = function(k, v) {
@@ -292,16 +311,6 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
       if (box.contains(document.activeElement)) return;
       if (window.Shiny && Shiny.setInputValue) Shiny.setInputValue('tpl_tbl_left', box.id, {priority: 'event'});
     }, 400);
-  });
-  // a list cell's Add a value: the choice one more line
-  $(document).on('change', '.rp-tbl-add', function() {
-    var v = $(this).val();
-    if (!v) return;
-    var ta = $(this).siblings('textarea.rp-tbl-list');
-    var old = String(ta.val() || '').replace(/\\s+$/, '');
-    ta.val(old.length ? old + String.fromCharCode(10) + v : v);
-    $(this).val('');
-    ta.trigger('input');
   });
   $(document).on('click', '.rp-more-toggle', function() {
     $(this).closest('.rp-more').toggleClass('rp-open');
