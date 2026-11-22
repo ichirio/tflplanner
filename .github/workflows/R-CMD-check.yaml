@@ -1,13 +1,12 @@
 # Standard R-CMD-check workflow, derived from r-lib/actions examples.
 # Matrix covers the platforms and R versions CRAN expects.
 on:
-  # (not next: the user, 2026-11-22 -- the full check runs once, when next
-  # goes into main; a release from a frozen next is run by hand first)
-  push:
-    branches: [main, master]
+  # (the user, 2026-11-22: the 6 environments run once, on the pull request
+  # that takes next into main -- not on a push to next or to main; a release
+  # from a frozen next is run by hand first)
   # (a pull request into next runs quick-check.yaml instead)
   pull_request:
-    branches-ignore: [next]
+    branches: [main]
   workflow_dispatch:
 
 name: R-CMD-check
@@ -36,8 +35,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'schedule' && 'next' || '' }}
 
       - uses: r-lib/actions/setup-pandoc@v2
 
@@ -100,9 +97,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          # the nightly run checks next (empty: the event's own ref)
-          ref: ${{ github.event_name == 'schedule' && 'next' || '' }}
 
       - uses: r-lib/actions/setup-pandoc@v2
 
@@ -149,9 +143,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          # the nightly run checks next (empty: the event's own ref)
-          ref: ${{ github.event_name == 'schedule' && 'next' || '' }}
 
       - uses: r-lib/actions/setup-pandoc@v2
 
