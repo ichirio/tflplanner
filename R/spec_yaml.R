@@ -65,8 +65,7 @@
                datasets = NA_character_, batches = NA_character_,
                stringsAsFactors = FALSE),
     o)
-  study <- meta[intersect(.study_fields, names(meta))]
-  study <- study[!vapply(study, function(v) is.null(v) || !length(v) || is.na(v[1L]), NA)]
+  study <- .bridge_fields(meta)
   # the study's default page configuration (study.yml settings: style) travels
   # with the sheets: the bridge names the blank rows' configuration by it
   # (else `standard`, and an edit of those rows would go to a set no report uses;
@@ -108,8 +107,11 @@
 # writes its file), a report's file gone from the definition removed when
 # it is the one the last save wrote (`own(rel)`).  The files, as
 # save_study() lists them: file, status; the planner, in step with the
-# spec now, is the attribute `planner`.
-.save_yaml_spec <- function(p, meta, root, own = function(rel) FALSE) {
+# spec now, is the attribute `planner`.  `before_write`: called with the
+# planner in step just before the files are written (what they were is
+# read then).
+.save_yaml_spec <- function(p, meta, root, own = function(rel) FALSE,
+                            before_write = NULL) {
   whole <- is.null(p$spec)
   p <- .spec_sync(p, meta)
   attr(p, "changed") <- NULL
@@ -118,6 +120,7 @@
   # kept from the file as it is)
   if (whole) p <- .spec_keep_file_blocks(p, root)
   p$spec$study$dir <- normalizePath(root, "/", mustWork = FALSE)
+  if (is.function(before_write)) before_write(p)
   files <- .spec_write(p, root, own)
   attr(files, "planner") <- p
   files
@@ -138,6 +141,9 @@
     attr(p, "not_converted") <- NULL
     # (the study's own spec stays its own)
     p$spec <- s$planner$spec
+    # (the app's own settings pass through no sheet: they stay as saved)
+    own <- intersect(.study_app_only_settings, names(s$planner$study))
+    if (length(own)) p$study[own] <- s$planner$study[own]
     s$planner <- p
   }
   s

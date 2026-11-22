@@ -2,6 +2,8 @@
 # pattern; step 3's form shows each value with where it comes from and
 # writes only the report's own rows.
 
+skip_if_quick()  # slow: not in the quick check of a PR into next (helper.R)
+
 pat_planner <- function() {
   p <- add_output(add_output(new_planner(), "T1"), "T2")
   p$sheets$header <- .normalize_sheet(data.frame(
@@ -371,7 +373,7 @@ ext_sample <- function(env = parent.frame()) {
   old <- options(tflplanner.home = home)
   do.call(on.exit, list(substitute(options(old)), add = TRUE), envir = env)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  p <- suppressMessages(create_sample_study(run = FALSE, home = home))$planner
+  p <- suppressMessages(sample_study_copy(home))$planner
   # (the sheets' patterns: the rows of output_id @<name>)
   for (nm in c("Compact", "Wide", "Third")) p <- add_page_pattern(p, nm)
   p
@@ -383,7 +385,7 @@ cfg_sample <- function(env = parent.frame()) {
   old <- options(tflplanner.home = home)
   do.call(on.exit, list(substitute(options(old)), add = TRUE), envir = env)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  p <- suppressMessages(create_sample_study(run = FALSE, home = home))$planner
+  p <- suppressMessages(sample_study_copy(home))$planner
   .pgs_add_pattern(.pgs_add_pattern(p, "Wide"), "Third")
 }
 

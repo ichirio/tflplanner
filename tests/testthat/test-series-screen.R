@@ -40,6 +40,11 @@ fake_series <- function(dir) {
                          "/pkg/series/tflspec_v1/templates/demog.yml", "/pkg/series/tflspec_v1/templates/km_simple.yml"),
     copied_at = "2026-11-20 10:00:00",
     status = c("same", "source_changed", "study_changed", "source_missing"), stringsAsFactors = FALSE)
+  # what a value means: a text tflplanner translates, one it does not; the
+  # other keys have none, and site_v2 none at all
+  docs <- list(tflspec_v1 = c(
+    count_cell = "The cell of a count and its percent; % means ×100; no % sign is printed (e.g. 12 (34.5)).",
+    style = "A site's own words."))
   fns <- list(
     tfl_series_list = function(dir = NULL) {
       data.frame(name = c("site_v2", "tflspec_v1"), label = c("Site", "tflspec templates"),
@@ -51,7 +56,8 @@ fake_series <- function(dir) {
     tfl_series_read = function(series, dir = NULL) {
       v <- if (!is.null(dir) && !is.null(st$copy[[series]])) st$copy[[series]] else vals[[series]]
       list(name = series, label = series, released = "2026-11-17", needs = NULL,
-           fixes = list(), values = v, path = paste0("/x/", series))
+           fixes = list(), values = v, descriptions = docs[[series]],
+           path = paste0("/x/", series))
     },
     tfl_series_values_set = function(study_dir, series, values) {
       st$calls <- c(st$calls, list(list(fn = "set", series = series, values = values)))
@@ -176,10 +182,14 @@ test_that("the card lists the series and shows the study's copied series with it
     # the study has a copy of tflspec_v1: it is the one chosen
     session$flushReact()
     v <- html_of(output$series_values)
-    expect_match(v, "Values of tflspec_v1")
+    expect_match(v, "Defaults shared by the tflspec_v1 series' templates (values:)", fixed = TRUE)
     expect_match(v, "{N: 0, mean: 2, p: xx.x%}", fixed = TRUE)
     expect_match(v, "!study sponsor.name", fixed = TRUE)
     expect_match(v, "!fixed 0.95", fixed = TRUE)
+    # what each value means, beside its key; a key without one: an empty cell
+    expect_match(v, "<th>Description</th>", fixed = TRUE)
+    expect_match(v, "A site's own words.", fixed = TRUE)
+    expect_match(v, '<td class="text-muted"></td>', fixed = TRUE)
     expect_match(v, "This study's value (its copy's values:)", fixed = TRUE)
     # the copy's value that is not the source's: the study's own, as an input
     expect_identical(names(rv$saved), "population_safety")
@@ -199,7 +209,7 @@ test_that("the card lists the series and shows the study's copied series with it
     # a series the study has no copy of: its values, nothing to save
     session$setInputs(series_list_rows_selected = 1L)
     v <- html_of(output$series_values)
-    expect_match(v, "Values of site_v2")
+    expect_match(v, "Defaults shared by the site_v2 series' templates")
     expect_match(v, "This study has no copy of this series yet", fixed = TRUE)
     expect_false(grepl("series_save", v, fixed = TRUE))
     session$setInputs(series_save = 1L)
@@ -375,7 +385,7 @@ test_that("the app's server starts the card on the open study", {
     # (the series the study's copies are of; S1's folder has no copy of it
     # itself here: nothing to save)
     v <- html_of(output$series_values)
-    expect_match(v, "Values of tflspec_v1", fixed = TRUE)
+    expect_match(v, "Defaults shared by the tflspec_v1 series' templates (values:)", fixed = TRUE)
     expect_match(v, "This study has no copy of this series yet", fixed = TRUE)
     expect_match(html_of(output$series_copies), "tflspec_v1/demog", fixed = TRUE)
     # the template cards read from the open study
@@ -428,7 +438,7 @@ test_that("a template copied into a study: said once, the cards read the copy, t
     session$setInputs(series_diff = list(key = "tflspec_v1/demog", n = 1))
     expect_match(shown$modals[length(shown$modals)], "The arm the study&#39;s copy says.", fixed = TRUE)
     # a value of the study's copy, saved, read back
-    expect_match(html_of(output$series_values), "Values of tflspec_v1", fixed = TRUE)
+    expect_match(html_of(output$series_values), "Defaults shared by the tflspec_v1 series' templates (values:)", fixed = TRUE)
     session$setInputs(series_change = list(key = "total_label", n = 2))
     k <- union(names(tflspec::tfl_series_read("tflspec_v1")$values), names(rv$draft))
     do.call(session$setInputs, stats::setNames(list("All arms"), paste0("series_edit_", match("total_label", k))))
@@ -442,4 +452,26 @@ test_that("a template copied into a study: said once, the cards read the copy, t
     expect_match(html_of(output$series_copies), "Same as the source", fixed = TRUE)
     expect_false(identical(.tpl_params("tflspec_v1/demog")$by$doc, "The arm the study's copy says."))
   })
+})
+
+test_that("the values' descriptions are in the app's language when tflplanner has them (user check 2026-11-19)", {
+  ja <- function(x) tr(x, "ja")
+  docs <- c(count_cell = "The cell of a count and its percent; % means ×100; no % sign is printed (e.g. 12 (34.5)).",
+            max_rows = "The most rows a page holds.", style = "A site's own words.")
+  h <- as.character(.series_values_ui(
+    list(count_cell = "{n} ({p:.1f%})", max_rows = 30L, style = "s", total = FALSE),
+    list(), list(), ja, docs))
+  expect_match(h, "<th>説明</th>", fixed = TRUE)
+  # count_cell: the % is x100, no sign printed
+  expect_match(h, "記号は出ない（例: 12 (34.5)）", fixed = TRUE)
+  expect_match(h, "1 ページ", fixed = TRUE)
+  # a text tflplanner has no Japanese for: as written; a key with none: empty
+  expect_match(h, "A site's own words.", fixed = TRUE)
+  expect_match(h, '<td class="text-muted"></td>', fixed = TRUE)
+  # no descriptions at all (an older tflspec): the column is there, empty
+  h <- as.character(.series_values_ui(list(total = FALSE), list(), list(), identity, NULL))
+  expect_match(h, "<th>Description</th>", fixed = TRUE)
+  # the heading
+  expect_identical(sprintf(ja("Defaults shared by the %s series' templates (values:)"), "tflspec_v1"),
+                   "tflspec_v1 シリーズのテンプレートに共通の既定値 (values:)")
 })

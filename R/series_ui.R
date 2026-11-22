@@ -119,8 +119,11 @@
 # value an input while it is changed here.  `draft`: the study's own values
 # as edited (key -> YAML text: its copy's values that differ from the
 # source's); a key of the study's copy the source does not have is shown too
-# (never dropped).
-.series_values_ui <- function(values, draft, saved, t = identity) {
+# (never dropped).  `descriptions`: series.yml's descriptions: (a key -> its
+# meaning in English), shown in the app's language when tflplanner has the
+# text's translation, as written when not; a key without one has an empty
+# cell (a series, or a tflspec, without them: all empty).
+.series_values_ui <- function(values, draft, saved, t = identity, descriptions = NULL) {
   keys <- union(names(values), names(draft))
   if (!length(keys)) {
     return(shiny::p(class = "small text-muted", t("This series has no values.")))
@@ -131,8 +134,10 @@
     v <- if (has) values[[k]] else NULL
     mine <- k %in% names(draft)
     txt <- if (mine) draft[[k]] else ""
+    doc <- if (k %in% names(descriptions)) as.character(descriptions[[k]])[1L] else ""
     shiny::tags$tr(
       shiny::tags$td(shiny::tags$code(k)),
+      shiny::tags$td(class = "text-muted", if (!is.na(doc) && nzchar(doc)) t(doc)),
       shiny::tags$td(if (has) shiny::tags$code(.series_flow(v)) else
         shiny::span(class = "text-muted", t("(not in this series)"))),
       shiny::tags$td(
@@ -152,7 +157,8 @@
   shiny::tags$table(
     class = "table table-sm small align-middle mb-2",
     shiny::tags$thead(shiny::tags$tr(
-      shiny::tags$th(t("Key")), shiny::tags$th(t("Series value (values:)")),
+      shiny::tags$th(t("Key")), shiny::tags$th(t("Description")),
+      shiny::tags$th(t("Series value (values:)")),
       shiny::tags$th(t("This study's value (its copy's values:)")),
       shiny::tags$th(""))),
     shiny::tags$tbody(rows))

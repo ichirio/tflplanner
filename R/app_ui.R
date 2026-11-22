@@ -457,7 +457,7 @@ app_ui <- function(lang = "en") {
                   shiny::div(
                     class = "pt-2",
                     shiny::p(class = "small text-muted mb-1",
-                             t("The rows of analysis_data this report reads, every column, as in the workbook: what the form does not show is written here. A new data's row comes when it is saved.")),
+                             t("The rows of analysis_data this report reads, every column, as in the workbook: what the form does not show is written here. A new data's row comes at its first edit.")),
                     rhandsontable::rHandsontableOutput("hot_adata_report"))),
                 # the program's lines that make the data (the form as it is)
                 bslib::nav_panel(
@@ -887,9 +887,33 @@ app_ui <- function(lang = "en") {
               shiny::p(class = "small text-muted mt-2",
                        t("ARDs made elsewhere are in \"ARDs taken in\" (input/ard/)."))),
             bslib::card(
-              bslib::card_header(t("Preview")),
+              bslib::card_header(shiny::textOutput("data_preview_head", inline = TRUE)),
               shiny::uiOutput("data_dim"),
               DT::DTOutput("data_head")))),
+        # the ADaM levels: the one file whose levels study$adam gets (#742)
+        bslib::nav_panel(
+          t("ADaM levels"), value = "adam_levels",
+          bslib::layout_columns(
+            col_widths = bslib::breakpoints(sm = 12, lg = 8),
+            bslib::card(
+              bslib::card_header(with_tip(
+                paste0(t("ADaM levels"), " (settings.adam_levels)"),
+                t("A define.xml or a Define Spec workbook chosen and applied: study$adam gets the levels of its code lists (a blank is NA either way, and study$adam_org is the file as it is). Nothing applied: no levels. A report's own levels: / labels: apply either way."))),
+              shiny::uiOutput("adam_levels_status"),
+              shiny::p(class = "small text-muted mb-2",
+                       t("The ARD, figure and listing programs apply levels to the ADaM by this setting.")),
+              shiny::div(
+                class = "d-flex gap-2 align-items-end",
+                shiny::div(class = "flex-grow-1",
+                           shiny::textInput("adam_levels_path",
+                                            with_tip(paste0(t("File"), " (settings.adam_levels_file)"),
+                                                     t("A define.xml, or a Define Spec .xls / .xlsx.")),
+                                            width = "100%")),
+                if (.ai_dialog_ok()) {
+                  shiny::div(class = "mb-3",
+                             .btn("adam_levels_browse", t("Browse..."), class = "btn-outline-secondary"))
+                }),
+              shiny::uiOutput("adam_levels_actions")))),
         bslib::nav_item(shiny::div(class = "small text-muted fw-bold mt-3 px-2", "ARD")),
         bslib::nav_panel(
           shiny::span(t("Study ARD"), shiny::uiOutput("ard_cond_badge", inline = TRUE)),

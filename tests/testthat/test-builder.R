@@ -173,7 +173,7 @@ test_that("the sample's T-14-1-5 nests the Asian sub-categories; T-14-1-6 has tw
   home <- withr_tempdir()
   withr::local_options(tflplanner.home = home)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  s <- suppressMessages(create_sample_study(run = FALSE))
+  s <- suppressMessages(sample_study_copy())
   v5 <- sheet_rows(s$planner, "variables", "T-14-1-5")
   expect_identical(v5$under[v5$variable == "ASIANSUB"], "RACE: Asian")
   expect_true(any(grepl("plan_nest(ASIANSUB = c(RACE = \"Asian\"))",

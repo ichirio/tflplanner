@@ -5,6 +5,7 @@
 # ARD (#602) and the stale-say window of the template card (#596).
 
 skip_on_cran()
+skip_if_quick()  # slow: not in the quick check of a PR into next (helper.R)
 
 # the program of a report, run in its own R from the study folder
 run_program <- function(s, id, dir = "tfl") {
@@ -23,7 +24,7 @@ count_in <- function(x, pattern) sum(lengths(regmatches(x, gregexpr(pattern, x, 
 
 sample_in_home <- function(env = parent.frame()) {
   home <- local_home(env)
-  list(home = home, s = suppressMessages(create_sample_study(run = FALSE, home = home)))
+  list(home = home, s = suppressMessages(sample_study_copy(home)))
 }
 
 # ---- #599: a table's Rework runs after normalize_ard() ---------------------

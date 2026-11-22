@@ -1,26 +1,80 @@
-# A pull request into next: one quick job -- the package installed and its
-# tests run, on ubuntu with R release; no --as-cran, no other platforms,
-# no pkgdown -- so that next does not queue behind the full matrix.
-# The full R-CMD-check still runs on each push to next (the latest head
-# only), on pull requests into main, and on its schedule.
+# A pull request into next: the package installed and its tests run, on
+# ubuntu with R release, in 4 shards at the same time (#747); no --as-cran,
+# no other platforms, no pkgdown -- so that next does not queue behind the
+# full matrix.  It runs every test file (TFLPLANNER_QUICK is false), each in
+# exactly one shard: this is the one regression run before the merge.  The full R-CMD-check (6 environments)
+# runs on the pull request that takes next into main.
+# The tests run only once the pull request is ready to merge: when it gets
+# the automerge label, and on each push after that (the user, 2026-11-22: the
+# regression tests once before the merge; a push before it tests only the
+# changed area, locally).  Without the label the job is skipped.
 on:
   pull_request:
     branches: [next]
+    types: [opened, synchronize, reopened, labeled]
 
 name: quick-check
 
 permissions:
   contents: read
 
-# a newer push to the same pull request cancels the run still going
-concurrency:
-  group: quick-check-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
-  tests:
+  # Every test file is in one shard of .github/test-shards.csv; this job fails
+  # when a file is in none, in two, or the map names a file that is gone, so
+  # no file is left out of the run (#747).  Gated as the shards are.
+  tests-shard-map:
+    if: >-
+      (github.event.action == 'labeled' && github.event.label.name == 'automerge') ||
+      (github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'automerge'))
     runs-on: ubuntu-latest
-    name: tests (ubuntu-latest, R release)
+    name: tests (shard map)
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Every test file in exactly one shard
+        shell: bash
+        run: |
+          map=.github/test-shards.csv
+          t=$(mktemp -d)
+          ls tests/testthat/test-*.R | xargs -n1 basename | sort > "$t/files"
+          grep -v '^#' "$map" | tail -n +2 | cut -d, -f1 | sort > "$t/mapped"
+          ok=true
+          none=$(comm -23 "$t/files" <(sort -u "$t/mapped"))
+          gone=$(comm -13 "$t/files" <(sort -u "$t/mapped"))
+          twice=$(uniq -d "$t/mapped")
+          bad=$(grep -v '^#' "$map" | tail -n +2 | awk -F, '$2 !~ /^[1-4]$/ {print $1}')
+          if [ -n "$none" ]; then ok=false; echo "::error::In no shard (add a line to $map):"; echo "$none"; fi
+          if [ -n "$gone" ]; then ok=false; echo "::error::In $map but not in tests/testthat:"; echo "$gone"; fi
+          if [ -n "$twice" ]; then ok=false; echo "::error::In more than one line of $map:"; echo "$twice"; fi
+          if [ -n "$bad" ]; then ok=false; echo "::error::A shard that is not 1-4:"; echo "$bad"; fi
+          for k in 1 2 3 4; do
+            grep -v '^#' "$map" | tail -n +2 | awk -F, -v k=$k '$2 == k {n++; m += $3} END {printf "shard %s: %d files, %.1f min measured\n", k, n, m}'
+          done
+          $ok
+
+  # The test files in 4 shards that run at the same time (#747): each is a
+  # job of its own, with the files .github/test-shards.csv gives it.  A job's
+  # name starts with "tests" (the automerge script waits for every tests*
+  # check).
+  tests:
+    # the automerge label just added, or a push to a pull request that has it
+    # (another label added does not run it again)
+    if: >-
+      (github.event.action == 'labeled' && github.event.label.name == 'automerge') ||
+      (github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'automerge'))
+    # a newer run of the same pull request cancels the one still going (here,
+    # not on the workflow: a skipped run must not cancel a running one); one
+    # group per shard, so the shards do not cancel one another
+    concurrency:
+      group: quick-check-${{ github.event.pull_request.number }}-${{ matrix.shard }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    name: tests (shard ${{ matrix.shard }}/4, ubuntu-latest, R release)
+
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -37,19 +91,64 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::testthat
+          extra-packages: any::testthat, any::remotes
           needs: check
+
+      # tflspec and rtfreporter from their next, the commits in the log (every
+      # shard prints them: they test the same ones)
+      - name: tflspec and rtfreporter from next
+        shell: Rscript {0}
+        run: |
+          remotes::install_github("ichirio/rtfreporter@next", upgrade = "never", dependencies = FALSE)
+          remotes::install_github("ichirio/tflspec@next", upgrade = "never", dependencies = FALSE)
+          for (pkg in c("rtfreporter", "tflspec")) {
+            cat(sprintf("%s %s RemoteSha %s\n", pkg, utils::packageVersion(pkg),
+                        utils::packageDescription(pkg)$RemoteSha))
+          }
 
       - name: Install the package
         run: R CMD INSTALL --no-docs --no-multiarch .
 
-      - name: Tests
+      # 4 workers (Config/testthat/parallel): setup-r sets options(Ncpus = 1),
+      # which testthat reads before TESTTHAT_CPUS -- the tests ran in one
+      # process ("Starting 1 test process").  TFLPLANNER_QUICK is false: the
+      # slowest files (skip_if_quick(), tests/testthat/helper.R) run too, since
+      # next has no other full run (the user, 2026-11-22).
+      - name: Tests (shard ${{ matrix.shard }})
         env:
           TESTTHAT_CPUS: 4
+          TFLPLANNER_QUICK: false
+          SHARD: ${{ matrix.shard }}
         shell: Rscript {0}
         run: |
+          options(Ncpus = 4L)
+          # every file runs to its end (the counts below are the shard's)
+          testthat::set_max_fails(Inf)
           pkg <- read.dcf("DESCRIPTION", fields = "Package")[1L, 1L]
+          map <- utils::read.csv(".github/test-shards.csv", comment.char = "#",
+                                 colClasses = "character")
+          files <- map$file[map$shard == Sys.getenv("SHARD")]
+          stems <- sub("[.]R$", "", sub("^test-", "", files))
+          stopifnot(length(stems) > 0L, all(grepl("^[A-Za-z0-9_-]+$", stems)))
+          cat(length(stems), "files:", stems, fill = TRUE)
           library(pkg, character.only = TRUE)
-          testthat::test_dir("tests/testthat", package = pkg, load_package = "installed",
-                             reporter = testthat::ProgressReporter$new(show_praise = FALSE),
-                             stop_on_failure = TRUE)
+          res <- testthat::test_dir("tests/testthat", package = pkg, load_package = "installed",
+                                    filter = paste0("^(", paste(stems, collapse = "|"), ")$"),
+                                    reporter = testthat::ProgressReporter$new(show_praise = FALSE),
+                                    stop_on_failure = FALSE)
+          d <- as.data.frame(res)
+          out <- c(sprintf("## Tests, shard %s (TFLPLANNER_QUICK=false)", Sys.getenv("SHARD")),
+                   sprintf("%d files, %d tests, %d expectations; %d failed, %d errors, %d skipped",
+                           length(unique(d$file)), nrow(d), sum(d$nb), sum(d$failed),
+                           sum(d$error), sum(d$skipped)),
+                   "", "Errors and failures:",
+                   unique(d$file[d$error | d$failed > 0L]))
+          cat(out, sep = "\n")
+          cat(out, file = Sys.getenv("GITHUB_STEP_SUMMARY"), sep = "\n", append = TRUE)
+          # a shard that ran fewer files than its map gives (a file that
+          # stopped before its first test is still counted by testthat)
+          if (length(unique(d$file)) < length(stems)) {
+            message("Files that reported nothing: ",
+                    paste(setdiff(files, unique(d$file)), collapse = ", "))
+          }
+          if (sum(d$failed) > 0L || any(d$error)) quit(status = 1L)

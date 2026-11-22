@@ -198,18 +198,18 @@
     changed <- !identical(rv$draft, rv$saved)
     shiny::tagList(
       shiny::h6(class = "mt-3 mb-1",
-                with_tip(sprintf(t("Values of %s (values:)"), x$name),
+                with_tip(sprintf(t("Defaults shared by the %s series' templates (values:)"), x$name),
                          t("The series' values as written (a tag as written: !series, !study, !fixed, !unset). The study reads its own copy of the series (spec/series/<series>/series.yml): a value changed for this study is written there."))),
       if (length(x$path)) shiny::p(class = "small text-muted mb-1", shiny::tags$code(x$path)),
       if (is.null(dir) || !copied) {
         shiny::tagList(
-          .series_values_ui(x$values, list(), list(), t),
+          .series_values_ui(x$values, list(), list(), t, x$descriptions),
           shiny::p(class = "small text-muted",
                    if (is.null(dir)) t("Open a study to change its values.") else
                      t("This study has no copy of this series yet: adding a report from one of its templates copies it.")))
       } else {
         shiny::tagList(
-          .series_values_ui(x$values, rv$draft, rv$saved, t),
+          .series_values_ui(x$values, rv$draft, rv$saved, t, x$descriptions),
           shiny::div(
             class = "d-flex gap-2 align-items-center",
             .btn("series_save", t("Save this study's values (tfl_series_values_set)"),

@@ -279,6 +279,7 @@ app_server <- function(input, output, session, start) {
   .srv_part(.srv_add_report, environment())
   .srv_part(.srv_first_table, environment())
   .srv_part(.srv_data_run, environment())
+  .srv_part(.srv_adam_levels, environment())
 }
 
 # app_server()'s parts (R/srv_*.R) run in its environment, one after

@@ -24,7 +24,28 @@ two_studies <- function() {
 server_for <- function(study) {
   testthat::skip_on_cran()
   start <- open_study(study)
-  function(input, output, session) app_server(input, output, session, start)
+  function(input, output, session) {
+    # (a form's edit is applied once the form is drawn, not 1.5 s after:
+    # .form_live())
+    session$userData$form_settle <- 0
+    app_server(input, output, session, start)
+  }
+}
+
+# Another report opened in a server_for() session.  With unsaved changes
+# the app asks first (Save, Discard or Cancel: the forms apply their edits
+# at once); a test that goes on with its edits answers Save, as a user who
+# keeps them does.  Not asked (nothing unsaved): only the report opened.
+# The other inputs (`...`: a step, a switch) are set on the report opened.
+open_report <- function(session, target, ...) {
+  session$setInputs(target = target)
+  if (!identical(shiny::isolate(session$userData$current()), target)) {
+    n <- (session$userData$switch_saves %||% 0) + 1
+    session$userData$switch_saves <- n
+    session$setInputs(switch_save = n)
+  }
+  if (...length()) session$setInputs(...)
+  invisible()
 }
 
 # A template report's argument cards of every step, as one text: an

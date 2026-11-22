@@ -24,7 +24,7 @@ U <- function() tflspec::tfl_unset()
 # a study with a template listing (the sample's, fictional data)
 .unset_study <- function(id = "L-TPL") {
   home <- local_home(parent.frame())
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   args <- list(data = "ADAE",
                columns = list(list(vars = "USUBJID", label = "Subject"),
                               list(vars = "AEDECOD", label = "Term", width = 30L)))
@@ -51,7 +51,7 @@ test_that("a flag's (none) stays when the card is drawn again, its default TRUE 
   expect_false(.tpl_flag_off_drawn("text", FALSE, U(), NULL))
   # ae_soc_pt's any_row (default TRUE) and total (default FALSE)
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   o <- tflspec::tfl_output("T-TPL", "table", label = "AEs", common = list(population = "SAF"),
                            template = list(name = "ae_soc_pt", args = list(population = "SAF")))
   s$planner <- .spec_add_output(s$planner, o, label = "AEs", population = "SAF")
@@ -147,7 +147,7 @@ test_that("a template argument that is unset is passed as !unset, and the templa
   skip_on_cran()
   skip_if_not_installed("cards")
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   o <- tflspec::tfl_output("T-TPL", "table", label = "Demographics", common = list(population = "SAF"),
                            template = list(name = "demog",
                                          args = list(by = "TRT01A", continuous = "AGE",
@@ -287,7 +287,7 @@ test_that("fields without an unset render as before; a required one has no (none
 test_that("a code SPEC card: !unset shows (none), is chosen, kept in the SPEC YAML and out of the program", {
   skip_on_cran()
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   id <- "T-14-1-2"
   it0 <- Filter(function(i) i$fn == "plan_blanks", builder_items(s$planner, id))[[1L]]
   # the card before: the argument a value of the study standard, no (none) chosen
@@ -354,7 +354,7 @@ test_that("a special card's other arguments: the (none) toggle is written as !un
   r3 <- .special_read(list(c__show_keys__none = FALSE, c__show_keys = NULL), "c", "table_plan")
   expect_identical(r3$unset, "show_keys")
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   id <- "T-14-1-2"
   it0 <- Filter(function(i) i$fn == "table_plan", builder_items(s$planner, id))[[1L]]
   args <- .special_args_put(it0$args, r)
@@ -377,7 +377,7 @@ test_that("a special card's other arguments: the (none) toggle is written as !un
   expect_false(.args_same_r("table_plan", args, it0$args))
   expect_true(.args_same_r("table_plan", args, args))
   local_home()
-  suppressMessages(create_sample_study(run = FALSE))
+  suppressMessages(sample_study_copy())
   shiny::testServer(server_for("SAMPLE-01"), {
     session$setInputs(target = id, nav = "make", step = "content", content_nav = "content",
                       table_nav = "builder")
@@ -442,7 +442,7 @@ test_that("a whole number typed into a count's field is an integer", {
 test_that("the review reads a page value's (none), in either language, as no value", {
   skip_on_cran()
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   p <- .pgs_set_arg(s$planner, "T-14-3-1", "rtf_page", "margin_top_in", U())
   pg <- p$sheets$page
   expect_identical(pg$margin_top_in[pg$output_id %in% "T-14-3-1"], "(none)")
@@ -462,7 +462,7 @@ test_that("a token's text typed as (none), in either language, is the token left
   expect_identical(.pgs_token_value(" Data cut-off 2026 "), "Data cut-off 2026")
   expect_identical(.pgs_token_value(NULL), "")
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   p <- .pgs_set_token(s$planner, "T-14-3-1", "CUTOFF", .pgs_token_value(tr("(none)", "ja")))
   expect_s3_class(p$spec$outputs[["T-14-3-1"]]$page$tokens$CUTOFF, "tfl_unset")
 })

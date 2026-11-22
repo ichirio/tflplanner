@@ -173,7 +173,62 @@
   # edit invalidated everything drawn for the report -- the table builder's
   # form among them, redrawn (closed, the text lost) while being typed in.
   current <- shiny::reactiveVal(NULL)
-  shiny::observe(current(current_now()), priority = 100)
+  # (for shiny::testServer())
+  session$userData$current <- current
+  shiny::observe({
+    v <- current_now()
+    if (!switch_ask(v)) current(v)
+  }, priority = 100)
+  # Another report chosen while the study has unsaved changes: asked first
+  # -- Save (then open it), Discard (every unsaved change, then open it) or
+  # Cancel (stay on this one).  The forms apply their edits at once, so the
+  # changes are the study's, not the report's form's; they are kept while
+  # moving between reports only when the question is answered so.  Not
+  # asked when the server chose the report (added, copied) or the report
+  # went away.
+  switch_to <- new.env(parent = emptyenv())
+  switch_ask <- function(v) {
+    old <- shiny::isolate(current())
+    if (is.null(old) || is.null(v) || identical(v, old)) return(FALSE)
+    if (!isTRUE(shiny::isolate(dirty())) || !is.null(tgt_pick())) return(FALSE)
+    if (!identical(shiny::isolate(target()), v)) return(FALSE)
+    # (asked already: the question stays until it is answered)
+    if (identical(switch_to$v, v)) return(TRUE)
+    switch_to$v <- v
+    switch_to$from <- old
+    shiny::showModal(shiny::modalDialog(
+      title = sprintf(t("%s has changes that are not saved"), shiny::isolate(rv$study$meta$study_id)),
+      shiny::p(sprintf(t("Save them before opening %s, or discard them (every unsaved change of the study goes)."), v)),
+      footer = shiny::tagList(
+        .btn("switch_cancel", t("Cancel"), class = "btn-default"),
+        .btn("switch_discard", t("Discard changes"), class = "btn-outline-danger"),
+        .btn("switch_save", t("Save"), class = "btn-primary")),
+      easyClose = FALSE))
+    TRUE
+  }
+  switch_done <- function(go_on) {
+    v <- switch_to$v
+    from <- switch_to$from
+    switch_to$v <- switch_to$from <- NULL
+    if (is.null(v)) return()
+    if (go_on) return(current(v))
+    shiny::updateSelectInput(session, "target", selected = from)
+  }
+  shiny::observeEvent(input$switch_cancel, {
+    shiny::removeModal()
+    switch_done(FALSE)
+  })
+  shiny::observeEvent(input$switch_discard, {
+    shiny::removeModal()
+    discard_now()
+    switch_done(TRUE)
+  })
+  # (a save that could not be made says why in its own dialog: the report
+  # stays)
+  shiny::observeEvent(input$switch_save, {
+    shiny::removeModal()
+    switch_done(isTRUE(do_save()))
+  })
   # (another report chosen: a new table only drawn, nothing changed, is
   # put back as it was)
   shiny::observeEvent(current(), {

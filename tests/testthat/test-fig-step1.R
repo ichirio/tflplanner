@@ -60,7 +60,7 @@ test_that("a figure without a design: step 1 says where to start it", {
 
 test_that("what the steps make: kept short by the preview, shown in step 1 on demand", {
   local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE))
+  s <- suppressMessages(sample_study_copy())
   r <- preview_figure(s, "F-14-2-3", max_px = 600)
   # (its ARD not made yet: the steps before the ARD's still there)
   expect_identical(names(r$objects)[1:2], c("adtte_ttskin", "fit"))

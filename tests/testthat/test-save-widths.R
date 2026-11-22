@@ -56,7 +56,7 @@ fake_fill <- function(env) {
 test_that("the app's save gives the reports changed there widths; a table whose columns changed new ones", {
   skip_on_cran()
   home <- local_home()
-  suppressMessages(create_sample_study(run = FALSE, home = home))
+  suppressMessages(sample_study_copy(home))
   s <- suppressMessages(open_study("SAMPLE-01", home = home))
   env <- new.env()
   local_mocked_bindings(tfl_fill_widths = fake_fill(env), .package = "tflspec")
@@ -102,7 +102,7 @@ test_that("the app's save gives the reports changed there widths; a table whose 
 test_that("a listing's fitted widths are in the program the same save writes, and in the editor's rows", {
   skip_on_cran()
   home <- local_home()
-  suppressMessages(create_sample_study(run = FALSE, home = home))
+  suppressMessages(sample_study_copy(home))
   s <- suppressMessages(open_study("SAMPLE-01", home = home))
   col <- function(v, ...) list(fn = "listing_col", args = c(list(vars = v), list(...)))
   code <- tflspec::tfl_output("L-W1", "listing", data = list(source = "dataset", dataset = "ADAE"),
