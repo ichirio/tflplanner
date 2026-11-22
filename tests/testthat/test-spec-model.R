@@ -750,25 +750,34 @@ test_that("settings: sd_missing survives open, an unchanged save and a change of
   }
 })
 
-test_that("settings: adam_levels (canon 32449ac): none survives open and save; codelists, the default, is no line", {
+test_that("settings: adam_levels (#742): the sample's define_xml survives open and save; cleared, no line; none stays none", {
   skip_on_cran()
+  skip_if_no_define_levels()
   s <- model_sample()
   home <- getOption("tflplanner.home")
   s <- suppressMessages(open_study("SAMPLE-01", home = home))
-  expect_identical(.study_adam_levels(s$planner), "codelists")
-  # none: written into settings:, read back on open
-  s$planner$study[["adam_levels"]] <- "none"
+  st <- .adam_levels_state(s$planner)
+  expect_identical(st$source, "define_xml")
+  expect_identical(st$file, "data/adam/define.xml")
+  expect_false(is.na(st$applied))
+  expect_true("CL.SEX" %in% s$planner$spec$study$adam_meta$codelists$codelist)
+  # the copy of the sample is not a change of its define.xml
+  expect_false(.adam_levels_pending(s$planner, st$file, s$path))
+  # cleared: the three settings gone, adam_meta: emptied, the kept file stays
+  s$planner <- .adam_levels_clear(s$planner)
   s <- suppressMessages(save_study(s, home = home))
-  y <- yaml::read_yaml(file.path(s$path, "study.yml"))
-  expect_identical(y$settings$adam_levels, "none")
+  expect_false(any(grepl("adam_levels", readLines(file.path(s$path, "study.yml")))))
+  expect_false(any(grepl("^adam_meta:", readLines(file.path(s$path, "spec", "defaults.yml")))))
+  expect_true(file.exists(file.path(s$path, "spec", "adam_meta", "define_xml.yml")))
   s2 <- suppressMessages(open_study("SAMPLE-01", home = home))
-  expect_identical(s2$planner$study[["adam_levels"]], "none")
   expect_identical(.study_adam_levels(s2$planner), "none")
-  # back to codelists (not set): no line
-  s2$planner$study[["adam_levels"]] <- NA_character_
+  expect_identical(nrow(s2$planner$spec$study$adam_meta$codelists), 0L)
+  # none written as it is: read back as none
+  s2$planner$study[["adam_levels"]] <- "none"
   s2 <- suppressMessages(save_study(s2, home = home))
-  expect_false(any(grepl("adam_levels", readLines(file.path(s2$path, "study.yml")))))
-  expect_identical(.study_adam_levels(s2$planner), "codelists")
+  expect_identical(yaml::read_yaml(file.path(s2$path, "study.yml"))$settings$adam_levels, "none")
+  s3 <- suppressMessages(open_study("SAMPLE-01", home = home))
+  expect_identical(.study_adam_levels(s3$planner), "none")
 })
 
 test_that("a study without settings: sd_missing keeps no such line", {

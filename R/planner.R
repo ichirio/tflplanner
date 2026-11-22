@@ -153,16 +153,12 @@ set_codelist <- function(x, output_id, rows) {
 # `settings:` by the app itself (.spec_bridge()) -- `treatment`, the
 # treatment variable a template's by / group reads (settings.treatment),
 # `sd_missing`, what a Mean (SD) cell prints for a group with no SD
-# (settings.sd_missing), and `adam_levels`, whether study$adam gets the
-# study's code lists' levels (settings.adam_levels: codelists, the default,
-# or none; canon 32449ac)
-.study_own_settings <- c("treatment", "sd_missing", "adam_levels")
-
-# The study's ADaM levels: "codelists" (not set) or "none"
-.study_adam_levels <- function(p) {
-  v <- .study_setting(p, "adam_levels")
-  if (identical(v, "none")) "none" else "codelists"
-}
+# (settings.sd_missing), and the ADaM levels (#742): `adam_levels`, the
+# source whose levels study$adam gets (define_xml or define_spec; not set:
+# none), `adam_levels_file`, the file it was read from, and
+# `adam_levels_applied`, when (R/adam_levels.R)
+.study_own_settings <- c("treatment", "sd_missing", "adam_levels",
+                         "adam_levels_file", "adam_levels_applied")
 
 # Of those, the ones for which "" is a value (sd_missing: "" prints the
 # mean alone); for the others blank is not set.  NA is not set for all.

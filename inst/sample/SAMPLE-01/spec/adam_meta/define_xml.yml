@@ -1,0 +1,56 @@
+# The ADaM metadata read from the define.xml data/adam/define.xml by tflplanner ([Data] -> ADaM levels):
+# each variable's code list and the code lists' values. study$adam gets these levels.
+adam_meta:
+  variables:
+  - dataset: ADSL
+    variable: SEX
+    codelist: CL.SEX
+  - dataset: ADSL
+    variable: AGEGR1
+    codelist: CL.AGEGR1
+  - dataset: ADSL
+    variable: RACE
+    codelist: CL.RACE
+  codelists:
+  - codelist: CL.SEX
+    name: Sex
+    value: F
+    decode: Female
+    order: 1
+  - codelist: CL.SEX
+    name: Sex
+    value: M
+    decode: Male
+    order: 2
+  - codelist: CL.AGEGR1
+    name: Pooled Age Group 1
+    value: '<65'
+    order: 1
+  - codelist: CL.AGEGR1
+    name: Pooled Age Group 1
+    value: '>=65'
+    order: 2
+  - codelist: CL.RACE
+    name: Race
+    value: WHITE
+    order: 1
+  - codelist: CL.RACE
+    name: Race
+    value: BLACK OR AFRICAN AMERICAN
+    order: 2
+  - codelist: CL.RACE
+    name: Race
+    value: ASIAN
+    order: 3
+  - codelist: CL.RACE
+    name: Race
+    value: AMERICAN INDIAN OR ALASKA NATIVE
+    order: 4
+  - codelist: CL.RACE
+    name: Race
+    value: NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER
+    order: 5
+  - codelist: CL.RACE
+    name: Race
+    value: OTHER
+    order: 6

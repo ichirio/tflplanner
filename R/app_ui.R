@@ -890,6 +890,35 @@ app_ui <- function(lang = "en") {
               bslib::card_header(t("Preview")),
               shiny::uiOutput("data_dim"),
               DT::DTOutput("data_head")))),
+        # the ADaM levels: the one file whose levels study$adam gets (#742)
+        bslib::nav_panel(
+          t("ADaM levels"), value = "adam_levels",
+          bslib::layout_columns(
+            col_widths = two,
+            bslib::card(
+              bslib::card_header(with_tip(
+                paste0(t("ADaM levels"), " (settings.adam_levels)"),
+                t("A define.xml or a Define Spec workbook chosen and applied: study$adam gets the levels of its code lists (a blank is NA either way, and study$adam_org is the file as it is). Nothing applied: none, no levels. A report's own levels: / labels: apply either way."))),
+              shiny::uiOutput("adam_levels_status"),
+              shiny::p(class = "small text-muted",
+                       t("The ARD, figure and listing programs apply levels to the ADaM by this setting.")),
+              shiny::div(
+                class = "d-flex gap-2 align-items-end",
+                shiny::div(class = "flex-grow-1",
+                           shiny::textInput("adam_levels_path",
+                                            t("File (a define.xml, or a Define Spec .xls / .xlsx)"),
+                                            width = "100%",
+                                            placeholder = paste0(study_layout()[["adam"]], "/define.xml"))),
+                if (.ai_dialog_ok()) {
+                  shiny::div(class = "mb-3",
+                             .btn("adam_levels_browse", t("Browse..."), class = "btn-outline-secondary"))
+                }),
+              shiny::uiOutput("adam_levels_candidate"),
+              shiny::uiOutput("adam_levels_pending"),
+              shiny::div(class = "d-flex gap-2",
+                         shiny::uiOutput("adam_levels_apply_ui", inline = TRUE),
+                         .btn("adam_levels_clear", t("Clear the choice"),
+                              class = "btn-outline-secondary")))))),
         bslib::nav_item(shiny::div(class = "small text-muted fw-bold mt-3 px-2", "ARD")),
         bslib::nav_panel(
           shiny::span(t("Study ARD"), shiny::uiOutput("ard_cond_badge", inline = TRUE)),

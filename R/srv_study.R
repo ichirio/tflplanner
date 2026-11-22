@@ -226,6 +226,13 @@
                                       paste(paste0(dp$output_id, ": ", dp$where), collapse = ", ")),
                               type = "warning", duration = NULL)
     }
+    # an old study's adam_levels: codelists: none now, written as not set
+    # at the next save, and said once (#742)
+    p_lv <- .adam_levels_drop_old(rv$p)
+    if (!identical(p_lv, rv$p)) {
+      rv$p <- p_lv
+      shiny::showNotification(t(.adam_levels_dropped_msg), type = "warning", duration = NULL)
+    }
     rv$meta <- rv$saved_meta <- s$meta[.study_fields]
     rv$want <- output_ids(s$planner)[1L]
     bump()
@@ -1424,16 +1431,6 @@
           choices = unique(c("", now, adsl)), selected = now,
           options = list(create = TRUE, placeholder = "TRT01A"))
       }),
-      # (the study's code lists' levels on the ADaM: study$adam with them, or
-      # without -- canon 32449ac; not set: codelists)
-      shiny::selectInput(
-        "study_adam_levels",
-        with_tip(t("ADaM levels (settings.adam_levels)"),
-                 t("Whether study$adam gets the levels of the study's ADaM metadata (codelists: defaults.yml adam_meta:) or not (none). Either way a blank is NA, and study$adam_org is the file as it is. With none, a report's own levels: / labels: still apply.")),
-        stats::setNames(c("codelists", "none"),
-                        t(c("codelists: apply the levels of adam_meta to the ADaM",
-                            "none: do not apply them"))),
-        selected = .study_adam_levels(shiny::isolate(rv$p))),
       shiny::h6(with_tip(t("Every report's header"),
                          t("The study's words in every report's header: {COMPANY}, {ANALYSIS_TYPE}; {STUDY_ID} is the Study ID above. Set once here (the tokens sheet's study rows); each report gives only its own (its label, title, population)."))),
       shiny::div(class = "d-flex flex-wrap gap-2",
@@ -1578,14 +1575,6 @@
     v <- if (nzchar(input$rounding)) input$rounding else NA_character_
     if (!identical(unname(rv$p$study[["rounding"]]), v)) {
       rv$p$study[["rounding"]] <- v
-    }
-  }, ignoreInit = TRUE)
-  # the ADaM levels: study.yml's settings: adam_levels: (codelists, the
-  # default, is not written)
-  shiny::observeEvent(input$study_adam_levels, {
-    v <- if (identical(input$study_adam_levels, "none")) "none" else NA_character_
-    if (!identical(.study_setting(rv$p, "adam_levels"), v)) {
-      rv$p$study[["adam_levels"]] <- v
     }
   }, ignoreInit = TRUE)
   # the treatment variable: study.yml's settings: treatment: (blank: none)

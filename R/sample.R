@@ -70,6 +70,8 @@ create_sample_study <- function(root = studies_root(home), run = TRUE,
                showWarnings = FALSE)
     file.copy(file.path(src, f), file.path(path, to))
   }
+  # (its define.xml applied when the sample was made: the copy is no change of it)
+  .adam_levels_settle(path)
   for (d in study_layout()) {
     dir.create(file.path(path, d), recursive = TRUE, showWarnings = FALSE)
   }
