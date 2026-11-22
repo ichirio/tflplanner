@@ -141,6 +141,9 @@
     attr(p, "not_converted") <- NULL
     # (the study's own spec stays its own)
     p$spec <- s$planner$spec
+    # (the app's own settings pass through no sheet: they stay as saved)
+    own <- intersect(.study_app_only_settings, names(s$planner$study))
+    if (length(own)) p$study[own] <- s$planner$study[own]
     s$planner <- p
   }
   s

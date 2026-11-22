@@ -160,6 +160,10 @@ set_codelist <- function(x, output_id, rows) {
 .study_own_settings <- c("treatment", "sd_missing", "adam_levels",
                          "adam_levels_file", "adam_levels_applied")
 
+# Of those, the ones only the app reads (tflspec's study keys have
+# adam_levels alone): left out of what tflspec reviews
+.study_app_only_settings <- setdiff(.study_own_settings, "adam_levels")
+
 # Of those, the ones for which "" is a value (sd_missing: "" prints the
 # mean alone); for the others blank is not set.  NA is not set for all.
 .study_settings_blank_ok <- "sd_missing"
