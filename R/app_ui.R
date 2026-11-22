@@ -894,7 +894,7 @@ app_ui <- function(lang = "en") {
         bslib::nav_panel(
           t("ADaM levels"), value = "adam_levels",
           bslib::layout_columns(
-            col_widths = two,
+            col_widths = bslib::breakpoints(sm = 12, lg = 8),
             bslib::card(
               bslib::card_header(with_tip(
                 paste0(t("ADaM levels"), " (settings.adam_levels)"),
@@ -918,7 +918,7 @@ app_ui <- function(lang = "en") {
               shiny::div(class = "d-flex gap-2",
                          shiny::uiOutput("adam_levels_apply_ui", inline = TRUE),
                          .btn("adam_levels_clear", t("Clear the choice"),
-                              class = "btn-outline-secondary")))))),
+                              class = "btn-outline-secondary"))))),
         bslib::nav_item(shiny::div(class = "small text-muted fw-bold mt-3 px-2", "ARD")),
         bslib::nav_panel(
           shiny::span(t("Study ARD"), shiny::uiOutput("ard_cond_badge", inline = TRUE)),

@@ -132,7 +132,7 @@
 
 # `lines` (a YAML file's) with the top-level block `key` (its comment lines
 # above it included) taken out, and `block` put in its place: before
-# `styles:`, else at the end.  `block` NULL: the key taken out only.
+# `styles:` (and its comment lines), else at the end.  `block` NULL: the key taken out only.
 .set_study_block <- function(lines, key, block = NULL) {
   lines <- as.character(lines %||% character())
   top <- grepl("^[A-Za-z_][A-Za-z0-9_]*:", lines)
@@ -148,12 +148,31 @@
   }
   if (length(block)) {
     at <- which(grepl("^styles:", lines))[1L]
+    # (above the comment lines of styles:)
+    if (!is.na(at)) while (at > 1L && grepl("^#", lines[at - 1L])) at <- at - 1L
     lines <- if (is.na(at)) c(lines, block) else append(lines, block, after = at - 1L)
   }
   lines
 }
 
 .adam_levels_keys <- c("adam_levels", "adam_levels_file", "adam_levels_applied")
+
+# The ARD definition's study sheet with the key adam_levels as tflspec's
+# tfl_sheets_from_spec() puts it there (the source; none: no row), so the
+# sheets do not give study.yml back the value before
+.adam_levels_ard_row <- function(p, value) {
+  st <- p$ard$study
+  if (!is.data.frame(st) || !"key" %in% names(st)) return(p)
+  st <- st[!st$key %in% "adam_levels", , drop = FALSE]
+  if (length(value) == 1L && !is.na(value) && value %in% .adam_levels_sources) {
+    st[nrow(st) + 1L, ] <- NA
+    st$key[nrow(st)] <- "adam_levels"
+    st$value[nrow(st)] <- value
+  }
+  rownames(st) <- NULL
+  p$ard$study <- st
+  p
+}
 
 # The planner with the file's levels applied: the file read (a problem
 # stops, nothing changed), spec/adam_meta/<source>.yml and defaults.yml
@@ -189,7 +208,7 @@
   p$study[["adam_levels"]] <- kind
   p$study[["adam_levels_file"]] <- rel
   p$study[["adam_levels_applied"]] <- format(now, "%Y-%m-%dT%H:%M:%S")
-  p
+  .adam_levels_ard_row(p, kind)
 }
 
 # The planner with the choice cleared: none -- the settings taken away,
@@ -205,7 +224,7 @@
   sp$study$adam_meta <- .adam_meta_parse(character())
   p$spec <- sp
   for (k in .adam_levels_keys) p$study[[k]] <- NA_character_
-  p
+  .adam_levels_ard_row(p, NA_character_)
 }
 
 # An old study's adam_levels: codelists (the default before #742) taken
@@ -214,7 +233,7 @@
   v <- .study_setting(p, "adam_levels")
   if (is.na(v) || v %in% c(.adam_levels_sources, "none")) return(p)
   for (k in .adam_levels_keys) if (k %in% names(p$study)) p$study[[k]] <- NA_character_
-  p
+  .adam_levels_ard_row(p, NA_character_)
 }
 .adam_levels_dropped_msg <- "The ADaM levels setting changed. Choose a file in [Data] -> [ADaM levels] and apply it."
 

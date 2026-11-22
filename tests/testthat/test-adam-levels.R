@@ -134,10 +134,10 @@ test_that("applying a define.xml, a Define Spec; clearing; a broken file changes
   writeLines("not xml <", file.path(adam, "broken.xml"))
   expect_error(.adam_levels_apply(p, "data/adam/broken.xml", s$path), "could not be read")
   # the define.xml
-  now <- as.POSIXct("2026-11-22 10:15:00")
+  now <- Sys.time() + 2
   p <- .adam_levels_apply(s$planner, file.path(adam, "define.xml"), s$path, now = now)
   expect_identical(unname(p$study[c("adam_levels", "adam_levels_file", "adam_levels_applied")]),
-                   c("define_xml", "data/adam/define.xml", "2026-11-22T10:15:00"))
+                   c("define_xml", "data/adam/define.xml", format(now, "%Y-%m-%dT%H:%M:%S")))
   expect_true("CL.SEX" %in% p$spec$study$adam_meta$codelists$codelist)
   s$planner <- p
   s <- suppressMessages(save_study(s))
@@ -181,16 +181,14 @@ test_that("the screen: [Data] has ADaM levels, [Study] no longer; an old codelis
   expect_match(html, "adam_levels_path", fixed = TRUE)
   expect_match(html, "ADaM \u306e\u6c34\u6e96", fixed = TRUE)
   local_home()
-  s <- suppressMessages(create_study("LV2", planner = add_output(new_planner(), "T1", description = "a table")))
-  # a study saved before #742: settings: adam_levels: codelists
-  f <- file.path(s$path, "study.yml")
-  y <- readLines(f, encoding = "UTF-8")
-  at <- which(y == "settings:")
-  y <- if (length(at)) append(y, "  adam_levels: codelists", after = at[1L]) else
-    c(y, "settings:", "  adam_levels: codelists")
-  writeLines(y, f, useBytes = TRUE)
-  s <- suppressMessages(reload_from_spec("LV2"))
-  expect_identical(.study_setting(s$planner, "adam_levels"), "codelists")
+  suppressMessages(create_study("LV2", planner = add_output(new_planner(), "T1", description = "a table")))
+  # a study saved before #742: settings: adam_levels: codelists in its state
+  orig <- open_study
+  local_mocked_bindings(open_study = function(...) {
+    s <- orig(...)
+    s$planner$study[["adam_levels"]] <- "codelists"
+    s
+  })
   suppressWarnings(shiny::testServer(server_for("LV2"), {
     rv <- session$userData$rv
     expect_identical(.study_setting(rv$p, "adam_levels"), NA_character_)
