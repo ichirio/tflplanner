@@ -226,13 +226,12 @@
                                       paste(paste0(dp$output_id, ": ", dp$where), collapse = ", ")),
                               type = "warning", duration = NULL)
     }
-    # an old study's adam_levels: codelists: none now, written as not set
-    # at the next save, and said once (#742)
-    p_lv <- .adam_levels_drop_old(rv$p)
-    if (!identical(p_lv, rv$p)) {
-      rv$p <- p_lv
-      shiny::showNotification(t(.adam_levels_dropped_msg), type = "warning", duration = NULL)
-    }
+    # an old study's ADaM levels (#742): codelists or none taken away (not
+    # set is none), and said once when its levels were or may have been
+    # applied before
+    lv <- .adam_levels_drop_old(rv$p)
+    if (!identical(lv$p, rv$p)) rv$p <- lv$p
+    if (lv$notice) shiny::showNotification(t(.adam_levels_dropped_msg), type = "warning", duration = NULL)
     rv$meta <- rv$saved_meta <- s$meta[.study_fields]
     rv$want <- output_ids(s$planner)[1L]
     bump()
@@ -762,6 +761,8 @@
     held$p <- held$before <- NULL
     rv$p <- rv$saved
     rv$meta <- rv$saved_meta
+    # (the screens that keep a field of their own draw it again: #742)
+    rv$discard_ver <- (rv$discard_ver %||% 0L) + 1L
     # (the forms' Undo: back to the study as saved from now on)
     forms_rebase(discarded = TRUE)
     guarded(.drop_draft(rv$study$meta$study_id))

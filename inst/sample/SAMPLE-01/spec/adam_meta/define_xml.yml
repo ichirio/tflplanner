@@ -1,3 +1,4 @@
+# md5: fef8d1225c9a9e819bd847a8cf0b6425
 # The ADaM metadata read from the define.xml data/adam/define.xml by tflplanner ([Data] -> ADaM levels):
 # each variable's code list and the code lists' values. study$adam gets these levels.
 adam_meta:

@@ -764,7 +764,10 @@ test_that("settings: adam_levels (#742): the sample's define_xml survives open a
   # the copy of the sample is not a change of its define.xml
   expect_false(.adam_levels_pending(s$planner, st$file, s$path))
   # cleared: the three settings gone, adam_meta: emptied, the kept file stays
-  s$planner <- .adam_levels_clear(s$planner)
+  # (tflspec puts the source on the ARD's study sheet too: it goes with it)
+  expect_true("adam_levels" %in% s$planner$ard$study$key)
+  s$planner <- .adam_levels_clear(s$planner, s$path)
+  expect_false("adam_levels" %in% s$planner$ard$study$key)
   s <- suppressMessages(save_study(s, home = home))
   expect_false(any(grepl("adam_levels", readLines(file.path(s$path, "study.yml")))))
   expect_false(any(grepl("^adam_meta:", readLines(file.path(s$path, "spec", "defaults.yml")))))
