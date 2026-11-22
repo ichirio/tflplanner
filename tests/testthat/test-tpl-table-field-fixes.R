@@ -24,6 +24,8 @@ tff_study <- function(home, id, args, template = "tflspec_v1/demog") {
   s <- suppressMessages(open_study(d, home = home))
   o <- tflspec::tfl_output("T-TF-1", "table", template = list(name = template, args = args))
   s$planner <- suppressWarnings(.spec_add_output(s$planner, o))
+  # (a template report reads the study's copy: copied as the app copies it)
+  if ("tfl_copy_templates" %in% getNamespaceExports("tflspec")) invisible(.tpl_copy_into_study(d, template))
   suppressMessages(save_study(s))
   id
 }
@@ -91,15 +93,22 @@ test_that("a table field's columns are its data row's dataset's, the report's da
   expect_identical(unname(.choice_values(prm$denominator$sources, ctx)), "adsl_sub")
 })
 
-test_that("a !series default's value is the series', the study's over it", {
+test_that("a !series default's value is the study's copy's, else the source's", {
   skip_if_not(tff_has_series(), "this tflspec has no series templates")
+  skip_if_not("tfl_series_values_set" %in% getNamespaceExports("tflspec"))
   prm <- .tpl_params("tflspec_v1/demog")
   expect_identical(prm$formats$series, "formats")
   expect_null(prm$labels$series)
   sv <- .tpl_series_value(list(study = list()), "tflspec_v1/demog", prm$formats)
   expect_identical(sv, tflspec::tfl_series_read("tflspec_v1")$values$formats)
-  own <- list(study = list(series_settings = list(tflspec_v1 = list(formats = list(mean = 3)))))
-  expect_identical(.tpl_series_value(own, "tflspec_v1/demog", prm$formats), list(mean = 3))
+  # a study with no copy of the series: the source's
+  dir <- withr::local_tempdir()
+  expect_identical(.tpl_series_value(list(study = list(), dir = dir), "tflspec_v1/demog", prm$formats), sv)
+  # its copy, changed: the copy's
+  invisible(tflspec::tfl_copy_templates(dir, "tflspec_v1/demog"))
+  tflspec::tfl_series_values_set(dir, "tflspec_v1", list(formats = list(mean = 3L)))
+  own <- list(study = list(), dir = dir)
+  expect_identical(.tpl_series_value(own, "tflspec_v1/demog", prm$formats), list(mean = 3L))
   # (no series default, no series template: none)
   expect_null(.tpl_series_value(list(), "tflspec_v1/demog", prm$labels))
   expect_null(.tpl_series_value(list(), "demog", prm$formats))

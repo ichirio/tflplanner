@@ -100,6 +100,8 @@ test_that("T-14-1-1T in SAMPLE-01 has no empty required argument and its preview
   toc$outputs <- c(toc$outputs, list(list(id = "T-14-1-1T", kind = "table", label = "Demographics",
                                           population = "SAF")))
   yaml::write_yaml(toc, toc_file)
+  # (its template copied into the study, as the app copies it when a template report is added)
+  if ("tfl_copy_templates" %in% getNamespaceExports("tflspec")) invisible(tflspec::tfl_copy_templates(s$path))
   s <- suppressMessages(reload_from_spec(s, home = home))
   p <- s$planner
   tp <- .tpl_of(p, "T-14-1-1T")

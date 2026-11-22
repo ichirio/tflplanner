@@ -14,12 +14,19 @@
 .arg_defs_cache <- new.env()
 
 # tflspec's definitions of a card's arguments: `fn` a schema function, "data"
-# or "analysis"; `template` "<series>/<template>".  NULL when tflspec has no
-# tfl_arg_defs() or the call stops (a template with no series file yet).
-# Read once a session (.arg_defs_reset() forgets them).
-.arg_defs <- function(fn = NULL, template = NULL) {
+# or "analysis"; `template` "<series>/<template>", read from the study's
+# copy when `study_dir` is given (tfl_arg_defs(study_dir =)), else from the
+# series folders.  NULL when tflspec has no tfl_arg_defs() or the call
+# stops (a template with no series file yet).  Read once a session
+# (.arg_defs_reset() forgets them; a study's copy again when its file
+# changes).
+.arg_defs <- function(fn = NULL, template = NULL, study_dir = NULL) {
   if (is.null(fn) == is.null(template)) return(NULL)
   key <- if (!is.null(fn)) paste0("fn:", fn) else paste0("template:", template)
+  if (!is.null(template) && !is.null(study_dir)) {
+    f <- .tpl_copy_file(study_dir, template)
+    key <- paste0(key, "@", study_dir, "@", unname(tools::md5sum(f)))
+  }
   if (exists(key, envir = .arg_defs_cache, inherits = FALSE)) {
     return(get(key, envir = .arg_defs_cache, inherits = FALSE))
   }
@@ -28,7 +35,11 @@
   }
   out <- if (is.function(f)) {
     tryCatch({
-      d <- if (!is.null(fn)) f(fn = fn) else f(template = template)
+      d <- if (!is.null(fn)) f(fn = fn) else if (!is.null(study_dir)) {
+        f(template = template, study_dir = study_dir)
+      } else {
+        f(template = template)
+      }
       if (is.data.frame(d)) d
     }, error = function(e) NULL)
   }

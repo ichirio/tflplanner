@@ -82,7 +82,7 @@
 
 # study.yml's top-level keys no planner writes (tflplanner's screens write
 # them into the file outside a save)
-.study_yml_not_planner <- c("series_settings", "ai")
+.study_yml_not_planner <- "ai"
 
 # A planner's spec with study.yml's blocks of .study_yml_not_planner its
 # text lacks taken from the study folder's file, as the file has them
@@ -116,7 +116,7 @@
   p <- .spec_sync(p, meta)
   attr(p, "changed") <- NULL
   # (a planner with no spec is written whole: study.yml's blocks no planner
-  # writes -- the series card's series_settings:, the AI screens' ai: --
+  # writes -- the AI screens' ai: --
   # kept from the file as it is)
   if (whole) p <- .spec_keep_file_blocks(p, root)
   p$spec$study$dir <- normalizePath(root, "/", mustWork = FALSE)

@@ -1,7 +1,8 @@
-# The Template series card (R/srv_series.R, R/series_ui.R).  tflspec's
-# series functions are replaced: through tflspec itself
-# (local_mocked_bindings(.package = "tflspec")) once tflspec has them, and
-# until then through tflplanner's lookup of them (.series_fn()).
+# The Template series card (R/srv_series.R, R/series_ui.R): the series, the
+# study's values in its copy of a series, and the study's copies with their
+# state (tflspec#879, canon 2026-11-19).  tflspec's functions are replaced
+# through tflspec itself (local_mocked_bindings(.package = "tflspec")) when
+# it has them, else through tflplanner's lookup of them (.series_fn()).
 
 local_series <- function(fns, env = parent.frame()) {
   ns <- asNamespace("tflspec")
@@ -15,19 +16,30 @@ local_series <- function(fns, env = parent.frame()) {
   }
 }
 
-# a series store and a study folder: `st$block` is study.yml's
-# series_settings, `st$calls` what was asked of tflspec
+# a series store and a study folder with its copy of tflspec_v1 (not of
+# site_v2): `st$copy` the copy's values, `st$status` its copies' state,
+# `st$calls` what was asked of tflspec
 fake_series <- function(dir) {
   st <- new.env()
-  st$block <- list(tflspec_v1 = list(population_safety = "SAF2"))
   st$calls <- list()
-  st$changed <- FALSE
   vals <- list(tflspec_v1 = list(
     style = "tfl_standard", population_safety = "SAF",
     formats = list(N = 0L, mean = 2L, p = "xx.x%"), total = FALSE,
     sd_missing = "-", sponsor = structure(list(key = "sponsor.name"), class = "tfl_study_ref"),
     conf_level = structure(list(value = 0.95), class = "tfl_fixed_ref")),
     site_v2 = list(style = "site"))
+  # (the study changed one value in its copy)
+  st$copy <- list(tflspec_v1 = utils::modifyList(vals$tflspec_v1, list(population_safety = "SAF2")))
+  if (!is.null(dir)) {
+    dir.create(file.path(dir, "spec", "series", "tflspec_v1"), recursive = TRUE, showWarnings = FALSE)
+    writeLines("name: tflspec_v1", file.path(dir, "spec", "series", "tflspec_v1", "series.yml"))
+  }
+  st$status <- data.frame(
+    series = "tflspec_v1", template = c(NA, "ae_soc_pt", "demog", "km_simple"),
+    file = "x", from = c("/pkg/series/tflspec_v1/series.yml", "/pkg/series/tflspec_v1/templates/ae_soc_pt.yml",
+                         "/pkg/series/tflspec_v1/templates/demog.yml", "/pkg/series/tflspec_v1/templates/km_simple.yml"),
+    copied_at = "2026-11-20 10:00:00",
+    status = c("same", "source_changed", "study_changed", "source_missing"), stringsAsFactors = FALSE)
   # what a value means: a text tflplanner translates, one it does not; the
   # other keys have none, and site_v2 none at all
   docs <- list(tflspec_v1 = c(
@@ -40,46 +52,43 @@ fake_series <- function(dir) {
                  path = c("/home/standards/series/site_v2", "/pkg/series/tflspec_v1"),
                  source = c("home", "package"), stringsAsFactors = FALSE)
     },
+    # as tflspec: `dir` looked in first (the study's copies), then the sources
     tfl_series_read = function(series, dir = NULL) {
+      v <- if (!is.null(dir) && !is.null(st$copy[[series]])) st$copy[[series]] else vals[[series]]
       list(name = series, label = series, released = "2026-11-17", needs = NULL,
-           fixes = list(), values = vals[[series]], descriptions = docs[[series]],
+           fixes = list(), values = v, descriptions = docs[[series]],
            path = paste0("/x/", series))
     },
-    # as tflspec: a series' values with the study's over them, `origins`
-    # saying which are the study's
-    tfl_series_settings = function(study, series = NULL) {
-      if (is.null(series)) return(st$block)
-      out <- vals[[series]]
-      own <- st$block[[series]] %||% list()
-      for (k in names(own)) out[k] <- list(own[[k]])
-      o <- stats::setNames(rep("series", length(out)), names(out))
-      o[names(own)] <- "study"
-      attr(out, "origins") <- o
-      out
+    tfl_series_values_set = function(study_dir, series, values) {
+      st$calls <- c(st$calls, list(list(fn = "set", series = series, values = values)))
+      if (any(names(values) == "bad_key")) stop("tfl_series_values_set(): bad_key is refused.", call. = FALSE)
+      # as tflspec: each value set in the copy, a NULL takes its key out
+      cp <- st$copy[[series]]
+      for (k in names(values)) {
+        v <- values[[k]]
+        # (a value written as its YAML text: read back as tflspec reads it)
+        if (inherits(v, "verbatim")) {
+          v <- if (v %in% c("true", "false")) identical(unclass(v), "true") else vals[[series]][[k]]
+        }
+        cp[k] <- list(v)
+      }
+      st$copy[[series]] <- cp[!vapply(cp, is.null, NA)]
+      invisible(file.path(study_dir, "spec", "series", series, "series.yml"))
     },
-    tfl_series_settings_set = function(study_dir, series, values) {
-      st$calls <- c(st$calls, list(list(series = series, values = values)))
-      bad <- setdiff(names(values), names(vals[[series]]))
-      if (length(bad)) stop("series_settings.", series, ": unknown key '", bad[1L], "'.", call. = FALSE)
-      # as tflspec: the values given go into the study's block, a NULL takes
-      # its key out, an empty block goes
-      own <- st$block[[series]] %||% list()
-      for (k in names(values)) own[k] <- list(values[[k]])
-      own <- own[!vapply(own, is.null, NA)]
-      if (length(own)) st$block[[series]] <- own else st$block[[series]] <- NULL
-      invisible(study_dir)
+    tfl_template_status = function(study_dir, dir = NULL) st$status,
+    tfl_template_diff = function(study_dir, template) {
+      st$calls <- c(st$calls, list(list(fn = "diff", template = template)))
+      c("--- copy", "+++ source", " params:", "-  by: TRT01P", "+  by: TRT01A", " end: 1")
     },
-    tfl_pin_series = function(study_dir, reports = NULL) {
-      dir.create(file.path(study_dir, "spec"), showWarnings = FALSE)
-      yaml::write_yaml(list(tflspec_v1 = list(path = "/pkg/series/tflspec_v1", series = "abc123",
-                                              templates = list(demog = "def456"))),
-                       file.path(study_dir, "spec", "series.lock"))
-      invisible(study_dir)
-    },
-    tfl_series_check_lock = function(study_dir) {
-      if (st$changed) warning("tflspec_v1/templates/demog.yml changed since it was pinned.", call. = FALSE)
-      if (st$changed) message("series tflspec_v1 is read from /new (lock: /pkg/series/tflspec_v1).")
-      invisible(TRUE)
+    tfl_recopy_templates = function(study_dir, templates) {
+      st$calls <- c(st$calls, list(list(fn = "recopy", template = templates)))
+      i <- match(templates, paste0(st$status$series, "/", st$status$template))
+      if (st$status$status[i] %in% c("study_changed", "both_changed")) {
+        warning("the study's edits are lost", call. = FALSE)
+      }
+      st$status$status[i] <- "same"
+      data.frame(series = "tflspec_v1", template = sub("^.*/", "", templates), file = "x",
+                 from = "y", md5 = "z", status = "recopied", stringsAsFactors = FALSE)
     })
   list(st = st, fns = fns, dir = dir)
 }
@@ -93,7 +102,26 @@ series_app <- function(dir, notes) {
   }
 }
 
+# the dialogs shown (as text) and how many were taken away
+watch_modals <- function(env = parent.frame()) {
+  shown <- new.env()
+  shown$modals <- character()
+  shown$removed <- 0L
+  testthat::local_mocked_bindings(
+    showModal = function(ui, session = NULL) {
+      shown$modals <- c(shown$modals, paste(as.character(ui), collapse = ""))
+      invisible()
+    },
+    removeModal = function(session = NULL) {
+      shown$removed <- shown$removed + 1L
+      invisible()
+    },
+    .package = "shiny", .env = env)
+  shown
+}
+
 html_of <- function(x) paste(as.character(x$html), collapse = "")
+calls_of <- function(st, fn) Filter(function(x) identical(x$fn, fn), st$calls)
 
 test_that("a value is shown as one line of YAML and reads back the same", {
   for (v in list("tfl_standard", "-", "{n} ({p:.1f%})", 0.95, 30L, TRUE, "a, b",
@@ -115,6 +143,17 @@ test_that("a value is shown as one line of YAML and reads back the same", {
   expect_identical(.series_edit_text(fixed), "{N: 0}")
   expect_identical(.series_edit_text(study), "")
   expect_identical(.series_edit_text("x"), "x")
+  # what tfl_series_values_set() is given: a tag and a flag as YAML text
+  expect_identical(yaml::as.yaml(list(a = .series_value_out(study))), "a: !study sponsor.name\n")
+  # (read back as the tags, not as text that starts with "!")
+  back <- yaml::yaml.load(yaml::as.yaml(list(a = .series_value_out(study), b = .series_value_out(fixed),
+                                             c = .series_value_out(list(d = study)))),
+                          handlers = list(study = function(x) paste("study", x),
+                                          fixed = function(x) list(fixed = x)))
+  expect_identical(back, list(a = "study sponsor.name", b = list(fixed = list(N = 0L)),
+                              c = list(d = "study sponsor.name")))
+  expect_identical(yaml::as.yaml(list(a = .series_value_out(TRUE))), "a: true\n")
+  expect_identical(.series_value_out(list(N = 0L)), list(N = 0L))
 })
 
 test_that("the series folder is the home's when the home is not R_user_dir()", {
@@ -141,13 +180,13 @@ test_that("an older tflspec: the card only says it has no template series", {
   })
 })
 
-test_that("the card lists the series and shows the study's series with its values", {
+test_that("the card lists the series and shows the study's copied series with its own values", {
   f <- fake_series(withr::local_tempdir())
   local_series(f$fns)
   notes <- new.env()
   shiny::testServer(series_app(f$dir, notes), {
     expect_match(html_of(output$series_card), "series_list")
-    # the study's block names tflspec_v1: it is the one chosen
+    # the study has a copy of tflspec_v1: it is the one chosen
     session$flushReact()
     v <- html_of(output$series_values)
     expect_match(v, "Defaults shared by the tflspec_v1 series' templates (values:)", fixed = TRUE)
@@ -158,89 +197,99 @@ test_that("the card lists the series and shows the study's series with its value
     expect_match(v, "<th>Description</th>", fixed = TRUE)
     expect_match(v, "A site's own words.", fixed = TRUE)
     expect_match(v, '<td class="text-muted"></td>', fixed = TRUE)
-    # the study's value beside its key, as an input
+    expect_match(v, "This study's value (its copy's values:)", fixed = TRUE)
+    # the copy's value that is not the source's: the study's own, as an input
+    expect_identical(names(rv$saved), "population_safety")
     expect_match(v, 'id="series_edit_2"', fixed = TRUE)
     expect_match(v, "SAF2", fixed = TRUE)
     expect_match(v, "Back to the series value", fixed = TRUE)
     expect_match(v, "Change for this study", fixed = TRUE)
+    expect_match(v, "tfl_series_values_set", fixed = TRUE)
     # the list: where each was found, in words
     d <- .series_list_table(f$fns$tfl_series_list())
     expect_identical(d[[4]], c("tflplanner's home (standards/series)", "In tflspec (package)"))
-    # another row chosen
     # a !fixed value is changed from its value; a !study reference from nothing
     session$setInputs(series_change = list(key = "conf_level", n = 1))
     session$setInputs(series_change = list(key = "sponsor", n = 2))
     expect_identical(rv$draft$conf_level, "0.95")
     expect_identical(rv$draft$sponsor, "")
+    # a series the study has no copy of: its values, nothing to save
     session$setInputs(series_list_rows_selected = 1L)
-    expect_match(html_of(output$series_values), "Defaults shared by the site_v2 series' templates")
+    v <- html_of(output$series_values)
+    expect_match(v, "Defaults shared by the site_v2 series' templates")
+    expect_match(v, "This study has no copy of this series yet", fixed = TRUE)
+    expect_false(grepl("series_save", v, fixed = TRUE))
+    session$setInputs(series_save = 1L)
+    expect_identical(calls_of(f$st, "set"), list())
   })
 })
 
-test_that("change, edit, back and save go through tfl_series_settings_set()", {
+test_that("change, edit, back and save go through tfl_series_values_set() into the copy", {
   f <- fake_series(withr::local_tempdir())
   local_series(f$fns)
   notes <- new.env()
   shiny::testServer(series_app(f$dir, notes), {
     session$flushReact()
-    # formats (row 3) copied in for editing, as the series has it
+    # formats (row 3) taken in for editing, as the series has it
     session$setInputs(series_change = list(key = "formats", n = 1))
     expect_identical(rv$draft$formats, "{N: 0, mean: 2, p: xx.x%}")
     expect_match(html_of(output$series_values), "unsaved", fixed = TRUE)
     session$setInputs(series_edit_3 = "{N: 0, mean: 1}", series_edit_2 = "SAF3")
     session$setInputs(series_save = 1L)
-    got <- f$st$calls[[1L]]
+    got <- calls_of(f$st, "set")[[1L]]
     expect_identical(got$series, "tflspec_v1")
     expect_identical(got$values, list(population_safety = "SAF3", formats = list(N = 0L, mean = 1L)))
-    expect_match(notes$all[length(notes$all)], "^message: Saved")
+    expect_match(notes$all[length(notes$all)], "^message: Saved this study's values for tflspec_v1")
     expect_false(grepl("unsaved", html_of(output$series_values), fixed = TRUE))
-    # both back to the series: the block removed (values = NULL)
+    expect_setequal(names(rv$saved), c("population_safety", "formats"))
+    # both back to the series: the source's values written into the copy
     session$setInputs(series_back = list(key = "formats", n = 2))
     session$setInputs(series_back = list(key = "population_safety", n = 3))
     expect_identical(rv$draft, stats::setNames(list(), character()))
     session$setInputs(series_save = 2L)
-    got <- f$st$calls[[2L]]$values
-    expect_setequal(names(got), c("population_safety", "formats"))
-    expect_true(all(vapply(got, is.null, NA)))
-    expect_null(f$st$block$tflspec_v1)
+    got <- calls_of(f$st, "set")[[2L]]$values
+    expect_identical(got[c("population_safety", "formats")],
+                     list(population_safety = "SAF", formats = list(N = 0L, mean = 2L, p = "xx.x%")))
+    expect_identical(f$st$copy$tflspec_v1$population_safety, "SAF")
+    expect_identical(rv$saved, stats::setNames(list(), character()))
   })
 })
 
-test_that("only the study's own values are its draft: one change saves one key", {
+test_that("only the study's own values are its draft: one change saves one key, a flag as true", {
   f <- fake_series(withr::local_tempdir())
   local_series(f$fns)
   notes <- new.env()
   shiny::testServer(series_app(f$dir, notes), {
     session$flushReact()
-    # the series' other values are not the study's: no box for them
-    expect_identical(names(rv$saved), "population_safety")
     session$setInputs(series_change = list(key = "total", n = 1))
     session$setInputs(series_edit_4 = "true")
     session$setInputs(series_save = 1L)
-    expect_identical(f$st$calls[[1L]]$values, list(population_safety = "SAF2", total = TRUE))
-    expect_identical(f$st$block$tflspec_v1, list(population_safety = "SAF2", total = TRUE))
-    # one taken back: only it goes out of the block
+    got <- calls_of(f$st, "set")[[1L]]$values
+    expect_identical(names(got), c("population_safety", "total"))
+    expect_identical(unclass(got$total), "true")
+    expect_true(f$st$copy$tflspec_v1$total)
+    expect_setequal(names(rv$saved), c("population_safety", "total"))
+    # one taken back: only it changes in the copy
     session$setInputs(series_back = list(key = "population_safety", n = 2))
     session$setInputs(series_save = 2L)
-    expect_identical(f$st$block$tflspec_v1, list(total = TRUE))
+    expect_identical(f$st$copy$tflspec_v1$population_safety, "SAF")
+    expect_true(f$st$copy$tflspec_v1$total)
     expect_identical(names(rv$saved), "total")
   })
 })
 
 test_that("tflspec's error is shown as it is, and a value that is not YAML stops before it", {
   f <- fake_series(withr::local_tempdir())
-  f$st$block$tflspec_v1$old_key <- "x"
+  f$st$copy$tflspec_v1$bad_key <- "x"
   local_series(f$fns)
   notes <- new.env()
   shiny::testServer(series_app(f$dir, notes), {
     session$flushReact()
-    # a key of the block the series does not have is shown, not dropped
+    # a key of the copy the source does not have is shown, not dropped
     expect_match(html_of(output$series_values), "(not in this series)", fixed = TRUE)
     session$setInputs(series_save = 1L)
-    expect_identical(notes$all[length(notes$all)],
-                     "error: series_settings.tflspec_v1: unknown key 'old_key'.")
+    expect_identical(notes$all[length(notes$all)], "error: tfl_series_values_set(): bad_key is refused.")
     n <- length(f$st$calls)
-    session$setInputs(series_back = list(key = "old_key", n = 1))
     session$setInputs(series_edit_2 = "[unclosed")
     session$setInputs(series_save = 2L)
     expect_match(notes$all[length(notes$all)], "^error: A value is not YAML:")
@@ -248,41 +297,88 @@ test_that("tflspec's error is shown as it is, and a value that is not YAML stops
   })
 })
 
-test_that("the pins: the button writes spec/series.lock, its pins and the lock's warnings are shown", {
+test_that("the study's copies: each one's state in words, differences and a copy again offered where it is not the source's", {
   f <- fake_series(withr::local_tempdir())
   local_series(f$fns)
   notes <- new.env()
   shiny::testServer(series_app(f$dir, notes), {
-    expect_match(html_of(output$series_lock), "No spec/series.lock yet", fixed = TRUE)
-    session$setInputs(series_pin = 1L)
-    expect_true(file.exists(file.path(f$dir, "spec", "series.lock")))
-    l <- html_of(output$series_lock)
-    expect_match(l, "abc123", fixed = TRUE)
-    expect_match(l, "def456", fixed = TRUE)
-    expect_match(l, "spec/series.lock as written", fixed = TRUE)
-    expect_match(notes$all[length(notes$all)], "^message: Pinned")
-    f$st$changed <- TRUE
-    session$setInputs(series_pin = 2L)
-    l <- html_of(output$series_lock)
-    expect_match(l, "demog.yml changed since it was pinned", fixed = TRUE)
-    expect_match(l, "is read from /new", fixed = TRUE)
+    session$flushReact()
+    h <- html_of(output$series_copies)
+    expect_match(h, "This study's copies (spec/series/)", fixed = TRUE)
+    for (x in c("tflspec_v1/series.yml", "tflspec_v1/ae_soc_pt", "tflspec_v1/demog", "tflspec_v1/km_simple",
+                "Same as the source", "The source has changed", "Changed in this study",
+                "The source is missing", "2026-11-20 10:00:00", "/pkg/series/tflspec_v1/templates/demog.yml")) {
+      expect_match(h, x, fixed = TRUE, info = x)
+    }
+    # the buttons: on the two templates whose copy is not the source's and
+    # whose source is there
+    expect_identical(lengths(regmatches(h, gregexpr("Show the differences", h, fixed = TRUE))), 2L)
+    expect_identical(lengths(regmatches(h, gregexpr("Copy again from the source", h, fixed = TRUE))), 2L)
+    expect_match(h, 'data-key="tflspec_v1/ae_soc_pt"', fixed = TRUE)
+    expect_match(h, 'data-key="tflspec_v1/demog"', fixed = TRUE)
+    expect_false(grepl('data-key="tflspec_v1/km_simple"', h, fixed = TRUE))
   })
+  # the words for each state
+  expect_identical(.series_status_label(c("same", "both_changed", "other")),
+                   c("Same as the source", "Changed in both the source and this study", "other"))
+  expect_match(as.character(.series_copies_ui(NULL)), "This study has no copies yet", fixed = TRUE)
+})
+
+test_that("the differences in a dialog; a copy again goes at once, or asks first when the study's edits would go", {
+  f <- fake_series(withr::local_tempdir())
+  local_series(f$fns)
+  notes <- new.env()
+  shown <- watch_modals()
+  shiny::testServer(series_app(f$dir, notes), {
+    session$flushReact()
+    session$setInputs(series_diff = list(key = "tflspec_v1/demog", n = 1))
+    expect_identical(calls_of(f$st, "diff")[[1L]]$template, "tflspec_v1/demog")
+    m <- shown$modals[length(shown$modals)]
+    expect_match(m, "Differences of tflspec_v1/demog", fixed = TRUE)
+    expect_match(m, "Changed in this study", fixed = TRUE)
+    expect_match(m, '<div class="rp-diff-copy">-  by: TRT01P</div>', fixed = TRUE)
+    expect_match(m, '<div class="rp-diff-source">+  by: TRT01A</div>', fixed = TRUE)
+    expect_match(m, "Copy again from the source", fixed = TRUE)
+    # source changed only: copied again at once
+    session$setInputs(series_recopy = list(key = "tflspec_v1/ae_soc_pt", n = 2))
+    expect_identical(calls_of(f$st, "recopy")[[1L]]$template, "tflspec_v1/ae_soc_pt")
+    expect_identical(notes$all[length(notes$all)], "message: Copied tflspec_v1/ae_soc_pt again from the source.")
+    expect_identical(f$st$status$status[2L], "same")
+    expect_false(grepl('data-key="tflspec_v1/ae_soc_pt"', html_of(output$series_copies), fixed = TRUE))
+    # the study's own edits: asked first, nothing copied yet
+    n <- length(shown$modals)
+    session$setInputs(series_recopy = list(key = "tflspec_v1/demog", n = 3))
+    expect_identical(length(calls_of(f$st, "recopy")), 1L)
+    expect_identical(length(shown$modals), n + 1L)
+    expect_match(shown$modals[n + 1L], "Copy tflspec_v1/demog again from the source?", fixed = TRUE)
+    expect_match(shown$modals[n + 1L], "loses them", fixed = TRUE)
+    session$setInputs(series_recopy_ok = 1L)
+    expect_identical(calls_of(f$st, "recopy")[[2L]]$template, "tflspec_v1/demog")
+    expect_identical(notes$all[length(notes$all)], "message: Copied tflspec_v1/demog again from the source.")
+    expect_identical(f$st$status$status[3L], "same")
+  })
+  # no differences said as such
+  expect_match(as.character(.series_diff_ui(c("--- copy", "+++ source", " a: 1"))), "No differences.", fixed = TRUE)
 })
 
 test_that("the Study tab has the card, and its texts have their Japanese", {
   expect_match(as.character(app_ui("en")), 'id="series_card"', fixed = TRUE)
   r_dir <- test_path("..", "..", "R")
   skip_if_not(file.exists(file.path(r_dir, "srv_series.R")), "source not available (installed package)")
-  code <- unlist(lapply(file.path(r_dir, c("srv_series.R", "series_ui.R")), readLines,
+  code <- unlist(lapply(file.path(r_dir, c("srv_series.R", "series_ui.R", "template_report.R")), readLines,
                         encoding = "UTF-8", warn = FALSE))
   lits <- unlist(regmatches(code, gregexpr('\\bt\\("((?:[^"\\\\]|\\\\.)*)"\\)', code, perl = TRUE)))
   lits <- unique(eval(parse(text = paste0("c(", paste(sub("^t", "", lits), collapse = ","), ")"))))
-  expect_gt(length(lits), 20L)
+  expect_gt(length(lits), 30L)
   s <- .strings()
   expect_identical(setdiff(lits, s$en), character())
   # (each with its Japanese: "unsaved" was English on the ja screen)
   expect_identical(s$en[s$en %in% lits & (is.na(s$ja) | !nzchar(s$ja))], character())
-  expect_false(any(grepl("\u6c34\u6e96", s$ja[s$en %in% lits])))
+  expect_false(any(grepl("水準", s$ja[s$en %in% lits])))
+  # the two actions in the user's words
+  expect_identical(tr("Show the differences", "ja"), "差分を見る")
+  expect_identical(tr("Copy again from the source", "ja"),
+                   "ソースから取り直す")
 })
 
 test_that("the app's server starts the card on the open study", {
@@ -293,67 +389,77 @@ test_that("the app's server starts the card on the open study", {
   suppressWarnings(shiny::testServer(server_for("S1"), {
     session$flushReact()
     expect_match(html_of(output$series_card), "series_list", fixed = TRUE)
-    expect_match(html_of(output$series_values), "Defaults shared by the tflspec_v1 series' templates (values:)", fixed = TRUE)
-    expect_match(html_of(output$series_lock), "No spec/series.lock yet", fixed = TRUE)
+    # (the series the study's copies are of; S1's folder has no copy of it
+    # itself here: nothing to save)
+    v <- html_of(output$series_values)
+    expect_match(v, "Defaults shared by the tflspec_v1 series' templates (values:)", fixed = TRUE)
+    expect_match(v, "This study has no copy of this series yet", fixed = TRUE)
+    expect_match(html_of(output$series_copies), "tflspec_v1/demog", fixed = TRUE)
+    # the template cards read from the open study
+    expect_identical(.tpl_study_dir(), session$userData$rv$study$path)
   }))
 })
 
-test_that("the card's save of study.yml is the app's own: the next save goes through; an outside edit still stops it (gui-checks-1 D1)", {
-  local_home()
-  two_studies()
-  f <- fake_series(NULL)
-  # tfl_series_settings_set() as tflspec: the block written into study.yml
-  set <- f$fns$tfl_series_settings_set
-  f$fns$tfl_series_settings_set <- function(study_dir, series, values) {
-    set(study_dir, series, values)
-    p <- file.path(study_dir, "study.yml")
-    lines <- readLines(p, encoding = "UTF-8", warn = FALSE)
-    at <- grep("^series_settings:", lines)
-    if (length(at)) {
-      top <- grep("^[^[:space:]#][^:]*:", lines)
-      nxt <- top[top > at[1L]]
-      lines <- lines[-seq(at[1L], if (length(nxt)) nxt[1L] - 1L else length(lines))]
-    }
-    new <- strsplit(sub("\n$", "", yaml::as.yaml(list(series_settings = f$st$block))), "\n")[[1L]]
-    writeLines(c(lines, new), p, useBytes = TRUE)
-    invisible(p)
-  }
-  local_series(f$fns)
-  block_of <- function(path) yaml::read_yaml(file.path(path, "study.yml"))$series_settings
-  suppressWarnings(shiny::testServer(server_for("S1"), {
-    rv <- session$userData$rv
-    path <- rv$study$path
+# ---- with tflspec's own functions ----------------------------------------------------------
+
+has_copies <- function() {
+  all(c("tfl_copy_templates", "tfl_template_status", "tfl_series_values_set") %in%
+        getNamespaceExports("tflspec"))
+}
+
+test_that("a template copied into a study: said once, the cards read the copy, the card lists and changes it", {
+  skip_if_not(has_copies(), "this tflspec has no study copies (tflspec#879)")
+  dir <- withr::local_tempdir()
+  withr::defer(.tpl_study_dir(NULL))
+  withr::defer(.arg_defs_reset())
+  msg <- .tpl_copy_into_study(dir, "tflspec_v1/demog")
+  expect_match(msg, "Copied the template tflspec_v1/demog into this study", fixed = TRUE)
+  f <- .tpl_copy_file(dir, "tflspec_v1/demog")
+  expect_true(file.exists(f))
+  expect_true(file.exists(file.path(dir, "spec", "series", "tflspec_v1", "series.yml")))
+  # a second time: there already, nothing said
+  expect_null(.tpl_copy_into_study(dir, "tflspec_v1/demog"))
+  # (a template of no series, or no study: nothing to copy)
+  expect_null(.tpl_copy_into_study(dir, "demog"))
+  expect_null(.tpl_copy_into_study(NULL, "tflspec_v1/demog"))
+  # the cards: the study's copy once the study is open, its edits too
+  lines <- readLines(f, encoding = "UTF-8", warn = FALSE)
+  at <- grep("^  by:$", lines)[1L]
+  doc <- grep("^    description:", lines)
+  doc <- doc[doc > at][1L]
+  lines[doc] <- "    description: The arm the study's copy says."
+  writeLines(lines, f, useBytes = TRUE)
+  .arg_defs_reset()
+  .tpl_study_dir(NULL)
+  expect_false(identical(.tpl_params("tflspec_v1/demog")$by$doc, "The arm the study's copy says."))
+  .tpl_study_dir(dir)
+  expect_identical(.tpl_params("tflspec_v1/demog")$by$doc, "The arm the study's copy says.")
+  # the card: the copy's state, its differences
+  notes <- new.env()
+  shown <- watch_modals()
+  shiny::testServer(series_app(dir, notes), {
     session$flushReact()
-    session$setInputs(series_change = list(key = "total", n = 1))
-    session$setInputs(series_edit_4 = "true")
+    h <- html_of(output$series_copies)
+    expect_match(h, "Changed in this study", fixed = TRUE)
+    expect_match(h, 'data-key="tflspec_v1/demog"', fixed = TRUE)
+    session$setInputs(series_diff = list(key = "tflspec_v1/demog", n = 1))
+    # (the apostrophe as it is, or escaped: htmltools versions differ)
+    expect_match(shown$modals[length(shown$modals)], "The arm the study(&#39;|')s copy says[.]")
+    # a value of the study's copy, saved, read back
+    expect_match(html_of(output$series_values), "Defaults shared by the tflspec_v1 series' templates (values:)", fixed = TRUE)
+    session$setInputs(series_change = list(key = "total_label", n = 2))
+    k <- union(names(tflspec::tfl_series_read("tflspec_v1")$values), names(rv$draft))
+    do.call(session$setInputs, stats::setNames(list("All arms"), paste0("series_edit_", match("total_label", k))))
     session$setInputs(series_save = 1L)
-    expect_identical(block_of(path)$tflspec_v1$total, TRUE)
-    # the app's own write: no change outside it, and nothing unsaved
-    expect_true(all(spec_status("S1")$status == "same"))
-    expect_identical(rv$p, rv$saved)
-    expect_true(any(grepl("^series_settings:", rv$p$spec$text[["study.yml"]])))
-    # the next save goes through and keeps the block
-    rv$p$outputs$description[1] <- "changed here"
-    session$setInputs(save = 1)
-    expect_identical(open_study("S1")$planner$outputs$description[1], "changed here")
-    expect_identical(block_of(path)$tflspec_v1$total, TRUE)
-    expect_true(all(spec_status("S1")$status == "same"))
-    # back to the series and saved, then saved again: the same
-    session$setInputs(series_back = list(key = "total", n = 2))
-    session$setInputs(series_save = 2L)
-    expect_null(block_of(path)$tflspec_v1$total)
-    rv$p$outputs$description[1] <- "again"
-    session$setInputs(save = 2)
-    expect_identical(open_study("S1")$planner$outputs$description[1], "again")
-    expect_true(all(spec_status("S1")$status == "same"))
-    # an edit made outside the app: still stops the save
-    cat("# edited outside\n", file = file.path(path, "study.yml"), append = TRUE)
-    rv$p$outputs$description[1] <- "not saved"
-    session$setInputs(save = 3)
-    st <- spec_status("S1")
-    expect_identical(st$status[st$file == "study.yml"], "changed")
-    expect_identical(open_study("S1")$planner$outputs$description[1], "again")
-  }))
+    expect_identical(tflspec::tfl_series_read("tflspec_v1", dir = .series_copy_root(dir))$values$total_label,
+                     "All arms")
+    expect_identical(names(rv$saved), "total_label")
+    # copied again, asked first: the study's edit of the template is gone
+    session$setInputs(series_recopy = list(key = "tflspec_v1/demog", n = 3))
+    session$setInputs(series_recopy_ok = 1L)
+    expect_match(html_of(output$series_copies), "Same as the source", fixed = TRUE)
+    expect_false(identical(.tpl_params("tflspec_v1/demog")$by$doc, "The arm the study's copy says."))
+  })
 })
 
 test_that("the values' descriptions are in the app's language when tflplanner has them (user check 2026-11-19)", {

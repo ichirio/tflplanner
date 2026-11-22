@@ -19,6 +19,8 @@ fk_study <- function(name = "km_curves", env = parent.frame()) {
                "data:", "  - id: adsl_sub", "    population: SAF",
                "template:", "  name: tflspec_v1/km_simple",
                "  data:", "    time_unit: months", "  analysis:", "    by: TRT01A"), f)
+  # (the study reads only its own copy of the template)
+  invisible(tflspec::tfl_copy_templates(s$path, "tflspec_v1/km_simple"))
   spec <- tflspec::tfl_template_to_spec(tflspec::tfl_read_output(f),
                                         tflspec::tfl_read_study_spec(s$path))
   spec$figure$name <- name
