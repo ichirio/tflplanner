@@ -134,29 +134,31 @@ test_that("plan_columns(): a width a column, the decimal alignment, the row titl
   skip_on_cran()
   sch <- .plan_form_schema("plan_columns")
   expect_identical(sch$visible, c("widths", "decimal", "row_title", "auto_width"))
-  # (given as R: under Other arguments)
+  # (cell_format given as R, column_widths_twips a list typed: under Other arguments)
   expect_identical(sch$args$cell_format$type, "r")
-  expect_identical(sch$args$column_widths_twips$type, "r")
+  expect_identical(sch$args$column_widths_twips$type, "list<integer>")
   p <- sample_planner()
   it <- item(builder_items(p, "T-14-1-1"), "plan_columns")
-  cols <- .widths_cols(it$args$widths, c("row_label", ".values", "Placebo"))
-  expect_identical(cols, c("row_label", ".values", "Placebo"))
-  h <- html(.plan_form_body("c", "plan_columns", it, choices = cols, cols = cols))
-  expect_match(h, 'id="c__widths__1"', fixed = TRUE)
-  expect_match(h, 'value="40"', fixed = TRUE)
-  expect_match(h, 'id="c__widths__3"', fixed = TRUE)
-  expect_match(h, "rp-widths", fixed = TRUE)
+  # widths: the definition's table, a column and its width a row
+  h <- html(.plan_form_body("c", "plan_columns", it, choices = c("row_label", ".values", "Placebo")))
+  expect_match(h, 'class="rp-tbl rp-tbl-map" id="c__widths"', fixed = TRUE)
+  m <- regmatches(h, regexpr('(?s)<div class="rp-tbl rp-tbl-map" id="c__widths".*?data-state="[^"]*"', h,
+                             perl = TRUE))
+  st <- gsub("&quot;", "\"", sub('^.*data-state="([^"]*)"$', "\\1", m), fixed = TRUE)
+  expect_match(st, '["row_label","40"]', fixed = TRUE)
   # read back as the sheets give them: unchanged, no own arguments
-  inp <- list(c__widths__1 = "40", c__widths__2 = "18", c__widths__3 = "", c__auto_width = FALSE)
-  r <- .plan_form_read(inp, "c", "plan_columns", cols = cols)
-  expect_identical(r$widths, list(row_label = 40, .values = 18))
+  inp <- list(c__widths = st, c__auto_width = FALSE)
+  r <- .plan_form_read(inp, "c", "plan_columns")
+  expect_identical(r$widths, it$args$widths)
   own <- .plan_form_args(r, it, "plan_columns")
   expect_identical(args_to_r("plan_columns", own), args_to_r("plan_columns", it$args %||% list()))
   # a width, the alignment and the automatic width of the table's own
-  inp$c__widths__3 <- "25"
+  s <- jsonlite::fromJSON(st, simplifyVector = FALSE)
+  s$rows <- c(s$rows, list(list("Placebo", "25")))
+  inp$c__widths <- as.character(jsonlite::toJSON(s, auto_unbox = TRUE))
   inp$c__decimal <- ".values"
   inp$c__auto_width <- TRUE
-  own <- .plan_form_args(.plan_form_read(inp, "c", "plan_columns", cols = cols), it, "plan_columns")
+  own <- .plan_form_args(.plan_form_read(inp, "c", "plan_columns"), it, "plan_columns")
   q <- .builder_item_write(p, "T-14-1-1", "plan_columns", own)
   co <- sheet_rows(q, "columns", "T-14-1-1")
   expect_setequal(co$column, c("row_label", ".values", "Placebo"))
@@ -251,7 +253,6 @@ test_that("plan_levels(): each variable's values dragged, its empty values hidde
 test_that("the new words have their Japanese", {
   w <- c("Analysis variables (variable) are no rows (a table of one variable: ORR ...).",
          "None (NA)", "The ARD's row text (.label)", "(the last level)",
-         "Blank: rtfreporter's width. .values: every value column.",
          "No categorical variable to order.")
   ja <- vapply(w, tr, "", lang = "ja")
   expect_true(all(ja != w), info = paste(w[ja == w], collapse = " / "))
@@ -663,7 +664,7 @@ test_that("every form card shows all its function's arguments: those written abo
     for (fn in .plan_form_fns) {
       it <- Filter(function(x) identical(x$fn, fn), items)
       it <- if (length(it)) it[[1L]] else list(fn = fn, args = list())
-      h <- html(.plan_form_body("c", fn, it, cols = c("row_label", ".values")))
+      h <- html(.plan_form_body("c", fn, it, choices = c("row_label", ".values")))
       up <- args_of(h, '(?s)rp-args-up.*?(?=rp-more|$)')
       low <- args_of(h, '(?s)rp-more-body.*$')
       fo <- setdiff(.plan_form_schema(fn)$formals, .data_args)
