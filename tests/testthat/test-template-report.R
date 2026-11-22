@@ -1,6 +1,8 @@
 # Template SPEC reports (#440): the inputs of a template's arguments, and
 # the builder's card rules
 
+skip_if_quick()  # slow: not in the quick check of a PR into next (helper.R)
+
 test_that("an argument's input follows the type tflspec declares", {
   p <- function(...) utils::modifyList(list(name = "x", default = NULL, required = FALSE), list(...))
   expect_identical(.tpl_type(p(type = "vars", multiple = TRUE)), "vars")
@@ -231,13 +233,16 @@ test_that("a code report's steps and a template report's: the arguments drawn on
   step_at <- function(v) regexpr(sprintf('data-value="%s"', v), ui, fixed = TRUE)[[1L]]
   expect_true(step_at("data") < step_at("ard") && step_at("ard") < step_at("content") &&
                 step_at("content") < step_at("page"))
-  for (id in c("ard_adata", "ard_report_pop", "adata_detail", "tpl_card_data", "tpl_card_page",
-               "ard_outline")) {
+  for (id in c("ard_adata", "ard_report_pop", "adata_detail", "tpl_card_data", "tpl_card_ard",
+               "tpl_card_page", "tpl_card_head", "ard_outline")) {
     expect_equal(lengths(gregexpr(sprintf('id="%s"', id), ui, fixed = TRUE)), 1L, info = id)
   }
   # the analysis data is the first step's, the analyses the ARD step's
   expect_true(at("ard_adata") < at("ard_outline"))
   expect_true(at("tpl_card_data") < at("ard_outline"))
+  # the template's own card above the steps; the analysis step's card in it
+  expect_true(at("tpl_card_head") < at("tpl_card_data"))
+  expect_true(at("tpl_card_ard") > at("tpl_card_data") && at("tpl_card_ard") < at("tpl_card"))
   expect_true(at("tpl_card_page") > at("ard_outline"))
 })
 
@@ -247,7 +252,7 @@ test_that("a table's rework is at the top of the Content step, once", {
   expect_equal(lengths(gregexpr('id="rework_table"', ui, fixed = TRUE)), 1L)
   expect_true(at("rework_table") > at("ard_outline"))
   expect_true(at("rework_table") < at("content_mode_bar"))
-  # a listing's stays in the Analysis data step
+  # a listing's stays in the data step
   expect_true(at("rework_data") < at("ard_outline"))
 })
 

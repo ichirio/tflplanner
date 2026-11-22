@@ -63,7 +63,7 @@ test_that("the sample's F-14-2-3 reads T-14-2-2's ARD in its data section", {
   # no source: the program stops, saying where to choose it
   p0 <- set_fig_ard_source(p, "F-14-2-3", NULL)
   code0 <- program_code(p0, "F-14-2-3")
-  expect_true(any(grepl("stop(\"F-14-2-3 reads an ARD: choose it in the figure's step 2 (ARD).\")",
+  expect_true(any(grepl("stop(\"F-14-2-3 reads an ARD: choose it in the figure's step 2 (analysis).\")",
                         code0, fixed = TRUE)))
   expect_false(any(grepl("^ard <- ", code0)))
   # its own: its rows

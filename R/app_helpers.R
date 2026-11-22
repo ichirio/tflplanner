@@ -321,13 +321,6 @@ $(document).on('shiny:connected', function() {
   });
   // the ARD definition of the chosen report: hidden for a figure that has
   // none of its own (it reads none, or a table's)
-  // the steps' names, the kind of report's own (a figure's 1 Data, 2 Figure)
-  Shiny.addCustomMessageHandler('rp-step-names', function(x) {
-    $('.rp-step-name').each(function() {
-      var k = $(this).attr('data-step');
-      if (x[k]) $(this).text(x[k]);
-    });
-  });
   Shiny.addCustomMessageHandler('rp-ard-def', function(x) {
     // (a class, not display: the row is d-flex !important)
     $('#ard_split').toggleClass('d-none', !x);
