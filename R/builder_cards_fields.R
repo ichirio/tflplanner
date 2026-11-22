@@ -29,11 +29,31 @@
 }
 
 # Does a type take an R expression as its value?  One of its alternatives
-# is `r`, `formula`, `guard` or a list of R; no type known: R is all it
-# can be.
+# is `r`, `formula`, `guard`, a list of R or a call (`call<rtf_border>`: a
+# call is written as R); no type known: R is all it can be.
 .type_takes_r <- function(type) {
   if (is.null(type) || !length(type) || is.na(type) || !nzchar(type)) return(TRUE)
-  any(.type_split(trimws(type), "|") %in% c("r", "formula", "guard", "list<r>"))
+  alts <- .type_split(trimws(type), "|")
+  any(alts %in% c("r", "formula", "guard", "list<r>")) || any(grepl("^call(<|$)", alts))
+}
+
+# A logical among other types drawn as a pick (input: pick; plan_listing's
+# wrap `logical|string`, rtf_border()'s sides `logical|enum[..]|call<..>`):
+# a pick of the definition's values -- TRUE and FALSE among them -- not a
+# check, which could say only TRUE or FALSE
+.logical_pick <- function(def, type = def$type) {
+  if (!identical(.def_input(def), "pick") || !identical(.arg_kind(type), "logical")) return(FALSE)
+  alts <- setdiff(.type_split(trimws(type), "|"), "r")
+  length(alts) > 1L
+}
+
+# a pick's value read back as its type says: TRUE / FALSE a logical where
+# the type has one, else the value as the type's other alternatives say
+.logical_pick_value <- function(v, type) {
+  v <- as.character(v)
+  if (v %in% c("TRUE", "FALSE")) return(as.logical(v))
+  alts <- setdiff(.type_split(trimws(type), "|"), c("logical", "r"))
+  .coerce_value(v, paste(alts, collapse = "|"))
 }
 
 # the entries of an enum[a|b]
@@ -104,6 +124,10 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
     if (is.null(choices) && length(def$choices)) {
       choices <- .choice_values(def$choices, ctx, lang, values = def$values)
     }
+    # (a logical among other types: its values -- TRUE, FALSE and the
+    # others the definition gives -- offered, a value of one's own typed
+    # where the definition is free)
+    if (is.null(choices) && .logical_pick(def, type)) choices <- .def_entries(def, type)
     kind0 <- kind
     kind <- .def_kind(form, kind, type, def)
     # (a table: the table field of a map<K,V> or a rows<map<..>>, else the
@@ -113,6 +137,10 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
                 choices = choices)
     }
     if (!is.null(tbl)) kind <- "table"
+    # (a value the table cannot show as it is -- a cell deeper than its
+    # lines, normalize_ard(stack = )'s cross layer -- is shown as its R,
+    # so that nothing of it is lost)
+    if (!is.null(tbl) && !.tbl_holds(tbl, value)) value <- tflspec::tfl_r(.arg_to_r(value))
     # (a pick of text with nothing to choose from: the text field)
     if (identical(kind, "pick_one") && identical(kind0, "string") && !length(choices) &&
           !isTRUE(def$free)) {
@@ -236,6 +264,7 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
     form,
     pick = {
       if (identical(kind, "list")) return("pick_many")
+      if (.logical_pick(def, type)) kind <- "enum"
       if (!kind %in% c("string", "column", "stat", "object", "enum")) return(kind)
       words <- vapply(.choice_words(def$choices), function(w) .choice_word_parse(w)$name, "")
       only_fixed <- !length(words) || all(words == "fixed")

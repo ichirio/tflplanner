@@ -30,7 +30,9 @@
 .tbl_type <- function(type) {
   if (is.null(type) || length(type) != 1L || is.na(type)) return(NULL)
   alts <- trimws(.type_split(trimws(type), "|"))
-  ty <- alts[grepl("^(rows|map)<.*>$|^list<map<.*>>$", alts)][1L]
+  # (a vec<K,V> -- a named vector: plan_columns(widths = ) -- is a map from
+  # K to V)
+  ty <- alts[grepl("^(rows|map)<.*>$|^list<map<.*>>$|^vec<[^,<>]+,.+>$", alts)][1L]
   if (is.na(ty)) return(NULL)
   shape <- "map"
   # (a list<map<..>>: its maps in order, a rows<map<..>>'s table)
@@ -44,8 +46,8 @@
       return(list(shape = "rows", key = "string", value = "string|r", fields = f))
     }
   }
-  if (!grepl("^map<.*>$", ty)) return(NULL)
-  kv <- .type_split(sub("^map<(.*)>$", "\\1", ty), ",")
+  if (!grepl("^(map|vec)<.*>$", ty)) return(NULL)
+  kv <- .type_split(sub("^(map|vec)<(.*)>$", "\\2", ty), ",")
   if (length(kv) != 2L) return(NULL)
   # (a map of maps, map<K,map<K2,V>>: a row an inner entry, its two keys
   # and its value -- tflspec_summary's nest and value_labels)
@@ -190,6 +192,40 @@
 # ---- the value <-> the state -------------------------------------------------------
 
 # a value as its cell's text
+# Can a cell of `kind` show the value as it is -- a text or number one
+# plain value, a list's cell plain values (one a line), R anything -- so
+# that it reads back the same?  (normalize_ard(stack = )'s cross layer,
+# list("ALL", c("AGEGR1", "SEX")), cannot be lines: it is shown as R)
+.tbl_cell_holds <- function(v, kind) {
+  if (is.null(v) || inherits(v, c("tfl_r", "tfl_unset")) || identical(kind, "r")) return(TRUE)
+  plain <- function(x) is.atomic(x) && length(x) == 1L
+  if (identical(kind, "list")) {
+    return((is.atomic(v) && is.null(names(v))) ||
+             (is.list(v) && is.null(names(v)) && all(vapply(v, plain, NA))))
+  }
+  plain(v)
+}
+
+# does the table show the whole value as it is?  (else the field is R)
+.tbl_holds <- function(spec, value) {
+  if (is.null(value) || inherits(value, c("tfl_r", "tfl_unset"))) return(TRUE)
+  if (identical(spec$shape, "map")) {
+    return(all(vapply(as.list(value), .tbl_cell_holds, NA, kind = spec$kinds[[2L]])))
+  }
+  if (identical(spec$shape, "map2")) {
+    return(all(vapply(as.list(value), function(inner) {
+      is.list(inner) && all(vapply(inner, .tbl_cell_holds, NA, kind = spec$kinds[[3L]]))
+    }, NA)))
+  }
+  recs <- .tbl_records(value)
+  if (!is.list(recs)) return(FALSE)
+  all(vapply(recs, function(r) {
+    is.list(r) && all(vapply(seq_along(spec$cols), function(j) {
+      .tbl_cell_holds(r[[spec$cols[[j]]]], spec$kinds[[j]])
+    }, NA))
+  }, NA))
+}
+
 .tbl_cell_text <- function(v, kind) {
   if (is.null(v) || inherits(v, "tfl_unset")) return("")
   if (inherits(v, "tfl_r")) return(as.character(unclass(v)))
@@ -219,8 +255,10 @@
     return(out)
   }
   if (identical(spec$shape, "map")) {
-    nm <- names(value)
-    if (is.null(nm)) return(list())
+    # (values with no names -- plan_columns(widths = c(2, 1, 1)), a
+    # vec<K,V>|list<V> -- are rows with a blank key, in their order)
+    nm <- names(value) %||% rep("", length(value))
+    nm[is.na(nm)] <- ""
     value <- as.list(value)
     return(lapply(seq_along(value), function(i) {
       c(nm[[i]], .tbl_cell_text(value[[i]], spec$kinds[[2L]]))
@@ -283,11 +321,22 @@
   }
   if (identical(shape, "map")) {
     out <- list()
+    blank <- list()
     for (r in rows) {
       k <- trimws(r[1L] %||% "")
       v <- .tbl_cell_value(if (length(r) >= 2L) r[[2L]] else "", kinds[[2L]])
-      if (is.na(k) || !nzchar(k) || is.null(v)) next
+      if (is.null(v)) next
+      if (is.na(k) || !nzchar(k)) {
+        blank[[length(blank) + 1L]] <- v
+        next
+      }
       out[[k]] <- v
+    }
+    # (rows with no key and none with one: the values with no names, in
+    # their order -- a vector where each is one plain value)
+    if (!length(out) && length(blank)) {
+      one <- vapply(blank, function(x) is.atomic(x) && length(x) == 1L, NA)
+      return(if (all(one)) unlist(blank) else blank)
     }
     return(if (length(out)) out)
   }

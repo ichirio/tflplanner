@@ -16,8 +16,9 @@
 # What the definitions say is all a card needs: the type and the input form
 # (the field), the choices, the default, the tier (`key`: shown though it
 # has a default), the group (a heading over its fields) and the labels.
-# Where tflspec's definitions say no field tflplanner draws yet,
-# R/spec_card_fallback.R holds the few types.
+# How a field is drawn is decided by its definition's (input, type) only
+# (R/spec_card_fallback.R: an `r` input and a list typed in one box drawn
+# as R); no function has a type of tflplanner's own.
 
 # ---- the definitions ---------------------------------------------------------
 
@@ -108,8 +109,8 @@
 }
 
 # The definitions a card is made from: tflspec's schema entry with each
-# argument's row of tfl_arg_defs() (.schema_of()), the fallback types
-# (R/spec_card_fallback.R), an `r` input drawn as R (.spec_input_r()), and
+# argument's row of tfl_arg_defs() (.schema_of()), an `r` input and a
+# list typed in one box drawn as R (.spec_input_r()), and
 # what the generator works out --
 #   formals   the card's fields, in the function's order (a `...` given by
 #             a key: the key in its place)
@@ -122,7 +123,7 @@ spec_card_defs <- function(fn) {
   sch <- .schema_of(fn) %||% list()
   sch <- .spec_defs_columns(sch, .arg_defs(fn = fn))
   sch <- .spec_defs_dots(sch)
-  sch <- .spec_input_r(.spec_fallback_types(sch, fn))
+  sch <- .spec_input_r(sch)
   fl <- .spec_fn_formals(fn)
   fo <- names(fl)
   # (an argument the schema only names -- a label, no type -- passed by
@@ -228,32 +229,6 @@ spec_card_fields <- function(fn, item = list(), ard = character(), defs = spec_c
   c(gs, lapply(setdiff(ids, have), function(i) list(id = i, label = i)))
 }
 
-# The parts of a field the generator draws in place of arg_field(), by the
-# argument's type: `field` (the part) and `read` (its value back; NULL:
-# not there).  One today -- "widths", a number a column -- and the place
-# the table verbs' own editors are registered as they become fields.
-.spec_parts <- list(
-  widths = list(
-    field = function(fid, arg, value, ctx, ...) {
-      .widths_field(fid, arg, ctx$cols %||% .widths_cols(value, ctx$choices), value, ...)
-    },
-    seen = function(input, fid, arg, ctx) {
-      length(ctx$cols) > 0L && !is.null(.input_value(input, paste0(fid, "__", arg, "__1")))
-    },
-    read = function(input, fid, arg, ctx) {
-      if (isTRUE(.input_value(input, paste0(fid, "__", arg, "__isr")))) {
-        txt <- .input_value(input, paste0(fid, "__", arg, "__r"))
-        return(if (!is.null(txt) && nzchar(trimws(txt))) tflspec::tfl_r(trimws(txt)))
-      }
-      .widths_read(input, paste0(fid, "__", arg), ctx$cols)
-    }))
-
-# the arguments of a definition drawn by a part
-.spec_part_args <- function(defs) {
-  names(Filter(function(x) is.character(x$type) && length(x$type) == 1L &&
-                 x$type %in% names(.spec_parts), defs$args))
-}
-
 # One field of a card: the argument `k` of the definitions, its value the
 # item's (`value`: NULL below the fold), marked where it came from.  Its
 # `R` switch is the definition's: only a type that takes an R expression
@@ -278,11 +253,6 @@ spec_card_fields <- function(fn, item = list(), ard = character(), defs = spec_c
     return(.ard_checked(f, ak, same, ctx$fixed_link, lang))
   }
   if (isTRUE(d$dots)) value <- .spec_dots_text(fn, k, value)
-  part <- if (k %in% .spec_part_args(defs)) .spec_parts[[d$type]]
-  if (!is.null(part)) {
-    return(part$field(id, k, value, ctx, label = label, from = from, own = own, help = help,
-                      lang = lang, r_ok = .type_takes_r(d$def_type %||% d$type)))
-  }
   # (the columns offered only to a field of columns -- a colour's field
   # offers its colours, a text's none -- or to a condition)
   # (an argument's own columns, ctx$arg_choices, before the card's: none
@@ -369,29 +339,23 @@ spec_card <- function(id, fn, item = list(), ctx = list(), lang = "en",
 
 # The card read back: the arguments its fields say (an unticked check
 # FALSE; "(none)": `!unset`; a field's R: `!r`); NULL while its fields are
-# not on the page yet.  `ctx$cols`: the columns of a widths field, as drawn.
+# not on the page yet.
 #' @noRd
 spec_card_read <- function(input, id, fn, ctx = list(), defs = spec_card_defs(fn)) {
-  parts <- .spec_part_args(defs)
   # (on the page: one of its main fields -- of all, for a function with none)
   probe <- if (length(defs$visible)) defs$visible else setdiff(defs$formals, .data_args)
   seen <- vapply(probe, function(k) {
-    if (k %in% parts) return(isTRUE(.spec_parts[[defs$args[[k]]$type]]$seen(input, id, k, ctx)))
     !is.null(.input_value(input, paste0(id, "__", k))) ||
       isTRUE(.input_value(input, paste0(id, "__", k, "__isr")))
   }, NA)
   if (!any(seen)) return(NULL)
-  out <- builder_card_read(input, id, defs, args = setdiff(defs$formals, c(parts, defs$fixed)),
+  out <- builder_card_read(input, id, defs, args = setdiff(defs$formals, defs$fixed),
                            logical_false = TRUE)
   for (k in intersect(names(out), names(defs$args))) {
     out[[k]] <- .form_list_value(out[[k]], defs$args[[k]]$type)
     if (identical(defs$args[[k]]$type, "formula")) out[[k]] <- .formula_text(out[[k]])
     if (isTRUE(defs$args[[k]]$dots)) out[[k]] <- .spec_dots_read(fn, k, out[[k]])
     out[[k]] <- .spec_drawn_r_read(defs$args[[k]], out[[k]])
-  }
-  for (k in parts) {
-    v <- .spec_parts[[defs$args[[k]]$type]]$read(input, id, k, ctx)
-    if (length(v)) out[[k]] <- v
   }
   out
 }
@@ -416,12 +380,9 @@ spec_card_read <- function(input, id, fn, ctx = list(), defs = spec_card_defs(fn
 #' @noRd
 spec_card_args <- function(read, item, fn, defs = spec_card_defs(fn)) {
   eff <- item$args %||% list()
-  # (a part not drawn -- a widths field with no columns known -- reads
-  # nothing: no change)
-  parts <- .spec_part_args(defs)
-  for (a in setdiff(union(names(read), setdiff(intersect(names(eff), defs$formals),
-                                              setdiff(parts, names(read)))), defs$fixed)) {
-    lg <- identical(.arg_kind(defs$args[[a]]$type), "logical") && !inherits(read[[a]], "tfl_r")
+  for (a in setdiff(union(names(read), intersect(names(eff), defs$formals)), defs$fixed)) {
+    lg <- identical(.arg_kind(defs$args[[a]]$type), "logical") && !inherits(read[[a]], "tfl_r") &&
+      !.logical_pick(defs$args[[a]])
     new <- read[[a]]
     cur <- eff[[a]]
     if (is.null(cur) && lg) cur <- defs$args[[a]]$default
@@ -430,6 +391,10 @@ spec_card_args <- function(read, item, fn, defs = spec_card_defs(fn)) {
     # heading), so the field left blank keeps it)
     if (is.null(new) && identical(cur, "")) next
     if (.same_value(new, cur, lg)) next
+    # (a value its field could not show as it is was shown as its R -- a
+    # table's cross layer: R text that still says the value is no change)
+    if (inherits(new, "tfl_r") && !is.null(cur) && !inherits(cur, "tfl_r") &&
+          identical(as.character(unclass(new)), .arg_to_r(cur))) next
     eff[a] <- list(new)
     if (is.null(new)) eff[[a]] <- NULL
   }

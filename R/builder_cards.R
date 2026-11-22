@@ -216,6 +216,13 @@ builder_card_read <- function(input, id, schema = NULL, args = NULL, logical_fal
     }
     v <- get(a)
     if (is.null(v)) next
+    # (a logical among other types drawn as a pick: TRUE / FALSE or the
+    # other value picked; blank left out)
+    if (.logical_pick(schema$args[[a]], ty)) {
+      v <- v[nzchar(as.character(v))]
+      if (length(v)) out[[a]] <- .logical_pick_value(v[[1L]], ty)
+      next
+    }
     if (kind == "logical") {
       dflt <- schema$args[[a]]$default
       # unticked: FALSE when the default is TRUE, or when every logical is

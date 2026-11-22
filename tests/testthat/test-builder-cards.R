@@ -496,6 +496,12 @@ test_that("a type's kind picks the field", {
     gsub("&amp;", "&", x, fixed = TRUE)
   }
   out <- list()
+  # a table field: its state (data-state), as its input binding sends it
+  tb <- regmatches(html, gregexpr("<div class=\"rp-tbl [^\"]*\" id=\"[^\"]+\"[^>]*data-state=\"[^\"]*\"", html))[[1L]]
+  for (s in tb) {
+    id <- sub("^.*? id=\"([^\"]+)\".*$", "\\1", s)
+    out[[id]] <- unesc(sub("^.*data-state=\"([^\"]*)\"$", "\\1", s))
+  }
   ta <- regmatches(html, gregexpr("<textarea[^>]*id=\"[^\"]+\"[^>]*>[^<]*</textarea>", html))[[1L]]
   for (s in ta) {
     id <- sub("(?s)^.*?id=\"([^\"]+)\".*$", "\\1", s, perl = TRUE)

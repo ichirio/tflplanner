@@ -60,6 +60,7 @@ test-builder-args-branches.R,2,0.0
 test-builder-args-kind.R,2,0.0
 test-builder-forms.R,2,0.7
 test-builder-hierarchy.R,2,1.3
+test-card-roundtrip.R,2,0.3
 test-codelists.R,2,2.1
 test-data-outside.R,2,0.3
 test-e2e-cells.R,2,0.0

@@ -72,10 +72,21 @@ test_that("each generator card's fields are its definitions table", {
   }
 })
 
-test_that("the fallback names only arguments the cards have, and tflspec's own values win", {
+test_that("a field is drawn from its definition only, and tflspec's own values win", {
   skip_on_cran()
-  for (fn in names(.spec_fallback$type)) {
-    expect_true(all(names(.spec_fallback$type[[fn]]) %in% spec_card_fields(fn)$name), info = fn)
+  # no function has a type of tflplanner's own: every input form of the
+  # plan verbs' definitions is one arg_field() draws
+  ns <- asNamespace("tflplanner")
+  expect_false(any(c(".spec_fallback", ".spec_parts") %in% names(ns)))
+  forms <- unlist(lapply(.plan_verbs, function(fn) {
+    vapply(spec_card_defs(fn)$args, function(d) .def_input(d) %||% "", "")
+  }))
+  expect_true(all(setdiff(forms, "") %in% c("pick", "text", "condition", "table", "r")),
+              info = toString(setdiff(forms, c("", "pick", "text", "condition", "table", "r"))))
+  # a list typed in one box (input text on a list<..>) is an R field, its
+  # value shown as R source
+  for (fa in list(c("plan_titles", "pages"), c("plan_columns", "column_widths_twips"))) {
+    expect_identical(spec_card_defs(fa[[1L]])$args[[fa[[2L]]]]$type, "r", info = fa[[2L]])
   }
   # the R-only arguments are R fields by tflspec's own type (tflspec#878)
   for (fa in list(c("plan_columns", "cell_format"), c("plan_paginate_cols", "col_header"))) {
