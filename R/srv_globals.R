@@ -16,6 +16,7 @@ utils::globalVariables(c(
   "builder_templates", "bump", "cl_fig", "cl_lf", "current",
   "current_study", "data_choices", "data_counts", "data_files",
   "data_pill", "data_words", "data_words_list", "den_choices", "dirty",
+  "discard_now", "forms_rebase",
   "do_preview", "do_save", "ds_sub", "exc_ver", "fig_ard_ui", "first_data",
   "first_subjects", "first_subjects_file", "fn_code", "fn_entries",
   "fn_label", "form_data", "go", "grids_drawn", "guarded", "has_study",
@@ -29,7 +30,7 @@ utils::globalVariables(c(
   "review_jump", "review_now", "run_marks", "session", "st_arg_default",
   "st_conditions", "st_default", "st_drawn", "st_id", "st_kind",
   "st_method", "st_parent_of", "st_problems", "st_role", "st_row",
-  "st_row_now", "st_rows", "stack_form_ui", "stack_inside_note",
+  "st_live", "st_revert_btn", "st_row_now", "st_rows", "st_say", "st_write", "stack_form_ui", "stack_inside_note",
   "start_first_table", "start_sample_run", "study_open", "target",
   "tgt_pick", "to_catalog", "total_on_id", "tpl_head_link", "tpl_modal_ui",
   "tpl_names", "uc_res"

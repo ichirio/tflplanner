@@ -226,7 +226,7 @@
             "pd_add", NULL, width = "100%", pieces_of("layers"))),
           .btn("pd_addbtn", t("Add"), class = "btn-sm btn-outline-primary")),
         shiny::div(class = "small text-muted mt-2",
-                   t("The data steps are in step 1 (Data)."))),
+                   t("The data steps are in step 1 (data)."))),
       bslib::card(
         bslib::card_header(t("Edit")),
         shiny::uiOutput("pd_form")),
@@ -656,7 +656,7 @@
     if (m == "hand") {
       return(shiny::div(
         class = "alert alert-info py-2 small",
-        sprintf(t("The figure's data steps come with its design: start it in step %s (Content), from a template or empty; they are then here."), .step_no("content")),
+        sprintf(t("The figure's data steps come with its design: start it in step %s (content), from a template or empty; they are then here."), .step_no("content")),
         " ", .btn("pd_goto_figure", sprintf(t("Go to step %s"), .step_no("content")), class = "btn-sm btn-outline-primary py-0")))
     }
     bslib::card(

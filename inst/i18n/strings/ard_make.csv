@@ -38,7 +38,7 @@
 "Make it as an own function (Study > Own functions), or write it as R code (custom).","独自の関数で作る（試験 > 独自の関数）か、R コードで書く（custom）ことができます。"
 "All categories","すべての分類"
 "Its setting: %s","設定: %s"
-"Started from the setting: %s (Apply to the analysis writes it).","設定から始めました: %s（「解析に反映」で書き込みます）。"
+"Started from the setting: %s.","設定から始めました: %s。"
 "The word searched means: %s","探した言葉の設定: %s"
 "Start with this setting","この設定で始める"
 "Analysis data","解析データ"
