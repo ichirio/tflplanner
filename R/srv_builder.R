@@ -489,9 +489,15 @@
       bform$form_cols[[it$path]] <- wc
       # (normalize_ard(): its hierarchy the ARD analysis's, read only, the
       # way to step 1 beside it)
+      # (an argument's own columns, where the card's are not its:
+      # plan_filter(by = ) a row key, table_plan(rows = )'s; group_col
+      # none -- rtfreporter refuses it on an ARD's plan, whose groups are
+      # its outermost row key)
+      arg_ch <- switch(fn, plan_filter = list(by = .filter_by_keys(st)),
+                       plan_row_group = list(group_col = character()))
       body <- spec_card(
         card_id(it$path), fn, it, lang = lang,
-        ctx = list(choices = ch, cols = wc,
+        ctx = list(choices = ch, arg_choices = arg_ch, cols = wc,
                    ard = if (identical(fn, "normalize_ard")) list(hierarchy = st$hierarchy),
                    fixed_link = if (identical(fn, "normalize_ard"))
                      shiny::actionLink("b_norm_step1", sprintf(t("Step %s's analysis"), .step_no("ard")), class = "small ms-1")))

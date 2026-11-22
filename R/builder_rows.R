@@ -101,6 +101,22 @@
   paste(parts, collapse = " | ")
 }
 
+# The row keys plan_filter(by = ) takes: table_plan(rows = )'s columns,
+# outermost first -- rtfreporter reads `by` among them only (not the
+# column key, not the label, not a constant heading).  A hierarchy's: its
+# row keys but the last, the label; a summary table's: its layers but the
+# row-label key, the block of variables as `variable` (the rows' default
+# when the table has more than one variable; one variable has no such key).
+.filter_by_keys <- function(st) {
+  if (length(st$hierarchy)) return(utils::head(st$row_keys %||% character(), -1L))
+  l <- as.character(st$layers %||% character())
+  l <- l[!is.na(l) & nzchar(l) & !.is_heading(l) & !l %in% st$row_label]
+  v <- st$variables
+  nvar <- if (is.data.frame(v)) nrow(v) else length(v)
+  l <- if (nvar > 1L) replace(l, l == ".variable", "variable") else l[l != ".variable"]
+  unique(l)
+}
+
 # a layer that is a constant heading ('"Overall"', ~"Worst grade"), not a key
 .is_heading <- function(x) grepl("^[\"'~]", x)
 
