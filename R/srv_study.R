@@ -226,6 +226,12 @@
                                       paste(paste0(dp$output_id, ": ", dp$where), collapse = ", ")),
                               type = "warning", duration = NULL)
     }
+    # an old study's ADaM levels (#742): codelists or none taken away (not
+    # set is none), and said once when its levels were or may have been
+    # applied before
+    lv <- .adam_levels_drop_old(rv$p)
+    if (!identical(lv$p, rv$p)) rv$p <- lv$p
+    if (lv$notice) shiny::showNotification(t(.adam_levels_dropped_msg), type = "warning", duration = NULL)
     rv$meta <- rv$saved_meta <- s$meta[.study_fields]
     rv$want <- output_ids(s$planner)[1L]
     bump()
@@ -609,6 +615,8 @@
     bnew$ids <- character()
     rv$study <- s
     rv$p <- rv$saved <- s$planner
+    # (the forms' Undo: back to the study as saved from now on)
+    forms_rebase()
     # (the widths the save gave reports: drawn, but not others' changes)
     merged <- !.same_planner(.study_spec_keys(mine), s$planner_saved %||% s$planner)
     if (merged || !.same_planner(.study_spec_keys(mine), s$planner)) bump()
@@ -747,16 +755,23 @@
   })
   shiny::observeEvent(input$discard_ok, {
     shiny::removeModal()
+    discard_now()
+  })
+  discard_now <- function() {
     held$p <- held$before <- NULL
     rv$p <- rv$saved
     rv$meta <- rv$saved_meta
+    # (the screens that keep a field of their own draw it again: #742)
+    rv$discard_ver <- (rv$discard_ver %||% 0L) + 1L
+    # (the forms' Undo: back to the study as saved from now on)
+    forms_rebase(discarded = TRUE)
     guarded(.drop_draft(rv$study$meta$study_id))
     # (the screens drawn again from it: the cards, the code, the preview)
     rv$bver <- rv$bver + 1L
     rv$ard_ver <- rv$ard_ver + 1L
     bump()
     notify(t("The changes were discarded: the study is as it was last saved."))
-  })
+  }
   # [Close]: tflplanner stops -- where it runs on this computer only (an
   # app on a server is not one user's to stop).  Unsaved changes are asked
   # about first: save and close, close without saving, or cancel.  The same
@@ -1417,16 +1432,6 @@
           choices = unique(c("", now, adsl)), selected = now,
           options = list(create = TRUE, placeholder = "TRT01A"))
       }),
-      # (the study's code lists' levels on the ADaM: study$adam with them, or
-      # without -- canon 32449ac; not set: codelists)
-      shiny::selectInput(
-        "study_adam_levels",
-        with_tip(t("ADaM levels (settings.adam_levels)"),
-                 t("Whether study$adam gets the levels of the study's ADaM metadata (codelists: defaults.yml adam_meta:) or not (none). Either way a blank is NA, and study$adam_org is the file as it is. With none, a report's own levels: / labels: still apply.")),
-        stats::setNames(c("codelists", "none"),
-                        t(c("codelists: apply the levels of adam_meta to the ADaM",
-                            "none: do not apply them"))),
-        selected = .study_adam_levels(shiny::isolate(rv$p))),
       shiny::h6(with_tip(t("Every report's header"),
                          t("The study's words in every report's header: {COMPANY}, {ANALYSIS_TYPE}; {STUDY_ID} is the Study ID above. Set once here (the tokens sheet's study rows); each report gives only its own (its label, title, population)."))),
       shiny::div(class = "d-flex flex-wrap gap-2",
@@ -1571,14 +1576,6 @@
     v <- if (nzchar(input$rounding)) input$rounding else NA_character_
     if (!identical(unname(rv$p$study[["rounding"]]), v)) {
       rv$p$study[["rounding"]] <- v
-    }
-  }, ignoreInit = TRUE)
-  # the ADaM levels: study.yml's settings: adam_levels: (codelists, the
-  # default, is not written)
-  shiny::observeEvent(input$study_adam_levels, {
-    v <- if (identical(input$study_adam_levels, "none")) "none" else NA_character_
-    if (!identical(.study_setting(rv$p, "adam_levels"), v)) {
-      rv$p$study[["adam_levels"]] <- v
     }
   }, ignoreInit = TRUE)
   # the treatment variable: study.yml's settings: treatment: (blank: none)

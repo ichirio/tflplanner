@@ -8,7 +8,7 @@ page_sample <- function(env = parent.frame()) {
   old <- options(tflplanner.home = home)
   do.call(on.exit, list(substitute(options(old)), add = TRUE), envir = env)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  suppressMessages(create_sample_study(run = FALSE, home = home))$planner
+  suppressMessages(sample_study_copy(home))$planner
 }
 
 texts_changed <- function(a, b) {
@@ -256,7 +256,7 @@ test_that("the form: a card a function, the arguments with a value first, labels
 test_that("step 3's form in the app: an argument, a line, the pattern, the study saved changes one file", {
   skip_on_cran()
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   root <- s$path
   md5 <- function() tools::md5sum(file.path(root, .spec_files_yaml(root)))
   before <- md5()

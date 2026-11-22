@@ -19,22 +19,13 @@
     plan_cell_style = c(bold = .spec_cell_look, italic = .spec_cell_look),
     plan_columns = c(widths = "widths", column_widths_twips = "r"),
     plan_titles = c(pages = "r"),
-    plan_footnotes = c(pages = "r")),
-  # The arguments tflspec gives no type whose value is R only (a function
-  # or a list of them, a header object): typed "r", an R field as before
-  # (tflspec's own definition reads them as text)
-  r = list(
-    plan_columns = "cell_format",
-    plan_paginate_cols = "col_header"))
+    plan_footnotes = c(pages = "r")))
 
 # the definitions with the fallback's types (the field the type says, not
 # the definition's input form)
 .spec_fallback_types <- function(sch, fn) {
   ty <- .spec_fallback$type[[fn]]
   for (a in intersect(names(ty), names(sch$args))) sch <- .spec_drawn_as(sch, a, ty[[a]])
-  for (a in intersect(.spec_fallback$r[[fn]], names(sch$args))) {
-    if (is.null(sch$args[[a]]$type)) sch$args[[a]]$type <- "r"
-  }
   sch
 }
 

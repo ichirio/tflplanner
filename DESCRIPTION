@@ -73,5 +73,8 @@ Remotes:
     ichirio/tflspec@s1/table-columns
 Config/testthat/edition: 3
 Config/testthat/parallel: true
+Config/testthat/start-first: srv-add-report-gaps, ard-adata-ui, spec-model,
+    card-unset, ai-draft, app-robust, spec-source, template-report,
+    srv-first-table-gaps, page-patterns, first-table, spec-source-app, sample
 Roxygen: list(markdown = TRUE)
 Config/roxygen2/version: 8.1.1

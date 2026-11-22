@@ -24,7 +24,7 @@ U <- function() tflspec::tfl_unset()
 # a study with a template listing (the sample's, fictional data)
 .unset_study <- function(id = "L-TPL") {
   home <- local_home(parent.frame())
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   args <- list(data = "ADAE",
                columns = list(list(vars = "USUBJID", label = "Subject"),
                               list(vars = "AEDECOD", label = "Term", width = 30L)))
@@ -51,7 +51,7 @@ test_that("a flag's (none) stays when the card is drawn again, its default TRUE 
   expect_false(.tpl_flag_off_drawn("text", FALSE, U(), NULL))
   # ae_soc_pt's any_row (default TRUE) and total (default FALSE)
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   o <- tflspec::tfl_output("T-TPL", "table", label = "AEs", common = list(population = "SAF"),
                            template = list(name = "ae_soc_pt", args = list(population = "SAF")))
   s$planner <- .spec_add_output(s$planner, o, label = "AEs", population = "SAF")
@@ -61,7 +61,7 @@ test_that("a flag's (none) stays when the card is drawn again, its default TRUE 
     rv <- session$userData$rv
     args <- function() .tpl_of(rv$p, "T-TPL")$args
     session$setInputs(target = "T-TPL", nav = "make", step = "content", content_nav = "content")
-    expect_match(output$tpl_card$html, "tpl_ae_soc_pt__any_row", fixed = TRUE)
+    expect_match(tpl_cards_html(output), "tpl_ae_soc_pt__any_row", fixed = TRUE)
     session$setInputs(tpl_ae_soc_pt__any_row = TRUE, tpl_ae_soc_pt__total = FALSE)
     expect_null(args()$any_row)
     # any_row's (none), then the card drawn again says the switch off
@@ -90,7 +90,7 @@ test_that("a template param whose default is unset shows (none), one per widget 
   s <- .unset_study()
   shiny::testServer(function(input, output, session) app_server(input, output, session, s), {
     session$setInputs(target = "L-TPL", nav = "make", step = "content", content_nav = "content")
-    h <- output$tpl_card_lf$html
+    h <- tpl_cards_html(output, "tpl_card_lf")
     # a select: "(none)" first and selected, the blank "(default)" no longer
     sel <- .select_of(h, "tpl_listing__by_break")
     expect_match(sel, '<option value="(none)" selected>(none: not passed)</option>', fixed = TRUE)
@@ -120,10 +120,10 @@ test_that("choosing (none) writes tfl_unset into template.args; another value or
     rv <- session$userData$rv
     session$setInputs(target = "L-TPL", nav = "make", step = "content", content_nav = "content")
     # a select (by_break: default "page")
-    expect_match(.select_of(output$tpl_card_lf$html, "tpl_listing__by_break"), 'value="page" selected', fixed = TRUE)
+    expect_match(.select_of(tpl_cards_html(output, "tpl_card_lf"), "tpl_listing__by_break"), 'value="page" selected', fixed = TRUE)
     session$setInputs(tpl_listing__by_break = "(none)")
     expect_s3_class(.tpl_of(rv$p, "L-TPL")$args$by_break, "tfl_unset")
-    expect_match(.select_of(output$tpl_card_lf$html, "tpl_listing__by_break"),
+    expect_match(.select_of(tpl_cards_html(output, "tpl_card_lf"), "tpl_listing__by_break"),
                  '<option value="(none)" selected>(none: not passed)</option>', fixed = TRUE)
     # a text (by_heading: no default)
     session$setInputs(tpl_listing__by_heading = "(none)")
@@ -147,7 +147,7 @@ test_that("a template argument that is unset is passed as !unset, and the templa
   skip_on_cran()
   skip_if_not_installed("cards")
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   o <- tflspec::tfl_output("T-TPL", "table", label = "Demographics", common = list(population = "SAF"),
                            template = list(name = "demog",
                                          args = list(by = "TRT01A", continuous = "AGE",
@@ -181,10 +181,10 @@ test_that("a flag's (none) button is its own input; the switch turned on is a va
   shiny::testServer(function(input, output, session) app_server(input, output, session, s), {
     rv <- session$userData$rv
     session$setInputs(target = "L-TPL", nav = "make", step = "content", content_nav = "content")
-    expect_false(grepl("none-note none-on", output$tpl_card_lf$html, fixed = TRUE))
+    expect_false(grepl("none-note none-on", tpl_cards_html(output, "tpl_card_lf"), fixed = TRUE))
     session$setInputs(tpl_listing__flagx__none = TRUE)
     expect_s3_class(.tpl_of(rv$p, "L-TPL")$args$flagx, "tfl_unset")
-    expect_match(output$tpl_card_lf$html, "none-note none-on", fixed = TRUE)
+    expect_match(tpl_cards_html(output, "tpl_card_lf"), "none-note none-on", fixed = TRUE)
     session$setInputs(tpl_listing__flagx__none = FALSE, tpl_listing__flagx = TRUE)
     expect_identical(.tpl_of(rv$p, "L-TPL")$args$flagx, TRUE)
   })
@@ -287,7 +287,7 @@ test_that("fields without an unset render as before; a required one has no (none
 test_that("a code SPEC card: !unset shows (none), is chosen, kept in the SPEC YAML and out of the program", {
   skip_on_cran()
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   id <- "T-14-1-2"
   it0 <- Filter(function(i) i$fn == "plan_blanks", builder_items(s$planner, id))[[1L]]
   # the card before: the argument a value of the study standard, no (none) chosen
@@ -354,7 +354,7 @@ test_that("a special card's other arguments: the (none) toggle is written as !un
   r3 <- .special_read(list(c__show_keys__none = FALSE, c__show_keys = NULL), "c", "table_plan")
   expect_identical(r3$unset, "show_keys")
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   id <- "T-14-1-2"
   it0 <- Filter(function(i) i$fn == "table_plan", builder_items(s$planner, id))[[1L]]
   args <- .special_args_put(it0$args, r)
@@ -377,7 +377,7 @@ test_that("a special card's other arguments: the (none) toggle is written as !un
   expect_false(.args_same_r("table_plan", args, it0$args))
   expect_true(.args_same_r("table_plan", args, args))
   local_home()
-  suppressMessages(create_sample_study(run = FALSE))
+  suppressMessages(sample_study_copy())
   shiny::testServer(server_for("SAMPLE-01"), {
     session$setInputs(target = id, nav = "make", step = "content", content_nav = "content",
                       table_nav = "builder")
@@ -442,7 +442,7 @@ test_that("a whole number typed into a count's field is an integer", {
 test_that("the review reads a page value's (none), in either language, as no value", {
   skip_on_cran()
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   p <- .pgs_set_arg(s$planner, "T-14-3-1", "rtf_page", "margin_top_in", U())
   pg <- p$sheets$page
   expect_identical(pg$margin_top_in[pg$output_id %in% "T-14-3-1"], "(none)")
@@ -462,7 +462,7 @@ test_that("a token's text typed as (none), in either language, is the token left
   expect_identical(.pgs_token_value(" Data cut-off 2026 "), "Data cut-off 2026")
   expect_identical(.pgs_token_value(NULL), "")
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   p <- .pgs_set_token(s$planner, "T-14-3-1", "CUTOFF", .pgs_token_value(tr("(none)", "ja")))
   expect_s3_class(p$spec$outputs[["T-14-3-1"]]$page$tokens$CUTOFF, "tfl_unset")
 })

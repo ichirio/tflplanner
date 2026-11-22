@@ -73,7 +73,7 @@ parts_fixture <- local({
       old <- options(tflplanner.home = home)
       on.exit(options(old), add = TRUE)
       suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-      suppressMessages(create_sample_study(run = FALSE, home = home))
+      suppressMessages(sample_study_copy(home))
       s <- suppressMessages(open_study("SAMPLE-01", home = home))
       p <- .builder_item_write(s$planner, "T-14-1-1", "plan_append",
                                .plan_starter_args("plan_append", list(key = "ARM")), 1L)
@@ -369,7 +369,7 @@ test_that("a part's id never reaches a program, a file or the table's sheets", {
 # calls order_levels(), which programs/study_helpers.R defines)
 .part_study <- function(env = parent.frame(), cols = "SEX") {
   home <- local_home(env)
-  s <- suppressMessages(create_sample_study(run = FALSE))
+  s <- suppressMessages(sample_study_copy())
   args <- list(name = "demog", absent = "skip",
                data = list(source = "dataset", dataset = "ADSL"),
                content = .part_items_parse(paste0("- fn: table_plan\n  args:\n    cols: ", cols, "\n")))

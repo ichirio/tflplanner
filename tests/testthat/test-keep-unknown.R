@@ -51,7 +51,6 @@ test_that("1-1: an analysis data the form cannot show is saved back unchanged", 
                       adata_derive = "Q = 1 | R = Q + 1",
                       adata_keep = c("AEDECOD", "ODD"),
                       adata_distinct = c("USUBJID", "AEDECOD"), adata_code = "")
-    session$setInputs(adata_save = 1)
     after <- .adata_rows(session$userData$rv$p, "DM")
     a1 <- after[after$data_id == "adae_odd", ]
     b1 <- before[before$data_id == "adae_odd", ]
