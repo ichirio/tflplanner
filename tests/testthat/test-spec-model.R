@@ -762,7 +762,7 @@ test_that("settings: adam_levels (#742): the sample's define_xml survives open a
   expect_false(is.na(st$applied))
   expect_true("CL.SEX" %in% s$planner$spec$study$adam_meta$codelists$codelist)
   # the copy of the sample is not a change of its define.xml
-  expect_false(.adam_levels_pending(s$planner, st$file, s$path))
+  expect_identical(.adam_levels_pending(s$planner, st$file, s$path), "")
   # cleared: the three settings gone, adam_meta: emptied, the kept file stays
   # (tflspec puts the source on the ARD's study sheet too: it goes with it)
   expect_true("adam_levels" %in% s$planner$ard$study$key)
