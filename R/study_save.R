@@ -122,8 +122,13 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
   old_meta <- tryCatch(.read_meta(root), error = function(e) list())
   meta$created <- old_meta$created %||% format(Sys.Date())
   # the YAML spec: each file written only when its text changed
-  before <- if (isTRUE(fill_widths)) .widths_before(root)
-  files <- .save_yaml_spec(p, meta, root, own = as_recorded)
+  # (the reports' files as they were: those the save writes, read just
+  # before it writes them)
+  before <- NULL
+  files <- .save_yaml_spec(p, meta, root, own = as_recorded,
+                           before_write = if (isTRUE(fill_widths)) function(q) {
+                             before <<- .widths_before(root, .spec_to_write(q, root))
+                           })
   # (the planner and its spec in step: what was saved)
   p <- attr(files, "planner")
   attr(files, "planner") <- NULL
