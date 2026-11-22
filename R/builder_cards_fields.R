@@ -147,6 +147,13 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
       kind <- kind0
     }
   }
+  # (a list whose entries are not each one plain value -- plan_titles(pages
+  # = ), a page a list of lines -- cannot be a select of entries: shown as
+  # its R, so that nothing of it is lost)
+  if (kind %in% c("list", "pick_many") && is.list(value) && !inherits(value, c("tfl_r", "tfl_unset")) &&
+        !all(vapply(value, function(x) is.atomic(x) && length(x) == 1L, NA))) {
+    value <- tflspec::tfl_r(.arg_to_r(value))
+  }
   # (an argument that is R only -- no other form -- shows its R in its own
   # field, as the others' R: no switch to press, its R mark fixed)
   r_only <- kind %in% c("r", "condition")

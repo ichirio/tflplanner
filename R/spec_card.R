@@ -395,6 +395,12 @@ spec_card_args <- function(read, item, fn, defs = spec_card_defs(fn)) {
     # table's cross layer: R text that still says the value is no change)
     if (inherits(new, "tfl_r") && !is.null(cur) && !inherits(cur, "tfl_r") &&
           identical(as.character(unclass(new)), .arg_to_r(cur))) next
+    # (... and that R edited, where the type takes no R and the value was
+    # not R: the value its literal says -- R written as R stays R)
+    if (inherits(new, "tfl_r") && !is.null(cur) && !inherits(cur, "tfl_r") &&
+          !.type_takes_r(defs$args[[a]]$def_type %||% defs$args[[a]]$type)) {
+      new <- .text_value(as.character(unclass(new)))
+    }
     eff[a] <- list(new)
     if (is.null(new)) eff[[a]] <- NULL
   }

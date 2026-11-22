@@ -134,9 +134,9 @@ test_that("plan_columns(): a width a column, the decimal alignment, the row titl
   skip_on_cran()
   sch <- .plan_form_schema("plan_columns")
   expect_identical(sch$visible, c("widths", "decimal", "row_title", "auto_width"))
-  # (given as R: under Other arguments)
+  # (cell_format given as R, column_widths_twips a list typed: under Other arguments)
   expect_identical(sch$args$cell_format$type, "r")
-  expect_identical(sch$args$column_widths_twips$type, "r")
+  expect_identical(sch$args$column_widths_twips$type, "list<integer>")
   p <- sample_planner()
   it <- item(builder_items(p, "T-14-1-1"), "plan_columns")
   # widths: the definition's table, a column and its width a row

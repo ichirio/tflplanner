@@ -230,10 +230,10 @@ test_that("normalize_ard(stack = ) with a cross layer round-trips", {
   expect_identical(shown_value(rt$html, "c__stack__r"), 'list(subgroup = list("ALL", c("AGEGR1", "SEX")))')
   expect_true(shown_value(rt$html, "c__stack__isr"))
   expect_same_args(fn, rt$args, list(stack = st))
-  # one edit of that R: read back as R
+  # one edit of that R: the value it says
   ed <- round_trip(fn, list(stack = st), set = list(stack__isr = TRUE,
                                                      stack__r = 'list(subgroup = list("ALL", c("AGEGR1", "RACE")))'))
-  expect_identical(as.character(unclass(ed$args$stack)), 'list(subgroup = list("ALL", c("AGEGR1", "RACE")))')
+  expect_identical(ed$args$stack, list(subgroup = list("ALL", c("AGEGR1", "RACE"))))
   # layers of one key each: one edit (a layer added) reads back
   st1 <- list(subgroup = c("ALL", "SEX"))
   ed <- table_trip(fn, list(stack = st1), "stack", edit = function(rows) {
@@ -276,40 +276,44 @@ test_that("plan_append: the generated card draws the child steps", {
   expect_same_args("plan_append", rt$args, args)
 })
 
-test_that("plan_titles / plan_footnotes(pages = ) round-trip (drawn as R)", {
+test_that("plan_titles(pages = ): a page of several lines is shown as R and reads back as the value", {
   skip_on_cran()
-  cases <- list(plan_titles = list(pages = list(c("Table 1", "Group A"), c("Table 2", "Group B"))),
-                plan_footnotes = list(pages = list("Note A", "Note B")))
-  for (fn in names(cases)) {
-    args <- cases[[fn]]
-    rt <- round_trip(fn, args, fids = "pages")
-    expect_identical(shown_value(rt$html, "c__pages"), .arg_to_r(args$pages), info = fn)
-    expect_same_args(fn, rt$args, args, info = fn)
-    # one edit: the second page's entries changed
-    txt <- sub("B", "C", .arg_to_r(args$pages), fixed = TRUE)
-    ed <- round_trip(fn, args, set = list(pages = txt))
-    want <- args$pages
-    want[[2L]] <- sub("B", "C", want[[2L]], fixed = TRUE)
-    expect_identical(ed$args$pages, want, info = fn)
-    again <- round_trip(fn, ed$args, fids = "pages")
-    expect_identical(shown_value(again$html, "c__pages"), txt, info = fn)
-    expect_same_args(fn, again$args, ed$args, info = fn)
-  }
+  fn <- "plan_titles"
+  args <- list(pages = list(c("Table 1", "Group A"), c("Table 2", "Group B")))
+  rt <- round_trip(fn, args, fids = c("pages__r", "pages__isr"))
+  expect_identical(shown_value(rt$html, "c__pages__r"), .arg_to_r(args$pages))
+  expect_true(shown_value(rt$html, "c__pages__isr"))
+  expect_same_args(fn, rt$args, args)
+  # one edit of that R: the value it says (the type takes no R)
+  txt <- sub("Group B", "Group C", .arg_to_r(args$pages), fixed = TRUE)
+  ed <- round_trip(fn, args, set = list(pages__isr = TRUE, pages__r = txt))
+  expect_identical(ed$args$pages, list(c("Table 1", "Group A"), c("Table 2", "Group C")))
 })
 
-test_that("plan_columns(column_widths_twips = ) round-trips (drawn as R)", {
+test_that("plan_footnotes(pages = ), plan_columns(column_widths_twips = ): a list typed, one entry each", {
   skip_on_cran()
-  fn <- "plan_columns"
-  args <- list(column_widths_twips = c(3000L, 1500L, 1500L))
-  rt <- round_trip(fn, args, fids = "column_widths_twips")
-  expect_identical(shown_value(rt$html, "c__column_widths_twips"), "c(3000L, 1500L, 1500L)")
-  expect_same_args(fn, rt$args, args)
-  # one edit: typed as the user would, plain numbers
-  ed <- round_trip(fn, args, set = list(column_widths_twips = "c(2500, 2000)"))
-  expect_equal(ed$args$column_widths_twips, c(2500, 2000))
-  again <- round_trip(fn, ed$args, fids = "column_widths_twips")
-  expect_identical(shown_value(again$html, "c__column_widths_twips"), "c(2500, 2000)")
-  expect_same_args(fn, again$args, ed$args)
+  # a select of several that takes a value typed (input text on a list<..>)
+  h <- html(spec_card("c", "plan_footnotes", list(fn = "plan_footnotes", args = list(pages = list("Note A", "Note B")))))
+  expect_match(h, '<select[^>]*id="c__pages"[^>]*multiple', perl = TRUE)
+  for (case in list(list(fn = "plan_footnotes", a = "pages", v = list("Note A", "Note B"),
+                         sent = c("Note A", "Note B"), edit = c("Note A", "Note C"),
+                         want = c("Note A", "Note C")),
+                    list(fn = "plan_columns", a = "column_widths_twips", v = c(3000L, 1500L, 1500L),
+                         sent = c("3000", "1500", "1500"), edit = c("2500", "2000"),
+                         want = c(2500L, 2000L)))) {
+    it <- list(fn = case$fn, args = stats::setNames(list(case$v), case$a))
+    it$own_args <- it$args
+    inp <- stats::setNames(list(case$sent), paste0("c__", case$a))
+    # (the page has its main fields; here the field itself tells the card is there)
+    d <- spec_card_defs(case$fn)
+    d$visible <- case$a
+    r <- spec_card_read(inp, "c", case$fn, defs = d)
+    got <- spec_card_args(r, it, case$fn, defs = d)
+    expect_identical(args_to_r(case$fn, got), args_to_r(case$fn, it$args), info = case$a)
+    inp[[1L]] <- case$edit
+    ed <- spec_card_args(spec_card_read(inp, "c", case$fn, defs = d), it, case$fn, defs = d)
+    expect_identical(as.vector(unlist(ed[[case$a]])), case$want, info = case$a)
+  }
 })
 
 test_that("a logical among other types is a pick of the definition's values, read back as its type says", {

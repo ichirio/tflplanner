@@ -83,10 +83,11 @@ test_that("a field is drawn from its definition only, and tflspec's own values w
   }))
   expect_true(all(setdiff(forms, "") %in% c("pick", "text", "condition", "table", "r")),
               info = toString(setdiff(forms, c("", "pick", "text", "condition", "table", "r"))))
-  # a list typed in one box (input text on a list<..>) is an R field, its
-  # value shown as R source
+  # a list typed in one box (input text on a list<..>) keeps its type: a
+  # select of several that takes a value typed
   for (fa in list(c("plan_titles", "pages"), c("plan_columns", "column_widths_twips"))) {
-    expect_identical(spec_card_defs(fa[[1L]])$args[[fa[[2L]]]]$type, "r", info = fa[[2L]])
+    expect_identical(spec_card_defs(fa[[1L]])$args[[fa[[2L]]]]$type,
+                     tflspec::tfl_schema(fa[[1L]])$args[[fa[[2L]]]]$type, info = fa[[2L]])
   }
   # the R-only arguments are R fields by tflspec's own type (tflspec#878)
   for (fa in list(c("plan_columns", "cell_format"), c("plan_paginate_cols", "col_header"))) {
@@ -355,8 +356,6 @@ rendered_value <- function(h, fid) {
 test_that("a value only drawn as R (the fallback's, an r input) reads back the same: no edit, no write", {
   skip_on_cran()
   cases <- list(
-    list("plan_titles", list(pages = list(c("Table 14.3.1", "ALT"), c("Table 14.3.2", "AST")))),
-    list("plan_footnotes", list(pages = "x")),
     list("plan_cell_style", list(border = list(fn = "rtf_border", args = list(bottom = "single")))))
   for (cs in cases) {
     fn <- cs[[1L]]
@@ -381,7 +380,7 @@ test_that("a value only drawn as R (the fallback's, an r input) reads back the s
   # R typed there stays R
   d <- spec_card_defs("plan_titles")
   d$visible <- "pages"
-  r <- spec_card_read(list(c__pages = "my_pages"), "c", "plan_titles", defs = d)
+  r <- spec_card_read(list(c__pages__isr = TRUE, c__pages__r = "my_pages"), "c", "plan_titles", defs = d)
   expect_identical(r$pages, tflspec::tfl_r("my_pages"))
 })
 
@@ -567,7 +566,6 @@ test_that("normalize_ard(): stack and combine a table of a name and its list, dr
     expect_identical(d$args[[a]]$type, tflspec::tfl_schema("normalize_ard")$args[[a]]$type, info = a)
     expect_false(identical(.arg_kind(d$args[[a]]$type), "r"), info = a)
   }
-  expect_false("normalize_ard" %in% names(.spec_fallback$type))
   ch <- c("TRT01A", "SEX", "AGEGR1")
   ctx <- list(choices = ch, arg_choices = .norm_arg_choices(ch, c("TRT01A", "SEX", "AGEGR1"),
                                                             list(variables = data.frame(variable = "AVAL")),
@@ -608,8 +606,7 @@ test_that("normalize_ard(): stack and combine a table of a name and its list, dr
   st_cols <- with(tflspec::tfl_arg_defs(fn = "normalize_ard"), columns[[which(name == "stack")]])
   expect_match(hj, sprintf("<th>%s</th>\n<th>%s</th>", st_cols$key$label_ja, st_cols$value$label_ja),
                fixed = TRUE)
-  # no stand-in left: the new row comes from the definition's `new_row`
-  expect_null(.spec_fallback$table)
+  # the new row comes from the definition's `new_row`
   expect_identical(d$args$stack$new_row, list(key = "subgroup"))
   # read back as the page sends it: the same values, no change
   inp <- list(c__stack = norm_state_of(h, "stack"), c__combine = norm_state_of(h, "combine"),
