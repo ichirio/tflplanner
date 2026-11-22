@@ -887,7 +887,7 @@ app_ui <- function(lang = "en") {
               shiny::p(class = "small text-muted mt-2",
                        t("ARDs made elsewhere are in \"ARDs taken in\" (input/ard/)."))),
             bslib::card(
-              bslib::card_header(t("Preview")),
+              bslib::card_header(shiny::textOutput("data_preview_head", inline = TRUE)),
               shiny::uiOutput("data_dim"),
               DT::DTOutput("data_head")))),
         # the ADaM levels: the one file whose levels study$adam gets (#742)
