@@ -24,7 +24,7 @@ count_in <- function(x, pattern) sum(lengths(regmatches(x, gregexpr(pattern, x, 
 
 sample_in_home <- function(env = parent.frame()) {
   home <- local_home(env)
-  list(home = home, s = suppressMessages(create_sample_study(run = FALSE, home = home)))
+  list(home = home, s = suppressMessages(sample_study_copy(home)))
 }
 
 # ---- #599: a table's Rework runs after normalize_ard() ---------------------

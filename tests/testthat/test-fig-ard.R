@@ -11,7 +11,7 @@ fig_ard_study <- function(env = parent.frame()) {
   home <- withr_tempdir(env)
   withr::local_options(tflplanner.home = home, .local_envir = env)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  suppressMessages(create_sample_study(run = FALSE))
+  suppressMessages(sample_study_copy())
 }
 
 test_that("a figure's ARD source: own, a table's, none; nothing else", {

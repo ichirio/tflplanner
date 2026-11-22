@@ -89,7 +89,7 @@ test_that("a preview log held open by its program is not read as failed, then is
 test_that("a study field no program reads makes no program again; adam_levels makes them all (#738)", {
   skip_on_cran()
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   s <- suppressMessages(save_study(s, home = home))
   ids <- output_ids(s$planner)
   setup_file <- file.path(s$path, .study_setup_path())

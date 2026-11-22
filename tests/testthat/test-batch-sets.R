@@ -354,7 +354,7 @@ test_that("two official runs of the sample compared after a data fix", {
   home <- withr_tempdir()
   withr::local_options(tflplanner.home = home)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  s <- suppressMessages(create_sample_study(run = FALSE))
+  s <- suppressMessages(sample_study_copy())
   b1 <- run_batch(s, c("ard", "tfl"), data = TRUE, only = "T-14-1-1")
   expect_true(file.exists(file.path(b1$batch, "code", "programs", "study_helpers.R")))
   expect_true(file.exists(file.path(b1$batch, "output", "tfl", "report_status.csv")))

@@ -4,7 +4,7 @@ test_that("a figure's design is kept, saved as YAML, and makes its plot", {
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  s <- suppressMessages(create_sample_study(run = FALSE))
+  s <- suppressMessages(sample_study_copy())
   expect_null(fig_design(s$planner, "F-14-2-1"))
   # the sample's F-14-2-1 is a figure of its own code: the code goes, to be designed
   s$planner <- set_step_code(s$planner, "F-14-2-1", "content", NA)
@@ -67,7 +67,7 @@ test_that("a design is drawn on the study's data, as its program saves it", {
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  s <- suppressMessages(create_sample_study(run = FALSE))
+  s <- suppressMessages(sample_study_copy())
   d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP",
                                   value = "CHG")
   r <- preview_figure(s, "F-14-2-1", d)
@@ -110,7 +110,7 @@ test_that("the preview carries the advice, and a fix applies", {
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  s <- suppressMessages(create_sample_study(run = FALSE))
+  s <- suppressMessages(sample_study_copy())
   d <- tflspec::tfl_fig_template("km_simple", data = "ADTTE", param = "TTSKIN",
                                   pop = "SAFFL", group = "TRT01A")
   r <- preview_figure(s, "F-14-2-2", d)
@@ -126,7 +126,7 @@ test_that("a designed figure is copied to other parameters", {
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  s <- suppressMessages(create_sample_study(run = FALSE))
+  s <- suppressMessages(sample_study_copy())
   d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", value = "CHG")
   p <- set_fig_design(.set_report_type(s$planner, "F-14-2-1", "figure"), "F-14-2-1", d)
   p$outputs$description[p$outputs$output_id == "F-14-2-1"] <- "Mean change in SYSBP"
@@ -146,7 +146,7 @@ test_that("a preview for the screen is smaller, and says the saved size", {
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  s <- suppressMessages(create_sample_study(run = FALSE))
+  s <- suppressMessages(sample_study_copy())
   d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", value = "CHG")
   full <- preview_figure(s, "F-14-2-1", d)
   small <- preview_figure(s, "F-14-2-1", d, max_px = 800)

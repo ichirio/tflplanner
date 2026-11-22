@@ -373,7 +373,7 @@ ext_sample <- function(env = parent.frame()) {
   old <- options(tflplanner.home = home)
   do.call(on.exit, list(substitute(options(old)), add = TRUE), envir = env)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  p <- suppressMessages(create_sample_study(run = FALSE, home = home))$planner
+  p <- suppressMessages(sample_study_copy(home))$planner
   # (the sheets' patterns: the rows of output_id @<name>)
   for (nm in c("Compact", "Wide", "Third")) p <- add_page_pattern(p, nm)
   p
@@ -385,7 +385,7 @@ cfg_sample <- function(env = parent.frame()) {
   old <- options(tflplanner.home = home)
   do.call(on.exit, list(substitute(options(old)), add = TRUE), envir = env)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  p <- suppressMessages(create_sample_study(run = FALSE, home = home))$planner
+  p <- suppressMessages(sample_study_copy(home))$planner
   .pgs_add_pattern(.pgs_add_pattern(p, "Wide"), "Third")
 }
 

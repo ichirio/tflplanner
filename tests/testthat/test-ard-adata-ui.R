@@ -510,7 +510,7 @@ test_that("1-1: a population_id the sheet has is the condition's first row", {
 
 test_that("1-1 lists only the analysis data the report's analyses read (every sample report)", {
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE))
+  s <- suppressMessages(sample_study_copy())
   p <- s$planner
   ad <- .adata_rows(p)$data_id
   tabs <- unique(p$ard$analyses$output_id)
@@ -584,7 +584,7 @@ test_that("an analysis data form does not stay open on another report", {
 
 test_that("step 1 of the sample's T-14-1-1: the set once, the name first, its code shown", {
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE))
+  s <- suppressMessages(sample_study_copy())
   shiny::testServer(server_for(s$meta$study_id), {
     session$setInputs(nav = "make", step = "ard", target = "T-14-1-1")
     session$setInputs(ard_adata_pick = "adsl_saf")

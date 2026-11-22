@@ -75,7 +75,7 @@ test_that("the report list names the datasets a report reads, and its title", {
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  p <- suppressMessages(create_sample_study(run = FALSE))$planner
+  p <- suppressMessages(sample_study_copy())$planner
   # a table: its analyses' data and their population's
   expect_identical(.report_datasets(p, "T-14-1-1"), "ADSL")
   expect_identical(.report_datasets(p, "T-14-3-1"), c("ADAE", "ADSL"))
@@ -182,7 +182,7 @@ test_that("the sample's Rework is written as tflspec writes it: normalize_ard() 
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  p <- suppressMessages(create_sample_study(run = FALSE))$planner
+  p <- suppressMessages(sample_study_copy())$planner
   # (the Rework is one element, as it is written: split into lines)
   code <- unlist(strsplit(program_code(p, "T-14-2-2"), "
 ", fixed = TRUE))

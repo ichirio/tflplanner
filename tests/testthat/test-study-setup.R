@@ -405,7 +405,7 @@ test_that("a change to report_setup.R (the rounding) marks the reports outdated,
 test_that("the study's rounding is set once, in study_setup.R's part 2 (tflspec#791)", {
   skip_on_cran()
   local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE))
+  s <- suppressMessages(sample_study_copy())
   s$planner <- .spec_set_rounding(s$planner, "sas")
   s <- suppressMessages(save_study(s))
   setup <- readLines(file.path(s$path, .study_setup_path()), encoding = "UTF-8")
@@ -451,7 +451,7 @@ test_that("the study's rounding is set once, in study_setup.R's part 2 (tflspec#
 test_that("the setup reads the datasets a report uses, not every dataset of the catalog", {
   skip_on_cran()
   local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE))
+  s <- suppressMessages(sample_study_copy())
   p <- s$planner
   # a dataset of the catalog no report uses (its file is not on disk)
   p$spec$study$data$datasets <- c(p$spec$study$data$datasets,
