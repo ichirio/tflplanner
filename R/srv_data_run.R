@@ -46,6 +46,13 @@
                   options = list(dom = "tip", pageLength = 50L, scrollX = TRUE,
                                  scrollY = "420px"))
   })
+  # the card's header: "Preview", with the dataset's name once one is chosen
+  output$data_preview_head <- shiny::renderText({
+    r <- input$hot_ard_datasets_select$select$r
+    d <- ds_sub()
+    nm <- if (length(r) == 1L && !is.na(r) && r >= 1L && r <= nrow(d)) d$dataset[r]
+    .data_preview_title(nm)
+  })
   output$data_dim <- shiny::renderUI({
     # nothing chosen yet: say how to see one (a blank card looked broken)
     if (length(input$hot_ard_datasets_select$select$r) != 1L) {
@@ -745,4 +752,11 @@
         px$is_alive()) px$kill()
   })
   .srv_keep(environment())
+}
+
+# the Data tab's preview header: "Preview", or "Preview: ADSL" with the name
+.data_preview_title <- function(name = NULL) {
+  name <- trimws(as.character(name))
+  if (length(name) != 1L || is.na(name) || !nzchar(name)) return(t("Preview"))
+  sprintf(t("Preview: %s"), name)
 }
