@@ -372,3 +372,8 @@
 "The number of subjects at risk under the curves.","曲線の下に出す、リスクのある被験者数。"
 "The text of each categorical variable's values, by variable (R; the study's code lists by name, study$codelists$<name>). A variable the report does not show is left out, and so is a list the study has not got.","カテゴリ変数ごとの値の表示（R。試験のコードリストを名前で指定: study$codelists$<名前>）。帳票に出さない変数と、試験に無いリストは除く。"
 "The label of each value of a variable, code to text ({SEX: {F: Female}}) or a study list (!r study$codelists$SEX); empty for the code list's labels.  It goes with labels in one plan_labels, a variable's heading kept.","変数の値ごとのラベル。コードから表示へ（{SEX: {F: Female}}）か試験のリスト（!r study$codelists$SEX）。空欄ならコードリストのラベル。labels と 1 つの plan_labels になり、変数の見出しは残る。"
+"The decimals (or the format) of each statistic.","統計量ごとの小数の桁数（または書式）。"
+"The decimals (or the format) of each statistic (a listing counts nothing; kept as every template has it).","統計量ごとの小数の桁数（または書式）。Listing は何も数えないが、どのテンプレートにもあるので残している。"
+"The decimals (or the format) of each statistic; VAR:stat for one variable.","統計量ごとの小数の桁数（または書式）。VAR:stat で 1 つの変数だけ。"
+"The decimals (or the format) of the header N statistics.","見出しの N の統計量の小数の桁数（または書式）。"
+"The decimals (or the format) of the legend N.","凡例の N の小数の桁数（または書式）。"
