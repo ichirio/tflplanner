@@ -14,7 +14,7 @@ run_end_marks <- function(h) {
 test_that("a run this session did not start: the marks and the builder's ARD follow it", {
   skip_on_cran()
   local_home()
-  suppressMessages(create_sample_study(run = FALSE))
+  suppressMessages(sample_study_copy())
   shiny::testServer(run_end_server(), {
     session$setInputs(nav = "outputs")
     expect_identical(run_end_marks(output[["rp-list"]]$html)[["ok"]], 0L)
@@ -42,7 +42,7 @@ test_that("a run this session did not start: the marks and the builder's ARD fol
 test_that("a run in the background draws nothing again: the list, the report list's table, the step marks", {
   skip_on_cran()
   local_home()
-  suppressMessages(create_sample_study(run = FALSE))
+  suppressMessages(sample_study_copy())
   shiny::testServer(run_end_server(), {
     session$setInputs(nav = "outputs")
     session$elapse(3100)

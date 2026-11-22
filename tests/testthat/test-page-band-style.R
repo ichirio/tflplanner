@@ -6,7 +6,7 @@ band_sample <- function(env = parent.frame()) {
   old <- options(tflplanner.home = home)
   do.call(on.exit, list(substitute(options(old)), add = TRUE), envir = env)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  suppressMessages(create_sample_study(run = FALSE, home = home))$planner
+  suppressMessages(sample_study_copy(home))$planner
 }
 
 test_that("rtf_titles / rtf_footnotes have their style's fields, the size first", {

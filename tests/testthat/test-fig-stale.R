@@ -8,7 +8,7 @@ stale_study <- function(env = parent.frame()) {
   home <- withr_tempdir(env)
   withr::local_options(tflplanner.home = home, .local_envir = env)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  suppressMessages(create_sample_study(run = FALSE))
+  suppressMessages(sample_study_copy())
 }
 
 fig_state <- function(s, id = "F-14-2-3") {

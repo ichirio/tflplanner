@@ -277,7 +277,7 @@ test_that("a report taken out in the app: the file the save wrote goes", {
 # then a save)
 
 merge_study <- function(home) {
-  suppressMessages(create_sample_study(run = FALSE, home = home))
+  suppressMessages(sample_study_copy(home))
 }
 # a person's edit of the data definition, outside the app
 edit_data_yml <- function(s) {

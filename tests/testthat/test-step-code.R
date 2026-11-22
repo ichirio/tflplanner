@@ -289,7 +289,7 @@ test_that("the rules are seven, said in full where the switch is", {
 test_that("the sample's figures of their own code: F-14-2-2 reads T-14-2-2's ARD as `ard`", {
   skip_on_cran()
   local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE))
+  s <- suppressMessages(sample_study_copy())
   p <- s$planner
   expect_identical(.fig_ard_source(p, "F-14-2-2"), list(kind = "table", id = "T-14-2-2"))
   code <- unlist(strsplit(program_code(p, "F-14-2-2"), "
@@ -307,7 +307,7 @@ test_that("the sample's figures of their own code: F-14-2-2 reads T-14-2-2's ARD
 test_that("report_content() is written once, in the study's fig_setup.R", {
   skip_on_cran()
   local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE))
+  s <- suppressMessages(sample_study_copy())
   setup <- readLines(file.path(s$path, "programs", "tfl", "fig_setup.R"))
   expect_true(any(grepl("^report_content <- function", setup)))
   expect_true(any(grepl("^report_data <- function", setup)))

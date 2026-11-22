@@ -18,7 +18,7 @@ yaml_sample <- function(env = parent.frame()) {
   old <- options(tflplanner.home = home)
   do.call(on.exit, list(substitute(options(old)), add = TRUE), envir = env)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  suppressMessages(create_sample_study(run = FALSE, home = home))
+  suppressMessages(sample_study_copy(home))
 }
 
 test_that("the sample's YAML spec reads back to the same programs", {
