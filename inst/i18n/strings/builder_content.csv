@@ -268,3 +268,7 @@
 "With page by: the text a blank or missing page value prints as, in the page's heading ({value}) and its name. Blank: nothing, so ""Severity: {value}"" prints ""Severity: "". e.g. ""(Missing)""","ページ分けの値が空欄または欠測のとき、ページの見出し（{value}）と名前に出す文字。空欄 = 何も出さないので、""Severity: {value}"" は ""Severity: "" と出ます。例: ""(Missing)"""
 "Row group's border","行グループの罫線"
 "The rule under the last row of each row group. Blank: none. e.g. ""bottom""","各行グループの最後の行の下の罫線。空欄 = なし。例: ""bottom"""
+"What the total adds: ""cols"" a Total column, ""rows"" a Total row (a shift table's margin), ""both"" both, with the corner. Blank: cols. e.g. ""rows""","合計の付け方: ""cols"" は合計の列、""rows"" は合計の行（シフト表の周辺）、""both"" はその両方と角のセル。空欄: cols。例: ""rows"""
+"With the column header: the header rows styled, 1 the top row (the last the column labels). Blank: every header row. e.g. 1","列見出しと一緒に使います: 書式を付ける見出しの行。1 が一番上の行です（最後の行が列のラベル）。空欄: 見出しのすべての行。例: 1"
+"The title block's borders on every page of this table, as R (rtf_border()): top above the first row, bottom below the last. Blank: none. e.g. rtf_border(bottom = TRUE)","この帳票の各ページで、タイトルの部分に引く罫線を R で書きます（rtf_border()）: top は最初の行の上、bottom は最後の行の下。空欄: なし。例: rtf_border(bottom = TRUE)"
+"The footnote block's borders on every page of this table, as R (rtf_border()): top above the first row, bottom below the last. Blank: none. e.g. rtf_border(bottom = TRUE)","この帳票の各ページで、脚注の部分に引く罫線を R で書きます（rtf_border()）: top は最初の行の上、bottom は最後の行の下。空欄: なし。例: rtf_border(bottom = TRUE)"
