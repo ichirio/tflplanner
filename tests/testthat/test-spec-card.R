@@ -615,7 +615,7 @@ test_that("normalize_ard(): stack and combine a table of a name and its list, dr
   r <- spec_card_read(inp, "c", "normalize_ard")
   expect_identical(r$stack, list(subgroup = c("ALL", "SEX"), sub2 = "group2, group3"))
   expect_identical(args_to_r("normalize_ard", r["stack"]),
-                   'normalize_ard(stack = list(subgroup = c("ALL", "SEX"), sub2 = "group2, group3"))')
+                   'stack = list(subgroup = c("ALL", "SEX"), sub2 = "group2, group3")')
 })
 
 test_that("normalize_ard(): a stack written as R keeps its R switch and reads back as R", {
