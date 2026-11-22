@@ -22,7 +22,7 @@ test_that("a study's values are its setup's (the last one set), else tflspec's",
 test_that("the preview divides by the study's value", {
   skip_on_cran()
   local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE))
+  s <- suppressMessages(sample_study_copy())
   d <- fig_design(s$planner, "F-14-2-3")
   i <- which(vapply(d$data, function(p) identical(p$step, "time_unit"), NA))
   d$data[[i]]$unit <- "months"

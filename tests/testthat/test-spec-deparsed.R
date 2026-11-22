@@ -31,7 +31,7 @@ test_that("opening a study with such a value warns with the report id", {
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "ws")))
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   f <- file.path(s$path, "spec", "outputs", "T-BAD.yml")
   tflspec::tfl_write_output(tflspec::tfl_output(
     "T-BAD", "table", label = "x", common = list(population = "SAF"),

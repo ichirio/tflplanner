@@ -232,7 +232,7 @@ test_that("a draft identical to the saved study is dropped, not offered", {
 
 test_that("a draft gives back what only the spec holds (#415)", {
   home <- local_home()
-  suppressMessages(create_sample_study(run = FALSE, home = home))
+  suppressMessages(sample_study_copy(home))
   s <- suppressMessages(open_study("SAMPLE-01", home = home))
   id <- "T-14-3-1"
   o <- s$planner$spec$outputs[[id]]

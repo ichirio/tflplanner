@@ -10,7 +10,7 @@ test_that("records, objects and by: [] survive opening and saving the study", {
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  x <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  x <- suppressMessages(sample_study_copy(home))
   d <- x$path %||% file.path(home, "studies", "SAMPLE-01")
   dy <- file.path(d, "spec", "data.yml")
   cat("records:", "  - id: TEAE", "    dataset: ADAE", "    where: !r TRTEMFL == \"Y\"",

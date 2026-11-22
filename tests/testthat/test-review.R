@@ -9,7 +9,7 @@ skip_if_quick()  # slow: not in the quick check of a PR into next (helper.R)
   old <- options(tflplanner.home = home)
   do.call(on.exit, list(substitute(options(old)), add = TRUE), envir = env)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  suppressMessages(create_sample_study(run = FALSE))
+  suppressMessages(sample_study_copy())
 }
 
 .has <- function(r, rule, output_id = NULL, sheet = NULL, row = NULL, field = NULL) {

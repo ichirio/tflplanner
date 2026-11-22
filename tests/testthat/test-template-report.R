@@ -177,7 +177,7 @@ test_that("plan_digits in a template report: a variable's decimals the report's 
 test_that("a template report converted to code: its items on the usual cards, its program without the template", {
   skip_on_cran()
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   o <- tflspec::tfl_output("T-TPL", "table", label = "Demographics", common = list(population = "SAF"),
                            template = list(name = "demog",
                                          args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
@@ -309,7 +309,7 @@ test_that("the Japanese says one word for post-baseline, and the tip has its \\n
 test_that("a template report's preview is its content run on its ARD, not the study defaults' sheets", {
   skip_on_cran()
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   # the lab data the shift table reads (tflspec's simulated ADLB)
   saveRDS(tflspec::adlb, file.path(s$path, "data", "adam", "adlb.rds"))
   y <- readLines(file.path(s$path, "spec", "data.yml"), warn = FALSE)
@@ -400,7 +400,7 @@ test_that("a template report's step has five tabs in the order they are made, th
 
 .listing_tpl_study <- function(extra = list(), id = "L-TPL") {
   home <- local_home(parent.frame())
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   args <- utils::modifyList(
     list(data = "ADAE",
          columns = list(list(vars = "USUBJID", label = "Subject"),

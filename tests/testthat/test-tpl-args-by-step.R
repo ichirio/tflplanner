@@ -92,7 +92,7 @@ test_that("T-14-1-1T in SAMPLE-01 has no empty required argument and its preview
   ok <- tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/demog")), error = function(e) FALSE)
   skip_if(!isTRUE(ok), "this tflspec has no series templates (tflspec#824)")
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   f <- testthat::test_path("fixtures", "twins", "T-14-1-1T.yml")
   expect_true(file.copy(f, file.path(s$path, "spec", "outputs", "T-14-1-1T.yml")))
   toc_file <- file.path(s$path, "spec", "toc.yml")

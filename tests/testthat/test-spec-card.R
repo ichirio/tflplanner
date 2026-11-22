@@ -216,7 +216,7 @@ test_that("the cards read back what they show: no edit, no change (all the gener
 test_that("a card's edit is written to the SPEC's YAML and read back the same", {
   skip_on_cran()
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   id <- "T-14-1-1"
   item_of <- function(p, fn) Filter(function(i) i$fn == fn, builder_items(p, id))[[1L]]
   # the fields as the page holds them after an edit: `set` over the item's

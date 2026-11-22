@@ -89,7 +89,7 @@ test_that("a save after an outside edit asks to load first; the same part change
 
 test_that("keeping my changes in a conflict keeps a template report's template", {
   home <- local_home()
-  s0 <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s0 <- suppressMessages(sample_study_copy(home))
   o <- tflspec::tfl_output("T-TPL", "table", label = "Demographics", common = list(population = "SAF"),
                            template = list(name = "demog",
                                          args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))

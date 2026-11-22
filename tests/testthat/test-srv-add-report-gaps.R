@@ -511,7 +511,7 @@ test_that("demog with no population: no ARD run and no error note, the preview w
 test_that("demog's preview reads the study standard the report resolves with: its count cells and arm headings", {
   skip_on_cran()
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   o <- tflspec::tfl_output("T-DM", "table", label = "Demog", common = list(population = "SAF"),
                            template = list(name = "demog",
                                            args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
