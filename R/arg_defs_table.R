@@ -93,8 +93,11 @@
 .tbl_col_label <- function(cd, lang = "en") {
   if (!is.list(cd)) return(NULL)
   ok <- function(x) is.character(x) && length(x) == 1L && !is.na(x) && nzchar(x)
-  if (identical(lang, "ja") && ok(cd$label_ja)) return(cd$label_ja)
-  if (ok(cd$label_en)) return(tr(cd$label_en, lang))
+  lb <- if (is.list(cd$label)) cd$label else list()
+  ja <- cd$label_ja %||% lb$ja
+  en <- cd$label_en %||% lb$en
+  if (identical(lang, "ja") && ok(ja)) return(ja)
+  if (ok(en)) return(tr(en, lang))
   NULL
 }
 
@@ -153,7 +156,9 @@
     val_head <- switch(vk, r = "R", list = "Values", "Value")
     heads <- c(tr(key_head, lang), if (identical(val_head, "R")) "R" else tr(val_head, lang))
     # (the def's `columns`, key and value, each its label in the language)
+    # (named key / value, else the def's two columns in order)
     dc <- if (is.list(def$columns)) def$columns else list()
+    if (is.null(dc$key) && is.null(dc$value) && length(dc) == 2L) dc <- stats::setNames(dc, c("key", "value"))
     heads <- c(.tbl_col_label(dc$key, lang) %||% heads[[1L]], .tbl_col_label(dc$value, lang) %||% heads[[2L]])
     kinds <- c(kk, vk)
     return(list(shape = "map", cols = c("key", "value"), heads = heads,

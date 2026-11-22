@@ -57,6 +57,9 @@
 /* the template card's Revert (one line, its text is the width it needs) */
 button[onclick*='tpl_revert'] { white-space: nowrap; flex-shrink: 0; }
 .rp-field { margin-bottom: .35rem; min-width: 0; }
+.rp-field-head { display: flex; align-items: center; gap: .3rem; }
+.rp-field-head > .rp-field-label { flex: 1 1 auto; min-width: 0; }
+.rp-field-switches { display: flex; align-items: center; gap: .2rem; flex-shrink: 0; margin-bottom: .1rem; }
 .rp-field-label { font-size: 12.5px; margin-bottom: .1rem; display: flex; align-items: center;
   gap: .25rem; flex-wrap: wrap; }
 .rp-field-label .rp-req { color: #dc3545; font-weight: 600; }
@@ -93,13 +96,17 @@ button[onclick*='tpl_revert'] { white-space: nowrap; flex-shrink: 0; }
 .rp-map-switch input { display: none; }
 .rp-map-switch .rp-map-val-lab, .rp-map-row.rp-map-val .rp-map-switch .rp-map-col-lab { display: none; }
 .rp-map-row.rp-map-val .rp-map-switch .rp-map-val-lab { display: inline; }
+/* a table in a narrow card: its first column (a name, a column) keeps a
+   width to read and type in, and the table scrolls rather than squeezing it */
+.rp-tbl { overflow-x: auto; }
 .rp-tbl-table { margin-bottom: .1rem; font-size: 13px; }
+.rp-tbl-table td.rp-tbl-td:first-child { min-width: 7rem; }
 .rp-tbl-table th { font-size: 11.5px; font-weight: 600; color: #4b5563; padding: .1rem .25rem; }
 .rp-tbl-table td { padding: .1rem .25rem; vertical-align: top; }
 .rp-tbl-table td.rp-tbl-tools, .rp-tbl-table th.rp-tbl-tools { width: 1%; white-space: nowrap; }
 .rp-tbl-tools .btn { padding: 0 .2rem; text-decoration: none; color: #6b7280; }
 .rp-tbl-k-r .rp-tbl-cell { font-family: Consolas, 'Courier New', monospace; }
-.rp-tbl-td .selectize-control.rp-tbl-multi { min-width: 12rem; }
+.rp-tbl-td .selectize-control.rp-tbl-multi { min-width: 9rem; }
 .rp-tbl-ro td { color: #6b7280; background: var(--bs-tertiary-bg, #f6f7f9); }
 .rp-tbl-table td.rp-tbl-none { color: #9ca3af; font-size: 12.5px; }
 .rp-tbl-addrow { padding: 0; font-size: 12.5px; text-decoration: none; }

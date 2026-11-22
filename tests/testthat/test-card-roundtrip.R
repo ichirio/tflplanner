@@ -351,3 +351,32 @@ test_that("a type with a call has the R switch (a call is written as R)", {
   h <- html(spec_card("c", "plan_style", list(fn = "plan_style", args = list(border = "tfl"))))
   expect_match(h, 'id="c__border__isr"', fixed = TRUE)
 })
+
+test_that("a call where the type also takes a string (plan_style(border = )) is shown as R, kept with no edit", {
+  skip_on_cran()
+  fn <- "plan_style"
+  args <- list(border = list(fn = "rtf_border", args = list(all = TRUE, inside_h = TRUE)))
+  rt <- round_trip(fn, args, fids = c("border__r", "border__isr"))
+  expect_identical(shown_value(rt$html, "c__border__r"), .arg_to_r(args$border))
+  expect_true(shown_value(rt$html, "c__border__isr"))
+  expect_same_args(fn, rt$args, args)
+})
+
+test_that("an R-only field's input is not hidden (its kind class is not the R switch's)", {
+  skip_on_cran()
+  h <- html(spec_card("c", "plan_titles", list(fn = "plan_titles",
+                                                args = list(titles = c("Table 1", "Demographics")))))
+  fld <- regmatches(h, regexpr('<div class="rp-field[^"]*" data-arg="titles"', h))
+  expect_length(fld, 1L)
+  expect_match(fld, "rp-field-rexpr", fixed = TRUE)
+  expect_false(grepl("rp-field-r\b", fld))
+})
+
+test_that("a map table's headings are the definition's column labels", {
+  skip_on_cran()
+  it <- list(fn = "plan_columns", args = list(widths = c(row_label = 5, .values = 2)))
+  ctx <- list(columns = c("row_label", ".values"))
+  hj <- html(spec_card("c", "plan_columns", it, ctx = ctx, lang = "ja"))
+  th <- regmatches(hj, gregexpr("<th>[^<]*</th>", hj))[[1L]]
+  expect_identical(enc2utf8(th[1:2]), c("<th>\u5217</th>", "<th>\u5e45</th>"))
+})

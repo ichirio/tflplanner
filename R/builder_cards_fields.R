@@ -154,6 +154,15 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
         !all(vapply(value, function(x) is.atomic(x) && length(x) == 1L, NA))) {
     value <- tflspec::tfl_r(.arg_to_r(value))
   }
+  # (a value that is not one plain value in a field of one -- a call,
+  # plan_style(border = rtf_border(...)), in its text field -- is shown as
+  # its R, so that nothing of it is lost)
+  one_kinds <- c("string", "column", "stat", "template", "number", "integer", "enum", "pick_one",
+                 "pick_enum", "object", "colour", "shape")
+  if (kind %in% one_kinds && !is.null(value) && !inherits(value, c("tfl_r", "tfl_unset")) &&
+        !(is.atomic(value) && length(value) == 1L)) {
+    value <- tflspec::tfl_r(.arg_to_r(value))
+  }
   # (an argument that is R only -- no other form -- shows its R in its own
   # field, as the others' R: no switch to press, its R mark fixed)
   r_only <- kind %in% c("r", "condition")
@@ -221,21 +230,30 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
                       `data-init` = if (none) "1", checked = if (none) NA else NULL),
     shiny::tags$span(t(.none_word)))
   # (a def's form keeps its type's class: a pick of several is a list's)
+  # (an R field's kind class is rp-field-rexpr: rp-field-r is the state "R
+  # switch on", which hides the field's own input -- an R-only field's
+  # input is its R box, so it would be hidden with nothing in its place)
   cls_kind <- switch(kind, pick_many = "list", pick_one = "column", pick_enum = "enum",
-                     condition = "r rp-field-condition", kind)
+                     r = "rexpr", condition = "rexpr rp-field-condition", kind)
   cls <- c("rp-field", paste0("rp-field-", cls_kind), if (required) "rp-field-required",
            if (is_r) "rp-field-r", if (none) "rp-field-none",
            if (none || nzchar(r_text) || .has_value(value)) "rp-has-value")
   shiny::div(
     class = paste(cls, collapse = " "), `data-arg` = arg, `data-field` = fid,
-    shiny::tags$label(class = "rp-field-label", `for` = fid,
-                      builder_label(label, arg, "arg", lang),
-                      if (required) shiny::tags$span(class = "rp-req", title = t("Required"), "*"),
-                      from_badge(from, lang, own = own),
-                      help_tip(help), help_link),
+    # (the "(none)" and R switches on the label's line, right: the input
+    # keeps the field's whole width)
+    shiny::div(class = "rp-field-head",
+               shiny::tags$label(class = "rp-field-label", `for` = fid,
+                                 builder_label(label, arg, "arg", lang),
+                                 if (required) shiny::tags$span(class = "rp-req", title = t("Required"), "*"),
+                                 from_badge(from, lang, own = own),
+                                 help_tip(help), help_link),
+               if (!is.null(none_switch) || !is.null(r_switch)) {
+                 shiny::span(class = "rp-field-switches", none_switch, r_switch)
+               }),
     shiny::div(class = "rp-field-row",
                shiny::div(class = "rp-form-input", control),
-               if (r_ok) r_input, if (none_ok) shiny::div(class = "rp-none-show", t(.none_word)), none_switch, r_switch),
+               if (r_ok) r_input, if (none_ok) shiny::div(class = "rp-none-show", t(.none_word))),
     if (identical(kind, "pick_many") && isTRUE(def$ordered)) {
       shiny::div(class = "rp-field-hint rp-ordered-hint", t("In order, top to bottom"))
     },
