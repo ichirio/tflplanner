@@ -46,6 +46,17 @@ skip_if_quick <- function() {
   invisible(TRUE)
 }
 
+# The tflspec of tflplanner#742's pair: adam_levels define_xml /
+# define_spec / none (unset none).  Until it is installed the tests that
+# write a study's programs under those values are skipped.
+skip_if_no_define_levels <- function() {
+  ok <- tryCatch({
+    tflspec:::.adam_levels_check("define_xml", "adam_levels")
+    TRUE
+  }, error = function(e) FALSE)
+  testthat::skip_if_not(ok, "tflspec does not take adam_levels: define_xml yet (tflplanner#742's pair)")
+}
+
 # The sample study as create_sample_study(run = FALSE) makes it, built once
 # per R session (each test process) into a cache folder under tempdir() and
 # taken off the cache home's list (unregister_study(): what tflplanner keeps

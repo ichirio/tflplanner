@@ -220,8 +220,24 @@
   add <- strsplit(sub("\n$", "", yaml::as.yaml(as.list(v))), "\n", fixed = TRUE)[[1L]]
   at <- which(lines == "settings:")
   if (length(at)) {
+    # (a key tflspec wrote too -- adam_levels, from the ARD's study sheet --
+    # once: the planner's line)
     end <- at[1L]
     while (end < length(lines) && grepl("^[ ]", lines[end + 1L])) end <- end + 1L
+    i <- seq_len(end - at[1L]) + at[1L]
+    # (the key's line, quoted or not, and the lines indented under it)
+    key <- gsub("^[\"']|[\"']$", "", sub("^  ([^ ][^:]*):.*$", "\\1", lines[i]))
+    dup <- i[grepl("^  [^ #]", lines[i]) & key %in% names(v)]
+    for (d in dup) {
+      k <- d
+      while (k < end && grepl("^   ", lines[k + 1L])) k <- k + 1L
+      if (k > d) dup <- c(dup, (d + 1L):k)
+    }
+    dup <- unique(dup)
+    if (length(dup)) {
+      lines <- lines[-dup]
+      end <- end - length(dup)
+    }
     lines <- append(lines, paste0("  ", add), after = end)
   } else {
     lines <- c(lines, "settings:", paste0("  ", add))

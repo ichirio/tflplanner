@@ -44,6 +44,7 @@ test-toc-rules.R,1,0.6
 test-tpl-suggest-ui.R,1,2.0
 test-tpl-table-field-fixes.R,1,1.2
 test-update-gaps.R,1,0.0
+test-adam-levels.R,2,0.1
 test-ai-list.R,2,0.0
 test-ai-notes.R,2,0.0
 test-ard-adata-ui.R,2,8.9

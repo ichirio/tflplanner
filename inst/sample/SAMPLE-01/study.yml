@@ -19,6 +19,9 @@ settings:
   program_dir: programs/tfl
   file: '{output_id}.rtf'
   program: '{output_id}.R'
+  adam_levels: define_xml
+  adam_levels_file: data/adam/define.xml
+  adam_levels_applied: '2026-11-22T00:00:00'
 keys:
   id: USUBJID
   output: output/ard/ard.rds

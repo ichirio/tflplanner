@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The define.xml of tflplanner's sample study SAMPLE-01: a small, made-up
+     Define-XML 2.1 of its ADSL (no methods, comments or value-level
+     metadata).  [Data] -> ADaM levels applies its code lists' levels. -->
+<ODM xmlns="http://www.cdisc.org/ns/odm/v1.3"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     xmlns:def="http://www.cdisc.org/ns/def/v2.1"
+     ODMVersion="1.3.2"
+     FileType="Snapshot"
+     FileOID="DEF.SAMPLE-01"
+     CreationDateTime="2026-11-22T00:00:00"
+     def:Context="Other">
+  <Study OID="ST.SAMPLE-01">
+    <GlobalVariables>
+      <StudyName>SAMPLE-01</StudyName>
+      <StudyDescription>tflplanner's sample study (simulated data)</StudyDescription>
+      <ProtocolName>SAMPLE-01</ProtocolName>
+    </GlobalVariables>
+    <MetaDataVersion OID="MDV.SAMPLE-01" Name="Study SAMPLE-01, ADaM"
+                     def:DefineVersion="2.1.0">
+      <def:Standards>
+        <def:Standard OID="STD.ADAMIG.1.1" Name="ADaMIG" Type="IG" Version="1.1" Status="Final"/>
+      </def:Standards>
+
+      <ItemGroupDef OID="IG.ADSL" Name="ADSL" SASDatasetName="ADSL" Repeating="No"
+                    IsReferenceData="No" Purpose="Analysis" def:Structure="One record per subject"
+                    def:StandardOID="STD.ADAMIG.1.1" def:ArchiveLocationID="LF.ADSL">
+        <Description><TranslatedText xml:lang="en">Subject-Level Analysis Dataset</TranslatedText></Description>
+        <ItemRef ItemOID="IT.ADSL.USUBJID" OrderNumber="1" Mandatory="Yes" KeySequence="1"/>
+        <ItemRef ItemOID="IT.ADSL.SEX" OrderNumber="2" Mandatory="No"/>
+        <ItemRef ItemOID="IT.ADSL.AGEGR1" OrderNumber="3" Mandatory="No"/>
+        <ItemRef ItemOID="IT.ADSL.RACE" OrderNumber="4" Mandatory="No"/>
+        <def:Class Name="SUBJECT LEVEL ANALYSIS DATASET"/>
+        <def:leaf ID="LF.ADSL" xlink:href="adsl.rds">
+          <def:title>adsl.rds</def:title>
+        </def:leaf>
+      </ItemGroupDef>
+
+      <ItemDef OID="IT.ADSL.USUBJID" Name="USUBJID" SASFieldName="USUBJID" DataType="text" Length="20">
+        <Description><TranslatedText xml:lang="en">Unique Subject Identifier</TranslatedText></Description>
+      </ItemDef>
+      <ItemDef OID="IT.ADSL.SEX" Name="SEX" SASFieldName="SEX" DataType="text" Length="1">
+        <Description><TranslatedText xml:lang="en">Sex</TranslatedText></Description>
+        <CodeListRef CodeListOID="CL.SEX"/>
+      </ItemDef>
+      <ItemDef OID="IT.ADSL.AGEGR1" Name="AGEGR1" SASFieldName="AGEGR1" DataType="text" Length="5">
+        <Description><TranslatedText xml:lang="en">Pooled Age Group 1</TranslatedText></Description>
+        <CodeListRef CodeListOID="CL.AGEGR1"/>
+      </ItemDef>
+      <ItemDef OID="IT.ADSL.RACE" Name="RACE" SASFieldName="RACE" DataType="text" Length="41">
+        <Description><TranslatedText xml:lang="en">Race</TranslatedText></Description>
+        <CodeListRef CodeListOID="CL.RACE"/>
+      </ItemDef>
+
+      <CodeList OID="CL.SEX" Name="Sex" DataType="text">
+        <CodeListItem CodedValue="F" OrderNumber="1">
+          <Decode><TranslatedText xml:lang="en">Female</TranslatedText></Decode>
+        </CodeListItem>
+        <CodeListItem CodedValue="M" OrderNumber="2">
+          <Decode><TranslatedText xml:lang="en">Male</TranslatedText></Decode>
+        </CodeListItem>
+      </CodeList>
+      <CodeList OID="CL.AGEGR1" Name="Pooled Age Group 1" DataType="text">
+        <EnumeratedItem CodedValue="&lt;65" OrderNumber="1"/>
+        <EnumeratedItem CodedValue="&gt;=65" OrderNumber="2"/>
+      </CodeList>
+      <CodeList OID="CL.RACE" Name="Race" DataType="text">
+        <EnumeratedItem CodedValue="WHITE" OrderNumber="1"/>
+        <EnumeratedItem CodedValue="BLACK OR AFRICAN AMERICAN" OrderNumber="2"/>
+        <EnumeratedItem CodedValue="ASIAN" OrderNumber="3"/>
+        <EnumeratedItem CodedValue="AMERICAN INDIAN OR ALASKA NATIVE" OrderNumber="4"/>
+        <EnumeratedItem CodedValue="NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER" OrderNumber="5"/>
+        <EnumeratedItem CodedValue="OTHER" OrderNumber="6"/>
+      </CodeList>
+    </MetaDataVersion>
+  </Study>
+</ODM>

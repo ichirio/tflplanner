@@ -134,6 +134,9 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
 # list's own
 .review_planner <- function(p, facts = NULL) {
   st <- p$study[!is.na(p$study)]
+  # the app's own settings are not study-sheet keys: tflspec reads only
+  # adam_levels of them, so the rest never reach its review
+  st <- st[!names(st) %in% .study_app_only_settings]
   spec <- c(.review_page_unset(p$sheets), list(study = if (length(st)) st))
   spec$study <- spec$study %||% NULL
   r <- tflspec::tfl_review_spec(spec = spec, ard = p$ard, listings = p$lf,
