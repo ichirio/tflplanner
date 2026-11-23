@@ -12,15 +12,15 @@ bs_home <- function(env = parent.frame()) {
 }
 
 # two reports with an ARD each, and a listing (no ARD program)
-bs_planner <- function() {
-  p <- add_output(new_planner(), "DM")
-  p <- add_output(p, "VS")
+bs_planner <- function(ids = c("DM", "VS")) {
+  p <- add_output(new_planner(), ids[1])
+  p <- add_output(p, ids[2])
   p <- add_output(p, "L1", type = "listing", at = "end")
   p$ard$datasets <- data.frame(dataset = "ADSL", path = "data/adam/adsl.rds")
   p$ard$populations <- data.frame(population_id = "SAF", dataset = "ADSL",
                                   where = "SAFFL == \"Y\"")
   p$ard$analyses <- data.frame(
-    output_id = c("DM", "VS"), analysis_id = c("AGE", "AGE"),
+    output_id = ids, analysis_id = c("AGE", "AGE"),
     method = "continuous", population_id = "SAF", by = "TRT01A",
     variables = "AGE")
   for (s in names(p$ard)) p$ard[[s]] <- .normalize_ard_sheet(p$ard[[s]], s)
@@ -117,6 +117,59 @@ test_that("an official run of a named batch, or leaving reports out", {
 
   # a name the study does not have
   expect_error(run_batch(o, "ard", batch = "Nope"), "No batch named")
+})
+
+test_that("the runner takes an output id as a program name, and --exclude too", {
+  skip_on_cran()
+  bs_home()
+  # DM has a program name of its own; the ARD file of "VS 2" has `_` for the space
+  ids <- c("DM", "VS 2")
+  p <- bs_planner(ids)
+  p$sheets$report <- rbind(p$sheets$report, NA)
+  p$sheets$report[nrow(p$sheets$report), c("output_id", "program")] <- c("DM", "t_dm")
+  s <- create_study("BN", planner = p)
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  o <- open_study("BN")
+  progs <- function(b) basename(b$result$program)
+  expect_identical(report_info(o$planner, "DM")$program, "t_dm.R")
+
+  # an id: the ARD program (DM.R) and the report program (t_dm.R) of the report
+  b <- run_batch(o, c("ard", "tfl"), only = "DM")
+  expect_identical(progs(b), c("DM.R", "t_dm.R"))
+  Sys.sleep(1.1)
+  # an id with a space (the ARD file has `_`)
+  b <- run_batch(o, "ard", only = "VS 2")
+  expect_identical(progs(b), "VS_2.R")
+  Sys.sleep(1.1)
+  # an id with a Japanese character
+  ids2 <- c("DM", "\u5e74\u9f62")
+  s2 <- create_study("BN2", planner = bs_planner(ids2))
+  saveRDS(cards::ADSL, file.path(s2$path, "data", "adam", "adsl.rds"))
+  b <- run_batch(open_study("BN2"), c("ard", "tfl"), only = "\u5e74\u9f62")
+  expect_length(progs(b), 2L)
+  expect_true(all(grepl("\u5e74\u9f62|^_+\.R$", progs(b))))
+  Sys.sleep(1.1)
+  # a file name still works, with or without .R
+  expect_identical(progs(run_batch(o, "ard", only = "VS_2.R")), "VS_2.R")
+  Sys.sleep(1.1)
+  expect_identical(progs(run_batch(o, "tfl", only = "t_dm")), "t_dm.R")
+  Sys.sleep(1.1)
+  # left out by id: the report's two programs (run_batch writes their names)
+  b <- run_batch(o, c("ard", "tfl"), exclude = "DM")
+  expect_identical(progs(b), c("VS_2.R", "VS 2.R"))
+  Sys.sleep(1.1)
+  # the runner's own rule: Rscript programs/autoexec_all.R --exclude=<id>
+  old <- setwd(s$path)
+  out <- system2(file.path(R.home("bin"), "Rscript"),
+                 c("programs/autoexec_all.R", shQuote("--exclude=VS 2")),
+                 stdout = TRUE, stderr = TRUE)
+  setwd(old)
+  expect_true(any(grepl("^Left out: .*VS_2.R", out)))
+  Sys.sleep(1.1)
+  # a name that matches nothing: as before, nothing to run
+  b <- run_batch(o, "ard", only = "NOPE")
+  expect_false(b$ok)
+  expect_true(any(grepl("Nothing to run", b$output, fixed = TRUE)))
 })
 
 test_that("the batches column survives the SPEC round trip", {
