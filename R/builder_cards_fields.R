@@ -335,6 +335,13 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
 .field_select <- function(fid, choices, value, multiple = FALSE, lang = "en", placeholder = NULL,
                           create = FALSE) {
   choices <- .choices_with(choices, value)
+  # (a select of several shows its items in its options' order: the values
+  # first, in their own order -- a hierarchy's levels, the keys of a page)
+  if (multiple && is.atomic(choices) && is.atomic(value) && length(value)) {
+    at <- match(as.character(value), as.character(choices), nomatch = 0L)
+    at <- unique(at[at > 0L])
+    if (length(at)) choices <- c(choices[at], choices[-at])
+  }
   ph <- if (!is.null(placeholder)) as.character(placeholder)[[1L]] else tr("Choose", lang)
   opts <- list(placeholder = ph)
   if (create) opts$create <- TRUE

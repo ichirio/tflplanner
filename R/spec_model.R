@@ -128,6 +128,26 @@
 # Two planners the same, whatever spec they carry
 .same_planner <- function(a, b) identical(.planner_body(a), .planner_body(b))
 
+# A view without what reaches study.yml alone (#738): the study's own
+# settings (.study_own_settings: the planner writes them into study.yml's
+# `settings:` itself, .study_yml_own_settings(); .planner_sheets() gives the
+# bridge none of them) and the ARD study sheet's `adam_levels` row
+# (tfl_yaml_from_sheets() reads it into study.yml's settings only).  Two
+# views the same by it bridge to the same files but study.yml, so a change
+# of these is bridged as a change of the study's fields is: study.yml alone
+# (.spec_bridge_study()).  test-spec-sync-speed.R checks it on the sample.
+.planner_core <- function(body) {
+  if (is.null(body)) return(NULL)
+  if (length(body$study)) body$study <- body$study[setdiff(names(body$study), .study_own_settings)]
+  st <- body$ard$study
+  if (is.data.frame(st) && "key" %in% names(st) && any(st$key %in% "adam_levels")) {
+    st <- st[!st$key %in% "adam_levels", , drop = FALSE]
+    rownames(st) <- NULL
+    body$ard$study <- st
+  }
+  body
+}
+
 .spec_meta <- function(meta) {
   m <- lapply(stats::setNames(.study_fields, .study_fields), function(k) {
     v <- meta[[k]]
@@ -315,7 +335,46 @@
       return(e$was)
     }
   }
+  near <- .spec_bridge_base_near(key)
+  if (!is.null(near)) return(.spec_base_put(key, near))
   .spec_base_put(key, .spec_bridge(base, meta, style))
+}
+
+# The bridge of a base from a kept one that differs from it only in what
+# reaches study.yml alone (the study's fields, .planner_core()): its files
+# copied, study.yml bridged anew (#738: a save of a title, or of a study
+# setting, is bridged study.yml alone and keeps no bridge of its base, so
+# the next edit of a report bridged the whole study again).  Taken only when
+# the kept bridge's study.yml is what .spec_bridge_study() writes for it
+# (the two writers agree for that base); else NULL, and the base is bridged
+# whole.  Cache key: the kept entry's key list(base, fields, style), the
+# same style and core required.
+.spec_bridge_base_near <- function(key) {
+  core <- .planner_core(key[[1L]])
+  for (e in .spec_base_cache$entries) {
+    if (!identical(e$key[[3L]], key[[3L]]) || !dir.exists(e$was$dir) ||
+        !identical(.planner_core(e$key[[1L]]), core)) next
+    old <- tryCatch(.spec_bridge_study(e$key[[1L]], e$key[[2L]], key[[3L]]), error = function(err) NULL)
+    if (is.null(old)) return(NULL)
+    unlink(old$dir, recursive = TRUE)
+    if (!identical(old$text[[.study_file]], e$was$text[[.study_file]])) return(NULL)
+    now <- tryCatch(.spec_bridge_study(key[[1L]], key[[2L]], key[[3L]]), error = function(err) NULL)
+    if (is.null(now)) return(NULL)
+    on.exit(unlink(now$dir, recursive = TRUE), add = TRUE)
+    tmp <- tempfile("tflplanner-yaml")
+    dir.create(tmp)
+    top <- list.files(e$was$dir, all.files = TRUE, no.. = TRUE)
+    if (!all(file.copy(file.path(e$was$dir, top), tmp, recursive = TRUE))) {
+      unlink(tmp, recursive = TRUE)
+      return(NULL)
+    }
+    out <- e$was
+    out$dir <- tmp
+    out$text[[.study_file]] <- now$text[[.study_file]]
+    writeLines(now$text[[.study_file]], file.path(tmp, .study_file), useBytes = TRUE)
+    return(out)
+  }
+  NULL
 }
 
 .spec_sync_run <- function(p, meta) {
@@ -330,7 +389,10 @@
   style <- sp$study$study$settings$style
   # (the view the same, the study's fields not: study.yml alone can change;
   # a study the cut bridge cannot write is bridged whole, as before)
-  study_only <- !is.null(sp) && !is.null(sp$base) && identical(body, sp$base)
+  # (the same but for the study's own settings -- the ADaM levels, the
+  # treatment variable: study.yml alone too, .planner_core(), #738)
+  study_only <- !is.null(sp) && !is.null(sp$base) &&
+    (identical(body, sp$base) || identical(.planner_core(body), .planner_core(sp$base)))
   now <- if (study_only) tryCatch(.spec_bridge_study(body, meta, style), error = function(e) NULL)
   was <- if (!is.null(now)) tryCatch(.spec_bridge_study(sp$base, sp$meta, style), error = function(e) NULL)
   if (is.null(now) || is.null(was)) {

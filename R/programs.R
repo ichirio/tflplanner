@@ -237,7 +237,7 @@ report_info <- function(x, output_id) {
 .rework_normalize_sheets <- function(x, output_id) {
   sp <- .spec_object_last(x, table_sheets(), .study_keys$table)
   code <- tryCatch(
-    tflspec::tfl_table_code(sp, output_id, pipe = "|>", ard_spec = .ard_spec(x$ard)),
+    tflspec::tfl_table_code(sp, output_id, pipe = "|>", ard_spec = .ard_spec_last(x$ard)),
     error = function(e) tryCatch(tflspec::tfl_table_code(sp, output_id, pipe = "|>"),
                                  error = function(e) NULL))
   i <- match("plan <- ard |>", code)
@@ -673,7 +673,7 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 # tflspec::tfl_normalize_code()
 .normalize_line <- function(x, output_id) {
   sp <- .spec_object_last(x, table_sheets(), .study_keys$table)
-  tryCatch(tflspec::tfl_normalize_code(sp, .ard_spec(x$ard), output_id),
+  tryCatch(tflspec::tfl_normalize_code(sp, .ard_spec_last(x$ard), output_id),
            error = function(e) "data <- normalize_ard(ard)")
 }
 
@@ -690,6 +690,22 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   .spec_cache$key <- key
   .spec_cache$sp <- sp
   sp
+}
+
+# The ARD definition of the planner's sheets, kept for the next report of the
+# same sheets (#738): writing every report's program read it once per table
+# report (0.1 s each).  Cache key: the ARD sheets and the company's
+# statistics and methods it is read with.  A definition that does not hold
+# is not kept: its error comes again each time.
+.ard_spec_cache <- new.env(parent = emptyenv())
+.ard_spec_last <- function(ard) {
+  key <- list(ard, .std_ard_statistics(), .std_ard_methods())
+  k <- .ard_spec_cache
+  if (!is.null(k$key) && identical(k$key, key)) return(k$spec)
+  spec <- .ard_spec(ard)
+  k$key <- key
+  k$spec <- spec
+  spec
 }
 
 # {OUTPUT_POPULATION} and {OUTPUT_SECTION} by default: the label of the
@@ -746,7 +762,7 @@ program_code <- function(x, output_id, date = Sys.Date()) {
         if (!is.null(y)) {
           tflspec::tfl_content_code(.code_content(y), pipe = "|>")
         } else {
-          tryCatch(tflspec::tfl_table_code(sp, output_id, pipe = "|>", ard_spec = .ard_spec(x$ard)),
+          tryCatch(tflspec::tfl_table_code(sp, output_id, pipe = "|>", ard_spec = .ard_spec_last(x$ard)),
                    error = function(e) tflspec::tfl_table_code(sp, output_id, pipe = "|>"))
         }
       } else {

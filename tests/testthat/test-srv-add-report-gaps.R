@@ -588,3 +588,27 @@ test_that("Add from a series template copies it into the study and says so", {
     expect_false(any(grepl("Copied the template", new, fixed = TRUE)))
   })
 })
+
+test_that("a KM template's data card: its button says what it does, an action, not a save (#754)", {
+  id <- sample_for_add("KMB")
+  shown <- watch_add()
+  shiny::testServer(server_for(id), {
+    rv <- session$userData$rv
+    o <- tflspec::tfl_output("F-KMB-1", "figure", label = "KM",
+                             template = list(name = "km_survival"),
+                             data = list(steps = .tpl_steps_from("ADTTE", NULL, "", "")))
+    rv$p <- .spec_add_output(rv$p, o, label = "KM")
+    session$setInputs(target = "F-KMB-1", nav = "make", step = "data")
+    session$flushReact()
+    h <- add_html(output$tpl_card_data$html)
+    expect_match(h, ">Match the analysis set</span></button>", fixed = TRUE)
+    expect_match(h, "Writes the report&#39;s data: steps from these fields", fixed = TRUE)
+    expect_false(grepl(">Apply</span></button>", h, fixed = TRUE))
+    # (what it does is as before: the data: steps written, the analysis set's join)
+    session$setInputs(tpl_data_ds = "ADTTE", tpl_data_param = "", tpl_data_pop = "SAF",
+                      tpl_data_filter = "", tpl_data_apply = 1)
+    f <- .tpl_steps_fields(rv$p$spec$outputs[["F-KMB-1"]]$data$steps)
+    expect_true(f$join)
+    expect_identical(rv$p$spec$outputs[["F-KMB-1"]]$common$population, "SAF")
+  })
+})

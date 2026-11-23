@@ -843,25 +843,46 @@ test_that("an edit's spec is bridged once, and the base once until it changes (#
   })
   p <- s$planner
   p$study[["adam_levels"]] <- "none"
-  # the study tab's plan_cells() card asks twice for each edit
+  # the study tab's plan_cells() card asks twice for each edit; a study's
+  # own setting reaches study.yml alone: no report bridged
   a <- .spec_now(p)
   expect_identical(.spec_now(p), a)
-  expect_identical(n, 2L)
+  expect_identical(n, 0L)
   expect_true(any(grepl("adam_levels: none", a$text[["study.yml"]], fixed = TRUE)))
-  # the next edit: its own bridge only, the base's kept
   p$study[["treatment"]] <- "TRT01P"
   b <- .spec_now(p)
-  expect_identical(n, 3L)
+  expect_identical(n, 0L)
   expect_true(any(grepl("treatment: TRT01P", b$text[["study.yml"]], fixed = TRUE)))
+  # a report's edit: its bridge and the base's, asked twice
+  p$outputs$description[1L] <- "An edited description"
+  e <- .spec_now(p)
+  expect_identical(.spec_now(p), e)
+  expect_identical(n, 2L)
+  # the next edit: its own bridge only, the base's kept
+  p$outputs$description[1L] <- "Edited again"
+  e <- .spec_now(p)
+  expect_identical(n, 3L)
+  expect_true(any(grepl("treatment: TRT01P", e$text[["study.yml"]], fixed = TRUE)))
   # saved: the base the save made is kept (#749), an edit bridges itself only
   s$planner <- p
   s <- suppressMessages(save_study(s, home = home))
   q <- s$planner
   q$study[["treatment"]] <- NA_character_
+  q$outputs$description[1L] <- "Edited after the save"
   m <- n
   d <- .spec_now(q)
   expect_identical(n, m + 1L)
   expect_false(any(grepl("treatment: TRT01P", d$text[["study.yml"]], fixed = TRUE)))
+  # (a title saved -- study.yml alone -- keeps the base's files: the next
+  # report edit bridges itself only, #738)
+  s$planner <- q
+  s$meta$short_title <- "Another short title"
+  s <- suppressMessages(save_study(s, home = home))
+  r <- s$planner
+  r$outputs$description[1L] <- "Edited after the title"
+  m <- n
+  f <- .spec_now(r, s$meta)
+  expect_identical(n, m + 1L)
 })
 
 test_that("a change to the study's fields alone bridges study.yml alone, as the whole bridge would (#749)", {
