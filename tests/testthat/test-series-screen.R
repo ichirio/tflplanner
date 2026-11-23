@@ -164,6 +164,9 @@ test_that("!study with a fallback is shown and written as the map form", {
   expect_identical(.series_flow(st2), "!study {key: settings.max_rows, fallback: 30}")
   st3 <- structure(list(key = "settings.f", fallback = list(mean = 2L)), class = "tfl_study_ref")
   expect_identical(.series_flow(st3), "!study {key: settings.f, fallback: {mean: 2}}")
+  # a bad map (tflspec's marker with the problem): shown, not an error
+  bad <- structure(list(key = NA_character_, problem = "key is missing."), class = "tfl_study_ref")
+  expect_identical(.series_flow(bad), "!study key is missing.")
   # without a fallback: as before
   plain <- structure(list(key = "sponsor.name"), class = "tfl_study_ref")
   expect_identical(.series_flow(plain), "!study sponsor.name")
