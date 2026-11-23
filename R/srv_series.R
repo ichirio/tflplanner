@@ -9,10 +9,12 @@
     .tpl_study_dir(rv$study$path)
   })
   session$onSessionEnded(function() .tpl_study_dir(NULL))
-  # (the card writes only the study's copies, spec/series/: no file the
-  # study's save knows)
+  # (the card has no Save of its own (#753): its edits go into the study in
+  # memory, `series_edits`, and the top-right Save writes them into the
+  # study's copies, spec/series/<series>/series.yml -- .series_save_edits())
   .series_server(input, output, session, study_dir = study_dir, t = t,
-                 notify = notify, copies_ver = tpl_copies_ver)
+                 notify = notify, copies_ver = tpl_copies_ver,
+                 planner = list(get = function() rv$p, set = function(p) rv$p <- p))
 }
 
 # The study's copies of the series (<study>/spec/series, canon 2026-11-19)
@@ -29,6 +31,46 @@
   if (!.series_copied(dir, series)) return(NULL)
   x <- .series_fn("tfl_series_read")(series, dir = .series_copy_root(dir))
   as.list(x$values %||% list())
+}
+
+# The study's own values of a series as saved: its copy's values that are
+# not the source's `src`, each as YAML text (.series_flow())
+.series_own_text <- function(dir, series, src) {
+  cp <- .series_copy_values(dir, series) %||% list()
+  own <- cp[vapply(names(cp), function(k) !identical(cp[[k]], src[[k]]), NA)]
+  lapply(own, .series_flow)
+}
+
+# What tfl_series_values_set() is given for a draft (key -> YAML text):
+# each value read from its text; a key of `saved` (the study's own values
+# as saved) the draft took back to the series gets the source's value
+# again (a key the source does not have: NULL, which takes it out of the
+# copy).  A text that is not YAML stops.
+.series_values_to_set <- function(draft, src, saved) {
+  out <- lapply(draft, .series_yaml_load)
+  for (k in setdiff(names(saved), names(draft))) out[k] <- list(src[[k]])
+  out <- lapply(out, function(v) if (is.null(v)) v else .series_value_out(v))
+  if (length(out)) out else stats::setNames(list(), character())
+}
+
+# The series card's unsaved values (a planner's `series_edits`: series ->
+# draft) written into the study's copies, by the study's save: the files
+# written (file, status), as save_study() lists them
+.series_save_edits <- function(root, edits) {
+  files <- data.frame(file = character(), status = character(), stringsAsFactors = FALSE)
+  for (s in names(edits)) {
+    if (!.series_copied(root, s)) {
+      stop("The study has no copy of the series ", s, " (spec/series/", s,
+           "/series.yml): its values cannot be saved.", call. = FALSE)
+    }
+    src <- .series_fn("tfl_series_read")(s)$values %||% list()
+    vals <- tryCatch(.series_values_to_set(edits[[s]], src, .series_own_text(root, s, src)),
+                     error = function(e) stop("A value of the series ", s, " is not YAML: ",
+                                              conditionMessage(e), call. = FALSE))
+    .series_fn("tfl_series_values_set")(root, s, vals)
+    files[nrow(files) + 1L, ] <- list(file.path(.series_copy_root(root), s, "series.yml"), "written")
+  }
+  files
 }
 
 # A value as tflspec's tfl_series_values_set() is to write it (it writes
@@ -58,16 +100,32 @@
 # `copies_ver`: a reactive value the app moves when it copies a template
 # into the study (a template report added, R/srv_add_report.R): the copies
 # are read again.
+# `planner`: the study in memory, list(get, set) (the app's rv$p).  The
+# card has no Save of its own (#753): an edit of the study's values goes at
+# once into the planner's `series_edits` (series -> the study's own values
+# as YAML texts; the top-right indicator then says "Unsaved changes"), and
+# the top-right Save writes them into the study's copy
+# (.series_save_edits()).  Undo under the card puts back what the card
+# wrote since the series was chosen; a save or a discard calls the hook
+# the card puts in session$userData$series_rebase.
 .series_server <- function(input, output, session, study_dir, t = identity,
                            notify = function(msg, type = "message") {
                              shiny::showNotification(msg, type = type)
                            },
-                           copies_ver = shiny::reactiveVal(0L)) {
+                           copies_ver = shiny::reactiveVal(0L),
+                           planner = NULL) {
   .series_dir_option()
   ok <- .series_available()
-  # list_ver: the series read again; copy_ver: the study's copies changed
-  rv <- shiny::reactiveValues(list_ver = 0L, copy_ver = 0L, saved = NULL,
-                              draft = NULL, series = NULL, recopy = NULL)
+  if (is.null(planner)) {
+    held <- shiny::reactiveVal(list())
+    planner <- list(get = function() held(), set = function(p) held(p))
+  }
+  # list_ver: the series read again; copy_ver: the study's copies changed;
+  # disk_ver: the copy's values read again (a save, a discard); redraw: the
+  # values' fields drawn again (not at an edit typed in them)
+  rv <- shiny::reactiveValues(list_ver = 0L, copy_ver = 0L, disk_ver = 0L,
+                              redraw = 0L, saved = NULL, draft = NULL,
+                              series = NULL, recopy = NULL, problem = NULL)
   fail <- function(e) {
     notify(conditionMessage(e), "error")
     NULL
@@ -127,87 +185,122 @@
     tryCatch(.series_fn("tfl_series_read")(s), error = fail)
   })
   # the study's own values for the chosen series, as saved: its copy's
-  # values that are not the source's; the draft starts from them (each
-  # value as YAML text)
-  load_block <- function() {
+  # values that are not the source's (each value as YAML text)
+  saved_now <- shiny::reactive({
+    s <- rv$series
+    dir <- study_dir()
+    rv$copy_ver
+    rv$disk_ver
+    copies_ver()
+    if (is.null(s)) return(NULL)
     src <- chosen()$values %||% list()
-    cp <- tryCatch(.series_copy_values(study_dir(), rv$series), error = fail) %||% list()
-    own <- cp[vapply(names(cp), function(k) !identical(cp[[k]], src[[k]]), NA)]
-    rv$saved <- lapply(own, .series_flow)
-    rv$draft <- rv$saved
-  }
+    tryCatch(.series_own_text(dir, s, src), error = fail) %||% list()
+  })
+  # the draft: the study's unsaved values of the series, else as saved
+  live <- .form_live(session, settle = 0)
+  typed <- new.env(parent = emptyenv())
+  shiny::observe({
+    s <- rv$series
+    sv <- saved_now()
+    d <- planner$get()$series_edits[[s %||% ""]] %||% sv
+    shiny::isolate({
+      rv$saved <- sv
+      # (an edit typed in the fields is not drawn again: the field keeps it)
+      if (!identical(d, typed$d) || !identical(names(d), names(rv$draft))) {
+        rv$redraw <- rv$redraw + 1L
+      }
+      typed$d <- NULL
+      rv$draft <- d
+    })
+  })
+  # (another series, or another study: Undo starts from the study as it is)
   shiny::observe({
     rv$series
     study_dir()
-    rv$copy_ver
-    copies_ver()
-    shiny::isolate(load_block())
+    shiny::isolate(live$open(planner$get()))
   })
-  # what is typed is taken into the draft before the table is drawn again
-  # (the inputs are numbered by the table's rows)
-  take_typed <- function() {
-    keys <- union(names(chosen()$values), names(rv$draft))
-    d <- rv$draft
-    for (k in names(d)) {
-      v <- input[[paste0("series_edit_", match(k, keys))]]
-      if (!is.null(v)) d[[k]] <- v
-    }
-    rv$draft <- d
+  # the draft put into the study in memory: a draft that is the copy's
+  # values again is no change
+  put_draft <- function(d) {
+    s <- rv$series
+    p <- planner$get()
+    e <- p$series_edits %||% list()
+    e[s] <- if (identical(d, rv$saved)) list(NULL) else list(d)
+    e <- e[!vapply(e, is.null, NA)]
+    p$series_edits <- if (length(e)) e
+    if (identical(p, planner$get())) return(invisible(FALSE))
+    planner$set(p)
+    live$wrote(p)
+    invisible(TRUE)
   }
+  editable <- function() {
+    dir <- study_dir()
+    !is.null(dir) && !is.null(rv$series) && .series_copied(dir, rv$series)
+  }
+  # what is typed goes into the draft as it is typed (a text that is not
+  # YAML is said under the card, and not taken in)
+  shiny::observe({
+    keys <- union(names(chosen()$values), names(rv$draft))
+    d <- shiny::isolate(rv$draft)
+    if (!length(d)) return()
+    got <- lapply(stats::setNames(names(d), names(d)), function(k)
+      input[[paste0("series_edit_", match(k, keys))]])
+    shiny::isolate({
+      if (!editable()) return()
+      new <- d
+      for (k in names(got)) if (!is.null(got[[k]])) new[[k]] <- got[[k]]
+      bad <- names(new)[vapply(new, function(x)
+        inherits(tryCatch(.series_yaml_load(x), error = function(e) e), "error"), NA)]
+      rv$problem <- if (length(bad)) sprintf(t("Not YAML, so not taken in: %s"), paste(bad, collapse = ", "))
+      if (length(bad) || identical(new, d)) return()
+      typed$d <- new
+      put_draft(new)
+    })
+  })
   shiny::observeEvent(input$series_change, {
     k <- input$series_change$key
     v <- chosen()$values
-    take_typed()
-    if (!k %in% names(v) || k %in% names(rv$draft)) return()
+    if (!editable() || !k %in% names(v) || k %in% names(rv$draft)) return()
     d <- rv$draft
     d[[k]] <- .series_edit_text(v[[k]])
-    rv$draft <- d
+    put_draft(d)
   })
   shiny::observeEvent(input$series_back, {
-    take_typed()
+    if (!editable()) return()
     d <- rv$draft
     d[[input$series_back$key]] <- NULL
-    rv$draft <- d
+    put_draft(d)
   })
-  shiny::observeEvent(input$series_save, {
-    dir <- study_dir()
-    s <- rv$series
-    if (is.null(dir) || is.null(s) || !.series_copied(dir, s)) return()
-    take_typed()
-    d <- rv$draft
-    src <- chosen()$values %||% list()
-    vals <- tryCatch({
-      out <- lapply(d, .series_yaml_load)
-      # a key taken back to the series: the source's value again (a key
-      # the source does not have: NULL, which takes it out of the copy)
-      for (k in setdiff(names(rv$saved), names(d))) out[k] <- list(src[[k]])
-      out <- lapply(out, function(v) if (is.null(v)) v else .series_value_out(v))
-      if (length(out)) out else stats::setNames(list(), character())
-    }, error = function(e) {
-      notify(paste0(t("A value is not YAML:"), " ", conditionMessage(e)), "error")
-      FALSE
-    })
-    if (isFALSE(vals)) return()
-    done <- tryCatch({
-      .series_fn("tfl_series_values_set")(dir, s, vals)
-      TRUE
-    }, error = fail)
-    if (is.null(done)) return()
-    rv$copy_ver <- rv$copy_ver + 1L
-    notify(sprintf(t("Saved this study's values for %s (its copy's series.yml)."), s))
+  shiny::observeEvent(input$series_undo, {
+    if (!live$changed()) return()
+    # (the card's own part only: what else changed meanwhile stays)
+    p <- planner$get()
+    part <- function(x) list(series_edits = x$series_edits)
+    p$series_edits <- .form_restore(part(p), part(live$p0), part(live$mine))$series_edits
+    planner$set(p)
+    live$open(p)
+    rv$problem <- NULL
   })
+  # the study saved, or its changes discarded (the app's forms_rebase()):
+  # the copy read again, Undo from the study as it is now
+  session$userData$series_rebase <- function(discarded = FALSE) {
+    rv$disk_ver <- rv$disk_ver + 1L
+    rv$problem <- NULL
+    live$rebase(planner$get())
+    invisible()
+  }
 
   output$series_values <- shiny::renderUI({
     x <- chosen()
     if (is.null(x)) return(NULL)
     dir <- study_dir()
     rv$copy_ver
+    rv$redraw
     copied <- .series_copied(dir, x$name)
-    changed <- !identical(rv$draft, rv$saved)
     shiny::tagList(
       shiny::h6(class = "mt-3 mb-1",
                 with_tip(sprintf(t("Defaults shared by the %s series' templates (values:)"), x$name),
-                         t("The series' values as written (a tag as written: !series, !study, !fixed, !unset). The study reads its own copy of the series (spec/series/<series>/series.yml): a value changed for this study is written there."))),
+                         t("The series' values as written (a tag as written: !series, !study, !fixed, !unset). The study reads its own copy of the series (spec/series/<series>/series.yml). A value changed here goes into the study at once; the top-right Save writes it into the copy (tfl_series_values_set)."))),
       if (length(x$path)) shiny::p(class = "small text-muted mb-1", shiny::tags$code(x$path)),
       if (is.null(dir) || !copied) {
         shiny::tagList(
@@ -217,13 +310,23 @@
                      t("This study has no copy of this series yet: adding a report from one of its templates copies it.")))
       } else {
         shiny::tagList(
-          .series_values_ui(x$values, rv$draft, rv$saved, t, x$descriptions),
-          shiny::div(
-            class = "d-flex gap-2 align-items-center",
-            .btn("series_save", t("Save this study's values (tfl_series_values_set)"),
-                 class = if (changed) "btn-sm btn-primary" else "btn-sm btn-outline-secondary"),
-            if (changed) shiny::span(class = "small text-warning", t("unsaved"))))
-      })
+          .series_values_ui(x$values, shiny::isolate(rv$draft), shiny::isolate(rv$saved), t,
+                            x$descriptions),
+          shiny::uiOutput("series_problem"),
+          shiny::uiOutput("series_undo_ui"))
+      }
+    )
+  })
+  output$series_problem <- shiny::renderUI({
+    if (is.null(rv$problem)) return(NULL)
+    shiny::div(class = "alert alert-warning small py-1 my-1", rv$problem)
+  })
+  output$series_undo_ui <- shiny::renderUI({
+    # (shown once the card has written since the series was chosen)
+    planner$get()$series_edits
+    if (!live$changed()) return(NULL)
+    .btn("series_undo", t("Undo"), class = "btn-sm btn-outline-secondary",
+         title = t("Back to the values when the series was chosen"))
   })
 
   # the study's copies: their state, a template's differences and a copy

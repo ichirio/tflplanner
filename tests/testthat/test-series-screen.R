@@ -93,13 +93,29 @@ fake_series <- function(dir) {
   list(st = st, fns = fns, dir = dir)
 }
 
+# the card with the study in memory (`notes$p`, the app's rv$p): its edits
+# go there (series_edits), and save_now() writes them as the app's Save does
 series_app <- function(dir, notes) {
   function(input, output, session) {
+    notes$p <- shiny::reactiveVal(list())
     rv <- .series_server(input, output, session, study_dir = shiny::reactive(dir),
                    notify = function(msg, type = "message") {
                      notes$all <- c(notes$all, paste0(type, ": ", msg))
-                   })
+                   },
+                   planner = list(get = function() notes$p(), set = function(p) notes$p(p)))
   }
+}
+
+# the top-right Save, as save_study() does it for the card's edits
+# (.save_yaml_spec()), then the app's forms_rebase()
+save_now <- function(dir, notes, session) {
+  p <- shiny::isolate(notes$p())
+  files <- .series_save_edits(dir, p$series_edits)
+  p$series_edits <- NULL
+  notes$p(p)
+  session$userData$series_rebase()
+  session$flushReact()
+  files
 }
 
 # the dialogs shown (as text) and how many were taken away
@@ -218,40 +234,87 @@ test_that("the card lists the series and shows the study's copied series with it
     v <- html_of(output$series_values)
     expect_match(v, "Defaults shared by the site_v2 series' templates")
     expect_match(v, "This study has no copy of this series yet", fixed = TRUE)
+    # (no Save of the card's own, #753; a change here is not taken)
     expect_false(grepl("series_save", v, fixed = TRUE))
-    session$setInputs(series_save = 1L)
-    expect_identical(calls_of(f$st, "set"), list())
+    session$setInputs(series_change = list(key = "style", n = 3))
+    expect_null(notes$p()$series_edits$site_v2)
   })
 })
 
-test_that("change, edit, back and save go through tfl_series_values_set() into the copy", {
+test_that("change, edit and back go into the study in memory; the app's Save writes them (#753)", {
   f <- fake_series(withr::local_tempdir())
   local_series(f$fns)
   notes <- new.env()
   shiny::testServer(series_app(f$dir, notes), {
     session$flushReact()
-    # formats (row 3) taken in for editing, as the series has it
+    # no Save of its own: the top-right one writes
+    v <- html_of(output$series_values)
+    expect_false(grepl("series_save", v, fixed = TRUE))
+    expect_false(grepl("unsaved", v, fixed = TRUE))
+    expect_false(grepl("series_undo", html_of(output$series_undo_ui), fixed = TRUE))
+    # formats (row 3) taken in for editing, as the series has it: in the
+    # study in memory at once, nothing written
     session$setInputs(series_change = list(key = "formats", n = 1))
     expect_identical(rv$draft$formats, "{N: 0, mean: 2, p: xx.x%}")
-    expect_match(html_of(output$series_values), "unsaved", fixed = TRUE)
+    expect_identical(notes$p()$series_edits$tflspec_v1,
+                     list(population_safety = "SAF2", formats = "{N: 0, mean: 2, p: xx.x%}"))
+    expect_identical(calls_of(f$st, "set"), list())
+    # typed: taken in as it is typed (not drawn again: the field keeps it)
+    n <- rv$redraw
     session$setInputs(series_edit_3 = "{N: 0, mean: 1}", series_edit_2 = "SAF3")
-    session$setInputs(series_save = 1L)
+    expect_identical(notes$p()$series_edits$tflspec_v1,
+                     list(population_safety = "SAF3", formats = "{N: 0, mean: 1}"))
+    expect_identical(rv$redraw, n)
+    expect_match(html_of(output$series_undo_ui), "series_undo", fixed = TRUE)
+    # the app's Save: tfl_series_values_set() once, the study's edits gone
+    files <- save_now(f$dir, notes, session)
+    expect_identical(files$status, "written")
     got <- calls_of(f$st, "set")[[1L]]
     expect_identical(got$series, "tflspec_v1")
     expect_identical(got$values, list(population_safety = "SAF3", formats = list(N = 0L, mean = 1L)))
-    expect_match(notes$all[length(notes$all)], "^message: Saved this study's values for tflspec_v1")
-    expect_false(grepl("unsaved", html_of(output$series_values), fixed = TRUE))
+    expect_null(notes$p()$series_edits)
     expect_setequal(names(rv$saved), c("population_safety", "formats"))
+    expect_identical(rv$draft, rv$saved)
+    # (after a save, Undo has nothing of its own to put back)
+    expect_false(grepl("series_undo", html_of(output$series_undo_ui), fixed = TRUE))
     # both back to the series: the source's values written into the copy
     session$setInputs(series_back = list(key = "formats", n = 2))
     session$setInputs(series_back = list(key = "population_safety", n = 3))
     expect_identical(rv$draft, stats::setNames(list(), character()))
-    session$setInputs(series_save = 2L)
+    save_now(f$dir, notes, session)
     got <- calls_of(f$st, "set")[[2L]]$values
     expect_identical(got[c("population_safety", "formats")],
                      list(population_safety = "SAF", formats = list(N = 0L, mean = 2L, p = "xx.x%")))
     expect_identical(f$st$copy$tflspec_v1$population_safety, "SAF")
     expect_identical(rv$saved, stats::setNames(list(), character()))
+  })
+})
+
+test_that("Undo puts back what the card wrote; a draft back at the saved values is no change (#753)", {
+  f <- fake_series(withr::local_tempdir())
+  local_series(f$fns)
+  notes <- new.env()
+  shiny::testServer(series_app(f$dir, notes), {
+    session$flushReact()
+    notes$p(list(other = 1L))
+    session$flushReact()
+    session$setInputs(series_change = list(key = "total", n = 1))
+    session$setInputs(series_edit_4 = "true")
+    expect_identical(notes$p()$series_edits$tflspec_v1$total, "true")
+    # (an edit made elsewhere meanwhile stays)
+    p <- notes$p()
+    p$other <- 2L
+    notes$p(p)
+    session$setInputs(series_undo = 1L)
+    expect_null(notes$p()$series_edits)
+    expect_identical(notes$p()$other, 2L)
+    expect_identical(rv$draft, list(population_safety = "SAF2"))
+    expect_identical(calls_of(f$st, "set"), list())
+    # typed back to what is saved: no unsaved change left
+    session$setInputs(series_edit_2 = "SAF9")
+    expect_identical(notes$p()$series_edits$tflspec_v1, list(population_safety = "SAF9"))
+    session$setInputs(series_edit_2 = "SAF2")
+    expect_null(notes$p()$series_edits)
   })
 })
 
@@ -263,7 +326,7 @@ test_that("only the study's own values are its draft: one change saves one key, 
     session$flushReact()
     session$setInputs(series_change = list(key = "total", n = 1))
     session$setInputs(series_edit_4 = "true")
-    session$setInputs(series_save = 1L)
+    save_now(f$dir, notes, session)
     got <- calls_of(f$st, "set")[[1L]]$values
     expect_identical(names(got), c("population_safety", "total"))
     expect_identical(unclass(got$total), "true")
@@ -271,14 +334,14 @@ test_that("only the study's own values are its draft: one change saves one key, 
     expect_setequal(names(rv$saved), c("population_safety", "total"))
     # one taken back: only it changes in the copy
     session$setInputs(series_back = list(key = "population_safety", n = 2))
-    session$setInputs(series_save = 2L)
+    save_now(f$dir, notes, session)
     expect_identical(f$st$copy$tflspec_v1$population_safety, "SAF")
     expect_true(f$st$copy$tflspec_v1$total)
     expect_identical(names(rv$saved), "total")
   })
 })
 
-test_that("tflspec's error is shown as it is, and a value that is not YAML stops before it", {
+test_that("a value that is not YAML is said under the card and not taken in; tflspec's error stops the save", {
   f <- fake_series(withr::local_tempdir())
   f$st$copy$tflspec_v1$bad_key <- "x"
   local_series(f$fns)
@@ -287,14 +350,19 @@ test_that("tflspec's error is shown as it is, and a value that is not YAML stops
     session$flushReact()
     # a key of the copy the source does not have is shown, not dropped
     expect_match(html_of(output$series_values), "(not in this series)", fixed = TRUE)
-    session$setInputs(series_save = 1L)
-    expect_identical(notes$all[length(notes$all)], "error: tfl_series_values_set(): bad_key is refused.")
-    n <- length(f$st$calls)
     session$setInputs(series_edit_2 = "[unclosed")
-    session$setInputs(series_save = 2L)
-    expect_match(notes$all[length(notes$all)], "^error: A value is not YAML:")
-    expect_identical(length(f$st$calls), n)
+    expect_match(html_of(output$series_problem), "Not YAML, so not taken in: population_safety", fixed = TRUE)
+    expect_null(notes$p()$series_edits)
+    session$setInputs(series_edit_2 = "SAF4")
+    expect_false(grepl("Not YAML", html_of(output$series_problem), fixed = TRUE))
+    # (the save stops on tflspec's error, as it is: the app's save says it
+    # and writes nothing -- save_study() puts its files back)
+    expect_error(save_now(f$dir, notes, session), "bad_key is refused")
   })
+  # (a draft that is not YAML, from a draft file: the save stops)
+  expect_error(.series_save_edits(f$dir, list(tflspec_v1 = list(population_safety = "[x"))),
+               "is not YAML")
+  expect_error(.series_save_edits(f$dir, list(site_v2 = list(style = "s"))), "no copy of the series site_v2")
 })
 
 test_that("the study's copies: each one's state in words, differences and a copy again offered where it is not the source's", {
@@ -450,7 +518,7 @@ test_that("a template copied into a study: said once, the cards read the copy, t
     session$setInputs(series_change = list(key = "total_label", n = 2))
     k <- union(names(tflspec::tfl_series_read("tflspec_v1")$values), names(rv$draft))
     do.call(session$setInputs, stats::setNames(list("All arms"), paste0("series_edit_", match("total_label", k))))
-    session$setInputs(series_save = 1L)
+    save_now(dir, notes, session)
     expect_identical(tflspec::tfl_series_read("tflspec_v1", dir = .series_copy_root(dir))$values$total_label,
                      "All arms")
     expect_identical(names(rv$saved), "total_label")
@@ -481,5 +549,5 @@ test_that("the values' descriptions are in the app's language when tflplanner ha
   expect_match(h, "<th>Description</th>", fixed = TRUE)
   # the heading
   expect_identical(sprintf(ja("Defaults shared by the %s series' templates (values:)"), "tflspec_v1"),
-                   "tflspec_v1 シリーズのテンプレートに共通の既定値 (values:)")
+                   "tflspec_v1 \u30B7\u30EA\u30FC\u30BA\u306E\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u306B\u5171\u901A\u306E\u30C7\u30D5\u30A9\u30EB\u30C8\u5024 (values:)")
 })
