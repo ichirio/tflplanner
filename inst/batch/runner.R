@@ -209,6 +209,45 @@ run_batch <- function(parts, args = character()) {
     basename(progs) %in% names | sub("[.][Rr]$", "", basename(progs)) %in% names
   }
   excluded <- character()
+  # the programs of a part the run selects (the ones named, the batch's, less
+  # those excluded); `track`: the ones left out are kept for the record
+  select <- function(part, track = FALSE) {
+    progs <- .batch_programs[[part]]
+    if (length(only)) progs <- progs[named(progs, only)]
+    if (!is.null(set)) {
+      of <- if (part == "ard") .batch_ard_outputs[basename(progs)] else
+        .batch_report_ids[progs]
+      keep <- !is.na(of) & of %in% .batch_sets[[set]]
+      if (track) excluded <<- c(excluded, progs[!keep])
+      progs <- progs[keep]
+    }
+    if (length(exclude)) {
+      if (track) excluded <<- c(excluded, progs[named(progs, exclude)])
+      progs <- progs[!named(progs, exclude)]
+    }
+    progs
+  }
+  # the ARD is made for the selected reports only (#790): a selected report
+  # that reads the ARD of one not selected stops the run, before anything is
+  # made (the app asks to tick them; here the run is started again)
+  selected <- lapply(stats::setNames(parts, parts), select, track = TRUE)
+  chosen <- unname(c(.batch_ard_outputs[basename(select("ard"))],
+                     .batch_report_ids[select("tfl")]))
+  lacking <- NULL
+  for (p in selected[["tfl"]]) {
+    for (need in setdiff(unlist(.batch_needs[p], use.names = FALSE), chosen)) {
+      lacking <- c(lacking, sprintf("%s reads the ARD of %s",
+                                    .batch_report_ids[[p]], need))
+    }
+  }
+  if (length(lacking)) {
+    msg <- c("The run was not started: a selected report reads the ARD of a report the run does not select.",
+             paste0("  ", lacking),
+             "Select the reports it reads too (or leave this report out), then start again.")
+    cat(msg, sep = "\n")
+    message(paste(msg, collapse = "\n"))
+    quit(save = "no", status = 1L)
+  }
   what <- if (length(parts) > 1L) "all" else
     c(ard = "ard", tfl = "report")[[parts]]
   if (!is.null(set)) what <- paste0(what, "_", gsub("[^A-Za-z0-9._-]", "_", set))
@@ -227,47 +266,29 @@ run_batch <- function(parts, args = character()) {
   if (engine == "batch") message("logrx is not installed: the logs are R CMD BATCH's.")
   cat("Batch folder:", dir, "\n\n")
   rows <- list()
-  # the reports' ARD made in this run (never one an earlier run left, #790)
-  made_ard <- character()
+  # the reports whose ARD program failed in this run
+  failed_ard <- character()
   for (part in parts) {
-    progs <- .batch_programs[[part]]
-    if (length(only)) progs <- progs[named(progs, only)]
-    if (!is.null(set)) {
-      of <- if (part == "ard") .batch_ard_outputs[basename(progs)] else
-        .batch_report_ids[progs]
-      keep <- !is.na(of) & of %in% .batch_sets[[set]]
-      excluded <- c(excluded, progs[!keep])
-      progs <- progs[keep]
-    }
-    if (length(exclude)) {
-      excluded <- c(excluded, progs[named(progs, exclude)])
-      progs <- progs[!named(progs, exclude)]
-    }
+    progs <- selected[[part]]
     if (!length(progs)) next
     log_dir <- file.path(dir, "logs", part)
     dir.create(log_dir, recursive = TRUE, showWarnings = FALSE)
     for (p in progs) {
-      # a report reading the ARD of reports (its own, a figure's table, what
-      # its code names): the ARD of each the run has not made is made first,
-      # also one the run leaves out, so no earlier rows are read (#293, #790)
-      needs <- if (part == "tfl") unique(unlist(.batch_needs[p], use.names = FALSE))
-      for (need in setdiff(needs[!is.na(needs)], made_ard)) {
-        ap <- .batch_programs$ard[.batch_ard_outputs[basename(.batch_programs$ard)] %in% need]
-        if (length(ap)) {
-          cat(sprintf("(%s reads %s's ARD, which this run has not made: made first)
-",
-                      basename(p), need))
-          ard_dir <- file.path(dir, "logs", "ard")
-          dir.create(ard_dir, recursive = TRUE, showWarnings = FALSE)
-          ra <- .batch_run("ard", ap[1L], ard_dir, engine)
-          made_ard <- c(made_ard, need)
-          if (ra$status != "OK") .batch_ard_error(need, ra$note)
-          rows[[length(rows) + 1L]] <- ra
-        }
+      # a report whose ARD program failed in this run is not run on the
+      # rows an earlier run left: it is recorded as failed
+      bad <- intersect(unlist(.batch_needs[p], use.names = FALSE), failed_ard)
+      if (part == "tfl" && length(bad)) {
+        note <- paste0("not run: the ARD of ", paste(bad, collapse = ", "), " failed in this run")
+        cat(sprintf("%-5s %-4s %-32s %s\n", "ERROR", part, basename(p), note))
+        rows[[length(rows) + 1L]] <- data.frame(
+          part = part, program = p, status = "ERROR", errors = 1L, warnings = 0L,
+          note = note, started = format(Sys.time(), "%Y-%m-%d %H:%M:%S"), seconds = 0,
+          md5 = NA_character_, log = NA_character_, stringsAsFactors = FALSE)
+        next
       }
       r <- .batch_run(part, p, log_dir, engine)
-      if (part == "ard") made_ard <- c(made_ard, unname(.batch_ard_outputs[basename(p)]))
       if (part == "ard" && r$status != "OK") {
+        failed_ard <- c(failed_ard, unname(.batch_ard_outputs[basename(p)]))
         .batch_ard_error(.batch_ard_outputs[[basename(p)]], r$note)
       }
       rows[[length(rows) + 1L]] <- r
@@ -275,8 +296,6 @@ run_batch <- function(parts, args = character()) {
   }
   result <- do.call(rbind, rows)
   if (is.null(result)) stop("Nothing to run.")
-  # a program left out that ran as another's ARD is not left out
-  excluded <- setdiff(excluded, result$program)
   if (length(excluded)) {
     cat("\nLeft out:", paste(basename(excluded), collapse = ", "), "\n")
   }

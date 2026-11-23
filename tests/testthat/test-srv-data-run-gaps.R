@@ -257,6 +257,7 @@ test_that("the official run: nothing ticked is refused; reports left out; a repo
     .ai_run_warnings = function(p, ids) warn)
   notes <- dr_notes()
   modals <- dr_modals()
+  ticks <- dr_ticks()
   shiny::testServer(server_for("DR"), {
     rv <- session$userData$rv
     last <- function() notes()[[length(notes())]]
@@ -286,23 +287,30 @@ test_that("the official run: nothing ticked is refused; reports left out; a repo
     expect_identical(asked[[2L]]$batch, "Topline")
     expect_null(asked[[2L]]$exclude)
     expect_match(rv$job_what, "(the report set Topline)", fixed = TRUE)
-    # a run that leaves out a report another reads: no question, the run starts (its runner makes that ARD too, #790)
+    # a run that leaves out a report another reads: it does not start; the
+    # modal names the missing report, and one button ticks it (#790)
     rv$job <- NULL
     rv$p <- set_step_code(rv$p, "L1", "data",
       "data <- readRDS(file.path(path_ard, \"ard.rds\")) |> filter(output_id == \"DM\")")
     session$setInputs(batch_set = ".all", batch_parts = "all", batch_reports = c("VS", "L1"),
                       batch_run = 5)
-    expect_length(modals(), 0L)
+    expect_length(asked, 2L)
+    expect_length(modals(), 1L)
+    expect_match(modals()[1L], "L1 reads the ARD of: DM", fixed = TRUE)
+    session$setInputs(batch_needs_tick = 1)
+    expect_setequal(ticks()$batch_reports, c("DM", "VS", "L1"))
+    session$setInputs(batch_reports = c("DM", "VS", "L1"), batch_run = 6)
+    expect_length(modals(), 1L)
     expect_length(asked, 3L)
-    expect_identical(asked[[3L]]$exclude, "DM")
-    expect_match(rv$job_what, "^the official run: ARD, Reports +[(]1 left out[)]$")
+    expect_length(asked[[3L]]$exclude, 0L)
+    expect_match(rv$job_what, "^the official run: ARD, Reports$")
     # the AI's reports with a changed draft or places to confirm: said first
     rv$job <- NULL
     warn <<- list(newer = "DM", confirm = c("VS", "L1"))
-    session$setInputs(batch_parts = "all", batch_reports = c("DM", "VS", "L1"), batch_run = 6)
+    session$setInputs(batch_parts = "all", batch_reports = c("DM", "VS", "L1"), batch_run = 7)
     expect_length(asked, 3L)
-    expect_match(modals()[1L], "Their draft changed after they were adopted .*: DM\\.")
-    expect_match(modals()[1L], "places the AI left to confirm .*: VS, L1\\.")
+    expect_match(modals()[2L], "Their draft changed after they were adopted .*: DM\\.")
+    expect_match(modals()[2L], "places the AI left to confirm .*: VS, L1\\.")
     session$setInputs(batch_ai_cancel = 1)
     expect_length(asked, 3L)
     session$setInputs(batch_ai_go = 1)

@@ -400,9 +400,40 @@
     if (length(exclude) == length(ids)) {
       return(notify(t("Choose at least one report for the run."), "warning"))
     }
-    # (a report kept that reads the ARD of one left out: the run makes that
-    # ARD too, its runner does; no earlier rows are read, #790)
+    # the ARD is made for the selected reports only (#790): a selected report
+    # that reads the ARD of one not selected: nothing starts, the missing
+    # reports are named (and can be ticked)
+    if (!identical(parts, "ard")) {
+      miss <- tryCatch(.batch_missing_needs(.batch_report_needs(rv$p), setdiff(ids, exclude)),
+                       error = function(e) {
+                         notify(sprintf(t("The ARD the reports read could not be checked: %s"),
+                                        conditionMessage(e)), "warning")
+                         NULL
+                       })
+      if (!is.null(miss) && nrow(miss)) {
+        return(shiny::showModal(shiny::modalDialog(
+          title = t("The run did not start"),
+          shiny::p(t("The ARD is made only for the reports you select. A selected report reads the ARD of a report you have not selected.")),
+          shiny::tags$ul(lapply(unique(miss$report), function(r) shiny::tags$li(
+            sprintf(t("%s reads the ARD of: %s"), r,
+                    paste(miss$need[miss$report == r], collapse = ", "))))),
+          footer = shiny::tagList(
+            .btn("batch_needs_cancel", t("Cancel"), class = "btn-outline-secondary"),
+            .btn("batch_needs_tick", t("Select the missing reports"), class = "btn-primary")))))
+      }
+    }
     batch_go_ai()
+  })
+  shiny::observeEvent(input$batch_needs_cancel, shiny::removeModal())
+  # the missing reports ticked; the run is started again by the user
+  shiny::observeEvent(input$batch_needs_tick, {
+    shiny::removeModal()
+    ids <- batch_ids()
+    ticks <- intersect(input$batch_reports %||% ids, ids)
+    miss <- .batch_missing_needs(.batch_report_needs(rv$p), ticks)
+    shiny::updateCheckboxGroupInput(session, "batch_reports",
+                                    selected = intersect(ids, c(ticks, miss$need)))
+    notify(t("The missing reports are selected; start the run again."))
   })
   # the AI's reports in the run whose draft changed since they were
   # adopted, or with places the AI left to confirm: said before the run (it

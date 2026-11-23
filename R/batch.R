@@ -50,16 +50,10 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
                          vapply(infos, `[[`, "", "program"))
   made <- lapply(infos, function(info) info$file)
   ard_out <- .study_value(spec, "output", "output/ard/ard.rds")
-  # the ARD each report reads (#293, #790): its own, a figure's source, and
-  # what its code names; a run makes these first when it has not made them
-  reads <- tryCatch(.batch_ard_reads(x), error = function(e) list())
-  need <- lapply(out_ids, function(id) {
-    fig <- tryCatch(.fig_ard_need(x, id), error = function(e) NA_character_)
-    n <- unique(c(fig[!is.na(fig)], reads[[id]]))
-    intersect(n, ids)
-  })
-  names(need) <- tfl_progs
-  need <- need[lengths(need) > 0L]
+  # the ARD each report reads (#293, #790): see .batch_report_needs(); a run
+  # that selects a report but not the reports it reads does not start
+  need <- .batch_report_needs(x)
+  names(need) <- tfl_progs[match(names(need), out_ids)]
   # (the definition: the YAML spec's files)
   spec_files <- setdiff(.spec_files_yaml(root), .study_file)
   support <- list(
@@ -105,8 +99,8 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
     paste0(".batch_ard_outputs <- ", vec(ids, basename(ard_progs))),
     "# the output each report program makes",
     paste0(".batch_report_ids <- ", vec(out_ids, tfl_progs)),
-    "# a report program -> the reports whose ARD it reads (that ARD is made",
-    "# first in a run that has not made it, even when the run leaves it out)",
+    "# a report program -> the reports whose ARD it reads (a run that selects",
+    "# the report but not these reports does not start)",
     paste0(".batch_needs <- ", if (length(need))
       paste0("list(\n", paste0("  ", encodeString(names(need), quote = "`"), " = ",
                                vapply(need, vec, "", indent = "    "),
@@ -448,6 +442,47 @@ run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE, data = FALSE,
        result = if (!is.null(csv) && file.exists(csv))
          utils::read.csv(csv, colClasses = "character"),
        output = txt)
+}
+
+# The reports whose ARD each report reads (#293, #790): its own, a figure's
+# source, and what its code names.  A named list: output id -> output ids
+# (a report that reads none is not in it).
+.batch_report_needs <- function(x) {
+  spec <- x$ard %||% .empty_ard_spec()
+  ids <- unique(stats::na.omit(spec$analyses$output_id))
+  out_ids <- x$outputs$output_id
+  # (a detection that fails is said, not passed over)
+  reads <- tryCatch(.batch_ard_reads(x), error = function(e) {
+    warning("The ARD the reports read could not be found out: ", conditionMessage(e),
+            call. = FALSE)
+    list()
+  })
+  need <- lapply(out_ids, function(id) {
+    fig <- tryCatch(.fig_ard_need(x, id), error = function(e) {
+      warning("The ARD the figure ", id, " reads could not be found out: ",
+              conditionMessage(e), call. = FALSE)
+      NA_character_
+    })
+    n <- unique(c(fig[!is.na(fig)], reads[[id]]))
+    intersect(n, ids)
+  })
+  names(need) <- out_ids
+  need[lengths(need) > 0L]
+}
+
+# The selected reports that read the ARD of a report that is not selected:
+# a run builds the ARD of the selected reports only (#790).  `needs`: report
+# -> the reports whose ARD it reads (.batch_report_needs()); `selected`: the
+# reports of the run.  A data.frame, one row per pair: report, need.
+.batch_missing_needs <- function(needs, selected) {
+  report <- character()
+  need <- character()
+  for (r in intersect(names(needs), selected)) {
+    m <- setdiff(needs[[r]], selected)
+    report <- c(report, rep(r, length(m)))
+    need <- c(need, m)
+  }
+  data.frame(report = report, need = need, stringsAsFactors = FALSE)
 }
 
 # The programs a report left out of a run is: its ARD program and its report

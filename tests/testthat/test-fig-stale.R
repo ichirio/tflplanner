@@ -77,20 +77,26 @@ test_that("the figure turns outdated with the table's ARD, and the preview and t
   expect_identical(fig_state(s), list(status = "outdated", why = "ard:T-14-2-2"))
   run_study(s, "F-14-2-3")
   expect_identical(fig_state(s), list(status = "ok", why = ""))
-  # changed again; an official run of the figure alone makes the ARD first
+  # changed again; an official run of the figure alone does not start: it
+  # reads the ARD of a report the run does not select (#790)
   an$code[k] <- sub("150)", "150, 180)", an$code[k], fixed = TRUE)
   s$planner$ard$analyses <- an
   s <- suppressMessages(save_study(s))
-  b <- run_batch(s, c("ard", "tfl"), only = "F-14-2-3", code = FALSE)
-  expect_identical(b$result$part, c("ard", "tfl"))
-  expect_identical(b$result$program, c("programs/ard/T-14-2-2.R", "programs/tfl/F-14-2-3.R"))
-  expect_true(any(grepl("made first", b$output, fixed = TRUE)))
+  b0 <- run_batch(s, c("ard", "tfl"), only = "F-14-2-3", code = FALSE)
+  expect_false(b0$ok)
+  expect_null(b0$batch)
+  expect_true(any(grepl("F-14-2-3 reads the ARD of T-14-2-2", b0$output, fixed = TRUE)))
+  # with the table selected too: its ARD, then the table and the figure
+  b <- run_batch(s, c("ard", "tfl"), only = c("T-14-2-2", "F-14-2-3"), code = FALSE)
+  expect_identical(b$result$part, c("ard", "tfl", "tfl"))
+  expect_identical(b$result$program, c("programs/ard/T-14-2-2.R", "programs/tfl/T-14-2-2.R",
+                                       "programs/tfl/F-14-2-3.R"))
   expect_identical(fig_state(s), list(status = "ok", why = ""))
   # nothing changed: made again all the same (a run never reads an ARD an
   # earlier run left, #790), in a run folder of its own
   Sys.sleep(1.1)
-  b2 <- run_batch(s, c("ard", "tfl"), only = "F-14-2-3", code = FALSE)
-  expect_identical(b2$result$program, c("programs/ard/T-14-2-2.R", "programs/tfl/F-14-2-3.R"))
+  b2 <- run_batch(s, c("ard", "tfl"), only = c("T-14-2-2", "F-14-2-3"), code = FALSE)
+  expect_identical(b2$result$program, b$result$program)
   expect_false(identical(b2$batch, b$batch))
   expect_true(dir.exists(b$batch))
 })
@@ -149,19 +155,54 @@ test_that("the runner makes the ARD before the reports, even when one is built",
   utils::capture.output(r <- suppressMessages(e$run_batch(c("ard", "tfl"))))
   expect_identical(e$ran, c("programs/ard/T1.R", "programs/tfl/F1.R"))
   expect_identical(r$part, c("ard", "tfl"))
-  # the figure alone: the ARD it reads made first in the same run
+  # the figure with the table it reads (each its own run folder)
   e$ran <- character()
   Sys.sleep(1.1)
-  utils::capture.output(r2 <- suppressMessages(e$run_batch(c("ard", "tfl"), "F1")))
+  utils::capture.output(r2 <- suppressMessages(e$run_batch(c("ard", "tfl"), c("T1", "F1"))))
   expect_identical(e$ran, c("programs/ard/T1.R", "programs/tfl/F1.R"))
   expect_identical(r2$part, c("ard", "tfl"))
-  # each run its own run folder; the earlier one kept
   expect_length(list.files("runs"), 2L)
 })
 
-# A report kept in a run that reads the ARD of one the run leaves out: the
-# run makes that ARD too (#790); no earlier rows are read, and no question.
-test_that("a kept report that reads a left-out report's ARD: that ARD program runs in the same run", {
+# A report selected that reads the ARD of one the run does not select: the
+# run does not start (#790).  The runner quits, so it is run in its own R.
+test_that("a hand run of a report that reads the ARD of a report not selected stops, and writes nothing", {
+  skip_on_cran()
+  d <- tempfile("runner")
+  dir.create(d)
+  on.exit(unlink(d, recursive = TRUE), add = TRUE)
+  writeLines("study_id: R1", file.path(d, "study.yml"))
+  script <- file.path(d, "go.R")
+  writeLines(c(
+    paste0("sys.source(", encodeString(system.file("batch", "runner.R", package = "tflplanner"), quote = "'"),
+           ", envir = globalenv())"),
+    ".batch_root <- 'runs'",
+    ".batch_ard <- 'output/ard/ard.rds'",
+    ".batch_programs <- list(ard = c('programs/ard/T1.R', 'programs/ard/T2.R'),",
+    "                        tfl = c('programs/tfl/T1.R', 'programs/tfl/L1.R'))",
+    ".batch_ard_outputs <- c(T1.R = 'T1', T2.R = 'T2')",
+    ".batch_report_ids <- c(`programs/tfl/T1.R` = 'T1', `programs/tfl/L1.R` = 'L1')",
+    ".batch_needs <- list(`programs/tfl/T1.R` = 'T1', `programs/tfl/L1.R` = c('T1', 'T2'))",
+    ".batch_sets <- list()",
+    ".batch_outputs <- list(`programs/tfl/T1.R` = 'output/tfl/T1.rtf', `programs/tfl/L1.R` = 'output/tfl/L1.rtf')",
+    ".batch_support <- list(ard = character(), tfl = character(), all = character())",
+    ".batch_data <- list()",
+    "run_batch(c('ard', 'tfl'), commandArgs(trailingOnly = TRUE))"), script)
+  old <- setwd(d)
+  on.exit(setwd(old), add = TRUE)
+  rscript <- file.path(R.home("bin"), "Rscript")
+  out <- suppressWarnings(system2(rscript, c(shQuote(script), "--exclude=T2"),
+                                  stdout = TRUE, stderr = TRUE,
+                                  env = paste0("RUNNER=", shQuote(system.file("batch", "runner.R", package = "tflplanner")))))
+  expect_gt(attr(out, "status") %||% 0L, 0L)
+  expect_true(any(grepl("L1 reads the ARD of T2", out, fixed = TRUE)))
+  # nothing written: no run folder, no RTF
+  expect_false(dir.exists("runs"))
+  expect_length(list.files(d, pattern = "[.]rtf$", recursive = TRUE), 0L)
+})
+
+# A run that selects both reports starts as before.
+test_that("a run that selects the report and the report it reads runs both", {
   d <- tempfile("runner")
   dir.create(d)
   on.exit(unlink(d, recursive = TRUE), add = TRUE)
@@ -176,14 +217,57 @@ test_that("a kept report that reads a left-out report's ARD: that ARD program ru
   e$.batch_needs <- list(`programs/tfl/T1.R` = "T1", `programs/tfl/L1.R` = c("T1", "T2"))
   e$.batch_outputs <- list(`programs/tfl/T1.R` = "output/tfl/T1.rtf",
                            `programs/tfl/L1.R` = "output/tfl/L1.rtf")
-  # T2 left out: L1 reads its ARD, so that ARD program runs, before L1
-  utils::capture.output(r <- suppressMessages(e$run_batch(c("ard", "tfl"), "--exclude=T2")))
-  expect_identical(e$ran, c("programs/ard/T1.R", "programs/tfl/T1.R",
-                            "programs/ard/T2.R", "programs/tfl/L1.R"))
-  expect_identical(r$part, c("ard", "tfl", "ard", "tfl"))
-  # it ran, so it is not "left out" in the run's record
+  # T2 is not a report of the run, but L1 reads it: ticked (T2.R is the name
+  # of its ARD program too)
+  utils::capture.output(r <- suppressMessages(e$run_batch(c("ard", "tfl"), c("T1", "L1", "T2"))))
+  expect_identical(e$ran, c("programs/ard/T1.R", "programs/ard/T2.R",
+                            "programs/tfl/T1.R", "programs/tfl/L1.R"))
   bt <- readLines(file.path("runs", list.files("runs")[1L], "batch.txt"))
   expect_true("Excluded : none" %in% bt)
+})
+
+# A report whose ARD program failed in the run is not run on the rows an
+# earlier run left: it is recorded as failed.
+test_that("the runner does not run a report whose ARD program failed", {
+  d <- tempfile("runner")
+  dir.create(file.path(d, "output", "ard"), recursive = TRUE)
+  on.exit(unlink(d, recursive = TRUE), add = TRUE)
+  old <- setwd(d)
+  on.exit(setwd(old), add = TRUE)
+  writeLines("study_id: R1", "study.yml")
+  e <- runner_env()
+  e$.batch_run <- function(part, prog, log_dir, engine) {
+    e$ran <- c(e$ran, prog)
+    data.frame(part = part, program = prog, status = if (part == "ard") "ERROR" else "OK",
+               errors = 0L, warnings = 0L, note = "", started = "", seconds = 0,
+               md5 = NA_character_, log = file.path(log_dir, "x.log"),
+               stringsAsFactors = FALSE)
+  }
+  utils::capture.output(r <- suppressMessages(e$run_batch(c("ard", "tfl"))))
+  expect_identical(e$ran, "programs/ard/T1.R")
+  expect_identical(r$status, c("ERROR", "ERROR"))
+  expect_match(r$note[2L], "the ARD of T1 failed", fixed = TRUE)
+})
+
+test_that("a failed detection of what a report reads is said, not passed over", {
+  p <- add_output(new_planner(), "T-1", type = "table")
+  testthat::local_mocked_bindings(.batch_ard_reads = function(x) stop("boom"))
+  expect_warning(.batch_report_needs(p), "boom")
+})
+
+test_that(".batch_missing_needs names the selected reports that read an ARD not selected", {
+  needs <- list(`T-1` = "T-1", `F-1` = c("T-1", "T-2"), `L-1` = "T-3")
+  # a figure reads its table's ARD; a table reads its own
+  m <- .batch_missing_needs(needs, c("T-1", "F-1", "L-1"))
+  expect_identical(m, data.frame(report = c("F-1", "L-1"), need = c("T-2", "T-3"),
+                                 stringsAsFactors = FALSE))
+  expect_identical(.batch_missing_needs(needs, "F-1")$need, c("T-1", "T-2"))
+  # a table whose own ARD is not selected is not selected itself: no row
+  expect_identical(.batch_missing_needs(list(`T-9` = "T-9"), "T-1")$report, character())
+  # none missing: no rows
+  m0 <- .batch_missing_needs(needs, c("T-1", "T-2", "T-3", "F-1", "L-1"))
+  expect_identical(nrow(m0), 0L)
+  expect_identical(names(m0), c("report", "need"))
 })
 
 test_that("two runs in the same second get two run folders, and the runs table lists both", {
