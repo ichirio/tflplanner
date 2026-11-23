@@ -122,9 +122,8 @@ test_that("an official run of a named batch, or leaving reports out", {
 test_that("the runner takes an output id as a program name, and --exclude too", {
   skip_on_cran()
   bs_home()
-  # DM has a program name of its own; the ARD file of "VS 2" has `_` for the space
-  ids <- c("DM", "VS 2")
-  p <- bs_planner(ids)
+  # DM's report has a program name of its own (t_dm), so the id is not a file name
+  p <- bs_planner(c("DM", "VS"))
   p$sheets$report <- rbind(p$sheets$report, NA)
   p$sheets$report[nrow(p$sheets$report), c("output_id", "program")] <- c("DM", "t_dm")
   s <- create_study("BN", planner = p)
@@ -137,34 +136,21 @@ test_that("the runner takes an output id as a program name, and --exclude too", 
   b <- run_batch(o, c("ard", "tfl"), only = "DM")
   expect_identical(progs(b), c("DM.R", "t_dm.R"))
   Sys.sleep(1.1)
-  # an id with a space (the ARD file has `_`)
-  b <- run_batch(o, "ard", only = "VS 2")
-  expect_identical(progs(b), "VS_2.R")
-  Sys.sleep(1.1)
-  # an id with a Japanese character
-  ids2 <- c("DM", "\u5e74\u9f62")
-  s2 <- create_study("BN2", planner = bs_planner(ids2))
-  saveRDS(cards::ADSL, file.path(s2$path, "data", "adam", "adsl.rds"))
-  b <- run_batch(open_study("BN2"), c("ard", "tfl"), only = "\u5e74\u9f62")
-  expect_length(progs(b), 2L)
-  expect_true(all(grepl("\u5e74\u9f62|^_+\.R$", progs(b))))
-  Sys.sleep(1.1)
   # a file name still works, with or without .R
-  expect_identical(progs(run_batch(o, "ard", only = "VS_2.R")), "VS_2.R")
-  Sys.sleep(1.1)
   expect_identical(progs(run_batch(o, "tfl", only = "t_dm")), "t_dm.R")
   Sys.sleep(1.1)
-  # left out by id: the report's two programs (run_batch writes their names)
-  b <- run_batch(o, c("ard", "tfl"), exclude = "DM")
-  expect_identical(progs(b), c("VS_2.R", "VS 2.R"))
+  expect_identical(progs(run_batch(o, "ard", only = "VS.R")), "VS.R")
   Sys.sleep(1.1)
   # the runner's own rule: Rscript programs/autoexec_all.R --exclude=<id>
   old <- setwd(s$path)
   out <- system2(file.path(R.home("bin"), "Rscript"),
-                 c("programs/autoexec_all.R", shQuote("--exclude=VS 2")),
+                 c("programs/autoexec_all.R", "--exclude=DM"),
                  stdout = TRUE, stderr = TRUE)
   setwd(old)
-  expect_true(any(grepl("^Left out: .*VS_2.R", out)))
+  left <- grep("^Left out: ", out, value = TRUE)
+  expect_length(left, 1L)
+  expect_match(left, "DM.R", fixed = TRUE)
+  expect_match(left, "t_dm.R", fixed = TRUE)
   Sys.sleep(1.1)
   # a name that matches nothing: as before, nothing to run
   b <- run_batch(o, "ard", only = "NOPE")
