@@ -123,7 +123,9 @@ test_that("the app serves its version and process for the launcher", {
   d <- .serve_health()
   h <- readLines(file.path(d, "health.txt"))
   expect_identical(h[1L], paste("tflplanner", as.character(utils::packageVersion("tflplanner"))))
-  expect_identical(h[2L], paste("pid", Sys.getpid()))
+  # (the R x.y: an app of another x.y is another version to the launcher)
+  expect_identical(h[2L], paste("r", .r_xy()))
+  expect_identical(h[3L], paste("pid", Sys.getpid()))
   expect_true("tflplanner-health" %in% names(shiny::resourcePaths()))
 })
 

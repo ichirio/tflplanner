@@ -874,27 +874,48 @@
     shiny::invalidateLater(60000)
     .stale_versions()
   })
+  # The "tflplanner" brand (top left) opens this: the versions this window runs -- rtfreporter,
+  # tflspec, tflplanner (the branch and commit of a development install) and
+  # R -- in the words of the note above.  Noted once, when the app started.
+  shiny::observeEvent(input$about_app, {
+    shiny::showModal(shiny::modalDialog(
+      title = t("About this version"), easyClose = TRUE, size = "l",
+      shiny::p(shiny::strong(paste0(t("Versions this window runs"), ":"))),
+      # one line each, never broken inside an entry
+      lapply(.running_versions_lines(dev = t("development version"),
+                                     local = t("installed from a folder")),
+             shiny::tags$div, style = "white-space: nowrap;"),
+      footer = shiny::modalButton(t("Close"))))
+  })
+  # a shortcut made before the R version was in its name keeps the old
+  # launcher: it does not follow tflplanner's updates any more
+  old_launcher_note <- function() {
+    if (!isTRUE(tryCatch(.legacy_only(), error = function(e) FALSE))) return(NULL)
+    shiny::div(
+      class = "alert alert-info small py-2 mb-2",
+      t("The shortcut you start tflplanner from was made by an older tflplanner. Run add_shortcut() in the R you use: it makes \"tflplanner (R x.y)\" and removes the old one."))
+  }
   output$update_note <- shiny::renderUI({
     s <- stale()
     if (length(s)) {
-      return(shiny::div(
+      return(shiny::tagList(old_launcher_note(), shiny::div(
         class = "alert alert-warning small py-2 mb-2",
         shiny::strong(t("A newer version is installed:")), " ",
         paste(vapply(names(s), function(p) sprintf("%s %s (%s %s)", p, s[[p]][["installed"]],
                                                       t("this window runs"), s[[p]][["running"]]), ""),
               collapse = ", "), ". ",
-        t("Save, then Close (top right) and start tflplanner again: until then this window runs the old version.")))
+        t("Save, then Close (top right) and start tflplanner again: until then this window runs the old version."))))
     }
     r <- update_found()
-    if (!length(r) || isTRUE(input$update_note_hide)) return(NULL)
-    shiny::div(
+    if (!length(r) || isTRUE(input$update_note_hide)) return(old_launcher_note())
+    shiny::tagList(old_launcher_note(), shiny::div(
       class = "alert alert-info alert-dismissible small py-2 mb-2",
       shiny::strong(t("A newer version is out:")), " ",
       paste(names(r), r, collapse = ", "), ". ",
       t("To update: close tflplanner and start it from the \"update and launch\" shortcut, or run update_tflplanner() in R."),
       shiny::tags$button(
         type = "button", class = "btn-close",
-        onclick = "Shiny.setInputValue('update_note_hide', true);"))
+        onclick = "Shiny.setInputValue('update_note_hide', true);")))
   })
   # a home inside the study folders (set before 0.0.2.9200, #359): said,
   # nothing moved -- the user moves it
