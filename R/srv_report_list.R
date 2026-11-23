@@ -7,6 +7,23 @@
   # place: the list is not drawn again for them; `seq` says which is newer)
   mark_clock <- new.env()
   mark_clock$n <- 0
+  # the ARD's state from the latest official runs: worked out again when
+  # the ARD's definition, the study's files or the runs changed, not at each
+  # edit of a title or a listing (the list is drawn again for those).  Not a
+  # reactive: a run ending must not draw the list again (#9184), but a list
+  # drawn for another reason has the runs as they are.
+  run_ard_memo <- new.env()
+  run_ard_state <- function() {
+    s <- shiny::isolate(current_study())
+    p <- shiny::isolate(rv$p)
+    key <- list(s$path, .run_index_stamp(s$path), shiny::isolate(rv$status_ver),
+                p$ard, p$sheets$codelists, p$setup, p$study)
+    if (!is.null(run_ard_memo$key) && identical(run_ard_memo$key, key)) return(run_ard_memo$st)
+    st <- tryCatch(ard_status(s, from = "run"), error = function(e) NULL)
+    run_ard_memo$key <- key
+    run_ard_memo$st <- st
+    st
+  }
   picker_rows <- shiny::reactive({
     rv$ver
     rv$status_ver
@@ -17,8 +34,7 @@
     # the ARD's state and the runs' from the latest official runs, read from
     # their files
     # (study_status() writes every program again: slow for a big study)
-    d <- .report_rows(p, tryCatch(ard_status(shiny::isolate(current_study()), from = "run"),
-                             error = function(e) NULL),
+    d <- .report_rows(p, run_ard_state(),
                       tryCatch(.report_run_light(shiny::isolate(current_study())),
                                error = function(e) NULL))
     mark_clock$n <- mark_clock$n + 1
