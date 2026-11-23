@@ -847,9 +847,9 @@ remove_shortcut <- function(launcher = TRUE, ask = interactive(), xy = NULL) {
   dirs <- if (identical(xy, "all")) {
     unique(c(.launcher_dir(), unname(.launcher_dirs())))
   } else .launcher_dir(xy %||% .r_xy())
-  made <- unlist(lapply(file.path(dirs, "shortcuts.txt"), function(rec) {
+  made <- as.character(unlist(lapply(file.path(dirs, "shortcuts.txt"), function(rec) {
     if (file.exists(rec)) readLines(rec, warn = FALSE)
-  }))
+  })))
   made <- made[file.exists(made)]
   # the icons of before the R version was in the name go with it
   made <- unique(c(made, .legacy_shortcuts(lang = lang)))

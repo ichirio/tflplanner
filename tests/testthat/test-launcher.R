@@ -205,18 +205,13 @@ test_that("add_shortcut() / remove_shortcut() on Windows make and remove real .l
 test_that("the Windows launcher finds R and runs launch.R hidden", {
   skip_on_cran()
   skip_if_not(.Platform$OS.type == "windows")
-  # the VBScript's own way of finding R, run for real: print what it found
+  # the VBScript's own way of finding R, run for real: --which prints the
+  # Rscript it would use and starts nothing
   local_launcher()
   dir <- .write_launcher()
-  vbs <- iconv(list(readBin(file.path(dir, "tflplanner.vbs"), "raw", 1e5)[-(1:2)]),
-               "UTF-16LE", "UTF-8")
-  probe <- sub("(?s)rscript = FindRscript\\(\\).*?WScript.Quit 1\\r?\\nEnd If",
-               "WScript.Echo FindRscript()\nWScript.Quit 0", vbs, perl = TRUE)
-  probe <- sub("sh.Run Q\\(rscript\\)[^\n]*", "", probe)
-  f <- tempfile(fileext = ".vbs")
-  .write_utf16(probe, f)
   out <- system2(file.path(Sys.getenv("SystemRoot"), "System32", "cscript.exe"),
-                 c("//nologo", shQuote(f)), stdout = TRUE)
+                 c("//nologo", shQuote(file.path(dir, "tflplanner.vbs")), "--which"),
+                 stdout = TRUE)
   expect_match(out[[length(out)]], "Rscript.exe$")
   expect_true(file.exists(out[[length(out)]]))
 })
