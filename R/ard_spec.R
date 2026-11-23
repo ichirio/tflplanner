@@ -483,6 +483,7 @@ study_ard_rows <- function(study, output_id) {
   data.frame(output_id = character(), definition = character(),
              built = character(), rows = integer(),
              error = character(), setup = character(),
+             company = character(), user = character(),
              stringsAsFactors = FALSE)
 }
 
@@ -502,7 +503,7 @@ study_ard_rows <- function(study, output_id) {
   if (is.na(r$output_id)) "not built" else
     if (!is.na(r$error) && nzchar(r$error)) "error" else
       if (!identical(r$definition, now) ||
-          .setup_changed(r$setup, study$path)) "outdated" else "built"
+          .setup_changed(.ard_recorded_setup(r), study$path)) "outdated" else "built"
 }
 
 .write_ard_status <- function(study, d) {

@@ -199,7 +199,7 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
                       error = function(e) NA_character_)
       r <- st[st$output_id == tb, , drop = FALSE]
       made <- nrow(r) > 0L && (is.na(r$error[1L]) || !nzchar(r$error[1L])) &&
-        identical(r$definition[1L], now) && !isTRUE(.setup_changed(r$setup[1L], study$path))
+        identical(r$definition[1L], now) && !isTRUE(.setup_changed(.ard_recorded_setup(r[1L, , drop = FALSE]), study$path))
       k <- in_rt[need[in_rt] %in% tb]
       stale <- !made | (!is.na(from[k]) & nzchar(from[k]) & !(from[k] %in% now))
       out[k[stale]] <- paste0("ard:", tb)

@@ -33,7 +33,7 @@
 .generated_program_files <- function() {
   c(.ard_setup_file, .ard_autoexec_file, .batch_file, .fig_setup_file,
     .report_setup_file, .autoexec_all_file, .autoexec_report_file,
-    .study_setup_file, .study_helpers_file)
+    .study_setup_file, .study_helpers_file, .company_setup_file, .study_user_file)
 }
 
 #' The official-run programs of a study
@@ -80,17 +80,20 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
   unresolved <- unresolved[!is.na(names(unresolved))]
   # (the definition: the YAML spec's files)
   spec_files <- setdiff(.spec_files_yaml(root), .study_file)
+  # (the study's own analysis functions, study key `source`: every ARD
+  # program sources them, by their path from the study folder; #792)
+  own_src <- .split_bar(.study_value(spec, "source", NA))
   support <- list(
     ard = c(file.path(lay[["programs_ard"]], c(.ard_setup_file,
                                                .ard_autoexec_file)),
-            spec_files),
+            own_src, spec_files),
     tfl = c(file.path(lay[["programs_tfl"]], c(.autoexec_report_file,
                                                .fig_setup_file,
                                                .report_setup_file)),
             spec_files),
     all = c(file.path("programs", c(.batch_file, .autoexec_all_file,
                                     .study_helpers_file)),
-            .study_setup_path(), .study_file))
+            .study_setup_files(), .study_file))
   # the study's id (study.yml's; a study folder is named by its id): each
   # run records it, and only its own runs count (tflspec::tfl_run_index())
   sf <- file.path(root, .study_file)

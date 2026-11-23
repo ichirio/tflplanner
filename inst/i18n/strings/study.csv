@@ -210,3 +210,8 @@
 "About this version","バージョン情報"
 "installed from a folder","フォルダからインストール"
 "The shortcut you start tflplanner from was made by an older tflplanner. Run add_shortcut() in the R you use: it makes ""tflplanner (R x.y)"" and removes the old one.","今使っているショートカットは、古い tflplanner が作ったものです。使う R で add_shortcut() を実行すると、「tflplanner (R x.y)」を作り、古いものを削除します。"
+"programs/study_setup.R was split: the company's code is now in programs/company_setup.R and yours in programs/study_user.R; tflplanner writes study_setup.R. The old file is in programs/.edited/.","programs/study_setup.R を分けました。会社のコードは programs/company_setup.R に、あなたのコードは programs/study_user.R に移り、study_setup.R は tflplanner が書きます。元のファイルは programs/.edited/ にあります。"
+"programs/study_setup.R was not split, so it stays as it was and still runs (a copy is in programs/.edited/). Put the company's lines in programs/company_setup.R and yours in programs/study_user.R, delete study_setup.R, and save again. Why:","programs/study_setup.R は分けられなかったので、元のまま残り、今まで通り動きます（写しは programs/.edited/ にあります）。会社の行を programs/company_setup.R に、あなたの行を programs/study_user.R に移し、study_setup.R を消してから、もう一度保存してください。理由:"
+"its marker lines are missing, repeated or out of order","区切りの行が無いか、重なっているか、順番が違います"
+"its tflplanner part was edited by hand","tflplanner が書く部分が手で直されています"
+"company_setup.R or study_user.R is there already, with other content","company_setup.R か study_user.R が、違う中身で既にあります"

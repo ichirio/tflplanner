@@ -1016,10 +1016,7 @@ app_ui <- function(lang = "en") {
         bslib::card_header(t("Reports")),
         shiny::div(
           class = "d-flex flex-wrap gap-2",
-          .btn("status_refresh", t("Refresh")),
-          .btn("tfl_open", t("Open output/tfl")),
-          shiny::downloadButton("rtf_download", t("Download the RTF"),
-                                class = "btn-sm")),
+          .btn("status_refresh", t("Refresh"))),
         shiny::uiOutput("job"),
         report_search_ui("status_q", lang),
         # a study of many reports takes seconds to read: said so in the
@@ -1030,7 +1027,7 @@ app_ui <- function(lang = "en") {
         DT::DTOutput("status"),
         shiny::tags$script(shiny::HTML(.status_loading_js))),
       bslib::card(
-        bslib::card_header(with_tip(t("Official runs (run folders)"), t("An official run makes a run folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs), the R and package versions (session_info.txt) and, if kept, the programs and definition workbooks it ran and the data they read. Every run makes a new run folder; the earlier ones are never deleted. The reports are made from the ARD the same run makes."))),
+        bslib::card_header(with_tip(t("Official runs (run folders)"), t("An official run makes a run folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs), the R and package versions (session_info.txt) and, if kept, the programs and definition workbooks it ran and the data they read. Every run makes a new run folder; the earlier ones are never deleted. The reports are made from the ARD the same run makes. A row's Download (ZIP): Output is output/, logs/, run.csv and batch.txt; All files is the whole run folder, made in the background as runs/<folder>.zip when it is over zip_download_limit_mb (config.yml, 500 MB)."))),
         shiny::div(
           class = "d-flex flex-wrap gap-3 align-items-center",
           shiny::radioButtons(
@@ -1053,7 +1050,14 @@ app_ui <- function(lang = "en") {
         # the reports the run takes: all, unless some are left out
         shiny::uiOutput("batch_reports_ui"),
         # as tall as its rows (a fill table left a card of empty space)
-        DT::DTOutput("batches", height = "auto", fill = FALSE)),
+        DT::DTOutput("batches", height = "auto", fill = FALSE),
+        # a row's ZIP link: the server names the ZIP, then clicks this
+        shiny::div(style = "display: none;",
+                   shiny::downloadButton("batch_zip_dl", "", class = "btn-sm")),
+        shiny::tags$script(shiny::HTML(
+          "Shiny.addCustomMessageHandler('rp-batch-zip', function(id) {",
+          "  var a = document.getElementById(id); if (a) a.click();",
+          "});"))),
       # (the definition's check, as the programs read it, is the Review
       # tab's now)
       bslib::card(
