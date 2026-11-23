@@ -156,6 +156,29 @@ test_that("a value is shown as one line of YAML and reads back the same", {
   expect_identical(.series_value_out(list(N = 0L)), list(N = 0L))
 })
 
+test_that("!study with a fallback is shown and written as the map form", {
+  ser <- structure(list(key = "formats"), class = "tfl_series_ref")
+  st <- structure(list(key = "settings.formats", fallback = ser), class = "tfl_study_ref")
+  expect_identical(.series_flow(st), "!study {key: settings.formats, fallback: !series formats}")
+  st2 <- structure(list(key = "settings.max_rows", fallback = 30L), class = "tfl_study_ref")
+  expect_identical(.series_flow(st2), "!study {key: settings.max_rows, fallback: 30}")
+  st3 <- structure(list(key = "settings.f", fallback = list(mean = 2L)), class = "tfl_study_ref")
+  expect_identical(.series_flow(st3), "!study {key: settings.f, fallback: {mean: 2}}")
+  # without a fallback: as before
+  plain <- structure(list(key = "sponsor.name"), class = "tfl_study_ref")
+  expect_identical(.series_flow(plain), "!study sponsor.name")
+  expect_identical(.series_edit_text(st), "")
+  # written as a tagged map, read back as the same tags
+  out <- yaml::as.yaml(list(a = .series_value_out(st), b = .series_value_out(plain)))
+  expect_identical(out, paste0("a: !study\n  key: settings.formats\n  fallback: !series formats\n",
+                               "b: !study sponsor.name\n"))
+  back <- yaml::yaml.load(out, handlers = list(
+    series = function(x) paste("series", x),
+    study = function(x) if (is.list(x)) list(study = x) else paste("study", x)))
+  expect_identical(back, list(a = list(study = list(key = "settings.formats", fallback = "series formats")),
+                              b = "study sponsor.name"))
+})
+
 test_that("the series folder is the home's when the home is not R_user_dir()", {
   withr::local_options(tflspec.series_dir = NULL)
   home <- withr::local_tempdir()
