@@ -272,7 +272,14 @@ test_that("an old study_setup.R that cannot be split is kept as it was, and says
   expect_identical(readLines(user_file(s)), "theirs <- 1")
   # the old file is still read as the study's setup, and it alone
   expect_true("cards" %in% .study_setup_packages(s$path))
-  expect_identical(unname(.study_setup_present(s$path)), f)
+  expect_identical(unname(.study_setup_run(s$path)), f)
+  # the fingerprint is every file that is there, as a program records it
+  expect_identical(unname(.study_setup_present(s$path)), c(f, user_file(s)))
+  rs <- file.path(s$path, .report_setup_path())
+  dir.create(dirname(rs), recursive = TRUE, showWarnings = FALSE)
+  if (!file.exists(rs)) writeLines("# report setup", rs)
+  rec <- withr::with_dir(s$path, eval(parse(text = .report_setup_hash_code())))
+  expect_identical(rec, .report_setup_hash(s$path))
 })
 
 test_that("each setup file sources study_setup.R first; programs no library()", {
@@ -402,7 +409,6 @@ test_that("a change to study_setup.R marks the ARD and the reports outdated", {
   # as the programs record a build: the setup's fingerprint
   h <- .study_setup_hash(s$path)
   expect_match(h, "^([0-9a-f]{32}[+]){2}[0-9a-f]{32}$")
-  withr::with_dir(s$path, expect_identical(eval(parse(text = .setup_hash_code())), h))
   def <- tflspec::tfl_ard_spec_hash(structure(s$planner$ard, class = "tfl_ard_spec"),
                                     "DM", dir = s$path,
                                     codelists = .study_codelists(s$planner))

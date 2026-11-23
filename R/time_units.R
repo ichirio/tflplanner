@@ -23,7 +23,7 @@
 # last one wins, as when they run -- else tflspec's.  Read, not run.
 .study_time_units <- function(path) {
   d <- tflspec::tfl_time_unit_days()
-  f <- .study_setup_present(path)
+  f <- .study_setup_run(path)
   if (!length(f)) return(d)
   lines <- unlist(lapply(f, readLines, warn = FALSE, encoding = "UTF-8"), use.names = FALSE)
   for (k in names(d)) {

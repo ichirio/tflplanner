@@ -60,7 +60,7 @@
 # suppressPackageStartupMessages()).  A study whose files are without
 # dplyr (made before it was in the company's setup code) keeps `dplyr::`.
 .study_setup_packages <- function(root) {
-  f <- .study_setup_present(root)
+  f <- .study_setup_run(root)
   # a study not saved yet: the company's setup code it starts with
   ex <- tryCatch(if (length(f)) {
     do.call(c, lapply(f, parse, keep.source = FALSE, encoding = "UTF-8"))

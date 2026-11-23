@@ -94,13 +94,20 @@ study_helpers_code <- function(date = Sys.Date()) {
 }
 
 # Those of them that are in `root`, in that order (a study made before
-# #910 has study_setup.R alone)
+# #910 has study_setup.R alone): the study setup's fingerprint, as the
+# programs record it (every file that is there)
 .study_setup_present <- function(root) {
   f <- file.path(root, .study_setup_files())
   names(f) <- names(.study_setup_files())
-  # an old study_setup.R kept as it was runs neither of the other two
-  if (file.exists(f[["setup"]]) && .is_old_setup(f[["setup"]])) return(f["setup"])
   f[file.exists(f)]
+}
+
+# Those a program runs: an old study_setup.R kept as it was runs neither
+# of the other two (what the readers of the setup's code read)
+.study_setup_run <- function(root) {
+  f <- .study_setup_present(root)
+  if ("setup" %in% names(f) && .is_old_setup(f[["setup"]])) return(f["setup"])
+  f
 }
 
 # the line a setup file starts with
@@ -466,7 +473,7 @@ company_setup_code <- function(meta, date = Sys.Date(), standards = company_stan
   names(free) <- c("company", "user")
   row <- function(file, status) data.frame(file = file, status = status, stringsAsFactors = FALSE)
   txt <- .read_bytes(f)
-  lines <- strsplit(txt, "\n", fixed = TRUE)[[1L]]
+  lines <- strsplit(txt, "\n", fixed = TRUE, useBytes = TRUE)[[1L]]
   once <- vapply(.setup_marker, function(m) sum(grepl(m, lines, useBytes = TRUE)) == 1L, NA)
   parts <- if (all(once)) .split_study_setup(txt)
   why <- if (is.null(parts)) {
@@ -614,10 +621,4 @@ company_setup_code <- function(meta, date = Sys.Date(), standards = company_stan
                  "          if (file.exists(%s)) unname(tools::md5sum(%s)) else \"\",\n",
                  "          sep = \"|\")"),
           q(.study_setup_files()), q(.report_setup_path()), q(.report_setup_path()))
-}
-
-# the line of a generated program that works out the setup's fingerprint
-.setup_hash_code <- function() {
-  p <- paste(encodeString(.study_setup_files(), quote = "\""), collapse = ", ")
-  sprintf("paste(unname(tools::md5sum(Filter(file.exists, c(%s)))),\n        collapse = \"+\")", p)
 }
