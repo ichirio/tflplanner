@@ -376,3 +376,4 @@
 "The decimals (or the format) of each statistic; VAR:stat for one variable. A report's names go over the series' formats; `!unset` removes one.","統計量ごとの小数の桁数（または書式）。VAR:stat で 1 つの変数だけ。帳票に書いた名前がシリーズの書式に優先し、`!unset` で 1 つを外す。"
 "The decimals (or the format) of the header N statistics. A report's names go over the series' formats; `!unset` removes one.","見出しの N の統計量の小数の桁数（または書式）。帳票に書いた名前がシリーズの書式に優先し、`!unset` で 1 つを外す。"
 "The decimals (or the format) of the legend N. A report's names go over the series' formats; `!unset` removes one.","凡例の N の小数の桁数（または書式）。帳票に書いた名前がシリーズの書式に優先し、`!unset` で 1 つを外す。"
+"The decimals (or the format) of each statistic (a listing counts nothing; kept as every template has it). A report's names go over the series' formats; `!unset` removes one.","統計量ごとの小数の桁数（または書式）。Listing は何も数えないが、どのテンプレートにもあるので残している。帳票に書いた名前がシリーズの書式に優先し、`!unset` で 1 つを外す。"
