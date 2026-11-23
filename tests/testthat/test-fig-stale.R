@@ -193,8 +193,7 @@ test_that("a hand run of a report that reads the ARD of a report not selected st
   on.exit(setwd(old), add = TRUE)
   rscript <- file.path(R.home("bin"), "Rscript")
   out <- suppressWarnings(system2(rscript, c(shQuote(script), "--exclude=T2"),
-                                  stdout = TRUE, stderr = TRUE,
-                                  env = paste0("RUNNER=", shQuote(system.file("batch", "runner.R", package = "tflplanner")))))
+                                  stdout = TRUE, stderr = TRUE))
   expect_gt(attr(out, "status") %||% 0L, 0L)
   expect_true(any(grepl("L1 reads the ARD of T2", out, fixed = TRUE)), info = paste(out, collapse = "\n"))
   # nothing written: no run folder, no RTF

@@ -190,11 +190,12 @@
     rv$job <- px
     rv$job_kind <- "official"
     rv$job_study <- rv$study$meta$study_id
-    rv$job_what <- paste(t("the official run:"),
-                         paste(t(c(ard = "ARD", tfl = "Reports")[parts]),
-                               collapse = ", "),
-                         if (length(set)) sprintf(t("(the report set %s)"), set),
-                         if (length(exclude)) sprintf(t("(%d left out)"), length(exclude)))
+    # (the parts that are there only: no blank where none is)
+    what <- c(t("the official run:"),
+              paste(t(c(ard = "ARD", tfl = "Reports")[parts]), collapse = ", "),
+              if (length(set) && nzchar(set)) sprintf(t("(the report set %s)"), set),
+              if (length(exclude)) sprintf(t("(%d left out)"), length(exclude)))
+    rv$job_what <- paste(what[nzchar(what)], collapse = " ")
   }
   # the reports of the run: every report, ticked; a report unticked is left
   # out (its ARD program and its report program)
