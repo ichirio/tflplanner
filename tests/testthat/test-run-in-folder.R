@@ -4,6 +4,30 @@
 # folders and run Rscript -- run on CI and locally with NOT_CRAN=true)
 skip_on_cran()
 
+# (test files do not share functions: these are test-batch-sets.R's)
+bs_home <- function(env = parent.frame()) {
+  home <- withr_tempdir(env)
+  old <- options(tflplanner.home = home)
+  do.call(on.exit, list(substitute(options(old)), add = TRUE), envir = env)
+  suppressMessages(setup_tflplanner(studies_root = file.path(home, "ws")))
+  home
+}
+
+bs_planner <- function(ids = c("DM", "VS")) {
+  p <- add_output(new_planner(), ids[1])
+  p <- add_output(p, ids[2])
+  p <- add_output(p, "L1", type = "listing", at = "end")
+  p$ard$datasets <- data.frame(dataset = "ADSL", path = "data/adam/adsl.rds")
+  p$ard$populations <- data.frame(population_id = "SAF", dataset = "ADSL",
+                                  where = "SAFFL == \"Y\"")
+  p$ard$analyses <- data.frame(
+    output_id = ids, analysis_id = c("AGE", "AGE"),
+    method = "continuous", population_id = "SAF", by = "TRT01A",
+    variables = "AGE")
+  for (s in names(p$ard)) p$ard[[s]] <- .normalize_ard_sheet(p$ard[[s]], s)
+  p
+}
+
 # a study with the one dataset the reports of bs_planner() read
 rif_study <- function(id, env = parent.frame(), data = NULL) {
   bs_home(env)

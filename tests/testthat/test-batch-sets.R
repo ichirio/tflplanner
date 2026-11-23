@@ -276,7 +276,7 @@ test_that("an official run keeps the data its programs read, and the versions", 
   expect_identical(man$md5, unname(tools::md5sum(adsl)))
   expect_identical(as.numeric(man$size), file.size(adsl))
   txt <- readLines(file.path(b2$batch, "batch.txt"))
-  expect_match(grep("^Data", txt, value = TRUE), "kept (data/, 1 file(s)", fixed = TRUE)
+  expect_match(grep("^Data +:", txt, value = TRUE), "kept (data/, 1 file(s)", fixed = TRUE)
   expect_true(file.exists(file.path(b2$batch, "renv.lock")))
   expect_true(list_batches(o)$data[1])
 

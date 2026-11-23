@@ -53,7 +53,8 @@ test_that("a later failed run is an error, with its log; a later good run clears
   s <- lr_study("LR2")
   t0 <- Sys.time()
   fake_run(s$path, "20260101_100000_all", "tfl", c("DM", "VS"), finished = t0 - 300)
-  expect_identical(light(s), c(DM = "ok", VS = "ok"))
+  expect_identical(light(s), c(DM = "ok", VS = "ok"),
+                   info = paste("why:", paste(.report_run_state(s)$why, collapse = " | ")))
   # a newer run where DM failed: DM is an error, VS stays the first run's
   fake_run(s$path, "20260102_100000_all", "tfl", "DM", status = "ERROR",
            finished = t0 - 200)
