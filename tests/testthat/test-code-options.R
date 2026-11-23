@@ -66,7 +66,7 @@ test_that("a study's programs read its folders by their variables; previews as t
 test_that("a study whose setup does not attach dplyr keeps dplyr::", {
   local_home()
   s <- create_study("CO-2", planner = code_planner())
-  f <- file.path(s$path, "programs", "study_setup.R")
+  f <- file.path(s$path, .company_setup_path())
   txt <- readLines(f)
   writeLines(txt[txt != "library(dplyr)"], f)
   s <- open_study("CO-2")

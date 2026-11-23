@@ -653,7 +653,8 @@
     if (is.null(tp) || !identical(tp$name, name)) return()
     prm <- .tpl_params(name)[[a]]
     type <- .tpl_type(prm, tpl_all_cols())
-    shown <- tp$args[[a]] %||% .tpl_study_value(rv$p$spec$study, prm) %||% prm$default
+    # (what the card drew: an echo of it is no edit -- #751 item 2)
+    shown <- .tpl_drawn_value(rv$p, id, tp$args, prm)
     # (a switch with no default -- a series template's, from the series -- is drawn
     # off: its first FALSE is what it showed, no edit)
     if (is.null(shown) && identical(type, "flag")) shown <- FALSE
@@ -671,7 +672,7 @@
     }
     if (identical(type, "text") && is.character(v) && length(v) == 1L) {
       # (the text as it was shown: no edit; YAML that does not parse: said, and the value stays)
-      sh <- tp$args[[a]] %||% .tpl_study_value(rv$p$spec$study, prm) %||% prm$default
+      sh <- .tpl_drawn_value(rv$p, id, tp$args, prm)
       if (!is.null(sh) && identical(trimws(v), .tpl_show(sh))) return()
       bad <- tryCatch({ .tpl_text_parse(trimws(v)); NULL }, error = function(e) conditionMessage(e))
       if (!is.null(bad)) {
@@ -902,8 +903,11 @@
                            pop$population_id, pop$dataset, pop$where %||% "")),
       if (nzchar(f$dataset) && .tpl_join_stale(f, pop)) shiny::div(
         class = "alert alert-warning py-1 small",
-        t("The analysis set changed: Apply writes the new join.")),
-      .btn("tpl_data_apply", t("Apply"), class = "btn-sm btn-outline-primary"),
+        t("The analysis set changed: Match the analysis set writes the new join.")),
+      # (an action, not a save: the data: steps written from these fields,
+      # the join as the analysis set says it now -- #754)
+      .btn("tpl_data_apply", t("Match the analysis set"), class = "btn-sm btn-outline-primary",
+           title = t("Writes the report's data: steps from these fields, with the join of the analysis set as the study defines it now.")),
       if (length(steps)) shiny::tags$details(
         class = "mt-1",
         shiny::tags$summary(class = "small", t("The steps written")),
@@ -1130,6 +1134,9 @@
         bslib::card_body(
           missing_alert,
           if (part == "data" && own_data) tpl_data_block(id, steps),
+          # (the analysis set of a template that takes it from the report:
+          # shown, #751 item 6)
+          if (part == "data" && !own_data && !pop_of_report) .tpl_pop_view_ui(.tpl_pop_view(p, id), t),
           if (pop_of_report) shiny::selectInput("tpl_report_pop", tpl_label(prm_all$population),
                                                 pop_choices(pid),
                                                 selected = pid, width = "100%"),
@@ -1146,14 +1153,22 @@
                 sprintf("%s (%s)", a, t(.step_labels[[sec]]))
               }, ""), collapse = ", ")))
     others <- .tpl_list(kind)$name
+    # (what the report's template: holds that is no argument of the
+    # template: kept as written and shown, tflspec stops on it -- #751)
+    extra <- setdiff(names(args), names(prm_all))
+    head_extra <- if (length(extra)) shiny::div(
+      class = "alert alert-warning py-1 small mb-0 w-100",
+      sprintf(t("Not arguments of this template, kept as written (the run stops on them): %s"),
+              paste(extra, collapse = ", ")),
+      shiny::tags$pre(class = "small mb-0", yaml::as.yaml(args[extra])))
     bslib::card(
       class = "mb-2 border-primary",
       bslib::card_header(shiny::div(
         class = "d-flex flex-wrap gap-2 align-items-center",
-        shiny::strong(t("Template")),
+        # (the name once, in the choice of template: #751 item 7)
+        with_tip(shiny::strong(t("Template")),
+                 sprintf(t("Saved in spec/outputs/%s.yml as template: name and its args only."), id)),
         shiny::code(.tpl_call_name(tp$name)),
-        shiny::span(class = "badge text-bg-light border", paste0("template:", tp$name),
-                    title = sprintf(t("Saved in spec/outputs/%s.yml as template: name and its args only."), id)),
         # (another template: chosen here, confirmed in a dialog)
         shiny::tags$select(
           class = "form-select form-select-sm ms-auto", style = "width: auto",
@@ -1180,7 +1195,7 @@
                                          t("Make a variant ..."))))),
         if (nzchar(.tpl_desc_of(tp$name))) shiny::div(class = "small text-muted w-100",
                                                       t(.tpl_desc_of(tp$name))),
-        head_missing)))
+        head_missing, head_extra)))
   }
   # a template figure: drawn here from the template's items
   # (tflspec::tfl_content_run(), the figure as its program makes it), the

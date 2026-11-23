@@ -676,6 +676,8 @@
   # (called from the Save's and the Discard's own handlers)
   forms_rebase <- function(discarded = FALSE) {
     st_live$rebase(rv$p)
+    # (the Template series card's, R/srv_series.R: its copy read again)
+    if (is.function(session$userData$series_rebase)) session$userData$series_rebase(discarded)
     e <- adata_edit()
     if (is.null(e)) return(invisible())
     adata_live$rebase(rv$p)

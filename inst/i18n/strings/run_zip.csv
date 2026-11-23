@@ -1,0 +1,4 @@
+"en","ja"
+"All files","全ファイル"
+"output/, logs/, run.csv and batch.txt","output/、logs/、run.csv、batch.txt"
+"The whole run folder; over the limit (zip_download_limit_mb), made as runs/<folder>.zip","実行フォルダ全体。上限（zip_download_limit_mb）を超えるときは runs/<フォルダ>.zip として作成します"

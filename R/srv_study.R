@@ -628,6 +628,12 @@
     n <- sum(s$files$status %in% c("written", "rewritten"))
     re <- sum(s$files$status == "rewritten")
     notify(sprintf(t("Saved (%d files written)"), n))
+    # an old study_setup.R: split into the three files, or kept as it was
+    if (any(s$files$status == "split")) notify(t(
+      "programs/study_setup.R was split: the company's code is now in programs/company_setup.R and yours in programs/study_user.R; tflplanner writes study_setup.R. The old file is in programs/.edited/."))
+    if (!is.null(s$setup_note)) notify(paste(
+      t("programs/study_setup.R was not split, so it stays as it was and still runs (a copy is in programs/.edited/). Put the company's lines in programs/company_setup.R and yours in programs/study_user.R, delete study_setup.R, and save again. Why:"),
+      t(s$setup_note)), "warning")
     if (!is.null(s$ard_problem)) notify(paste(
       t("The ARD definition does not hold, so no ARD program was written (the rest is saved). See the Review tab."),
       s$ard_problem), "error")
