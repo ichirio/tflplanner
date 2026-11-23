@@ -51,7 +51,7 @@ test_that("a report is not run until an official run made it; the RTF is the run
 test_that("a later failed run is an error, with its log; a later good run clears it", {
   local_home()
   s <- lr_study("LR2")
-  t0 <- Sys.time()
+  t0 <- Sys.time() + 600  # after the study's files were written, as a real run is
   fake_run(s$path, "20260101_100000_all", "tfl", c("DM", "VS"), finished = t0 - 300)
   expect_identical(light(s), c(DM = "ok", VS = "ok"),
                    info = paste("why:", paste(.report_run_state(s)$why, collapse = " | ")))
@@ -121,7 +121,7 @@ test_that("a run folder of another study does not count", {
 test_that("ard_status(from = 'run') reads the latest runs; 'working' the working ARD", {
   local_home()
   s <- lr_study("LR6")
-  t0 <- Sys.time()
+  t0 <- Sys.time() + 600  # after the study's files were written, as a real run is
   state <- function(from = "working") {
     a <- ard_status(s, from)
     stats::setNames(a$state, a$output_id)
@@ -162,7 +162,7 @@ test_that(".fig_ard_why reads the figure's own run folder, the working files wit
   testthat::local_mocked_bindings(
     .fig_ard_need = function(p, output_id) "DM")
   h <- .ard_hash_now(s, "DM")
-  t0 <- Sys.time()
+  t0 <- Sys.time() + 600  # after the study's files were written, as a real run is
   # F1's run made DM's ARD from the definition now, F2's from an earlier one
   a <- fake_run(s$path, "20260101_100000_all", "tfl", "F1", finished = t0 - 200,
                 ard_status = lr_ard_row(s, "DM"),
@@ -187,7 +187,7 @@ test_that(".fig_ard_why reads the figure's own run folder, the working files wit
 test_that("study_ard_rows falls back to the run's rows, read only, when they match the definition", {
   local_home()
   s <- lr_study("LR8")
-  t0 <- Sys.time()
+  t0 <- Sys.time() + 600  # after the study's files were written, as a real run is
   work <- file.path(s$path, "output", "ard", "ard.rds")
   # no run, no working ARD
   expect_null(study_ard_rows(s, "DM"))
