@@ -140,9 +140,11 @@
   }
   fmt <- function(t) format(t, "%Y-%m-%d %H:%M:%S")
   writeLines(c(paste("Batch    :", stamp),
+               paste("Kind     :", "run"),
                paste("Study    :", study$meta$study_id),
                paste("Started  :", fmt(started)),
-               paste("Finished :", fmt(started + 1))),
+               paste("Finished :", fmt(started + 1)),
+               "Verified : yes"),
              file.path(d, "batch.txt"))
   invisible(d)
 }

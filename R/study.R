@@ -27,9 +27,9 @@
 #                          writes here
 #     output/tfl/          the working reports: the RTF files of previews and
 #                          hand runs
-#     runs/                official runs: one batch folder each, with the
-#                          logs, the results (the same output/ layout) and
-#                          the code.  The screens read a report's state and
+#     runs/                official runs: one batch folder each, a copy of
+#                          the study the programs ran in: the logs, the
+#                          results (the same output/ layout) and the code.  The screens read a report's state and
 #                          RTF from the latest run that made it
 #     logs/preview/        what a report program printed when last run on
 #                          its own (a preview; not a log of record)

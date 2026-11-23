@@ -143,6 +143,12 @@ runner_env <- function() {
   e$.batch_outputs <- list(`programs/tfl/F1.R` = "output/tfl/F1.rtf")
   e$.batch_support <- list(ard = character(), tfl = character(), all = character())
   e$.batch_data <- list()
+  e$.batch_data_vars <- character()
+  e$.batch_data_dirs <- c(adam = "data/adam", sdtm = "data/sdtm", other = "data/other")
+  e$.batch_sources <- character()
+  e$.batch_check_code <- character()
+  e$.batch_kind <- "run"
+  e$.batch_paths <- list()
   e$ran <- character()
   e$.batch_run <- function(part, prog, log_dir, engine) {
     e$ran <- c(e$ran, prog)
@@ -203,6 +209,12 @@ test_that("a hand run of a report that reads the ARD of a report not selected st
     ".batch_outputs <- list(`programs/tfl/T1.R` = 'output/tfl/T1.rtf', `programs/tfl/L1.R` = 'output/tfl/L1.rtf')",
     ".batch_support <- list(ard = character(), tfl = character(), all = character())",
     ".batch_data <- list()",
+    ".batch_data_vars <- character()",
+    ".batch_data_dirs <- c(adam = 'data/adam', sdtm = 'data/sdtm', other = 'data/other')",
+    ".batch_sources <- character()",
+    ".batch_check_code <- character()",
+    ".batch_kind <- 'run'",
+    ".batch_paths <- list()",
     "run_batch(c('ard', 'tfl'), commandArgs(trailingOnly = TRUE))"), script)
   old <- setwd(d)
   on.exit(setwd(old), add = TRUE)
@@ -236,6 +248,12 @@ test_that("a hand run of the reports alone stops: their ARD is not made in this 
     ".batch_outputs <- list(`programs/tfl/T1.R` = 'output/tfl/T1.rtf')",
     ".batch_support <- list(ard = character(), tfl = character(), all = character())",
     ".batch_data <- list()",
+    ".batch_data_vars <- character()",
+    ".batch_data_dirs <- c(adam = 'data/adam', sdtm = 'data/sdtm', other = 'data/other')",
+    ".batch_sources <- character()",
+    ".batch_check_code <- character()",
+    ".batch_kind <- 'run'",
+    ".batch_paths <- list()",
     "run_batch('tfl', commandArgs(trailingOnly = TRUE))"), script)
   old <- setwd(d)
   on.exit(setwd(old), add = TRUE)

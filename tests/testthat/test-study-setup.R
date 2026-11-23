@@ -85,8 +85,13 @@ test_that("a new study gets its three setup files; study_setup.R is generated", 
   expect_false("library(tflspec)" %in% c(co, txt))
   lay <- study_layout()
   for (k in names(lay)) {
-    expect_true(any(grepl(sprintf("^path_%s +<- \"%s\"$", k, lay[[k]]), txt)), label = k)
+    # the data folders are read through the data root, the others stay relative
+    want <- if (k %in% c("adam", "sdtm", "other"))
+      sprintf("^path_%s +<- file[.]path[(][.]tfl_data_root, \"%s\"[)]$", k, lay[[k]]) else
+      sprintf("^path_%s +<- \"%s\"$", k, lay[[k]])
+    expect_true(any(grepl(want, txt)), label = k)
   }
+  expect_true(any(grepl("^[.]tfl_data_root <- if [(]file.exists[(]\"run_paths.R\"[)][)]", txt)))
   expect_true(any(grepl("^study_id +<- \"ABC-101\"$", txt)))
   expect_true(any(grepl("^study_title +<- \"A phase 2 study\"$", txt)))
   expect_true(any(grepl("^study_phase +<- \"2\"$", txt)))
@@ -100,7 +105,7 @@ test_that("a new study gets its three setup files; study_setup.R is generated", 
   give_data(s)
   e <- new.env()
   withr::with_dir(s$path, sys.source(f, envir = e, toplevel.env = e))
-  expect_identical(e$path_adam, "data/adam")
+  expect_identical(e$path_adam, file.path(".", "data/adam"))
   expect_identical(e$study_id, "ABC-101")
   expect_identical(e$study_title, "A phase 2 study")
   expect_true(is.na(e$study_compound))
@@ -131,7 +136,7 @@ test_that("the company's code and the user's run once per program run", {
   src()
   expect_identical(c(e$n_company, e$n_user), c(1, 1))
   expect_false(e$saw_id)
-  expect_identical(e$path_adam, "data/adam")
+  expect_identical(e$path_adam, file.path(".", "data/adam"))
   expect_identical(e$study_title, "mine")
   # sourced again in the same run (a figure report): not again, and what
   # the user's set stays
@@ -198,7 +203,8 @@ test_that("a hand edit of study_setup.R is backed up to programs/.edited/ and un
                     "^study_setup_.*[.]R$", full.names = TRUE)
   expect_length(bak, 1L)
   expect_identical(readLines(bak), edited)
-  expect_true(any(grepl("^path_adam +<- \"data/adam\"$", readLines(f))))
+  expect_true(any(grepl("^path_adam +<- file[.]path[(][.]tfl_data_root, \"data/adam\"[)]$",
+                        readLines(f))))
 })
 
 test_that("an old study_setup.R is split byte for byte, once", {

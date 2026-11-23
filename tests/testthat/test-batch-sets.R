@@ -270,7 +270,7 @@ test_that("an official run keeps the data its programs read, and the versions", 
   writeLines("{}", file.path(s$path, "renv.lock"))
   b2 <- run_batch(o, "ard", data = TRUE)
   expect_true(b2$ok)
-  expect_true(file.exists(file.path(b2$batch, "data", "data", "adam", "adsl.rds")))
+  expect_true(file.exists(file.path(b2$batch, "data", "adam", "adsl.rds")))
   man <- utils::read.csv(file.path(b2$batch, "data_manifest.csv"), colClasses = "character")
   expect_identical(man$path, "data/adam/adsl.rds")
   expect_identical(man$md5, unname(tools::md5sum(adsl)))
@@ -340,9 +340,16 @@ cmp_runs <- function(d) {
       utils::write.csv(data.frame(path = names(data_md5), md5 = unname(data_md5)),
                        file.path(d, b, "data_manifest.csv"), row.names = FALSE)
     }
-    for (f in names(code)) {
-      dir.create(dirname(file.path(d, b, "code", f)), recursive = TRUE, showWarnings = FALSE)
-      writeLines(code[[f]], file.path(d, b, "code", f))
+    # the folder is the code: snapshot.csv has the md5 of the files it copied
+    if (length(code)) {
+      md5 <- vapply(code, function(txt) {
+        f <- tempfile()
+        on.exit(unlink(f))
+        writeLines(txt, f)
+        unname(tools::md5sum(f))
+      }, "")
+      utils::write.csv(data.frame(path = names(code), size = 1, md5 = unname(md5)),
+                       file.path(d, b, "snapshot.csv"), row.names = FALSE)
     }
   }
   mk("20260101_100000_all", c("{\\rtf1", "Generated on: 01Jan2026  10:00", "}"), 1:3,
@@ -404,7 +411,7 @@ test_that("two official runs of the sample compared after a data fix", {
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
   s <- suppressMessages(sample_study_copy())
   b1 <- run_batch(s, c("ard", "tfl"), data = TRUE, only = "T-14-1-1")
-  expect_true(file.exists(file.path(b1$batch, "code", "programs", "study_helpers.R")))
+  expect_true(file.exists(file.path(b1$batch, "programs", "study_helpers.R")))
   expect_true(file.exists(file.path(b1$batch, "output", "tfl", "report_status.csv")))
   Sys.sleep(1.1)
   # as it is: nothing changed

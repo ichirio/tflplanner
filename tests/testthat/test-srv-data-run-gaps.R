@@ -50,7 +50,8 @@ dr_batch <- function(s, name, status = "OK", excluded = NULL) {
   writeLines(c("Batch : test",
                paste("Study :", yaml::read_yaml(file.path(s$path, "study.yml"))$study_id),
                if (!is.null(excluded)) paste("Excluded :", excluded),
-               paste("Finished :", format(end, "%Y-%m-%d %H:%M:%S"))),
+               paste("Finished :", format(end, "%Y-%m-%d %H:%M:%S")),
+               "Verified : yes"),
              file.path(d, "batch.txt"))
   d
 }

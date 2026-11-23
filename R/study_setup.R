@@ -189,6 +189,8 @@ setup_code <- function(study_id = NA, standards = company_standards()) {
 # The generated lines of study_setup.R: the study's folders and what the
 # study is, as R variables, the study's rounding and data (tflspec writes
 # them: tflspec#791) and the helpers
+.study_data_keys <- c("adam", "sdtm", "other")
+
 .study_setup_body <- function(meta, study = NULL) {
   lay <- study_layout()
   val <- function(v) {
@@ -201,7 +203,14 @@ setup_code <- function(study_id = NA, standards = company_standards()) {
   ids <- paste0("study_", sub("^study_", "", .study_fields))
   c("# ---- the study: its folders, relative to the study folder (the programs",
     "#      run from it), and what it is (study.yml)",
-    paste(nm(paths), "<-", vapply(lay, val, "")),
+    "# the data root: an official run copies the programs into its batch folder",
+    "# and reads the data where run_paths.R says (the study's data folders);",
+    "# anywhere else it is the study folder.  company_setup.R runs before these",
+    "# lines: company code cannot use path_adam, path_sdtm or path_other.",
+    ".tfl_data_root <- if (file.exists(\"run_paths.R\")) { source(\"run_paths.R\"); .tfl_data_root } else \".\"",
+    paste(nm(paths), "<-", ifelse(names(lay) %in% .study_data_keys,
+      sprintf("file.path(.tfl_data_root, %s)", vapply(lay, val, "")),
+      vapply(lay, val, ""))),
     "",
     paste(nm(ids), "<-", vapply(.study_fields, function(k) val(meta[[k]]), "")),
     "",
