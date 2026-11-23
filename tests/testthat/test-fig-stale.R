@@ -196,8 +196,7 @@ test_that("a hand run of a report that reads the ARD of a report not selected st
                                   stdout = TRUE, stderr = TRUE,
                                   env = paste0("RUNNER=", shQuote(system.file("batch", "runner.R", package = "tflplanner")))))
   expect_gt(attr(out, "status") %||% 0L, 0L)
-  expect_true(any(grepl("L1 reads the ARD of T2", out, fixed = TRUE)), info = paste(out, collapse = "
-"))
+  expect_true(any(grepl("L1 reads the ARD of T2", out, fixed = TRUE)), info = paste(out, collapse = "\n"))
   # nothing written: no run folder, no RTF
   expect_false(dir.exists("runs"))
   expect_length(list.files(d, pattern = "[.]rtf$", recursive = TRUE), 0L)
@@ -229,8 +228,7 @@ test_that("a hand run of the reports alone stops: their ARD is not made in this 
   rscript <- file.path(R.home("bin"), "Rscript")
   out <- suppressWarnings(system2(rscript, shQuote(script), stdout = TRUE, stderr = TRUE))
   expect_gt(attr(out, "status") %||% 0L, 0L)
-  expect_true(any(grepl("T1 reads the ARD of T1", out, fixed = TRUE)), info = paste(out, collapse = "
-"))
+  expect_true(any(grepl("T1 reads the ARD of T1", out, fixed = TRUE)), info = paste(out, collapse = "\n"))
   expect_false(dir.exists("runs"))
 })
 
