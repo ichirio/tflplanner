@@ -879,11 +879,12 @@
   # R -- in the words of the note above.  Noted once, when the app started.
   shiny::observeEvent(input$about_app, {
     shiny::showModal(shiny::modalDialog(
-      title = t("About this version"), easyClose = TRUE,
+      title = t("About this version"), easyClose = TRUE, size = "l",
       shiny::p(shiny::strong(paste0(t("Versions this window runs"), ":"))),
+      # one line each, never broken inside an entry
       lapply(.running_versions_lines(dev = t("development version"),
                                      local = t("installed from a folder")),
-             shiny::tags$div),
+             shiny::tags$div, style = "white-space: nowrap;"),
       footer = shiny::modalButton(t("Close"))))
   })
   # a shortcut made before the R version was in its name keeps the old
