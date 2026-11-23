@@ -81,3 +81,4 @@
 "Select the missing reports","足りない帳票を選ぶ"
 "The missing reports are selected; start the run again.","足りない帳票を選びました。もう一度、実行を始めてください。"
 "The ARD the reports read could not be checked: %s","帳票が読む ARD を調べられませんでした: %s"
+"The ARD a selected report reads cannot be worked out. Fix it, or leave the report out.","選んだ帳票が読む ARD を特定できません。直すか、その帳票を外してください。"

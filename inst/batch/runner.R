@@ -209,32 +209,63 @@ run_batch <- function(parts, args = character()) {
     }
   }
   only <- setdiff(args, c("--no-code", "--data", ex_args))
-  # a name is a program's file name (with or without .R) or the output id it
-  # belongs to (a report may have a program name of its own)
-  named <- function(part, progs, names) {
-    id <- unname(if (part == "ard") .batch_ard_outputs[basename(progs)] else
-      .batch_report_ids[progs])
-    basename(progs) %in% names | sub("[.][Rr]$", "", basename(progs)) %in% names |
-      (!is.na(id) & id %in% names)
+  # the ARD is made before the reports, whatever order `parts` came in
+  if (!length(parts) || !all(parts %in% c("ard", "tfl"))) {
+    stop("parts must be \"ard\", \"tfl\", or both (not ",
+         if (length(parts)) paste(setdiff(parts, c("ard", "tfl")), collapse = ", ") else "empty", ").")
   }
+  parts <- intersect(c("ard", "tfl"), parts)
+  # the programs of a part, and the output id each one makes
+  id_of <- function(part, progs) {
+    unname(if (part == "ard") .batch_ard_outputs[basename(progs)] else
+      .batch_report_ids[progs])
+  }
+  all_ids <- unique(stats::na.omit(c(.batch_ard_outputs, .batch_report_ids)))
+  # a name -> the output ids it stands for: an id, or the file name (with or
+  # without .R) of that id's ARD program or report program.  A name that
+  # stands for two ids stops the run; one that stands for none runs nothing.
+  resolve <- function(tokens) {
+    ids <- character()
+    for (tk in tokens) {
+      hit <- character()
+      for (part in c("ard", "tfl")) {
+        progs <- if (part == "ard") names(.batch_ard_outputs) else names(.batch_report_ids)
+        # (the ARD outputs are named by file name, the reports by path)
+        key <- basename(progs)
+        of <- unname(if (part == "ard") .batch_ard_outputs else .batch_report_ids)
+        m <- key == tk | sub("[.][Rr]$", "", key) == tk
+        hit <- c(hit, of[m])
+      }
+      hit <- unique(c(hit, all_ids[all_ids == tk]))
+      if (length(hit) > 1L) {
+        stop("The name '", tk, "' stands for more than one output: ",
+             paste(hit, collapse = ", "), ".  Name the output id.", call. = FALSE)
+      }
+      ids <- c(ids, hit)
+    }
+    ids
+  }
+  only_ids <- resolve(only)
+  exclude_ids <- resolve(exclude)
   excluded <- character()
-  # the programs of a part the run selects (the ones named, the batch's, less
-  # those excluded); `track`: the ones left out are kept for the record
+  # the programs of a part the run selects (the outputs named, the batch's,
+  # less those excluded); `track`: the ones left out are kept for the record
   select <- function(part, track = FALSE) {
     progs <- .batch_programs[[part]]
-    if (length(only)) progs <- progs[named(part, progs, only)]
+    of <- id_of(part, progs)
+    if (length(only)) {
+      progs <- progs[!is.na(of) & of %in% only_ids]
+      of <- id_of(part, progs)
+    }
     if (!is.null(set)) {
-      of <- if (part == "ard") .batch_ard_outputs[basename(progs)] else
-        .batch_report_ids[progs]
       keep <- !is.na(of) & of %in% .batch_sets[[set]]
       if (track) excluded <<- c(excluded, progs[!keep])
       progs <- progs[keep]
+      of <- id_of(part, progs)
     }
-    if (length(exclude)) {
-      if (track) excluded <<- c(excluded, progs[named(part, progs, exclude)])
-      progs <- progs[!named(part, progs, exclude)]
-    }
-    progs
+    gone <- !is.na(of) & of %in% exclude_ids
+    if (track) excluded <<- c(excluded, progs[gone])
+    progs[!gone]
   }
   # the ARD is made for the selected reports only (#790): a selected report
   # that reads the ARD of one not selected stops the run, before anything is
@@ -252,10 +283,17 @@ run_batch <- function(parts, args = character()) {
                                     .batch_report_ids[[p]], need))
     }
   }
+  # a selected report whose ARD read cannot be worked out stops it too
+  if (exists(".batch_unresolved", inherits = TRUE)) {
+    unres <- get(".batch_unresolved", inherits = TRUE)
+    for (p in intersect(selected[["tfl"]], names(unres))) {
+      lacking <- c(lacking, sprintf("%s: %s", .batch_report_ids[[p]], unres[[p]]))
+    }
+  }
   if (length(lacking)) {
-    msg <- c("The run was not started: a selected report reads the ARD of a report the run does not select.",
+    msg <- c("The run was not started: a selected report reads the ARD of a report the run does not select, or what it reads cannot be worked out.",
              paste0("  ", lacking),
-             "Select the reports it reads too (or leave this report out), then start again.")
+             "Select the reports it reads too (or leave this report out), fix the others, then start again.")
     cat(msg, sep = "\n")
     message(paste(msg, collapse = "\n"))
     .batch_quit(1L)

@@ -51,13 +51,14 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
   made <- lapply(infos, function(info) info$file)
   ard_out <- .study_value(spec, "output", "output/ard/ard.rds")
   # the ARD each report declares it reads (#293, #790): see
-  # .batch_report_needs(); a run that selects a report but not the reports it
-  # declares does not start.  (Saving the study must not fail on it: said.)
-  need <- tryCatch(.batch_report_needs(x), error = function(e) {
-    warning(conditionMessage(e), call. = FALSE)
-    list()
-  })
+  # .batch_report_reads(); a run that selects a report but not the reports it
+  # declares does not start, nor one that selects a report whose read cannot
+  # be worked out.  (A lookup that fails is that report's reason, not an error.)
+  reads <- .batch_report_reads(x)
+  need <- .batch_reads_needs(reads)
   names(need) <- tfl_progs[match(names(need), out_ids)]
+  unresolved <- .batch_reads_unresolved(reads)
+  names(unresolved) <- tfl_progs[match(names(unresolved), out_ids)]
   # (the definition: the YAML spec's files)
   spec_files <- setdiff(.spec_files_yaml(root), .study_file)
   support <- list(
@@ -109,6 +110,9 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
       paste0("list(\n", paste0("  ", encodeString(names(need), quote = "`"), " = ",
                                vapply(need, vec, "", indent = "    "),
                                collapse = ",\n"), ")") else "list()"),
+    "# a report program -> why the ARD it reads cannot be worked out (a run that",
+    "# selects the report does not start)",
+    paste0(".batch_unresolved <- ", vec(unname(unresolved), names(unresolved))),
     "# the named batches (the report list's `batches`): name -> outputs",
     paste0(".batch_sets <- ", if (length(sets <- batch_sets(x)))
       paste0("list(\n", paste0("  ", encodeString(names(sets), quote = "`"), " = ",
@@ -448,27 +452,71 @@ run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE, data = FALSE,
        output = txt)
 }
 
-# The reports whose ARD each report reads and a run is refused for (#293,
-# #790): the declared reads only -- a report's own ARD (its id has analyses)
-# and a figure's table source (.fig_ard_need()).  What a report's code reads
-# of another report's ARD is not found out here: that read stops the run
-# when it happens.  A named list: output id -> output ids (a report that
-# reads none is not in it).  A figure whose source cannot be worked out
-# stops it (a run must not start on a read not known).
-.batch_report_needs <- function(x) {
+# The ARD each report reads, by the rules of the code a figure's program runs
+# (.fig_ard_lines()): a report's own ARD (its id has analyses); a figure whose
+# ARD source is its own or a table's reads that id, whether or not its design
+# uses it.  What a report's code reads of another report's ARD is not found
+# out here: that read stops the run when it happens.  A data.frame, one row
+# per read:
+#   report  the output id
+#   reads   the id whose ARD it reads; NA when that cannot be worked out
+#   kind    "own" (its own analyses) or "source" (a figure's own/table source)
+#   reason  NA when resolved, else "no source" (the design reads an ARD, no
+#           source chosen), "source not in analyses", "source report not
+#           found", or "lookup failed: <message>"
+# A report that reads none has no row; a lookup that fails is that report's
+# row, not an error.  A run must not start on a read not known.
+.batch_report_reads <- function(x) {
   spec <- x$ard %||% .empty_ard_spec()
   ids <- unique(stats::na.omit(spec$analyses$output_id))
   out_ids <- x$outputs$output_id
-  need <- lapply(out_ids, function(id) {
-    fig <- tryCatch(.fig_ard_need(x, id), error = function(e) {
-      stop("The ARD the figure ", id, " reads could not be found out: ",
-           conditionMessage(e), call. = FALSE)
-    })
-    intersect(unique(c(if (id %in% ids) id, fig[!is.na(fig)])), ids)
-  })
-  names(need) <- out_ids
-  need[lengths(need) > 0L]
+  row <- function(report, reads, kind, reason = NA_character_) {
+    data.frame(report = report, reads = reads, kind = kind, reason = reason,
+               stringsAsFactors = FALSE)
+  }
+  one <- function(id) {
+    got <- if (id %in% ids) row(id, id, "own")
+    if (identical(report_info(x, id)$type, "figure")) {
+      src <- .fig_ard_source(x, id)
+      if (src$kind %in% c("own", "table")) {
+        if (src$id %in% ids) {
+          if (!src$id %in% got$reads) got <- rbind(got, row(id, src$id, "source"))
+        } else {
+          why <- if (src$id %in% out_ids) "source not in analyses" else
+            "source report not found"
+          got <- rbind(got, row(id, NA_character_, "source", why))
+        }
+      } else if (identical(src$kind, "none") &&
+                 .fig_reads_ard(fig_design(x, id), id)) {
+        got <- rbind(got, row(id, NA_character_, "source", "no source"))
+      }
+    }
+    got
+  }
+  got <- lapply(out_ids, function(id) tryCatch(one(id), error = function(e) {
+    row(id, NA_character_, "source", paste0("lookup failed: ", conditionMessage(e)))
+  }))
+  out <- do.call(rbind, c(list(row(character(), character(), character(), character())), got))
+  rownames(out) <- NULL
+  out
 }
+
+# the needs of .batch_report_reads(): a named list, output id -> the ids whose
+# ARD it reads (a report that reads none is not in it)
+.batch_reads_needs <- function(reads) {
+  r <- reads[!is.na(reads$reads), , drop = FALSE]
+  lapply(split(r$reads, factor(r$report, unique(r$report))), unique)
+}
+
+# its unresolved: a named character, output id -> the reasons, joined with "; "
+.batch_reads_unresolved <- function(reads) {
+  r <- reads[!is.na(reads$reason), , drop = FALSE]
+  vapply(split(r$reason, factor(r$report, unique(r$report))),
+         function(v) paste(unique(v), collapse = "; "), "")
+}
+
+# (the needs only: a named list, output id -> output ids)
+.batch_report_needs <- function(x) .batch_reads_needs(.batch_report_reads(x))
 
 # The selected reports that read the ARD of a report that is not selected:
 # a run builds the ARD of the selected reports only (#790).  `needs`: report
