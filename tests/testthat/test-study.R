@@ -475,3 +475,128 @@ test_that("the new-study dialog says a place the home is in, under the field", {
     expect_false("NEW-1" %in% list_studies()$study_id)
   })
 })
+
+# -- study.yml's writers change their own key's lines only ------------------
+# (a writer that read the whole file and wrote it back lost its tags --
+# `setup: !r x <- 1` came back as the text -- its comments and the blocks
+# written by hand)
+
+tags_study_yml <- c(
+  "# written by hand: this comment stays",
+  "study_id: S1",
+  "title: Old title",
+  "compound: CMP-1",
+  "setup: !r x <- 1",
+  "settings:",
+  "  # the treatment variable",
+  "  trt_var: TRT01P",
+  "  missing: !unset",
+  "keys:",
+  "  population: !study SAFFL",
+  "my_block:",
+  "  note: kept as written",
+  "  items:",
+  "  - a",
+  "  - 'b'",
+  "ai:",
+  "  language: Japanese",
+  "  # the depth, by kind",
+  "  review:",
+  "    figure: 2",
+  "    table: 2")
+
+# A study folder with that study.yml (`lines`); removed when `env` ends
+tags_study_dir <- function(lines = tags_study_yml, env = parent.frame()) {
+  d <- tempfile("study-yml-")
+  dir.create(d)
+  do.call(on.exit, list(substitute(unlink(d, recursive = TRUE)), add = TRUE), envir = env)
+  writeLines(lines, file.path(d, "study.yml"))
+  d
+}
+
+# The lines of `lines` outside its top-level block `key`
+tags_outside <- function(lines, key) {
+  r <- .yml_key_range(lines, key)
+  if (length(r)) lines[-r] else lines
+}
+
+# What the top-level block `key` (the file's last) says
+tags_block_value <- function(lines, key) {
+  at <- grep(paste0("^", key, ":"), lines)
+  yaml::yaml.load(paste(lines[at:length(lines)], collapse = "\n"))[[key]]
+}
+
+test_that("the study's fields written into study.yml keep its tags, comments and other blocks", {
+  d <- tags_study_dir()
+  .write_meta(list(study_id = "S1", title = "New title"), d)
+  out <- readLines(file.path(d, "study.yml"))
+  expect_true("title: New title" %in% out)
+  expect_false("title: Old title" %in% out)
+  expect_length(grep("^title:", out), 1L)
+  expect_length(grep("^updated:", out), 1L)
+  expect_length(grep("^tflplanner:", out), 1L)
+  # every other line as it was, in its place
+  keep <- setdiff(tags_study_yml, "title: Old title")
+  expect_identical(out[out %in% keep], keep)
+  expect_true(all(c("setup: !r x <- 1", "  population: !study SAFFL", "  missing: !unset",
+                    "# written by hand: this comment stays", "  # the treatment variable",
+                    "my_block:", "  - 'b'") %in% out))
+  # written again: the fields' lines replaced, not added
+  .write_meta(list(study_id = "S1", title = "Newer"), d)
+  out2 <- readLines(file.path(d, "study.yml"))
+  expect_length(grep("^updated:", out2), 1L)
+  expect_identical(grep("^title:", out2, value = TRUE), "title: Newer")
+  expect_identical(length(out2), length(out))
+})
+
+test_that("the review depth written into study.yml's ai: review keeps the rest of the file", {
+  d <- tags_study_dir()
+  f <- file.path(d, "study.yml")
+  .ai_review_write(d, list(figure = "3", table = "none", listing = "1"))
+  out <- readLines(f)
+  expect_identical(tags_outside(out, "ai"), tags_outside(tags_study_yml, "ai"))
+  expect_true(all(c("  language: Japanese", "  # the depth, by kind") %in% out))
+  ai <- tags_block_value(out, "ai")
+  expect_identical(ai$review, list(figure = 3L, table = "none", listing = 1L))
+  expect_identical(ai$language, "Japanese")
+  expect_false("    figure: 2" %in% out)
+})
+
+test_that("how the agent works written into study.yml's ai: run keeps the rest of the file", {
+  d <- tags_study_dir()
+  f <- file.path(d, "study.yml")
+  .ai_run_write(d, "batch")
+  out <- readLines(f)
+  expect_identical(tags_outside(out, "ai"), tags_outside(tags_study_yml, "ai"))
+  ai <- tags_block_value(out, "ai")
+  expect_identical(ai$run, "batch")
+  expect_identical(ai$review, list(figure = 2L, table = 2L))
+  # set again: its line replaced
+  .ai_run_write(d, "one")
+  out2 <- readLines(f)
+  expect_identical(tags_block_value(out2, "ai")$run, "one")
+  expect_length(grep("^  run:", out2), 1L)
+  # no ai: block: one added at the end
+  writeLines(c("study_id: S1", "setup: !r x <- 1"), f)
+  .ai_run_write(d, "batch")
+  expect_identical(readLines(f), c("study_id: S1", "setup: !r x <- 1", "ai:", "  run: batch"))
+  # an ai: written on its line: written again with the key
+  writeLines(c("setup: !r x <- 1", "ai: {language: Japanese}"), f)
+  .ai_run_write(d, "batch")
+  out3 <- readLines(f)
+  expect_identical(out3[1L], "setup: !r x <- 1")
+  expect_identical(tags_block_value(out3, "ai"), list(language = "Japanese", run = "batch"))
+})
+
+test_that("another study's study.yml taken in keeps its tags and comments, the study's own fields", {
+  d <- tags_study_dir()
+  from <- file.path(d, "incoming.yml")
+  to <- file.path(d, "study.yml")
+  writeLines(c("study_id: S9", "title: Theirs", "compound: CMP-9", "setup: !r y <- 2",
+               "# their comment", "keys:", "  population: !study ITTFL"), from)
+  writeLines(c("study_id: S1", "title: Mine", "created: '2026-01-01 10:00:00'"), to)
+  .import_study_yml(from, to)
+  expect_identical(readLines(to), c(
+    "study_id: S1", "title: Mine", "setup: !r y <- 2", "# their comment", "keys:",
+    "  population: !study ITTFL", "created: '2026-01-01 10:00:00'"))
+})

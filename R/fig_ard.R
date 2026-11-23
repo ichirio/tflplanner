@@ -212,6 +212,65 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
     })
 }
 
+# The ARD a figure's preview prints from: its source's rows, made again
+# first when they are missing or outdated -- as a table's Update preview
+# makes its own (ard_preview_state(), fetch_ard()).  "The preview: when the
+# ARD's definition has changed, a preview of the content updates the ARD
+# too; Run is the official run" (2026-11-23).  A table's ARD is the one its
+# preview keeps (fetch_ard(): the study ARD's rows while they are made from
+# the definition now, else made in a folder of its own), so the table's
+# preview and the figure's share it; a figure's own analyses (no data step
+# for fetch_ard()) the same way: the study ARD's rows while built
+# (ard_status()), else made by run_ard(), kept here by the fingerprint they
+# were made from (.ard_print()).  The study ARD is not written: the official
+# run makes it.  NULL: the figure reads no ARD of the study's definition
+# (none, its own code's, or one taken in: .fig_ard_rows() as before); else
+# a list: `rows`, `print` (what they were made from: part of a drawing's
+# key) and `error` (the ARD could not be made).  `design`: the one drawn,
+# when it is not saved yet (an ARD piece just added reads the ARD too).
+.fig_ard_memo <- new.env(parent = emptyenv())
+.fig_preview_ard <- function(study, output_id, design = NULL, home = tflplanner_home()) {
+  p <- study$planner
+  tb <- tryCatch(.fig_ard_need(p, output_id), error = function(e) NA_character_)
+  if (is.na(tb) && !is.null(design) && .fig_reads_ard(design, output_id)) {
+    src <- .fig_ard_source(p, output_id)
+    if (src$kind %in% c("own", "table")) tb <- src$id
+  }
+  if (is.na(tb) || !.ard_from_definition(p, tb)) return(NULL)
+  key <- paste(study$path, tb)
+  if (.is_table(p, tb)) {
+    if (identical(ard_preview_state(study, tb, home = home), "current")) {
+      return(list(rows = ard_raw(study, tb, rows = TRUE, home = home),
+                  print = ard_info(study, tb, home)$print, error = NULL))
+    }
+    now <- .ard_print(study, tb)
+    # (one that failed from this definition: not tried again at each drawing)
+    hit <- .fig_ard_memo[[key]]
+    if (!is.null(hit) && identical(hit$print, now)) return(hit)
+    m <- tryCatch(fetch_ard(study, tb, home = home), error = function(e) e)
+    if (inherits(m, "error")) {
+      out <- list(rows = NULL, print = now, error = conditionMessage(m))
+      .fig_ard_memo[[key]] <- out
+      return(out)
+    }
+    return(list(rows = ard_raw(study, tb, rows = TRUE, home = home),
+                print = m$print %||% now, error = NULL))
+  }
+  now <- .ard_print(study, tb)
+  hit <- .fig_ard_memo[[key]]
+  if (!is.null(hit) && identical(hit$print, now)) return(hit)
+  st <- tryCatch(ard_status(study), error = function(e) NULL)
+  out <- if (identical(st$state[match(tb, st$output_id)], "built")) {
+    list(rows = study_ard_rows(study, tb), print = now, error = NULL)
+  } else {
+    a <- run_ard(study, tb)
+    list(rows = a$ard, print = now,
+         error = if (is.null(a$ard)) a$error %||% "the ARD program failed")
+  }
+  .fig_ard_memo[[key]] <- out
+  out
+}
+
 # ids in a field: "KM, HR" (or "KM | HR") as c("KM", "HR")
 .ard_ids <- function(x) {
   if (is.null(x)) return(character())
@@ -243,7 +302,8 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
 # source; an ARD not made yet) and its pieces against the rows it has.
 # `rule` (the review's, F04-F08), and each problem's sentence (`template`)
 # and values (`args`), for a translation
-.fig_ard_problems <- function(study, output_id, design = fig_design(study$planner, output_id)) {
+.fig_ard_problems <- function(study, output_id, design = fig_design(study$planner, output_id),
+                              ard = .fig_ard_rows(study, output_id)) {
   rows <- list()
   add <- function(p, f, rule, tpl, args = character(), sev = "error") {
     rows[[length(rows) + 1L]] <<- list(
@@ -284,7 +344,6 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
     }
     if (length(rows)) return(done())
   }
-  ard <- .fig_ard_rows(study, output_id)
   if (is.null(ard) || !nrow(ard)) {
     add("ard", "ard_source", "F07", "the ARD of %s is not made yet: make it first (its step %s)",
         c(if (src$kind == "import") src$file else src$id, .step_no("ard")), "warning")

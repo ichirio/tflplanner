@@ -900,7 +900,7 @@
     upto <- if (identical(s$sec, "data") && !is.null(io)) seq_len(s$i - 1L) else seq_len(NROW(io))
     objs <- unique(c(if (!is.null(io)) stats::na.omit(io$out[upto]), "df"))
     # the figure's data: kept as `df`, shown by the name the program writes
-    # (adtte_ttde: the program renames df)
+    # (adtte_sub: the program renames df)
     objects <- stats::setNames(objs, ifelse(objs == "df", tflspec::tfl_fig_data_name(d) %||% "df", objs))
     io_now <- if (identical(s$sec, "data") && !is.null(io) && s$i <= nrow(io)) io[s$i, ]
     # an ARD analysis: the study's analysis data and ARD functions
@@ -1152,19 +1152,18 @@
     }
     s <- shiny::isolate(rv$study)
     s$planner <- shiny::isolate(rv$p)
+    # the ARD it prints from, made again first when it is missing or
+    # outdated (as a table's Update preview makes its own)
+    pa <- tryCatch(.fig_preview_ard(s, id, d), error = function(e) NULL)
     # drawn already from the same design, definition, data and ARD (going
     # back to a figure): that drawing (a drawing takes a second or more)
-    data_at <- file.info(list.files(file.path(s$path, "data"), recursive = TRUE,
-                                    full.names = TRUE))$mtime
-    # (and the study ARD's: a figure may print a table's numbers)
-    ard_at <- file.info(file.path(s$path, study_layout()[["ard"]], "ard.rds"))$mtime
-    key <- list(.fig_norm(unclass(d)), s$planner, data_at, ard_at)
+    key <- .fig_draw_key(s, d, pa)
     hit <- fig_drawn[[id]]
     if (!is.null(hit) && identical(hit$key, key) &&
         (is.null(hit$r$png) || file.exists(hit$r$png))) {
       r <- hit$r
     } else {
-      r <- tryCatch(preview_figure(s, id, d, max_px = 1400), error = function(e)
+      r <- tryCatch(.preview_figure(s, id, d, max_px = 1400, ard = pa), error = function(e)
         list(png = NULL, problems = NULL, warnings = character(),
              error = conditionMessage(e), code = NULL))
       # (the app's log keeps why: a drawing that fails can be looked into)
