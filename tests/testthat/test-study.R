@@ -224,7 +224,7 @@ test_that("a study runs end to end and reports what it produced", {
   expect_true(file.exists(file.path(s$path, "logs", "preview", "DM.log")))
 
   # an official run made it
-  t0 <- Sys.time()
+  t0 <- Sys.time() + 600  # after the study's files were written, as a real run is
   fake_run(s$path, "run1", "tfl", "DM", finished = t0 - 300)
   expect_equal(study_status(s)$status, c("ok", "todo"))
 
