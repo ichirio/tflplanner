@@ -290,8 +290,9 @@ test_that("the official run: nothing ticked is refused; reports left out; a repo
     # a run that leaves out a report another reads: it does not start; the
     # modal names the missing report, and one button ticks it (#790)
     rv$job <- NULL
-    rv$p <- set_step_code(rv$p, "L1", "data",
-      "data <- readRDS(file.path(path_ard, \"ard.rds\")) |> filter(output_id == \"DM\")")
+    # (a declared read: L1 reads DM's ARD, as a figure reads its table's)
+    testthat::local_mocked_bindings(
+      .batch_report_needs = function(x) list(DM = "DM", VS = "VS", L1 = "DM"))
     session$setInputs(batch_set = ".all", batch_parts = "all", batch_reports = c("VS", "L1"),
                       batch_run = 5)
     expect_length(asked, 2L)

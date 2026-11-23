@@ -196,7 +196,8 @@ test_that("a hand run of a report that reads the ARD of a report not selected st
                                   stdout = TRUE, stderr = TRUE,
                                   env = paste0("RUNNER=", shQuote(system.file("batch", "runner.R", package = "tflplanner")))))
   expect_gt(attr(out, "status") %||% 0L, 0L)
-  expect_true(any(grepl("L1 reads the ARD of T2", out, fixed = TRUE)))
+  expect_true(any(grepl("L1 reads the ARD of T2", out, fixed = TRUE)), info = paste(out, collapse = "
+"))
   # nothing written: no run folder, no RTF
   expect_false(dir.exists("runs"))
   expect_length(list.files(d, pattern = "[.]rtf$", recursive = TRUE), 0L)
@@ -228,7 +229,8 @@ test_that("a hand run of the reports alone stops: their ARD is not made in this 
   rscript <- file.path(R.home("bin"), "Rscript")
   out <- suppressWarnings(system2(rscript, shQuote(script), stdout = TRUE, stderr = TRUE))
   expect_gt(attr(out, "status") %||% 0L, 0L)
-  expect_true(any(grepl("T1 reads the ARD of T1", out, fixed = TRUE)))
+  expect_true(any(grepl("T1 reads the ARD of T1", out, fixed = TRUE)), info = paste(out, collapse = "
+"))
   expect_false(dir.exists("runs"))
 })
 
@@ -287,19 +289,6 @@ test_that("a figure whose ARD source cannot be worked out stops the run, naming 
   p <- add_output(new_planner(), "F-1", type = "figure")
   testthat::local_mocked_bindings(.fig_ard_need = function(x, output_id) stop("boom"))
   expect_error(.batch_report_needs(p), "figure F-1 reads could not be found out: boom")
-})
-
-test_that("only declared reads are needs: a quoted id in a report's code is not", {
-  p <- bs_planner()
-  # L1's code names DM's rows of the study ARD: not found out at the start
-  p <- set_step_code(p, "L1", "data",
-    "data <- readRDS(file.path(path_ard, \"ard.rds\")) |> filter(output_id == \"DM\")")
-  n <- .batch_report_needs(p)
-  # a report's own ARD (it has analyses); a listing with none reads none
-  expect_identical(n, list(DM = "DM", VS = "VS"))
-  expect_false("L1" %in% names(n))
-  # a selected L1 without DM is not refused
-  expect_identical(nrow(.batch_missing_needs(n, c("L1", "VS"))), 0L)
 })
 
 test_that(".batch_missing_needs names the selected reports that read an ARD not selected", {

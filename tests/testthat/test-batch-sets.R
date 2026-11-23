@@ -383,3 +383,16 @@ test_that("the Runs tab has no preview buttons: an official run is the one way t
   expect_false(grepl("Preview selected", html, fixed = TRUE))
   expect_true(grepl("id=\"batch_run\"", html, fixed = TRUE))
 })
+
+test_that("only declared reads are needs: a quoted id in a report's code is not", {
+  p <- bs_planner()
+  # L1's code names DM's rows of the study ARD: not found out at the start
+  p <- set_step_code(p, "L1", "data",
+    "data <- readRDS(file.path(path_ard, \"ard.rds\")) |> filter(output_id == \"DM\")")
+  n <- .batch_report_needs(p)
+  # a report's own ARD (it has analyses); a listing with none reads none
+  expect_identical(n, list(DM = "DM", VS = "VS"))
+  expect_false("L1" %in% names(n))
+  # a selected L1 without DM is not refused
+  expect_identical(nrow(.batch_missing_needs(n, c("L1", "VS"))), 0L)
+})
