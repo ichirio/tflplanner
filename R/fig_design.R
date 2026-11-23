@@ -467,7 +467,7 @@ preview_figure <- function(study, output_id,
 }
 
 # The objects a design's data steps leave, in their order: the figure's
-# data (by the name the program gives it, adtte_ttde, else df), then each
+# data (by the name the program gives it, adtte_sub, else df), then each
 # step's own (a KM fit, summary statistics, the ARD's statistics ...)
 .fig_design_objects <- function(design) {
   own <- unlist(lapply(design$data, function(p) {
