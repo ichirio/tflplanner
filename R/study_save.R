@@ -236,9 +236,8 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
 # list(id, kind, args, sheet, field).  Names are compared in lower case
 # (Windows and macOS keep one file for T1.R and t1.R).  A report's program
 # is in programs/tfl/ and an ARD program in programs/ard/: each is compared
-# with its own folder's, and both with every name tflplanner writes (the
-# programs/ ones too: a report program of that name is moved there, and the
-# setup with it, by .move_old_programs()).
+# with its own folder's, and both with every name tflplanner writes, in any
+# folder of programs/ (one rule: a name is either a report's or tflplanner's).
 .program_name_problems <- function(p) {
   ids <- p$outputs$output_id
   ids <- ids[!is.na(ids) & nzchar(ids)]

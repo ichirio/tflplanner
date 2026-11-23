@@ -25,8 +25,7 @@
 # Every file name tflplanner writes under programs/ (any folder: programs/,
 # programs/ard/, programs/tfl/).  A report's program, or an ARD program's
 # name (from its output ID), must not be one of them: the save writes the
-# report's program and then this file over it (or, in programs/, moves the
-# setup away, .move_old_programs()).  A new generated file is added here --
+# report's program and then this file over it.  A new generated file is added here --
 # test-program-names.R fails when a save writes one that is not.
 .generated_program_files <- function() {
   c(.ard_setup_file, .ard_autoexec_file, .batch_file, .fig_setup_file,
