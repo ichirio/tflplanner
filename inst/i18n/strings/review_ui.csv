@@ -23,3 +23,7 @@
 "review-scope:datasets","データセット"
 "review-scope:design","デザイン"
 "review-scope:report","帳票"
+"Report %s: the program %s is the name of a file tflplanner writes itself. Give the report another `program` on the report sheet.","帳票 %s：プログラム名 %s は tflplanner が自分で作るファイルの名前です。帳票シートの `program` に別の名前を付けてください。"
+"Reports %s and %s share the program %s (names that differ only in case are one file). Give each its own `program` on the report sheet.","帳票 %s と %s が同じプログラム %s を使っています（大文字小文字だけが違う名前は同じファイルです）。帳票シートの `program` を帳票ごとに別にしてください。"
+"The ARD program of the output ID %s would be %s, the name of a file tflplanner writes itself. Use another output ID.","出力 ID %s の ARD プログラムは %s になり、tflplanner が自分で作るファイルの名前と重なります。別の出力 ID にしてください。"
+"The output IDs %s and %s make the same ARD program %s (names that differ only in case are one file). Use output IDs whose ARD programs differ.","出力 ID %s と %s は同じ ARD プログラム %s になります（大文字小文字だけが違う名前は同じファイルです）。ARD プログラム名が変わる出力 ID にしてください。"

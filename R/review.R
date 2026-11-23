@@ -363,13 +363,16 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
     }
   }
   # R07: two reports writing one file or one program
-  for (what in c("file", "program")) {
-    v <- if (identical(what, "file")) files else progs
-    v <- v[!is.na(v)]
-    for (x in unique(v[duplicated(v)])) {
-      who <- names(v)[v == x]
-      add("R07", who[2L], "report", who[2L], what, args = c(who[1L], who[2L], what, x))
-    }
+  v <- files[!is.na(files)]
+  for (x in unique(v[duplicated(v)])) {
+    who <- names(v)[v == x]
+    add("R07", who[2L], "report", who[2L], "file", args = c(who[1L], who[2L], "file", x))
+  }
+  # ... and a program: the same file in lower case too, or a file tflplanner
+  # writes itself (the save stops on these: .program_name_problems())
+  for (x in .program_name_problems(p)) {
+    add("R07", x$id, x$sheet, x$id, x$field, args = x$args, level = "error",
+        template = .program_name_templates[[x$kind]])
   }
   .review_bind(out)
 }
