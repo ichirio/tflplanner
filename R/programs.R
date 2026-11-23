@@ -658,7 +658,8 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     data_part,
     "",
     # (no blank line at the end: a file ends on its last line)
-    report_part)
+    report_part,
+    .run_end)
 }
 
 # The report part of a report program, written out from its definition by
@@ -904,10 +905,16 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 
 # The first line of every program: it runs from the study folder (its
 # setup's source() would fail with a less clear message); under 80 columns
+# The lines a generated program starts its run with, after its study.yml
+# check, and ends it with: the run's token (option tflplanner.run), which
+# study_setup.R reads so that it runs once in the run
+.run_start <- c("# this run of the program: the study's setup runs once in it",
+                "options(tflplanner.run = basename(tempfile(\"run\")))")
+.run_end <- c("", "# the end of this run", "options(tflplanner.run = NULL)")
+
 .study_guard <- c(
   "stopifnot(\"run it from the study folder\" = file.exists(\"study.yml\"))",
-  "# this run of the program: the study's company and user code run once in it",
-  ".tfl_run <- basename(tempfile(\"run\"))")
+  .run_start)
 
 # The report's own id in its program is `report_id` (set at its head): a
 # program copied for another report changes it in one place.  The RTF's

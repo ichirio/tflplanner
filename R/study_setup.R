@@ -98,6 +98,8 @@ study_helpers_code <- function(date = Sys.Date()) {
 .study_setup_present <- function(root) {
   f <- file.path(root, .study_setup_files())
   names(f) <- names(.study_setup_files())
+  # an old study_setup.R kept as it was runs neither of the other two
+  if (file.exists(f[["setup"]]) && .is_old_setup(f[["setup"]])) return(f["setup"])
   f[file.exists(f)]
 }
 
@@ -332,14 +334,15 @@ setup_code <- function(study_id = NA, standards = company_standards()) {
 #' 3. `programs/study_user.R`, the study's own code; tflplanner never
 #'    writes it again.
 #'
-#' The company's code and the user's run once per program run: every ARD
-#' and report program sets `.tfl_run` (a token of this run) when it starts,
-#' and a figure report, which sources the study's setup twice (through
-#' `report_setup.R` and `fig_setup.R`), runs them once.  The program run
-#' again (in the same R or not) runs them again, as does another study
-#' folder; the setup sourced without a program's run (by hand, the Plot
-#' Designer) runs them each time.  `rm(.tfl_free_ran)` runs them again by
-#' hand.  A `study_setup.R` edited
+#' `study_setup.R` runs once per program run: every ARD and report program
+#' sets the option `tflplanner.run` (a token of this run) when it starts and
+#' clears it at its end, and a figure report, which sources the study's
+#' setup twice (through `report_setup.R` and `fig_setup.R`), runs it once,
+#' so the company's code and the user's run once and what the user's sets
+#' stays.  The program run again (in the same R or not) runs it again, as
+#' does another study folder; the setup sourced without a program's run (by
+#' hand, the Plot Designer) runs each time.  `rm(.tfl_free_ran)` runs it
+#' again by hand.  A `study_setup.R` edited
 #' by hand is written again on the next save, the edited one first put in
 #' `programs/.edited/`.
 #'
@@ -382,29 +385,29 @@ study_setup_code <- function(meta, date = Sys.Date(), study = NULL) {
       paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
              ", ", format(date, "%Y-%m-%d"))),
     "",
-    "# The company's code and yours run once per program run: a program sets",
-    "# .tfl_run when it starts, and this file sourced again in that run (a",
-    "# figure report: report_setup.R, fig_setup.R) does not run them again.",
-    "# Sourced without a program's run (by hand, the Plot Designer), they run",
-    "# each time.  To run them again by hand: rm(.tfl_free_ran)",
+    "# This file runs once per program run: a program sets the option",
+    "# tflplanner.run when it starts (and clears it at its end), and this",
+    "# file sourced again in that run (a figure report: report_setup.R, then",
+    "# fig_setup.R) is skipped, so the company's code and yours run once and",
+    "# what yours sets stays.  Sourced without a program's run (by hand, the",
+    "# Plot Designer), it runs each time.  To run it again by hand:",
+    "# rm(.tfl_free_ran)",
     sprintf(".tfl_free <- c(company = %s, user = %s)",
             q(.company_setup_path()), q(.study_user_path())),
-    ".tfl_free_key <- paste(getwd(), get0(\".tfl_run\", envir = environment(), ifnotfound = NA))",
-    ".tfl_free_run <- is.na(get0(\".tfl_run\", envir = environment(), ifnotfound = NA)) ||",
+    ".tfl_free_key <- paste(getwd(), getOption(\"tflplanner.run\", NA))",
+    ".tfl_free_run <- is.null(getOption(\"tflplanner.run\")) ||",
     "  !identical(get0(\".tfl_free_ran\", envir = environment(), inherits = FALSE),",
     "             .tfl_free_key)",
+    "if (.tfl_free_run) {",
     "",
     paste0("# ---- the company's code (", .company_setup_file, ")"),
-    "if (.tfl_free_run && file.exists(.tfl_free[[\"company\"]])) {",
-    "  source(.tfl_free[[\"company\"]], local = environment())",
-    "}",
+    "if (file.exists(.tfl_free[[\"company\"]])) source(.tfl_free[[\"company\"]], local = environment())",
     "",
     .study_setup_body(meta, study),
     paste0("# ---- your code (", .study_user_file, ")"),
-    "if (.tfl_free_run && file.exists(.tfl_free[[\"user\"]])) {",
-    "  source(.tfl_free[[\"user\"]], local = environment())",
-    "}",
-    ".tfl_free_ran <- .tfl_free_key")
+    "if (file.exists(.tfl_free[[\"user\"]])) source(.tfl_free[[\"user\"]], local = environment())",
+    ".tfl_free_ran <- .tfl_free_key",
+    "}")
 }
 
 #' @rdname study_setup_code
@@ -436,10 +439,11 @@ company_setup_code <- function(meta, date = Sys.Date(), standards = company_stan
     "")
 }
 
-# a study_setup.R in the form before #910: its marker lines
+# A study_setup.R in the form before #910: any that is not one tflplanner
+# writes now (its `.tfl_free <-` line), so a file with a marker gone, or
+# one written by hand, is checked and kept rather than written over
 .is_old_setup <- function(f) {
-  any(grepl(.setup_marker[["study"]], readLines(f, warn = FALSE, encoding = "UTF-8"),
-            useBytes = TRUE))
+  !any(startsWith(readLines(f, warn = FALSE, encoding = "UTF-8"), ".tfl_free <- "))
 }
 
 # Write `txt` to `f` through a file beside it, so a failure leaves `f` as it was
@@ -476,7 +480,7 @@ company_setup_code <- function(meta, date = Sys.Date(), standards = company_stan
     if (any(clash)) "company_setup.R or study_user.R is there already, with other content"
   }
   if (!is.null(why)) {
-    .back_up_edited(f, root)
+    if (!.backed_up(f, root)) .back_up_edited(f, root)
     out <- row(f, "kept")
     attr(out, "note") <- why
     return(out)
@@ -504,6 +508,14 @@ company_setup_code <- function(meta, date = Sys.Date(), standards = company_stan
     return(out)
   }
   rbind(row(free[["company"]], "split"), row(free[["user"]], "split"), row(f, "split"))
+}
+
+# programs/.edited/ has a copy of `f` as it is now (a kept old file is
+# backed up once, not on every save)
+.backed_up <- function(f, root) {
+  b <- list.files(file.path(root, .edited_dir),
+                  paste0("^", sub("[.][Rr]$", "", basename(f)), "_.*[.]R$"), full.names = TRUE)
+  length(b) > 0L && unname(tools::md5sum(f)) %in% unname(tools::md5sum(b))
 }
 
 # The lines of a generated program as .write_program() writes them (its

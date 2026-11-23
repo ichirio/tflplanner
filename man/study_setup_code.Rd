@@ -49,14 +49,15 @@ first, the user's last.
 writes it again.
 }
 
-The company's code and the user's run once per program run: every ARD
-and report program sets \code{.tfl_run} (a token of this run) when it starts,
-and a figure report, which sources the study's setup twice (through
-\code{report_setup.R} and \code{fig_setup.R}), runs them once.  The program run
-again (in the same R or not) runs them again, as does another study
-folder; the setup sourced without a program's run (by hand, the Plot
-Designer) runs them each time.  \code{rm(.tfl_free_ran)} runs them again by
-hand.  A \code{study_setup.R} edited
+\code{study_setup.R} runs once per program run: every ARD and report program
+sets the option \code{tflplanner.run} (a token of this run) when it starts and
+clears it at its end, and a figure report, which sources the study's
+setup twice (through \code{report_setup.R} and \code{fig_setup.R}), runs it once,
+so the company's code and the user's run once and what the user's sets
+stays.  The program run again (in the same R or not) runs it again, as
+does another study folder; the setup sourced without a program's run (by
+hand, the Plot Designer) runs each time.  \code{rm(.tfl_free_ran)} runs it
+again by hand.  A \code{study_setup.R} edited
 by hand is written again on the next save, the edited one first put in
 \code{programs/.edited/}.
 

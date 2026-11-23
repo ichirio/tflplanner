@@ -123,17 +123,21 @@ test_that("the company's code and the user's run once per program run", {
   give_data(s)
   e <- new.env()
   src <- function() withr::with_dir(s$path, sys.source(f, envir = e, toplevel.env = e))
-  # a program's run starts as a program starts (.study_guard's lines)
-  run <- function() eval(parse(text = .study_guard[-1L]), e)
+  # a program's run starts as a program starts (.study_guard's lines) and
+  # ends as it ends
+  withr::defer(options(tflplanner.run = NULL))
+  run <- function() eval(parse(text = .run_start), e)
   run()
   src()
   expect_identical(c(e$n_company, e$n_user), c(1, 1))
   expect_false(e$saw_id)
   expect_identical(e$path_adam, "data/adam")
   expect_identical(e$study_title, "mine")
-  # sourced again in the same run (a figure report): not again
+  # sourced again in the same run (a figure report): not again, and what
+  # the user's set stays
   src()
   expect_identical(c(e$n_company, e$n_user), c(1, 1))
+  expect_identical(e$study_title, "mine")
   # the same program run again in the same R: again, once
   run()
   src()
@@ -143,7 +147,9 @@ test_that("the company's code and the user's run once per program run", {
   rm(".tfl_free_ran", envir = e)
   src()
   expect_identical(c(e$n_company, e$n_user), c(3, 3))
-  # sourced without a program's run: each time
+  # sourced without a program's run (it ended): each time
+  eval(parse(text = .run_end), e)
+  expect_null(getOption("tflplanner.run"))
   e2 <- new.env()
   withr::with_dir(s$path, sys.source(f, envir = e2, toplevel.env = e2))
   withr::with_dir(s$path, sys.source(f, envir = e2, toplevel.env = e2))
@@ -246,16 +252,27 @@ test_that("an old study_setup.R that cannot be split is kept as it was, and says
   kept(txt, "its tflplanner part was edited by hand")
   expect_false(any(file.exists(c(company_file(s), user_file(s)))))
   expect_true(length(list.files(file.path(s$path, "programs", ".edited"), "^study_setup_")) >= 1L)
+  # saved again: no second copy of the same file
+  n_bak <- length(list.files(file.path(s$path, "programs", ".edited"), "^study_setup_"))
+  kept(txt, "its tflplanner part was edited by hand")
+  expect_length(list.files(file.path(s$path, "programs", ".edited"), "^study_setup_"), n_bak)
   # a marker line repeated
   txt <- old_setup(s, "library(cards)", code, "mine <- 1", extra = .setup_marker_user)
   kept(txt, "its marker lines are missing, repeated or out of order")
+  # its tflplanner part's marker gone: kept, not written over
+  txt <- old_setup(s, "library(cards)", code, "mine <- 1")
+  txt <- sub(paste0(.setup_marker_study, "\n"), "", txt, fixed = TRUE)
+  writeBin(charToRaw(enc2utf8(txt)), f)
+  kept(txt, "its marker lines are missing, repeated or out of order")
+  expect_false(any(file.exists(c(company_file(s), user_file(s)))))
   # study_user.R there already, with other content
   txt <- old_setup(s, "library(cards)", code, "mine <- 1")
   writeLines("theirs <- 1", user_file(s))
   kept(txt, "company_setup.R or study_user.R is there already, with other content")
   expect_identical(readLines(user_file(s)), "theirs <- 1")
-  # the old file is still read as the study's setup
+  # the old file is still read as the study's setup, and it alone
   expect_true("cards" %in% .study_setup_packages(s$path))
+  expect_identical(unname(.study_setup_present(s$path)), f)
 })
 
 test_that("each setup file sources study_setup.R first; programs no library()", {
@@ -280,12 +297,16 @@ test_that("each setup file sources study_setup.R first; programs no library()", 
   expect_length(chk, 1L)
   expect_length(rs, 1L)
   expect_true(chk < rs)
-  # the run's token before the setup, in a report and an ARD program
-  tok <- grep("^[.]tfl_run <- ", prog)
+  # the run's token set before the setup and cleared last, in a report and
+  # an ARD program
+  tok <- grep("^options[(]tflplanner.run = basename", prog)
   expect_length(tok, 1L)
   expect_true(tok < rs)
+  expect_identical(utils::tail(prog, 1L), "options(tflplanner.run = NULL)")
   ard <- readLines(file.path(s$path, "programs", "ard", "DM.R"))
-  expect_true(grep("^[.]tfl_run <- ", ard) < grep("ard_setup.R", ard, fixed = TRUE)[1L])
+  expect_true(grep("^options[(]tflplanner.run = basename", ard) <
+                grep("ard_setup.R", ard, fixed = TRUE)[1L])
+  expect_identical(utils::tail(ard, 1L), "options(tflplanner.run = NULL)")
   # a study with no tokens or font of its own sources it too
   y <- add_output(new_planner(), "T-1", type = "table")
   expect_match(paste(program_code(y, "T-1"), collapse = "\n"),
