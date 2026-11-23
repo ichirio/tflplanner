@@ -12,8 +12,10 @@ test_that("a study's values are its setup's (the last one set), else tflspec's",
   expect_identical(.study_time_units(d), tflspec::tfl_time_unit_days())
   f <- file.path(d, .study_setup_path())
   dir.create(dirname(f), recursive = TRUE)
-  writeLines(c("days_per_month <- 30.4375", "days_per_month <- 30  # ours",
-               "x <- days_per_year"), f)
+  # (a generated study_setup.R: it has the line naming the free files; a
+  # file without it is an old one, read alone)
+  writeLines(c(".tfl_free <- character()", "days_per_month <- 30.4375",
+               "days_per_month <- 30  # ours", "x <- days_per_year"), f)
   u <- .study_time_units(d)
   expect_identical(u[["days_per_month"]], 30)
   expect_identical(u[["days_per_year"]], 365.25)
