@@ -193,11 +193,10 @@ setup_tflplanner <- function(home = NULL, studies_root = NULL,
   if (!is.null(standards)) {
     f <- .standards_file(home)
     if (identical(standards, "builtin")) {
-      unlink(f)
+      .standards_to_builtin(f)
     } else {
       read_standards(standards)          # refuse a workbook that does not read
-      dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
-      file.copy(standards, f, overwrite = TRUE)
+      .install_standards_file(standards, f)
     }
   }
   .write_config(cfg, home)
