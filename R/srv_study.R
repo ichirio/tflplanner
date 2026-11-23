@@ -54,7 +54,7 @@
           message("tflplanner: the output of what failed:\n",
                   paste(e$detail, collapse = "\n"))
         }
-        notify(.error_view(conditionMessage(e), t), "error", note_id, duration)
+        notify(.error_text(e, t), "error", note_id %||% .error_note_id(e), duration)
         NULL
       })
   }
@@ -607,7 +607,7 @@
                     NULL
                   },
                   error = function(e) {
-                    notify(.error_view(conditionMessage(e), t), "error")
+                    notify(.error_text(e, t), "error", .error_note_id(e))
                     NULL
                   })
     if (is.null(s)) return(FALSE)

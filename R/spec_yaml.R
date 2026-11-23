@@ -240,6 +240,12 @@
   p$spec$study$dir <- normalizePath(root, "/", mustWork = FALSE)
   if (is.function(before_write)) before_write(p)
   files <- .spec_write(p, root, own)
+  # the series card's unsaved values, into the study's copies of the
+  # series (#753); the planner saved has none left
+  if (length(p$series_edits)) {
+    files <- rbind(files, .series_save_edits(root, p$series_edits))
+    p$series_edits <- NULL
+  }
   attr(files, "planner") <- p
   files
 }

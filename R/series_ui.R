@@ -36,11 +36,16 @@
 }
 
 # A value as YAML on one line ({a: 1, b: x}, [1, 2], 'a, b'), its tags as
-# written (tflspec reads them as markers: !series K, !study K, !fixed v,
-# !unset)
+# written (tflspec reads them as markers: !series K, !study K,
+# !study {key: K, fallback: V}, !fixed v, !unset)
 .series_flow <- function(v) {
   if (inherits(v, "tfl_series_ref")) return(paste("!series", v$key))
-  if (inherits(v, "tfl_study_ref")) return(paste("!study", v$key))
+  if (inherits(v, "tfl_study_ref")) {
+    # a bad map: tflspec's marker has an NA key and the problem's text
+    if (!is.null(v$problem)) return(paste("!study", v$problem))
+    if (!"fallback" %in% names(v)) return(paste("!study", v$key))
+    return(paste0("!study {key: ", v$key, ", fallback: ", .series_flow(v$fallback), "}"))
+  }
   if (inherits(v, "tfl_fixed_ref")) return(paste("!fixed", .series_flow(v$value)))
   if (inherits(v, "tfl_unset")) return("!unset")
   if (is.null(v)) return("null")

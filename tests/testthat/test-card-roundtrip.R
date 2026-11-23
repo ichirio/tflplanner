@@ -5,56 +5,11 @@
 # the cards' behaviour: a field is drawn from its definition only, and reads
 # back what it shows.
 #
-# (test-spec-card.R's helpers live in that file, not in a helper file: the
-# few needed here are below, written the same way)
+# (the helpers shared with test-card-all-fields.R: helper-card-fields.R)
 
 html <- function(...) as.character(htmltools::tagList(...))
 
-# a card's fields filled as its item says (as the page would hold them):
-# test-spec-card.R's inputs_of()
-inputs_of <- function(fn, args, id = "c", defs = spec_card_defs(fn)) {
-  inp <- list()
-  for (a in setdiff(defs$formals, .data_args)) {
-    v <- args[[a]]
-    kind <- .arg_kind(defs$args[[a]]$type)
-    if (.is_unset(v)) {
-      inp[[paste0(id, "__", a, "__none")]] <- TRUE
-      next
-    }
-    if (isTRUE(defs$args[[a]]$dots)) v <- .spec_dots_text(fn, a, v)
-    if (identical(kind, "logical")) v <- isTRUE(v)
-    if (is.null(v)) next
-    inp[[paste0(id, "__", a)]] <- if (is.logical(v)) v else
-      if (kind %in% c("r", "string") && !is.character(v)) .arg_to_r(v) else
-        if (inherits(v, "tfl_r")) as.character(unclass(v)) else v
-  }
-  inp
-}
-
-# an input's value as the page shows it (the rendered HTML): a text or
-# number field its value ("" none), a check whether it is ticked, a select
-# its selected option ("" none); NULL: no such field
-shown_value <- function(h, fid) {
-  unq <- function(x) {
-    x <- gsub("&quot;", '"', x, fixed = TRUE)
-    x <- gsub("&#39;", "'", x, fixed = TRUE)
-    x <- gsub("&lt;", "<", x, fixed = TRUE)
-    x <- gsub("&gt;", ">", x, fixed = TRUE)
-    gsub("&amp;", "&", x, fixed = TRUE)
-  }
-  sel <- regmatches(h, regexpr(sprintf('(?s)<select[^>]*id="%s".*?</select>', fid), h, perl = TRUE))
-  if (length(sel)) {
-    o <- regmatches(sel, regexpr('<option value="[^"]*" selected', sel))
-    return(if (length(o)) unq(sub('^<option value="([^"]*)".*$', "\\1", o)) else "")
-  }
-  ta <- regmatches(h, regexpr(sprintf('(?s)<textarea[^>]*id="%s"[^>]*>.*?</textarea>', fid), h, perl = TRUE))
-  if (length(ta)) return(unq(sub("(?s)^<textarea[^>]*>(.*)</textarea>$", "\\1", ta, perl = TRUE)))
-  m <- regmatches(h, regexpr(sprintf('<input[^>]*id="%s"[^>]*>', fid), h))
-  if (!length(m)) return(NULL)
-  if (grepl('type="checkbox"', m, fixed = TRUE)) return(grepl("checked", m, fixed = TRUE))
-  v <- regmatches(m, regexpr('value="[^"]*"', m))
-  if (!length(v)) "" else unq(sub('^value="(.*)"$', "\\1", v))
-}
+# (inputs_of() and shown_value(): helper-card-fields.R)
 
 # One round trip: the item's card drawn; its fields as the item says, the
 # fields `fids` (field id suffixes, "c__<suffix>") as the card shows them;

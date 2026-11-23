@@ -13,6 +13,7 @@ test-ard-args-form.R,1,0.7
 test-ard-fn-search.R,1,1.8
 test-arg-defs.R,1,0.0
 test-builder-cards.R,1,1.6
+test-card-all-fields.R,1,1.4
 test-cells-vars.R,1,0.4
 test-codelist-inline.R,1,0.9
 test-col-header-form.R,1,0.6
@@ -35,6 +36,7 @@ test-planner.R,1,0.4
 test-remove-analysis.R,1,0.0
 test-run-end.R,1,2.5
 test-save-widths.R,1,0.7
+test-settings-speed.R,1,0.0
 test-srv-add-report-gaps.R,1,14.5
 test-srv-builder-rows-gaps.R,1,2.7
 test-standards.R,1,0.1
@@ -45,6 +47,7 @@ test-toc-rules.R,1,0.6
 test-tpl-suggest-ui.R,1,2.0
 test-tpl-table-field-fixes.R,1,1.2
 test-update-gaps.R,1,0.0
+test-series-one-save.R,1,0.3
 test-adam-levels.R,2,0.1
 test-ai-list.R,2,0.0
 test-ai-notes.R,2,0.0
@@ -127,6 +130,7 @@ test-time-units.R,3,0.3
 test-toc-import.R,3,1.3
 test-tpl-badges.R,3,0.0
 test-tpl-data.R,3,0.0
+test-tpl-study-default.R,3,0.3
 test-ai-adam-spec.R,4,0.0
 test-ai-dialog.R,4,0.0
 test-ai-draft.R,4,6.1

@@ -517,11 +517,15 @@
     }
     # (a template report with a required value empty -- demog with no
     # population: its card's alert says it; no ARD run that can only fail
-    # with an error note that stays)
+    # with an error note that stays.  One tflspec finds empty -- demog's
+    # variables -- said in the note a save's error of it is in: one note)
     miss <- if (is_report) .tpl_missing_report(rv$p, id) else character()
     if (length(miss)) {
-      notify(sprintf(t("Required arguments are empty: %s. The preview waits for them."),
-                     paste(miss, collapse = ", ")), "warning")
+      if (!is.null(attr(miss, "rule"))) {
+        notify(.tpl_missing_say(miss, t), "error", .tpl_args_note)
+      } else {
+        notify(.tpl_missing_say(miss, t), "warning")
+      }
       return(invisible(FALSE))
     }
     if (has_an && !is.null(ard_valid())) {
