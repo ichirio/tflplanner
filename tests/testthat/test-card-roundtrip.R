@@ -369,7 +369,7 @@ test_that("an R-only field's input is not hidden (its kind class is not the R sw
   fld <- regmatches(h, regexpr('<div class="rp-field[^"]*" data-arg="titles"', h))
   expect_length(fld, 1L)
   expect_match(fld, "rp-field-rexpr", fixed = TRUE)
-  expect_false(grepl("rp-field-r\b", fld))
+  expect_false(grepl("rp-field-r\\b", fld))
 })
 
 test_that("a map table's headings are the definition's column labels", {

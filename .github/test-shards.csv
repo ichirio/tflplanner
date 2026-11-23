@@ -1,9 +1,10 @@
 # The PR tests (quick-check.yaml) run in 4 shards at the same time: each
-# test file in exactly one shard (the job "tests (shard map)" fails on a
-# file in none, in two, or gone).  minutes: the file's time measured with
-# 4 files at a time on 4 cores (#747; test-e2e-programs.R with CI=true, as
-# on CI), for the balance.  A new test file: add a line, in the shard with
-# the fewest minutes.
+# test file in exactly one shard.  A file not listed here runs in the shard
+# its name gives (1 + the sum of its bytes mod 4), and the job "tests (shard
+# map)" warns with that shard; it fails on a file listed twice or gone.
+# minutes: the file's time measured with 4 files at a time on 4 cores (#747;
+# test-e2e-programs.R with CI=true, as on CI), for the balance.  A new test
+# file: add a line, in the shard with the fewest minutes.
 file,shard,minutes
 test-ai-refs.R,1,0.2
 test-ai-tab-second-test.R,1,0.0
@@ -74,6 +75,7 @@ test-page-patterns.R,2,3.7
 test-pk-template.R,2,0.5
 test-program-default.R,2,0.0
 test-programs.R,2,0.3
+test-program-names.R,2,0.1
 test-report-order.R,2,0.3
 test-series-e2e.R,2,0.2
 test-spec-grids-rest.R,2,0.8

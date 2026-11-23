@@ -92,7 +92,8 @@
         d$key %in% names(sch$args)) {
     return(sch)
   }
-  sch$args[[d$key]] <- list(type = "r", help = d$description, dots = TRUE, dots_type = d$type)
+  sch$args[[d$key]] <- list(type = "r", label = d$label, help = d$description, dots = TRUE,
+                            dots_type = d$type)
   sch
 }
 # ... its value as the field shows it: the entries as R

@@ -295,7 +295,9 @@ test_that("the official run: nothing ticked is refused; reports left out; a repo
     rv$job <- NULL
     # (a declared read: L1 reads DM's ARD, as a figure reads its table's)
     testthat::local_mocked_bindings(
-      .batch_report_needs = function(x) list(DM = "DM", VS = "VS", L1 = "DM"),
+      .batch_report_reads = function(x) data.frame(
+        report = c("DM", "VS", "L1"), reads = c("DM", "VS", "DM"), kind = "own",
+        reason = NA_character_, stringsAsFactors = FALSE),
       .env = test_frame)
     session$setInputs(batch_set = ".all", batch_parts = "all", batch_reports = c("VS", "L1"),
                       batch_run = 5)

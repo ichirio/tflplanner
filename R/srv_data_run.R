@@ -406,14 +406,26 @@
     # the missing reports are named (and can be ticked).  Any other ARD a
     # program reads stops that program when it runs.
     if (!identical(parts, "ard")) {
-      # (a read that cannot be worked out is an error: no run starts)
-      miss <- tryCatch(.batch_missing_needs(.batch_report_needs(rv$p), setdiff(ids, exclude)),
-                       error = function(e) {
-                         notify(sprintf(t("The ARD the reports read could not be checked: %s"),
-                                        conditionMessage(e)), "error")
-                         NULL
-                       })
-      if (is.null(miss)) return(invisible())
+      # (a read that cannot be worked out stops the run, for a selected
+      # report only; a lookup that fails is that report's reason)
+      reads <- tryCatch(.batch_report_reads(rv$p), error = function(e) {
+        notify(sprintf(t("The ARD the reports read could not be checked: %s"),
+                       conditionMessage(e)), "error")
+        NULL
+      })
+      if (is.null(reads)) return(invisible())
+      chosen <- setdiff(ids, exclude)
+      unres <- .batch_reads_unresolved(reads)
+      unres <- unres[names(unres) %in% chosen]
+      if (length(unres)) {
+        return(shiny::showModal(shiny::modalDialog(
+          title = t("The run did not start"),
+          shiny::p(t("The ARD a selected report reads cannot be worked out. Fix it, or leave the report out.")),
+          shiny::tags$ul(lapply(names(unres), function(r) shiny::tags$li(
+            sprintf("%s: %s", r, unres[[r]])))),
+          footer = shiny::modalButton(t("Close")))))
+      }
+      miss <- .batch_missing_needs(.batch_reads_needs(reads), chosen)
       if (nrow(miss)) {
         return(shiny::showModal(shiny::modalDialog(
           title = t("The run did not start"),
@@ -434,7 +446,7 @@
     shiny::removeModal()
     ids <- batch_ids()
     ticks <- intersect(input$batch_reports %||% ids, ids)
-    miss <- .batch_missing_needs(.batch_report_needs(rv$p), ticks)
+    miss <- .batch_missing_needs(.batch_reads_needs(.batch_report_reads(rv$p)), ticks)
     shiny::updateCheckboxGroupInput(session, "batch_reports",
                                     selected = intersect(ids, c(ticks, miss$need)))
     notify(t("The missing reports are selected; start the run again."))
