@@ -201,6 +201,36 @@ test_that("a hand run of a report that reads the ARD of a report not selected st
   expect_length(list.files(d, pattern = "[.]rtf$", recursive = TRUE), 0L)
 })
 
+test_that("a hand run of the reports alone stops: their ARD is not made in this run", {
+  skip_on_cran()
+  d <- tempfile("runner")
+  dir.create(d)
+  on.exit(unlink(d, recursive = TRUE), add = TRUE)
+  writeLines("study_id: R1", file.path(d, "study.yml"))
+  script <- file.path(d, "go.R")
+  writeLines(c(
+    paste0("sys.source(", encodeString(system.file("batch", "runner.R", package = "tflplanner"), quote = "'"),
+           ", envir = globalenv())"),
+    ".batch_root <- 'runs'",
+    ".batch_ard <- 'output/ard/ard.rds'",
+    ".batch_programs <- list(ard = 'programs/ard/T1.R', tfl = 'programs/tfl/T1.R')",
+    ".batch_ard_outputs <- c(T1.R = 'T1')",
+    ".batch_report_ids <- c(`programs/tfl/T1.R` = 'T1')",
+    ".batch_needs <- list(`programs/tfl/T1.R` = 'T1')",
+    ".batch_sets <- list()",
+    ".batch_outputs <- list(`programs/tfl/T1.R` = 'output/tfl/T1.rtf')",
+    ".batch_support <- list(ard = character(), tfl = character(), all = character())",
+    ".batch_data <- list()",
+    "run_batch('tfl', commandArgs(trailingOnly = TRUE))"), script)
+  old <- setwd(d)
+  on.exit(setwd(old), add = TRUE)
+  rscript <- file.path(R.home("bin"), "Rscript")
+  out <- suppressWarnings(system2(rscript, shQuote(script), stdout = TRUE, stderr = TRUE))
+  expect_gt(attr(out, "status") %||% 0L, 0L)
+  expect_true(any(grepl("T1 reads the ARD of T1", out, fixed = TRUE)))
+  expect_false(dir.exists("runs"))
+})
+
 # A run that selects both reports starts as before.
 test_that("a run that selects the report and the report it reads runs both", {
   d <- tempfile("runner")

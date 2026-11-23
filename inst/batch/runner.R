@@ -231,8 +231,11 @@ run_batch <- function(parts, args = character()) {
   # that reads the ARD of one not selected stops the run, before anything is
   # made (the app asks to tick them; here the run is started again)
   selected <- lapply(stats::setNames(parts, parts), select, track = TRUE)
-  chosen <- unname(c(.batch_ard_outputs[basename(select("ard"))],
-                     .batch_report_ids[select("tfl")]))
+  # (only an ARD program this run runs counts: a reports-only run, or a
+  # report whose ARD program is left out, would read older rows)
+  chosen <- if ("ard" %in% parts) {
+    unname(.batch_ard_outputs[basename(select("ard"))])
+  } else character()
   lacking <- NULL
   for (p in selected[["tfl"]]) {
     for (need in setdiff(unlist(.batch_needs[p], use.names = FALSE), chosen)) {
