@@ -253,21 +253,23 @@ test_that("a study runs end to end and reports what it produced", {
   expect_equal(ss$status[ss$output_id == "DM2"], "outdated")
   expect_equal(ss$status[ss$output_id == "DM"], "ok")
 
-  # a file the program sources (the figure setup) changes: its reports too
+  # a file the program sources (the figure setup) changes: its reports too.
+  # (The latest run is the newest by its start, and the runs above are dated
+  # ahead of now (t0): this run is dated after them, and the file changes
+  # after it ends.)
   f <- file.path(s$path, "programs", "tfl", "DM.R")
   extra <- file.path(s$path, "programs", "tfl", "extra.R")
   writeLines("x <- 1", extra)
   writeLines(c(readLines(f), 'source("programs/tfl/extra.R")'), f)
-  Sys.sleep(1.1)
-  fake_run(s$path, "run4", "tfl", "DM", finished = Sys.time())
+  fake_run(s$path, "run4", "tfl", "DM", finished = t0 - 50)
   expect_equal(study_status(s)$status[1], "ok")
-  Sys.sleep(1.1)
   writeLines("x <- 2", extra)
+  Sys.setFileTime(extra, t0)
   expect_equal(study_status(s)$status[1], "outdated")
 
   # a program that fails in a later run
   writeLines("stop('boom')", file.path(s$path, "programs", "tfl", "DM.R"))
-  fake_run(s$path, "run5", "tfl", "DM", status = "ERROR", finished = Sys.time() + 5)
+  fake_run(s$path, "run5", "tfl", "DM", status = "ERROR", finished = t0 + 5)
   ss <- study_status(s)
   expect_equal(ss$status[1], "error")
   expect_true(file.exists(ss$log[1]))
