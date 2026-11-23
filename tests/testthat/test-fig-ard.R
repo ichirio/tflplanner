@@ -47,7 +47,7 @@ test_that("the sample's F-14-2-3 reads T-14-2-2's ARD in its data section", {
   i_ard <- which(code == "ard <- readRDS(file.path(path_ard, \"ard.rds\")) |>")
   # (the ADaM data is read once, in the study's setup: the data section
   # derives its set from the `adtte` that is there)
-  i_adam <- grep("^adtte_ttskin <- adtte", code)[1L]
+  i_adam <- grep("^adtte_sub <- adtte", code)[1L]
   expect_length(i_ard, 1L)
   expect_false(any(grepl("^adtte <- readRDS", code)))
   expect_true(i_data < i_ard && i_ard < i_adam)

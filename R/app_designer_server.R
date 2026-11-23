@@ -900,7 +900,7 @@
     upto <- if (identical(s$sec, "data") && !is.null(io)) seq_len(s$i - 1L) else seq_len(NROW(io))
     objs <- unique(c(if (!is.null(io)) stats::na.omit(io$out[upto]), "df"))
     # the figure's data: kept as `df`, shown by the name the program writes
-    # (adtte_ttde: the program renames df)
+    # (adtte_sub: the program renames df)
     objects <- stats::setNames(objs, ifelse(objs == "df", tflspec::tfl_fig_data_name(d) %||% "df", objs))
     io_now <- if (identical(s$sec, "data") && !is.null(io) && s$i <= nrow(io)) io[s$i, ]
     # an ARD analysis: the study's analysis data and ARD functions
