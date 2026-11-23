@@ -945,6 +945,7 @@
   })
   output$settings <- shiny::renderUI({
     rv$studies_ver
+    std <- .standards_in_use()
     shiny::tagList(
       shiny::p(t("tflplanner keeps the studies here (the master copy):"),
                shiny::br(), shiny::code(tflplanner_home())),
@@ -974,11 +975,12 @@
       shiny::p(shiny::strong(with_tip(t("Company standards"),
                                       t("Dropdowns, presets, statistics, ARD methods, listing types, and the defaults a new study starts with."))),
                shiny::br(),
-               if (file.exists(.standards_file())) {
-                 a <- company_standards()$about
-                 sprintf("%s %s (%s)", a$value[a$key == "name"],
-                         a$value[a$key == "version"], .standards_file())
-               } else t("the built-in draft")),
+               if (!is.null(std$error)) {
+                 shiny::span(class = "text-danger",
+                             t("The company standards file does not read:"),
+                             std$error)
+               } else if (!is.null(std$text)) std$text
+               else t("the built-in draft")),
       shiny::div(
         class = "d-flex flex-wrap gap-2",
         shiny::downloadButton("std_current", t("Download the standards in use"),
@@ -986,7 +988,11 @@
         shiny::downloadButton("std_draft", t("Download the built-in draft"),
                               class = "btn-sm"),
         .btn("std_builtin", t("Back to the built-in draft"),
-             class = "btn-sm btn-outline-secondary")),
+             class = "btn-sm btn-outline-secondary"),
+        if (file.exists(paste0(.standards_file(), ".prev"))) {
+          .btn("std_previous", t("Restore the previous standards"),
+               class = "btn-sm btn-outline-secondary")
+        }),
       shiny::fileInput("std_upload", t("Install company standards (Excel)"),
                        accept = ".xlsx", width = "100%",
                        buttonLabel = t("Browse..."), placeholder = t("No file selected")))
@@ -1016,10 +1022,18 @@
     notify(t("Company standards installed. They apply to what is offered from now on, and to new studies."))
   })
   shiny::observeEvent(input$std_builtin, {
-    suppressMessages(setup_tflplanner(standards = "builtin"))
+    ok <- guarded(suppressMessages(setup_tflplanner(standards = "builtin")))
+    if (is.null(ok)) return()
     rv$studies_ver <- rv$studies_ver + 1L
     bump()
     notify(t("Back to the built-in draft."))
+  })
+  shiny::observeEvent(input$std_previous, {
+    ok <- guarded(restore_previous_standards())
+    if (is.null(ok)) return()
+    rv$studies_ver <- rv$studies_ver + 1L
+    bump()
+    notify(t("The previous standards are back."))
   })
   shiny::observeEvent(input$save_settings, {
     r <- trimws(input$studies_root)

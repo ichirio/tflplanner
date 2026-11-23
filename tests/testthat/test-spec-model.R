@@ -926,3 +926,64 @@ test_that("the widths read before a save are those of the reports it writes (#74
   # nothing to write: none
   expect_identical(.spec_to_write(s$planner, s$path), character())
 })
+
+test_that("saving the study defaults keeps every block of defaults.yml the writer does not write (#794)", {
+  blk <- list(
+    figure_style = c("# The figures' style", "figure_style:", "  base_size: 10"),
+    options = c("# Options", "options:", "  digits: 2"),
+    ai = c("# The AI kit", "ai:", "  model: fictional"),
+    codelists = c("# Code lists", "codelists:", "  SEX: [M, F]"),
+    adam_meta = c("# ADaM metadata", "adam_meta:", "  variables: []"))
+  old <- c("content:", "- plan_style: {}", blk$figure_style, blk$options,
+           "page:", "- page_setup: {}", blk$ai, blk$codelists, blk$adam_meta,
+           "# The page sets", "styles:", "  standard: {}")
+  new <- c("content:", "- plan_style: {size: 9}", "page:", "- page_setup: {}",
+           "styles:", "  standard: {}")
+  # every old block back, unchanged, comments included, before styles:, in old order
+  expect_identical(.keep_study_blocks(new, old),
+                   c(new[1:4], unlist(blk, use.names = FALSE), new[5:6]))
+  # a block the new lines have: the new one, once
+  new2 <- append(new, c("codelists:", "  SEX: [F]"), after = 4L)
+  expect_identical(.keep_study_blocks(new2, old),
+                   c(new[1:4], "codelists:", "  SEX: [F]",
+                     unlist(blk[c("figure_style", "options", "ai", "adam_meta")], use.names = FALSE),
+                     new[5:6]))
+  # no styles: in the new lines: at the end; a block after the old styles: after the others
+  old2 <- c(old, "# After", "extra:", "  a: 1")
+  expect_identical(.keep_study_blocks(new[1:4], old2),
+                   c(new[1:4], unlist(blk, use.names = FALSE), "# After", "extra:", "  a: 1"))
+  # the writer's own keys left out (emptied) are not brought back
+  expect_false(any(grepl("^page:", .keep_study_blocks(new[c(1:2, 5:6)], old))))
+  expect_identical(.keep_study_blocks(new, character()), new)
+})
+
+test_that("the study defaults saved in the app keep figure_style:, options: and ai: on disk (#794)", {
+  skip_on_cran()
+  s <- model_sample()
+  home <- getOption("tflplanner.home")
+  p <- .spec_ensure(s$planner)
+  rel <- file.path("spec", "defaults.yml")
+  extra <- c("# The figures' style", "figure_style:", "  base_size: 10",
+             "# Options", "options:", "  digits: 2",
+             "# The AI kit", "ai:", "  model: fictional")
+  txt <- p$spec$text[[rel]]
+  p$spec$text[[rel]] <- append(txt, extra, after = which(grepl("^styles:", txt))[1L] - 1L)
+  q <- .spec_set_study_part(p, "defaults")
+  out <- q$spec$text[[rel]]
+  at <- which(out == extra[1L])
+  expect_length(at, 1L)
+  expect_identical(out[at + seq_along(extra) - 1L], extra)
+  expect_true(at < which(grepl("^styles:", out))[1L])
+  f <- tempfile(fileext = ".yml")
+  on.exit(unlink(f), add = TRUE)
+  writeLines(out, f)
+  expect_true(all(c("codelists", "adam_meta") %in% names(yaml::read_yaml(f))))
+  s$planner <- q
+  s <- suppressMessages(save_study(s, home = home))
+  y <- yaml::read_yaml(file.path(s$path, "spec", "defaults.yml"))
+  expect_identical(y$figure_style, list(base_size = 10L))
+  expect_identical(y$options, list(digits = 2L))
+  expect_identical(y$ai, list(model = "fictional"))
+  expect_false(is.null(y$codelists))
+  expect_false(is.null(y$adam_meta))
+})

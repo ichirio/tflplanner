@@ -209,15 +209,20 @@ run_batch <- function(parts, args = character()) {
     }
   }
   only <- setdiff(args, c("--no-code", "--data", ex_args))
-  named <- function(progs, names) {
-    basename(progs) %in% names | sub("[.][Rr]$", "", basename(progs)) %in% names
+  # a name is a program's file name (with or without .R) or the output id it
+  # belongs to (a report may have a program name of its own)
+  named <- function(part, progs, names) {
+    id <- unname(if (part == "ard") .batch_ard_outputs[basename(progs)] else
+      .batch_report_ids[progs])
+    basename(progs) %in% names | sub("[.][Rr]$", "", basename(progs)) %in% names |
+      (!is.na(id) & id %in% names)
   }
   excluded <- character()
   # the programs of a part the run selects (the ones named, the batch's, less
   # those excluded); `track`: the ones left out are kept for the record
   select <- function(part, track = FALSE) {
     progs <- .batch_programs[[part]]
-    if (length(only)) progs <- progs[named(progs, only)]
+    if (length(only)) progs <- progs[named(part, progs, only)]
     if (!is.null(set)) {
       of <- if (part == "ard") .batch_ard_outputs[basename(progs)] else
         .batch_report_ids[progs]
@@ -226,8 +231,8 @@ run_batch <- function(parts, args = character()) {
       progs <- progs[keep]
     }
     if (length(exclude)) {
-      if (track) excluded <<- c(excluded, progs[named(progs, exclude)])
-      progs <- progs[!named(progs, exclude)]
+      if (track) excluded <<- c(excluded, progs[named(part, progs, exclude)])
+      progs <- progs[!named(part, progs, exclude)]
     }
     progs
   }
