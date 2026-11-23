@@ -428,6 +428,13 @@ standards_template <- function(path, from = c("builtin", "current")) {
 read_standards <- function(path) {
   b <- .builtin_standards()
   have <- readxl::excel_sheets(path)
+  # a sheet name that is not a standard (a misspelling) is said, not ignored
+  unknown <- setdiff(have[!startsWith(have, "_")], names(b))
+  if (length(unknown)) {
+    warning("Unknown sheet(s) in the standards workbook, not used: ",
+            paste(unknown, collapse = ", "), ". Known sheets: ",
+            paste(names(b), collapse = ", "), ".", call. = FALSE)
+  }
   out <- lapply(names(b), function(s) {
     if (!s %in% have) return(b[[s]])
     if (s == "setup_code") return(.read_setup_code(path, b[[s]]))
@@ -491,6 +498,90 @@ read_standards <- function(path) {
 
 .standards_file <- function(home = tflplanner_home()) {
   file.path(home, "standards", "company_standards.xlsx")
+}
+
+# Writing the company workbook safely.  `write_fun(path)` writes a workbook
+# to a temp file in the same folder; it must exist and read before it
+# replaces the file.  The file it replaces is kept as one `.prev`.  Any
+# failed step stops with a message and leaves the current file in place.
+.write_standards_safely <- function(write_fun, f) {
+  dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+  tmp <- tempfile(".std-", dirname(f), ".xlsx")
+  on.exit(unlink(tmp), add = TRUE)
+  tryCatch(write_fun(tmp), error = function(e)
+    stop("The standards were not written (nothing changed): ",
+         conditionMessage(e), call. = FALSE))
+  if (!file.exists(tmp)) {
+    stop("The standards were not written (nothing changed): no file was made.",
+         call. = FALSE)
+  }
+  tryCatch(read_standards(tmp), error = function(e)
+    stop("The new standards do not read (nothing changed): ",
+         conditionMessage(e), call. = FALSE))
+  prev <- paste0(f, ".prev")
+  old <- NULL
+  if (file.exists(f)) {
+    # the current file steps aside first: a file open in Excel fails here,
+    # before anything is lost
+    old <- tempfile(".std-old-", dirname(f), ".xlsx")
+    if (!isTRUE(file.rename(f, old))) {
+      stop("The current standards file could not be moved aside (is it open in Excel?): ",
+           f, " (nothing changed).", call. = FALSE)
+    }
+  }
+  if (!isTRUE(file.rename(tmp, f))) {
+    if (!is.null(old)) file.rename(old, f)
+    stop("The new standards could not be put in place: ", f,
+         " (the old file is kept).", call. = FALSE)
+  }
+  if (!is.null(old)) {
+    unlink(prev)
+    if (!isTRUE(file.rename(old, prev))) {
+      warning("The previous standards could not be kept as ", prev, call. = FALSE)
+    }
+  }
+  invisible(f)
+}
+
+# Install a workbook file (setup_tflplanner(standards = <file>)).
+.install_standards_file <- function(src, f) {
+  .write_standards_safely(function(p) {
+    if (!isTRUE(file.copy(src, p, overwrite = TRUE))) {
+      stop("could not copy ", src, call. = FALSE)
+    }
+  }, f)
+}
+
+# Back to the built-in: the file is moved to `.prev`, not deleted.
+.standards_to_builtin <- function(f) {
+  if (!file.exists(f)) return(invisible(f))
+  prev <- paste0(f, ".prev")
+  unlink(prev)
+  if (!isTRUE(file.rename(f, prev))) {
+    stop("The standards file could not be moved aside (is it open in Excel?): ",
+         f, call. = FALSE)
+  }
+  invisible(prev)
+}
+
+# Put the previous workbook back; the one in use becomes the `.prev`.
+restore_previous_standards <- function(home = tflplanner_home()) {
+  f <- .standards_file(home)
+  prev <- paste0(f, ".prev")
+  if (!file.exists(prev)) stop("There is no previous standards file.", call. = FALSE)
+  .install_standards_file(prev, f)
+}
+
+# What the settings block says about the workbook in use; an error when
+# it no longer reads
+.standards_in_use <- function(home = tflplanner_home()) {
+  f <- .standards_file(home)
+  if (!file.exists(f)) return(list(text = NULL, error = NULL))
+  tryCatch({
+    a <- company_standards(home)$about
+    list(text = sprintf("%s %s (%s)", a$value[a$key == "name"],
+                        a$value[a$key == "version"], f), error = NULL)
+  }, error = function(e) list(text = NULL, error = conditionMessage(e)))
 }
 
 .std_cache <- new.env()

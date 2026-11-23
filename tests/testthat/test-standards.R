@@ -149,3 +149,98 @@ test_that("a company's methods sheet written before labels still reads", {
   expect_true("label" %in% names(m))
   expect_true(all(is.na(m$label)))
 })
+
+# ---- safe writes of the company workbook
+
+good_std <- function() {
+  f <- file.path(withr_tempdir(), "std.xlsx")
+  standards_template(f)
+  f
+}
+
+test_that("an install writes the file and keeps the one it replaces as .prev", {
+  skip_on_cran()
+  home <- home_for_test()
+  f1 <- good_std()
+  suppressMessages(setup_tflplanner(standards = f1))
+  f <- .standards_file(home)
+  expect_true(file.exists(f))
+  expect_false(file.exists(paste0(f, ".prev")))
+  f2 <- good_std()
+  s <- .builtin_standards()
+  s$about$value[s$about$key == "version"] <- "9.9"
+  writexl::write_xlsx(s, f2)
+  suppressMessages(setup_tflplanner(standards = f2))
+  expect_identical(.standards_in_use(home)$text,
+                   sprintf("%s 9.9 (%s)", s$about$value[s$about$key == "name"], f))
+  expect_true(file.exists(paste0(f, ".prev")))
+  expect_identical(length(list.files(dirname(f), all.files = TRUE, no.. = TRUE)), 2L)
+  # swapped back
+  restore_previous_standards(home)
+  expect_false(identical(company_standards(home)$about$value[2], "9.9"))
+  expect_true(file.exists(paste0(f, ".prev")))
+})
+
+test_that("a failed install leaves the old file as it was", {
+  skip_on_cran()
+  home <- home_for_test()
+  suppressMessages(setup_tflplanner(standards = good_std()))
+  f <- .standards_file(home)
+  before <- unname(tools::md5sum(f))
+  bad <- file.path(withr_tempdir(), "bad.xlsx")
+  writexl::write_xlsx(list(statistics = data.frame(key = "n")), bad)
+  expect_error(setup_tflplanner(standards = bad), "lacks column")
+  expect_error(.install_standards_file(bad, f), "do not read")
+  expect_error(.install_standards_file(file.path(tempdir(), "none.xlsx"), f),
+               "not written")
+  expect_identical(unname(tools::md5sum(f)), before)
+  expect_false(file.exists(paste0(f, ".prev")))
+})
+
+test_that("back to the built-in moves the file to .prev", {
+  skip_on_cran()
+  home <- home_for_test()
+  suppressMessages(setup_tflplanner(standards = good_std()))
+  f <- .standards_file(home)
+  suppressMessages(setup_tflplanner(standards = "builtin"))
+  expect_false(file.exists(f))
+  expect_true(file.exists(paste0(f, ".prev")))
+  restore_previous_standards(home)
+  expect_true(file.exists(f))
+  expect_error(restore_previous_standards(home = tempfile()), "no previous")
+})
+
+test_that("remember_toc_map keeps the file it replaces as .prev", {
+  skip_on_cran()
+  home <- home_for_test()
+  remember_toc_map(list(note = "Remark"), home = home)
+  f <- .standards_file(home)
+  expect_false(file.exists(paste0(f, ".prev")))
+  remember_toc_map(list(note = "Memo"), home = home)
+  expect_true(file.exists(paste0(f, ".prev")))
+  expect_identical(toc_map_for("Memo", company_standards(home)$toc_map)$note, "Memo")
+})
+
+test_that("the settings block says when the workbook does not read", {
+  skip_on_cran()
+  home <- home_for_test()
+  expect_null(.standards_in_use(home)$text)
+  f <- .standards_file(home)
+  dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+  writeLines("not a workbook", f)
+  x <- .standards_in_use(home)
+  expect_null(x$text)
+  expect_true(nzchar(x$error))
+})
+
+test_that("an unknown sheet name is warned about, not ignored", {
+  skip_on_cran()
+  home_for_test()
+  s <- .builtin_standards()
+  names(s)[names(s) == "statistics"] <- "statistcs"
+  f <- file.path(withr_tempdir(), "typo.xlsx")
+  writexl::write_xlsx(c(list(`_README` = data.frame(a = 1)), s), f)
+  expect_warning(read_standards(f), "statistcs.*Known sheets")
+  g <- good_std()
+  expect_no_warning(read_standards(g))
+})
