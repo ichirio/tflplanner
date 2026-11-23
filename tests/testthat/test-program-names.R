@@ -12,7 +12,9 @@
 }
 .pn_study <- function() {
   local_home(parent.frame())
-  s <- create_study("PN1", planner = sample_planner())
+  p <- add_output(new_planner(), "T1", description = "a table")
+  p <- add_output(p, "T2", description = "another table")
+  s <- suppressMessages(create_study("PN1", planner = p))
   save_study(s)
 }
 .pn_program <- function(s, id, program) {
