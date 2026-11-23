@@ -193,44 +193,73 @@
   list(name = as.character(o$template$name), args = .tpl_args_of(o$template))
 }
 
-# The steps a report may write its template's arguments under, as tflspec
-# reads them (`ard:` is the older name of `analysis:`)
-.tpl_arg_steps <- c("data", "analysis", "ard", "content", "page")
+# The places a report may write its template's arguments, as tflspec reads
+# them (#751 item 1).  A series template (`<series>/<name>`, tflspec's
+# tfl_template_resolve() -> .tr_given()): the flat `args:`, the step
+# sections `data:`, `analysis:`, `content:`, `page:` (a map, not one of the
+# template's own parameters), and any other key directly under `template:`
+# -- all read as one map in the file's order, a later one winning.  A
+# built-in template (tflspec's .tpl_spec_args()): `args:` and the two parts
+# `ard:` and `content:` (a name in two places stops there; here the first
+# is kept).
+.tpl_arg_steps <- c("data", "analysis", "content", "page")
+.tpl_builtin_parts <- c("ard", "content")
+.tpl_is_series <- function(name) grepl("/", as.character(name)[1L], fixed = TRUE)
+.tpl_secs_for <- function(name) if (.tpl_is_series(name)) .tpl_arg_steps else .tpl_builtin_parts
+.tpl_is_map <- function(v) is.list(v) && !is.null(names(v))
 
-# A report's template arguments as one map: the flat `args:` and the step
-# sections (`template: {name, analysis: {...}, content: {...}}`), as tflspec
-# reads them.  A step section is read only when it is a map and not one of
-# the template's own parameters (tflspec's .tr_given()); a name given in
-# both keeps the flat `args:` value.
+# A report's template arguments as one map (`t`: its `template:`)
 .tpl_args_of <- function(t) {
-  args <- as.list(t$args %||% list())
-  own <- tryCatch(names(.tpl_params(as.character(t$name)[1L])), error = function(e) character())
-  for (k in setdiff(intersect(.tpl_arg_steps, names(t)), own)) {
-    v <- t[[k]]
-    if (!is.list(v) || is.null(names(v))) next
-    for (a in setdiff(names(v), names(args))) args[a] <- list(v[[a]])
+  name <- as.character(t$name)[1L]
+  own <- tryCatch(names(.tpl_params(name)), error = function(e) character())
+  if (!.tpl_is_series(name)) {
+    args <- as.list(t$args %||% list())
+    for (k in .tpl_builtin_parts) {
+      v <- t[[k]]
+      if (!.tpl_is_map(v)) next
+      for (a in setdiff(names(v), names(args))) args[a] <- list(v[[a]])
+    }
+    return(args)
   }
-  args
+  out <- list()
+  for (k in setdiff(names(t), "name")) {
+    v <- t[[k]]
+    if (k %in% c("args", .tpl_arg_steps) && !k %in% own && .tpl_is_map(v)) {
+      for (a in names(v)) out[a] <- list(v[[a]])
+    } else {
+      out[k] <- list(v)
+    }
+  }
+  out
 }
 
 # The step sections a report's `template:` has (maps, not one of the
 # template's own parameters), in the file's order
 .tpl_step_secs <- function(t) {
-  own <- tryCatch(names(.tpl_params(as.character(t$name)[1L])), error = function(e) character())
-  ks <- setdiff(intersect(names(t), .tpl_arg_steps), own)
-  ks[vapply(ks, function(k) is.list(t[[k]]) && !is.null(names(t[[k]])), NA)]
+  name <- as.character(t$name)[1L]
+  own <- tryCatch(names(.tpl_params(name)), error = function(e) character())
+  ks <- setdiff(intersect(names(t), .tpl_secs_for(name)), own)
+  ks[vapply(ks, function(k) .tpl_is_map(t[[k]]), NA)]
+}
+
+# The arguments a series template's report writes directly under
+# `template:` (no section), in the file's order
+.tpl_bare_args <- function(t) {
+  if (!.tpl_is_series(t$name)) return(character())
+  setdiff(names(t), c("name", "args", .tpl_step_secs(t)))
 }
 
 # A report's `template:` with its arguments written in the form the file
 # already uses: flat stays flat (`args:`); by step stays by step, an
-# argument in the section (or the flat `args:`) it was in, a new one in the
-# section of its `step:` (tfl_arg_defs(template =)), else flat.  `by_step`:
-# write a report with no arguments yet by step (a new report, the canon's
-# form).  An emptied section is dropped (tflspec reads `analysis: {}` as an
-# argument).
+# argument in the section (or the flat `args:`, or directly under
+# `template:`) it was in, a new one in the section of its `step:`
+# (tfl_arg_defs(template =)), else flat.  `by_step`: write a report with no
+# arguments yet by step (a new report, the canon's form).  An emptied
+# section is dropped (tflspec reads `analysis: {}` as an argument).
 .tpl_write_args <- function(t, args, by_step = FALSE) {
   secs <- .tpl_step_secs(t)
-  if (!length(secs) && !(by_step && !length(t$args))) {
+  bare_old <- .tpl_bare_args(t)
+  if (!length(secs) && !length(bare_old) && !(by_step && !length(t$args))) {
     t$args <- args
     return(t)
   }
@@ -240,15 +269,24 @@
   out <- old
   out[] <- list(list())
   flat <- list()
+  bare <- list()
   for (a in names(args)) {
-    k <- if (a %in% flat_old) NA_character_ else {
+    k <- if (a %in% bare_old) "" else if (a %in% flat_old) NA_character_ else {
       w <- secs[vapply(secs, function(k) a %in% names(old[[k]]), NA)]
-      if (length(w)) w[[1L]] else .tpl_arg_step(name, a, secs)
+      if (length(w)) w[[length(w)]] else .tpl_arg_step(name, a, secs)
     }
-    if (is.na(k)) flat[a] <- list(args[[a]]) else out[[k]][a] <- list(args[[a]])
+    if (identical(k, "")) {
+      bare[a] <- list(args[[a]])
+    } else if (is.na(k)) {
+      flat[a] <- list(args[[a]])
+    } else {
+      out[[k]][a] <- list(args[[a]])
+    }
   }
   # (the file's order kept, a new argument after it)
   keep_order <- function(x, was) x[c(intersect(was, names(x)), setdiff(names(x), was))]
+  for (a in setdiff(bare_old, names(bare))) t[[a]] <- NULL
+  for (a in names(bare)) t[a] <- list(bare[[a]])
   for (k in secs) {
     out[[k]] <- keep_order(out[[k]], names(old[[k]]))
     t[[k]] <- NULL
@@ -258,13 +296,19 @@
   t
 }
 
-# The section a template's argument is written in by step: its `step:`
-# (an older file's `ard:` for the analysis step); NA when the template does
-# not say
+# The section a new argument of a report by step goes to: its `step:` as
+# the template's form names it (a built-in template's analysis step is its
+# `ard:` part); NA (flat) when the template does not say, or the step is no
+# section of that form
 .tpl_arg_step <- function(name, arg, secs = character()) {
   st <- as.character(.arg_def(.tpl_defs(name), arg)$step %||% NA_character_)[1L]
-  if (is.na(st) || !st %in% .tpl_arg_steps) return(NA_character_)
-  if (identical(st, "analysis") && "ard" %in% secs && !"analysis" %in% secs) "ard" else st
+  if (is.na(st)) return(NA_character_)
+  if (.tpl_is_series(name)) {
+    if (identical(st, "ard")) st <- "analysis"
+  } else if (identical(st, "analysis")) {
+    st <- "ard"
+  }
+  if (st %in% .tpl_secs_for(name)) st else NA_character_
 }
 
 # The study's datasets, by dataset (upper case), read once a study folder:
@@ -955,7 +999,7 @@
   tab <- .tpl_section_table()
   i <- which(tab$template == template & tab$argument == argument)
   if (length(i)) return(tab$section[i[1L]])
-  if (argument %in% c("population", "subset", "where", "data", "param", "paramcd")) return("data")
+  if (argument %in% c("population", "subset", "where", "data", "data_id", "param", "paramcd")) return("data")
   if (argument %in% c("title", "page_by", "page_heading")) return("page")
   if (argument %in% c("labels", "heading", "order", "sort", "formats") ||
         grepl("_(label|order)$", argument)) return("content")
@@ -1379,15 +1423,86 @@ $(document).on('shiny:connected', function() {
                              if (is.na(cls)) "default" else cls), txt)
 }
 
+# The value a report's card draws for an argument (`prm`, its parameter;
+# `args`, the report's): its own, else the study's as the card says it
+# (.tpl_arg_origin(): what tflspec filled from the study first), else the
+# template's default.  A field's value coming back as drawn is no edit: a
+# value of the study standard is never written into the report's args by
+# the drawing alone (#751 item 2: it would stop following the standard).
+.tpl_drawn_value <- function(p, output_id, args, prm) {
+  if (prm$name %in% names(args)) return(args[[prm$name]])
+  sv <- .tpl_study_value(p$spec$study, prm)
+  if (is.null(sv)) {
+    og <- .tpl_arg_origin(p$spec$study, prm, args, .tpl_filled(p, output_id))
+    if (identical(og$from, "study")) sv <- og$study
+  }
+  sv %||% prm$default
+}
+
+# A template report as tflspec resolves it (tfl_resolve_output(); NULL when
+# it cannot be).  The last report's kept while it, the study and the
+# study's copies of the templates are the same (a card's fields each ask it
+# as they come back: .tpl_drawn_value()).
+.tpl_resolved_cache <- new.env(parent = emptyenv())
+.tpl_resolved <- function(p, output_id) {
+  o <- p$spec$outputs[[output_id]]
+  if (is.null(o)) return(NULL)
+  k <- .tpl_resolved_cache
+  # (the study's copies of the templates read too: a copy again is a change)
+  dir <- p$spec$study$dir
+  cp <- if (is.character(dir) && length(dir) == 1L) {
+    list.files(.series_copy_root(dir), recursive = TRUE, full.names = TRUE)
+  }
+  key <- list(o, p$spec$study, cp, file.mtime(cp))
+  if (isTRUE(k$has) && identical(k$key, key)) return(k$out)
+  out <- tryCatch(tflspec::tfl_resolve_output(o, p$spec$study), error = function(e) NULL)
+  k$key <- key
+  k$out <- out
+  k$has <- TRUE
+  out
+}
+
 # What tflspec filled in from the study for a template report: the
 # template attribute of its resolved output (NULL: none, or an older
 # tflspec)
 .tpl_filled <- function(p, output_id) {
-  o <- p$spec$outputs[[output_id]]
-  if (is.null(o)) return(NULL)
-  r <- tryCatch(tflspec::tfl_resolve_output(o, p$spec$study), error = function(e) NULL)
-  a <- attr(r, "template")
+  a <- attr(.tpl_resolved(p, output_id), "template")
   if (is.null(a$study)) NULL else a
+}
+
+# A template report's analysis set, for its data step (#751 item 6): the
+# report's own (`common: population`) and the analysis data the template
+# makes with the population each has as tflspec resolves it (a template
+# row's own, else the report's) -- a data frame id, from, population; NULL
+# rows when it cannot be resolved
+.tpl_pop_view <- function(p, output_id) {
+  pid <- as.character(p$spec$outputs[[output_id]]$common$population %||% NA_character_)[1L]
+  ad <- .tpl_resolved(p, output_id)$ard$analysis_data
+  rows <- if (length(ad)) data.frame(
+    id = vapply(ad, function(x) as.character(x$id %||% NA_character_)[1L], ""),
+    from = vapply(ad, function(x) as.character(x$from %||% NA_character_)[1L], ""),
+    population = vapply(ad, function(x) as.character(x$population %||% pid)[1L], ""),
+    stringsAsFactors = FALSE)
+  list(population = pid, rows = rows)
+}
+
+# .tpl_pop_view() drawn in the data step: the report's analysis set and the
+# analysis data the template makes, each with its analysis set
+.tpl_pop_view_ui <- function(pv, t = identity) {
+  pop <- if (is.na(pv$population) || !nzchar(pv$population)) t("(none)") else pv$population
+  shiny::div(
+    class = "small mb-2",
+    shiny::div(class = "mb-1",
+               with_tip(shiny::span(shiny::strong(t("Analysis set (population)")), ": ", shiny::code(pop)),
+                        t("The report's analysis set (common: population), set on the report list. The template's analysis data read it unless their own row names one."))),
+    if (NROW(pv$rows)) shiny::tags$table(
+      class = "table table-sm small mb-0",
+      shiny::tags$thead(shiny::tags$tr(
+        shiny::tags$th(t("Analysis data (id)")), shiny::tags$th(t("Dataset (from)")),
+        shiny::tags$th(t("Analysis set (population)")))),
+      shiny::tags$tbody(lapply(seq_len(nrow(pv$rows)), function(i) shiny::tags$tr(
+        shiny::tags$td(shiny::code(pv$rows$id[i])), shiny::tags$td(pv$rows$from[i]),
+        shiny::tags$td(if (is.na(pv$rows$population[i])) t("(none)") else pv$rows$population[i]))))))
 }
 
 # A new report written straight into the spec: its line in spec/toc.yml
@@ -1502,12 +1617,16 @@ $(document).on('shiny:connected', function() {
   if (is.list(t) && !is.null(t$name)) t$name else NULL
 }
 
-# A template's call as its program has it: tfl_tpl() (a template with no
-# call of its own -- a figure's -- tfl_template(<name>))
+# The function that makes a template's report, as one name whatever the
+# template (#751 item 7; the template's own name is in the card beside it):
+# a built-in template's call in its program (tfl_tpl()); a series template
+# (`<series>/<name>`), whose program is the code tflspec resolves it to,
+# tfl_template_resolve()
 .tpl_call_name <- function(name) {
+  if (.tpl_is_series(name)) return("tfl_template_resolve()")
   x <- tryCatch(tflspec::tfl_templates(), error = function(e) NULL)
   call <- if (!is.null(x) && "call" %in% names(x)) x$call[match(name, x$name)] else NA
-  if (length(call) && !is.na(call) && nzchar(call)) paste0(call, "()") else sprintf("tfl_template(%s)", name)
+  paste0(if (length(call) && !is.na(call) && nzchar(call)) call else "tfl_tpl", "()")
 }
 
 # A template report made a code one (the template card's "Convert to

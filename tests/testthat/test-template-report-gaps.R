@@ -343,7 +343,13 @@ test_that("a template's name in a report's file, and its call in the program", {
   expect_null(.tpl_spec_name(list(template = "km_simple")))
   expect_null(.tpl_spec_name(list()))
   expect_identical(.tpl_call_name("demog"), "tfl_tpl()")
-  expect_identical(.tpl_call_name("no_such_template"), "tfl_template(no_such_template)")
+  # (one form whatever the template, the name not repeated: #751 item 7)
+  expect_identical(.tpl_call_name("no_such_template"), "tfl_tpl()")
+  expect_identical(.tpl_call_name("tflspec_v1/demog"), "tfl_template_resolve()")
+  # (data_id, the analysis data's id, is drawn in the data step)
+  expect_identical(.tpl_arg_section("demog", "data_id"), "data")
+  expect_identical(.tpl_arg_section("stf_t02_demog", "data_id"), "data")
+  expect_identical(.tpl_arg_section("no_such_template", "data_id"), "data")
 })
 
 test_that("a template that hides its analysis set takes it from the report's population, asked in the dialog", {
