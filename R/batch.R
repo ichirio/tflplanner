@@ -61,10 +61,13 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
     error = function(e) ""), "")
   # (the definition: the YAML spec's files)
   spec_files <- setdiff(.spec_files_yaml(root), .study_file)
+  # (the study's own analysis functions, study key `source`: every ARD
+  # program sources them, by their path from the study folder; #792)
+  own_src <- .split_bar(.study_value(spec, "source", NA))
   support <- list(
     ard = c(file.path(lay[["programs_ard"]], c(.ard_setup_file,
                                                .ard_autoexec_file)),
-            spec_files),
+            own_src, spec_files),
     tfl = c(file.path(lay[["programs_tfl"]], c("autoexec_report.R",
                                                .fig_setup_file,
                                                .report_setup_file)),

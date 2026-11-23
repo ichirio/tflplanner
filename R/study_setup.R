@@ -35,7 +35,10 @@
 #' labels; a value not listed stops the program), `tag_ard()`, `fmt_ard()`,
 #' `fmt_pvalue()`, `keep_stats()` and `save_ard()` -- as tflspec gives them
 #' ([tflspec::tfl_helpers_code()]).  The study's setup sources it, so its
-#' programs run without tflspec.  Saving the study writes it again when
+#' programs do not call tflspec for these.  They still need tflspec to run
+#' in some cases: a report that reads an imported ARD calls
+#' `tflspec::tfl_read_ard()`, and a KM curve or forest plot calls tflspec's
+#' `km_curves()` or `forest_hr()`.  Saving the study writes it again when
 #' tflspec's have changed (one edited by hand is copied to
 #' `programs/.edited/` first).
 #'

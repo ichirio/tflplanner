@@ -385,3 +385,35 @@ test_that("the runs list of a study with no run yet is drawn (no run, no row)", 
     expect_no_error(output$batches)
   })
 })
+
+test_that("batch.R keeps the study's own analysis functions (key source) with the ARD's code", {
+  skip_on_cran()
+  bs_home()
+  p <- bs_planner()
+  # a fictional function file, named by the study key `source`
+  p$ard$study <- rbind(p$ard$study, data.frame(
+    key = "source", value = "programs/ard/functions/ard_mine.R"))
+  s <- create_study("BSRC", planner = p)
+  fdir <- file.path(s$path, "programs", "ard", "functions")
+  dir.create(fdir, recursive = TRUE, showWarnings = FALSE)
+  writeLines("ard_mine <- function(data, ...) NULL", file.path(fdir, "ard_mine.R"))
+  # read back from study.yml
+  o <- open_study("BSRC")
+  expect_identical(.split_bar(.study_value(o$planner$ard, "source", NA)),
+                   "programs/ard/functions/ard_mine.R")
+  support_of <- function(code) {
+    ex <- parse(text = code, keep.source = FALSE)
+    hit <- vapply(ex, function(e) is.call(e) && identical(e[[1L]], as.name("<-")) &&
+                    identical(e[[2L]], as.name(".batch_support")), NA)
+    eval(ex[[which(hit)]][[3L]], baseenv())
+  }
+  sup <- support_of(batch_code(o$planner, root = o$path))
+  expect_true("programs/ard/functions/ard_mine.R" %in% sup$ard)
+  expect_false("programs/ard/functions/ard_mine.R" %in% sup$tfl)
+  # the batch.R written in the study folder says the same
+  sup <- support_of(readLines(file.path(s$path, "programs", "batch.R")))
+  expect_true("programs/ard/functions/ard_mine.R" %in% sup$ard)
+  # without the key: nothing more
+  sup <- support_of(batch_code(bs_planner()))
+  expect_false(any(grepl("functions/", sup$ard, fixed = TRUE)))
+})
