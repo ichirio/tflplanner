@@ -249,10 +249,23 @@ test_that("the runner does not run a report whose ARD program failed", {
   expect_match(r$note[2L], "the ARD of T1 failed", fixed = TRUE)
 })
 
-test_that("a failed detection of what a report reads is said, not passed over", {
-  p <- add_output(new_planner(), "T-1", type = "table")
-  testthat::local_mocked_bindings(.batch_ard_reads = function(x) stop("boom"))
-  expect_warning(.batch_report_needs(p), "boom")
+test_that("a figure whose ARD source cannot be worked out stops the run, naming the figure", {
+  p <- add_output(new_planner(), "F-1", type = "figure")
+  testthat::local_mocked_bindings(.fig_ard_need = function(x, output_id) stop("boom"))
+  expect_error(.batch_report_needs(p), "figure F-1 reads could not be found out: boom")
+})
+
+test_that("only declared reads are needs: a quoted id in a report's code is not", {
+  p <- bs_planner()
+  # L1's code names DM's rows of the study ARD: not found out at the start
+  p <- set_step_code(p, "L1", "data",
+    "data <- readRDS(file.path(path_ard, \"ard.rds\")) |> filter(output_id == \"DM\")")
+  n <- .batch_report_needs(p)
+  # a report's own ARD (it has analyses); a listing with none reads none
+  expect_identical(n, list(DM = "DM", VS = "VS"))
+  expect_false("L1" %in% names(n))
+  # a selected L1 without DM is not refused
+  expect_identical(nrow(.batch_missing_needs(n, c("L1", "VS"))), 0L)
 })
 
 test_that(".batch_missing_needs names the selected reports that read an ARD not selected", {

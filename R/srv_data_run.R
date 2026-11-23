@@ -401,16 +401,19 @@
       return(notify(t("Choose at least one report for the run."), "warning"))
     }
     # the ARD is made for the selected reports only (#790): a selected report
-    # that reads the ARD of one not selected: nothing starts, the missing
-    # reports are named (and can be ticked)
+    # whose own ARD, or whose figure's table, is not selected: nothing starts,
+    # the missing reports are named (and can be ticked).  Any other ARD a
+    # program reads stops that program when it runs.
     if (!identical(parts, "ard")) {
+      # (a read that cannot be worked out is an error: no run starts)
       miss <- tryCatch(.batch_missing_needs(.batch_report_needs(rv$p), setdiff(ids, exclude)),
                        error = function(e) {
                          notify(sprintf(t("The ARD the reports read could not be checked: %s"),
-                                        conditionMessage(e)), "warning")
+                                        conditionMessage(e)), "error")
                          NULL
                        })
-      if (!is.null(miss) && nrow(miss)) {
+      if (is.null(miss)) return(invisible())
+      if (nrow(miss)) {
         return(shiny::showModal(shiny::modalDialog(
           title = t("The run did not start"),
           shiny::p(t("The ARD is made only for the reports you select. A selected report reads the ARD of a report you have not selected.")),

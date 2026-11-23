@@ -50,9 +50,13 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
                          vapply(infos, `[[`, "", "program"))
   made <- lapply(infos, function(info) info$file)
   ard_out <- .study_value(spec, "output", "output/ard/ard.rds")
-  # the ARD each report reads (#293, #790): see .batch_report_needs(); a run
-  # that selects a report but not the reports it reads does not start
-  need <- .batch_report_needs(x)
+  # the ARD each report declares it reads (#293, #790): see
+  # .batch_report_needs(); a run that selects a report but not the reports it
+  # declares does not start.  (Saving the study must not fail on it: said.)
+  need <- tryCatch(.batch_report_needs(x), error = function(e) {
+    warning(conditionMessage(e), call. = FALSE)
+    list()
+  })
   names(need) <- tfl_progs[match(names(need), out_ids)]
   # (the definition: the YAML spec's files)
   spec_files <- setdiff(.spec_files_yaml(root), .study_file)
@@ -444,27 +448,23 @@ run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE, data = FALSE,
        output = txt)
 }
 
-# The reports whose ARD each report reads (#293, #790): its own, a figure's
-# source, and what its code names.  A named list: output id -> output ids
-# (a report that reads none is not in it).
+# The reports whose ARD each report reads and a run is refused for (#293,
+# #790): the declared reads only -- a report's own ARD (its id has analyses)
+# and a figure's table source (.fig_ard_need()).  What a report's code reads
+# of another report's ARD is not found out here: that read stops the run
+# when it happens.  A named list: output id -> output ids (a report that
+# reads none is not in it).  A figure whose source cannot be worked out
+# stops it (a run must not start on a read not known).
 .batch_report_needs <- function(x) {
   spec <- x$ard %||% .empty_ard_spec()
   ids <- unique(stats::na.omit(spec$analyses$output_id))
   out_ids <- x$outputs$output_id
-  # (a detection that fails is said, not passed over)
-  reads <- tryCatch(.batch_ard_reads(x), error = function(e) {
-    warning("The ARD the reports read could not be found out: ", conditionMessage(e),
-            call. = FALSE)
-    list()
-  })
   need <- lapply(out_ids, function(id) {
     fig <- tryCatch(.fig_ard_need(x, id), error = function(e) {
-      warning("The ARD the figure ", id, " reads could not be found out: ",
-              conditionMessage(e), call. = FALSE)
-      NA_character_
+      stop("The ARD the figure ", id, " reads could not be found out: ",
+           conditionMessage(e), call. = FALSE)
     })
-    n <- unique(c(fig[!is.na(fig)], reads[[id]]))
-    intersect(n, ids)
+    intersect(unique(c(if (id %in% ids) id, fig[!is.na(fig)])), ids)
   })
   names(need) <- out_ids
   need[lengths(need) > 0L]
@@ -494,27 +494,6 @@ run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE, data = FALSE,
     c(.ard_prog_name(e), report_info(x, e)$program)
   }))
   unique(progs[!is.na(progs) & nzchar(progs)])
-}
-
-# For each report, the reports whose rows of the study ARD it reads: its own
-# when it has analyses, a figure's ARD source's table, and any other report
-# with analyses its own code (its steps') names in quotes ("T-14-1-1").  A
-# named list: output id -> output ids.
-.batch_ard_reads <- function(x) {
-  a <- x$ard$analyses
-  has <- unique(stats::na.omit(a$output_id))
-  ids <- x$outputs$output_id
-  code <- vapply(ids, function(id) {
-    v <- stats::na.omit(c(step_code(x, id, "data"), step_code(x, id, "content")))
-    if (length(v)) paste(v, collapse = "\n") else NA_character_
-  }, "", USE.NAMES = FALSE)
-  stats::setNames(lapply(seq_along(ids), function(i) {
-    q <- if (!is.na(code[i])) {
-      unlist(regmatches(code[i], gregexpr('"[^"]+"', code[i])))
-    }
-    q <- gsub('"', "", q)
-    unique(c(if (ids[i] %in% has) ids[i], intersect(setdiff(q, ids[i]), has)))
-  }), ids)
 }
 
 #' @rdname run_batch
