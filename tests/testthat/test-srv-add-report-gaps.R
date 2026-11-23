@@ -526,7 +526,10 @@ test_that("demog's preview reads the study standard the report resolves with: it
   # (a study standard as tflspec's spec-yaml study says it: plan_cells'
   # categorical, plan_col_header's lines -- demog's study references)
   st <- tflspec::tfl_read_study_spec(system.file("extdata", "spec-yaml", package = "tflspec"))
-  s$planner$spec$study$defaults$content <- st$defaults$content
+  # (the series template leaves normalize_ard to the study standard: kept from the study's own)
+  own <- Filter(function(it) identical(it$fn, "normalize_ard"), s$planner$spec$study$defaults$content)
+  expect_length(own, 1L)
+  s$planner$spec$study$defaults$content <- c(own, st$defaults$content)
   r <- tflspec::tfl_resolve_output(.code_spec(s$planner)$outputs[["T-DM"]], .code_spec(s$planner)$study)
   cells <- Filter(function(it) identical(it$fn, "plan_cells"), r$content)[[1L]]$args
   expect_false(is.null(cells$categorical))
