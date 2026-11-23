@@ -69,7 +69,7 @@ test_that("the badge is a small pill with the kind's class and text", {
   expect_match(h(list(kind = "fallback"), tr_en), "Default when the study standard is undefined", fixed = TRUE)
   expect_match(h(list(kind = "default")), "rp-tpl-badge-default")
   expect_match(h(list(kind = "default")), "Template default")
-  expect_match(h(list(kind = "default"), tr_ja), "\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8\u306e\u65e2\u5b9a\u5024")
+  expect_match(h(list(kind = "default"), tr_ja), "\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8\u306e\u30c7\u30d5\u30a9\u30eb\u30c8\u5024")
   expect_match(h(list(kind = "report"), tr_ja), "\u3053\u306e\u5e33\u7968\u306e\u89e3\u6790\u5bfe\u8c61\u96c6\u56e3")
 })
 
