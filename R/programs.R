@@ -1080,7 +1080,7 @@ report_setup_code <- function(x, date = Sys.Date()) {
 #' @export
 autoexec_code <- function(x, date = Sys.Date()) {
   lay <- study_layout()
-  c(.autoexec_banner(file.path(lay[["programs_tfl"]], "autoexec_report.R"),
+  c(.autoexec_banner(file.path(lay[["programs_tfl"]], .autoexec_report_file),
                      "Official run of the report programs, in the report list's order.",
                      "T-14-1-1.R       only these", date),
     .autoexec_body("tfl"))

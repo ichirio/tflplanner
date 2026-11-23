@@ -74,6 +74,7 @@ test-page-patterns.R,2,3.7
 test-pk-template.R,2,0.5
 test-program-default.R,2,0.0
 test-programs.R,2,0.3
+test-program-names.R,2,0.1
 test-report-order.R,2,0.3
 test-series-e2e.R,2,0.2
 test-spec-grids-rest.R,2,0.8
