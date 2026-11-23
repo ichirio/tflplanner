@@ -89,10 +89,14 @@ test_that("the Spec tab's grids hold what the columns say; the rest of an item i
     expect_identical(grid_cell(cl, "column", ".values", "decimal_split"), "TRUE")
     expect_identical(grid_df(output$hot_style)$auto_width[[1L]], "FALSE")
     expect_identical(grid_df(output$hot_tables)$sep[[1L]], "____")
+    # (header `lines` would come back from the grid as header rows, another
+    # argument: tflspec keeps them, with their span, as YAML -- tflspec#689)
     ch <- grid_df(output$hot_col_header)
-    expect_identical(ch$line, c("1", "1", "1", "2", "2", "2"))
-    expect_identical(ch$span, c("each", "each", "", "each", "each", "each"))
-    expect_identical(ch$text, c("", "", "Treatment", "", "Parameter", "{col}"))
+    expect_false(any(nzchar(ch$line)))
+    cm <- sheet_rows(rv$p, "tables", "T-14-1-2")$content_more
+    expect_match(cm, "lines:", fixed = TRUE)
+    expect_match(cm, "span:", fixed = TRUE)
+    expect_match(cm, "header_sep", fixed = TRUE)
     open("T-14-2-1")
     cl <- grid_df(output$hot_columns)
     expect_identical(grid_cell(cl, "column", "group", "row_title"), "TRUE")
