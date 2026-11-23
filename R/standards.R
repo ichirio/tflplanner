@@ -534,12 +534,7 @@ read_standards <- function(path) {
     stop("The new standards could not be put in place: ", f,
          " (the old file is kept).", call. = FALSE)
   }
-  if (!is.null(old)) {
-    unlink(prev)
-    if (!isTRUE(file.rename(old, prev))) {
-      warning("The previous standards could not be kept as ", prev, call. = FALSE)
-    }
-  }
+  if (!is.null(old)) .keep_replaced_standards(old, f)
   invisible(f)
 }
 
@@ -552,16 +547,81 @@ read_standards <- function(path) {
   }, f)
 }
 
-# Back to the built-in: the file is moved to `.prev`, not deleted.
+# Does the workbook read (warnings are not failures)?
+.standards_reads <- function(path) {
+  tryCatch({
+    suppressWarnings(read_standards(path))
+    TRUE
+  }, error = function(e) FALSE)
+}
+
+# The file that was replaced (now at `old`): kept as `<f>.prev` when it
+# reads.  When it does not read, the `.prev` stays as it is and the broken
+# file is kept as `<f>.broken` (an older .broken is replaced).
+.keep_replaced_standards <- function(old, f) {
+  prev <- paste0(f, ".prev")
+  if (.standards_reads(old)) {
+    unlink(prev)
+    if (!isTRUE(file.rename(old, prev))) {
+      warning("The previous standards could not be kept as ", prev, call. = FALSE)
+    }
+    return(invisible(TRUE))
+  }
+  broken <- paste0(f, ".broken")
+  unlink(broken)
+  if (isTRUE(file.rename(old, broken))) {
+    warning("The standards file that was replaced did not read; it is kept as ",
+            broken, " and the earlier .prev is unchanged.", call. = FALSE)
+  } else {
+    warning("The standards file that was replaced did not read and could not be kept (",
+            old, "); the earlier .prev is unchanged.", call. = FALSE)
+  }
+  invisible(FALSE)
+}
+
+# Back to the built-in: the file is moved to `.prev` (to `.broken` when it
+# does not read, the `.prev` kept), not deleted.  The old `.prev` is removed
+# only after the file has stepped aside.
 .standards_to_builtin <- function(f) {
   if (!file.exists(f)) return(invisible(f))
   prev <- paste0(f, ".prev")
-  unlink(prev)
-  if (!isTRUE(file.rename(f, prev))) {
+  old <- tempfile(".std-old-", dirname(f), ".xlsx")
+  if (!isTRUE(file.rename(f, old))) {
     stop("The standards file could not be moved aside (is it open in Excel?): ",
          f, call. = FALSE)
   }
+  if (!.standards_reads(old)) {
+    .keep_replaced_standards(old, f)
+    return(invisible(paste0(f, ".broken")))
+  }
+  unlink(prev)
+  if (!isTRUE(file.rename(old, prev))) {
+    file.rename(old, f)
+    stop("The standards file could not be moved to ", prev, " (it is kept).",
+         call. = FALSE)
+  }
   invisible(prev)
+}
+
+# What tflplanner would drop if it rewrote the workbook `f` from what
+# read_standards() keeps: sheets that are not standard sheets (or _README),
+# and columns of standard sheets that are not standard columns.  Empty
+# when nothing would be lost.
+.standards_would_lose <- function(f) {
+  b <- .builtin_standards()
+  have <- readxl::excel_sheets(f)
+  out <- character()
+  extra <- setdiff(have, c(names(b), "_README"))
+  if (length(extra)) out <- paste0("sheet `", extra, "`")
+  for (s in intersect(names(b), have)) {
+    cols <- names(readxl::read_excel(f, sheet = s, n_max = 0))
+    x <- setdiff(cols, names(b[[s]]))
+    if (length(x)) {
+      out <- c(out, paste0("column(s) ", paste(x, collapse = ", "),
+                           " in sheet `", s, "`"))
+    }
+  }
+  out
 }
 
 # Put the previous workbook back; the one in use becomes the `.prev`.

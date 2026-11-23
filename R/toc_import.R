@@ -724,6 +724,13 @@ remember_toc_map <- function(map, home = tflplanner_home(), rule_set = NULL,
                                     header_row, id_rule)
   }
   f <- .standards_file(home)
+  lose <- if (file.exists(f)) .standards_would_lose(f) else character()
+  if (length(lose)) {
+    stop("The TOC is taken in, but the mapping was not remembered: the company ",
+         "standards workbook has content tflplanner would drop when it rewrites it (",
+         paste(lose, collapse = "; "), "). Add the mapping to the workbook by hand, ",
+         "or remove that content.", call. = FALSE)
+  }
   .write_standards_safely(function(p) {
     writexl::write_xlsx(c(list(`_README` = .standards_readme()), s), p)
   }, f)

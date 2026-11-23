@@ -152,8 +152,8 @@ test_that("a company's methods sheet written before labels still reads", {
 
 # ---- safe writes of the company workbook
 
-good_std <- function() {
-  f <- file.path(withr_tempdir(), "std.xlsx")
+good_std <- function(env = parent.frame()) {
+  f <- file.path(withr_tempdir(env), "std.xlsx")
   standards_template(f)
   f
 }
@@ -243,4 +243,63 @@ test_that("an unknown sheet name is warned about, not ignored", {
   expect_warning(read_standards(f), "statistcs.*Known sheets")
   g <- good_std()
   expect_no_warning(read_standards(g))
+})
+
+test_that("remember_toc_map refuses to rewrite a workbook with content it would drop", {
+  skip_on_cran()
+  home <- home_for_test()
+  suppressMessages(setup_tflplanner(standards = good_std()))
+  f <- .standards_file(home)
+  s <- suppressWarnings(read_standards(f))
+  # an extra sheet
+  writexl::write_xlsx(c(s, list(notes = data.frame(a = "keep me"))), f)
+  before <- unname(tools::md5sum(f))
+  expect_error(remember_toc_map(list(note = "Memo"), home = home), "not remembered")
+  expect_identical(unname(tools::md5sum(f)), before)
+  expect_false(file.exists(paste0(f, ".prev")))
+  # an extra column in a known sheet
+  s$about$comment <- "mine"
+  writexl::write_xlsx(s, f)
+  before <- unname(tools::md5sum(f))
+  expect_error(remember_toc_map(list(note = "Memo"), home = home), "not remembered")
+  expect_identical(unname(tools::md5sum(f)), before)
+  expect_false(file.exists(paste0(f, ".prev")))
+})
+
+test_that("remember_toc_map still works on a plain installed workbook", {
+  skip_on_cran()
+  home <- home_for_test()
+  suppressMessages(setup_tflplanner(standards = good_std()))
+  f <- .standards_file(home)
+  expect_length(.standards_would_lose(f), 0L)
+  expect_no_error(remember_toc_map(list(note = "Memo"), home = home))
+  expect_true(file.exists(paste0(f, ".prev")))
+  expect_identical(toc_map_for("Memo", company_standards(home)$toc_map)$note, "Memo")
+})
+
+test_that("a broken current file does not replace the valid .prev", {
+  skip_on_cran()
+  home <- home_for_test()
+  suppressMessages(setup_tflplanner(standards = good_std()))
+  f <- .standards_file(home)
+  suppressMessages(setup_tflplanner(standards = good_std()))
+  prev <- paste0(f, ".prev")
+  expect_true(file.exists(prev))
+  prev_md5 <- unname(tools::md5sum(prev))
+  broken <- file.path(withr_tempdir(), "bad.xlsx")
+  writexl::write_xlsx(list(statistics = data.frame(key = "n")), broken)
+  # back to the built-in over a broken file
+  file.copy(broken, f, overwrite = TRUE)
+  suppressWarnings(suppressMessages(setup_tflplanner(standards = "builtin")))
+  expect_false(file.exists(f))
+  expect_identical(unname(tools::md5sum(prev)), prev_md5)
+  expect_true(file.exists(paste0(f, ".broken")))
+  expect_true(.standards_reads(prev))
+  unlink(paste0(f, ".broken"))
+  # an install over a broken file
+  file.copy(broken, f, overwrite = TRUE)
+  expect_warning(suppressMessages(setup_tflplanner(standards = good_std())), "did not read")
+  expect_true(file.exists(f))
+  expect_identical(unname(tools::md5sum(prev)), prev_md5)
+  expect_true(file.exists(paste0(f, ".broken")))
 })
