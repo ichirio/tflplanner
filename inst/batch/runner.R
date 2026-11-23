@@ -237,6 +237,11 @@ run_batch <- function(parts, args = character()) {
         hit <- c(hit, of[m])
       }
       hit <- unique(c(hit, all_ids[all_ids == tk]))
+      # a name that stands for nothing (a typing slip) would silently run
+      # nothing, or leave nothing out: said
+      if (!length(hit)) {
+        stop("The name '", tk, "' stands for no output.", call. = FALSE)
+      }
       if (length(hit) > 1L) {
         stop("The name '", tk, "' stands for more than one output: ",
              paste(hit, collapse = ", "), ".  Name the output id.", call. = FALSE)

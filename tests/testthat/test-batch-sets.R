@@ -144,10 +144,27 @@ test_that("the runner takes an output id as a program name, and --exclude too", 
   expect_match(left, "DM.R", fixed = TRUE)
   expect_match(left, "t_dm.R", fixed = TRUE)
   Sys.sleep(1.1)
-  # a name that matches nothing: as before, nothing to run
+  # a name that matches nothing (a typing slip) stops, naming it, in --only
+  # and in --exclude alike
   b <- run_batch(o, "ard", only = "NOPE")
   expect_false(b$ok)
-  expect_true(any(grepl("Nothing to run", b$output, fixed = TRUE)))
+  expect_true(any(grepl("The name 'NOPE' stands for no output.", b$output, fixed = TRUE)))
+  Sys.sleep(1.1)
+  b <- run_batch(o, c("ard", "tfl"), exclude = "DMX")
+  expect_false(b$ok)
+  expect_true(any(grepl("The name 'DMX' stands for no output.", b$output, fixed = TRUE)))
+})
+
+test_that("a report with no program of its own does not break batch.R", {
+  skip_on_cran()
+  p <- bs_planner(c("DM", "VS"))
+  # VS's figure reads an ARD with no source, and it has no program
+  reads <- data.frame(report = c("VS", "ZZ"), reads = c(NA, NA), kind = "source",
+                      reason = c("no source", "no source"), stringsAsFactors = FALSE)
+  testthat::local_mocked_bindings(.batch_report_reads = function(x) reads)
+  code <- batch_code(p)
+  expect_no_error(parse(text = code))
+  expect_false(any(grepl("`NA`", code, fixed = TRUE)))
 })
 
 test_that("the batches column survives the SPEC round trip", {

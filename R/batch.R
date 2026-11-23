@@ -59,6 +59,10 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
   names(need) <- tfl_progs[match(names(need), out_ids)]
   unresolved <- .batch_reads_unresolved(reads)
   names(unresolved) <- tfl_progs[match(names(unresolved), out_ids)]
+  # a report with no program of its own (none is written for it) is in no
+  # run: its rows go (an NA name would make batch.R fail to parse)
+  need <- need[!is.na(names(need))]
+  unresolved <- unresolved[!is.na(names(unresolved))]
   # (the definition: the YAML spec's files)
   spec_files <- setdiff(.spec_files_yaml(root), .study_file)
   support <- list(
