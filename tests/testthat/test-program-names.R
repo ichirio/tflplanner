@@ -81,7 +81,7 @@ test_that(".generated_program_files() lists every file a save writes besides the
   root <- file.path(s$path, "programs")
   f <- list.files(root, recursive = TRUE, all.files = TRUE)
   f <- f[!dir.exists(file.path(root, f))]
-  f <- f[!grepl("(^|/)\.edited/", f)]
+  f <- f[!grepl("(^|/)\\.edited/", f)]
   own <- c(vapply(s$planner$outputs$output_id, function(id)
     file.path("tfl", report_info(s$planner, id)$program), ""),
     file.path("ard", .ard_prog_name(s$planner$outputs$output_id)))
