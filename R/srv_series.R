@@ -82,7 +82,11 @@
 .series_value_out <- function(v) {
   tag <- function(x, t) structure(x, tag = t)
   if (inherits(v, "tfl_series_ref")) return(tag(as.character(v$key), "!series"))
-  if (inherits(v, "tfl_study_ref")) return(tag(as.character(v$key), "!study"))
+  if (inherits(v, "tfl_study_ref")) {
+    if (!"fallback" %in% names(v)) return(tag(as.character(v$key), "!study"))
+    # the map form: as.yaml() writes the tag before the map (a tagged map)
+    return(tag(list(key = as.character(v$key), fallback = .series_value_out(v$fallback)), "!study"))
+  }
   if (inherits(v, "tfl_fixed_ref")) return(tag(.series_value_out(v$value), "!fixed"))
   if (inherits(v, "tfl_unset")) return(tag("", "!unset"))
   if (is.logical(v) && length(v) == 1L && !is.na(v) && is.null(names(v))) {
