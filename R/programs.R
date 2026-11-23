@@ -904,7 +904,10 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 
 # The first line of every program: it runs from the study folder (its
 # setup's source() would fail with a less clear message); under 80 columns
-.study_guard <- "stopifnot(\"run it from the study folder\" = file.exists(\"study.yml\"))"
+.study_guard <- c(
+  "stopifnot(\"run it from the study folder\" = file.exists(\"study.yml\"))",
+  "# this run of the program: the study's company and user code run once in it",
+  ".tfl_run <- basename(tempfile(\"run\"))")
 
 # The report's own id in its program is `report_id` (set at its head): a
 # program copied for another report changes it in one place.  The RTF's

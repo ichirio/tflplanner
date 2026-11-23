@@ -110,7 +110,7 @@ test_that("a new study gets its three setup files; study_setup.R is generated", 
   expect_false(any(s2$files$file %in% c(company_file(s), user_file(s))))
 })
 
-test_that("the company's code and the user's run once per program, again when changed", {
+test_that("the company's code and the user's run once per program run", {
   local_home()
   s <- create_study("ABC-110")
   f <- setup_file(s)
@@ -123,26 +123,31 @@ test_that("the company's code and the user's run once per program, again when ch
   give_data(s)
   e <- new.env()
   src <- function() withr::with_dir(s$path, sys.source(f, envir = e, toplevel.env = e))
+  # a program's run starts as a program starts (.study_guard's lines)
+  run <- function() eval(parse(text = .study_guard[-1L]), e)
+  run()
   src()
   expect_identical(c(e$n_company, e$n_user), c(1, 1))
   expect_false(e$saw_id)
   expect_identical(e$path_adam, "data/adam")
   expect_identical(e$study_title, "mine")
-  # sourced again in the same program (a figure report): not again
+  # sourced again in the same run (a figure report): not again
   src()
   expect_identical(c(e$n_company, e$n_user), c(1, 1))
-  # a file changed: both run again
-  cat("# changed\n", file = user_file(s), append = TRUE)
+  # the same program run again in the same R: again, once
+  run()
+  src()
   src()
   expect_identical(c(e$n_company, e$n_user), c(2, 2))
   # by hand
   rm(".tfl_free_ran", envir = e)
   src()
   expect_identical(c(e$n_company, e$n_user), c(3, 3))
-  # another environment (another program's): they run there
+  # sourced without a program's run: each time
   e2 <- new.env()
   withr::with_dir(s$path, sys.source(f, envir = e2, toplevel.env = e2))
-  expect_identical(c(e2$n_company, e2$n_user), c(1, 1))
+  withr::with_dir(s$path, sys.source(f, envir = e2, toplevel.env = e2))
+  expect_identical(c(e2$n_company, e2$n_user), c(2, 2))
 })
 
 test_that("saving writes study_setup.R again and never the company's or the user's file", {
@@ -275,6 +280,12 @@ test_that("each setup file sources study_setup.R first; programs no library()", 
   expect_length(chk, 1L)
   expect_length(rs, 1L)
   expect_true(chk < rs)
+  # the run's token before the setup, in a report and an ARD program
+  tok <- grep("^[.]tfl_run <- ", prog)
+  expect_length(tok, 1L)
+  expect_true(tok < rs)
+  ard <- readLines(file.path(s$path, "programs", "ard", "DM.R"))
+  expect_true(grep("^[.]tfl_run <- ", ard) < grep("ard_setup.R", ard, fixed = TRUE)[1L])
   # a study with no tokens or font of its own sources it too
   y <- add_output(new_planner(), "T-1", type = "table")
   expect_match(paste(program_code(y, "T-1"), collapse = "\n"),
