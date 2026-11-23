@@ -159,6 +159,7 @@ test-spec-import.R,4,0.9
 test-spec-keep.R,4,2.6
 test-spec-model.R,4,6.2
 test-srv-first-table-gaps.R,4,4.1
+test-srv-run-zip.R,4,0.2
 test-stage2-records-objects.R,4,0.6
 test-study-setup.R,4,0.7
 test-template-bridge.R,4,0.3

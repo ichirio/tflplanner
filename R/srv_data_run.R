@@ -136,19 +136,6 @@
     paste(utils::tail(readLines(f, warn = FALSE, encoding = "UTF-8"), 300L),
           collapse = "\n")
   })
-  output$rtf_download <- shiny::downloadHandler(
-    filename = function() {
-      d <- selected_status()
-      if (nrow(d)) basename(d$rtf_path[1L]) else "none.rtf"
-    },
-    content = function(file) {
-      d <- selected_status()
-      if (!nrow(d) || !file.exists(d$rtf_path[1L])) stop("No RTF")
-      file.copy(d$rtf_path[1L], file)
-    })
-  shiny::observeEvent(input$tfl_open, .open_folder(
-    file.path(rv$study$path, study_layout()[["tfl"]])))
-
   # a new copy of the sample: its official run (the ARD and the reports)
   # in the background, as the Runs tab starts one; the app stays usable and
   # the study list says it is running
@@ -527,10 +514,11 @@
                       else paste(x, collapse = ", ")
                     }, ""),
                     h = esc(d$set),
+                    z = .batch_zip_links(d$batch, t),
                     stringsAsFactors = FALSE)
     v$g <- esc(v$g)
     names(v) <- t(c("Run folder", "Started", "Runs", "State",
-                    "Code", "Data", "Left out", "Report set"))
+                    "Code", "Data", "Left out", "Report set", "Download (ZIP)"))
     # the row chosen stays chosen while a running one's time is drawn again
     sel <- shiny::isolate(input$batches_rows_selected)
     DT::datatable(v, rownames = FALSE, escape = FALSE,
@@ -550,6 +538,86 @@
     ok <- !is.null(guarded(.open_folder(d$path[i])))
     if (ok) notify(sprintf(t("Opened the folder %s (a window behind the browser? see the taskbar)."),
                            d$batch[i]))
+  })
+  # a row's ZIPs (#790, Q-C6): the output ZIP downloaded at once; the
+  # all-files ZIP too at or under the limit (zip_download_limit_mb), over it
+  # made in the background as runs/<folder>.zip and said when it is ready.
+  # The link names the folder; the hidden download button gives its ZIP.
+  zip_pick <- shiny::reactiveVal(NULL)
+  zip_mine <- shiny::reactiveVal(character())
+  shiny::observeEvent(input$batch_zip_row, {
+    x <- input$batch_zip_row
+    d <- batches()
+    i <- match(x$batch %||% "", d$batch)
+    what <- x$what %||% ""
+    if (is.na(i) || !what %in% c("output", "all")) return()
+    if (identical(d$state[i], "running")) {
+      return(notify(sprintf(t("%s is still running: download its ZIP when it has ended."),
+                            d$batch[i]), "warning"))
+    }
+    if (identical(what, "all")) {
+      mb <- .dir_size_mb(d$path[i])
+      lim <- .zip_limit_mb()
+      if (mb > lim) {
+        if (.batch_zip_busy(d$path[i])) {
+          return(notify(sprintf(t("The ZIP of %s is being made already."), d$batch[i]),
+                        "warning"))
+        }
+        px <- guarded(.batch_zip_bg(d$path[i]))
+        if (is.null(px)) return()
+        zip_mine(union(zip_mine(), d$path[i]))
+        return(notify(sprintf(
+          t("%s is %s, over %s: its ZIP is being made in the background as %s. You will be told when it is ready."),
+          d$batch[i], .mb_text(mb), .mb_text(lim),
+          file.path(study_layout()[["runs"]], paste0(d$batch[i], ".zip")))))
+      }
+    }
+    zip_pick(list(path = d$path[i], what = what))
+    session$sendCustomMessage("rp-batch-zip", "batch_zip_dl")
+  })
+  output$batch_zip_dl <- shiny::downloadHandler(
+    filename = function() {
+      z <- zip_pick()
+      if (is.null(z)) return("none.zip")
+      paste0(basename(z$path), if (identical(z$what, "output")) "_output", ".zip")
+    },
+    content = function(file) {
+      z <- zip_pick()
+      if (is.null(z) || !dir.exists(z$path)) stop("No run folder")
+      if (identical(z$what, "all") && .dir_size_mb(z$path) > .zip_limit_mb()) {
+        stop("Over the ZIP download limit")
+      }
+      .batch_zip(file, z$path, z$what)
+    },
+    contentType = "application/zip")
+  shiny::outputOptions(output, "batch_zip_dl", suspendWhenHidden = FALSE)
+  # the ZIPs this session started: said when each is ready (or failed)
+  shiny::observe({
+    mine <- zip_mine()
+    if (!length(mine)) return()
+    left <- character()
+    for (dir in mine) {
+      px <- .zip_jobs[[normalizePath(dir, "/", mustWork = FALSE)]]
+      if (!is.null(px) && px$is_alive()) {
+        left <- c(left, dir)
+        next
+      }
+      .batch_zip_bg_done(dir)
+      out <- paste0(dir, ".zip")
+      if (!is.null(px) && identical(px$get_exit_status(), 0L) && file.exists(out)) {
+        # (it stays until closed: the user may be elsewhere by now)
+        shiny::showNotification(sprintf(t("The ZIP of %s is ready: %s"), basename(dir),
+                                        normalizePath(out, "/", mustWork = FALSE)),
+                                type = "message", duration = NULL)
+      } else {
+        unlink(file.path(dirname(dir), paste0(".", basename(dir), ".zip.part")))
+        err <- if (!is.null(px)) tryCatch(px$read_all_error(), error = function(e) "")
+        notify(sprintf(t("The ZIP of %s could not be made: %s"), basename(dir),
+                       trimws(paste(err, collapse = " "))), "error")
+      }
+    }
+    shiny::isolate(zip_mine(left))
+    if (length(left)) shiny::invalidateLater(1000)
   })
   # two official runs compared: the one chosen (else the newest) with the
   # run of the same kind before it, or any two; what changed only
