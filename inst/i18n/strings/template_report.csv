@@ -41,3 +41,6 @@
 "Listing of records","記録の Listing"
 "Response rate with its CI, overall and in each subgroup level","奏効率とその信頼区間（全体と部分集団の各水準）"
 "Copied the template %s into this study (%s): the study reads its own copy from now on; the series screen lists it.","テンプレート %s をこの試験にコピーしました (%s)。この試験はこれからこのコピーを読みます。コピーはシリーズの画面で確認できます。"
+"Fill in %s in %s.","%sを %s で入れてください。"
+"%s or %s","%sか %s"
+"%s and %s","%sと %s"

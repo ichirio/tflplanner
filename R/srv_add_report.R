@@ -35,15 +35,12 @@
   tpl_data <- function() .tpl_data_cols(rv$study$path, rv$p)
   tpl_all_cols <- function() unique(unlist(lapply(tpl_data(), names)))
   # an argument's heading: "meaning (name)", its doc in the (i)
-  # (.tpl_arg_labels; the doc itself when it has none)
+  # (.tpl_arg_heading(): .tpl_arg_labels; the doc itself when it has none)
   tpl_label <- function(prm, key = NULL) {
     doc <- prm$doc %||% ""
-    # (the report's population a template hides (demog): the tip the other
-    # templates' population has, not tflspec's note that it is no parameter)
     if (identical(prm$name, "population") && isTRUE(prm$hidden)) doc <- "the analysis set's id (SAF)"
     short <- if (doc %in% names(.tpl_doc_labels)) .tpl_doc_labels[[doc]] else .tpl_arg_labels[prm$name]
-    head <- if (!is.na(short)) t(short) else if (nzchar(doc)) t(doc) else ""
-    lab <- if (nzchar(head)) sprintf(t("%s (%s)"), head, prm$name) else prm$name
+    lab <- .tpl_arg_heading(prm, t)
     shiny::span(lab, if (isTRUE(prm$required)) shiny::span(class = "text-danger", " *"),
                 if (!is.null(key)) help_tip(.tpl_info_text(if (nzchar(doc)) doc else "", key, t)) else
                   if (!is.na(short) && nzchar(doc)) help_tip(t(doc)))
