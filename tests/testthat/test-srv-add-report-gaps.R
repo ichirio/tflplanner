@@ -513,7 +513,7 @@ test_that("demog's preview reads the study standard the report resolves with: it
   home <- local_home()
   s <- suppressMessages(sample_study_copy(home))
   o <- tflspec::tfl_output("T-DM", "table", label = "Demog", common = list(population = "SAF"),
-                           template = list(name = "demog",
+                           template = list(name = "tflspec_v1/demog",
                                            args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   s$planner <- .spec_add_output(s$planner, o, label = "Demog", population = "SAF")
   s <- suppressMessages(save_study(s, home = home))
@@ -534,8 +534,7 @@ test_that("demog's preview reads the study standard the report resolves with: it
   expect_true("Characteristic" %in% hdr)
   # (the categorical rows' values, indented: hard spaces taken away)
   txt <- trimws(gsub(" ", " ", unlist(lapply(pages[[1L]]$data, as.character)), fixed = TRUE))
-  # (raw codes for now: whether the study list should label them is #759)
-  expect_true(all(c("F", "M") %in% txt))
+  expect_true(all(c("Female", "Male") %in% txt))
 })
 
 test_that("the dialog shows a key argument open under the required ones, marked, and counts only the rest in the fold", {
