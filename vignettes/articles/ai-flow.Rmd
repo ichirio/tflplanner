@@ -216,7 +216,7 @@ same chat, and check again once the agent has fixed it.
 2. Where the agent assumed something, its assumptions and the points **to
    confirm** are listed with each report. Mark each as right or wrong; what is
    wrong can be sent back to the chat as a correction request.
-3. Make the reports (the **Runs** tab, **Run all**) and open the RTFs.
+3. Make the reports (the **Runs** tab, **Start the official run**, "ARD, then reports": it runs everything again, from the ARD) and open the RTFs.
 
 ## Build and check {#build-check}
 

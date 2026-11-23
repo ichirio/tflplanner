@@ -1016,9 +1016,6 @@ app_ui <- function(lang = "en") {
         bslib::card_header(t("Reports")),
         shiny::div(
           class = "d-flex flex-wrap gap-2",
-          .btn("run_selected", t("Preview selected"),
-               class = "btn-sm btn-primary"),
-          .btn("run_all", t("Preview all"), class = "btn-sm btn-primary"),
           .btn("status_refresh", t("Refresh")),
           .btn("tfl_open", t("Open output/tfl")),
           shiny::downloadButton("rtf_download", t("Download the RTF"),

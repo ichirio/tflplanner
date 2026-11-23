@@ -59,16 +59,6 @@ test_that("left out of a run: a report's ARD and report programs; who reads them
   p <- bs_planner()
   expect_setequal(.batch_exclude(p, "DM"), c("DM.R", report_info(p, "DM")$program))
   expect_identical(.batch_exclude(p, "other.R"), "other.R")
-  # a report whose own code reads another report's rows of the study ARD
-  p <- set_step_code(p, "L1", "data",
-    "data <- readRDS(file.path(path_ard, \"ard.rds\")) |> filter(output_id == \"DM\")")
-  reads <- .batch_ard_reads(p)
-  expect_identical(reads$DM, "DM")
-  expect_identical(reads$L1, "DM")
-  need <- .batch_excluded_needs(p, "DM")
-  expect_identical(need$report, "L1")
-  expect_identical(need$needs, "DM")
-  expect_equal(nrow(.batch_excluded_needs(p, "VS")), 0L)
 })
 
 test_that("an official run of a named batch, or leaving reports out", {
@@ -154,10 +144,27 @@ test_that("the runner takes an output id as a program name, and --exclude too", 
   expect_match(left, "DM.R", fixed = TRUE)
   expect_match(left, "t_dm.R", fixed = TRUE)
   Sys.sleep(1.1)
-  # a name that matches nothing: as before, nothing to run
+  # a name that matches nothing (a typing slip) stops, naming it, in --only
+  # and in --exclude alike
   b <- run_batch(o, "ard", only = "NOPE")
   expect_false(b$ok)
-  expect_true(any(grepl("Nothing to run", b$output, fixed = TRUE)))
+  expect_true(any(grepl("The name 'NOPE' stands for no output.", b$output, fixed = TRUE)))
+  Sys.sleep(1.1)
+  b <- run_batch(o, c("ard", "tfl"), exclude = "DMX")
+  expect_false(b$ok)
+  expect_true(any(grepl("The name 'DMX' stands for no output.", b$output, fixed = TRUE)))
+})
+
+test_that("a report with no program of its own does not break batch.R", {
+  skip_on_cran()
+  p <- bs_planner(c("DM", "VS"))
+  # VS's figure reads an ARD with no source, and it has no program
+  reads <- data.frame(report = c("VS", "ZZ"), reads = c(NA, NA), kind = "source",
+                      reason = c("no source", "no source"), stringsAsFactors = FALSE)
+  testthat::local_mocked_bindings(.batch_report_reads = function(x) reads)
+  code <- batch_code(p)
+  expect_no_error(parse(text = code))
+  expect_false(any(grepl("`NA`", code, fixed = TRUE)))
 })
 
 test_that("the batches column survives the SPEC round trip", {
@@ -425,4 +432,25 @@ test_that("the runs list of a study with no run yet is drawn (no run, no row)", 
     session$setInputs(nav = "outputs", target = "VS")
     expect_no_error(output$batches)
   })
+})
+
+test_that("the Runs tab has no preview buttons: an official run is the one way to run", {
+  html <- as.character(app_ui("en"))
+  expect_false(grepl("id=\"run_selected\"", html, fixed = TRUE))
+  expect_false(grepl("id=\"run_all\"", html, fixed = TRUE))
+  expect_false(grepl("Preview selected", html, fixed = TRUE))
+  expect_true(grepl("id=\"batch_run\"", html, fixed = TRUE))
+})
+
+test_that("only declared reads are needs: a quoted id in a report's code is not", {
+  p <- bs_planner()
+  # L1's code names DM's rows of the study ARD: not found out at the start
+  p <- set_step_code(p, "L1", "data",
+    "data <- readRDS(file.path(path_ard, \"ard.rds\")) |> filter(output_id == \"DM\")")
+  n <- .batch_report_needs(p)
+  # a report's own ARD (it has analyses); a listing with none reads none
+  expect_identical(n, list(DM = "DM", VS = "VS"))
+  expect_false("L1" %in% names(n))
+  # a selected L1 without DM is not refused
+  expect_identical(nrow(.batch_missing_needs(n, c("L1", "VS"))), 0L)
 })

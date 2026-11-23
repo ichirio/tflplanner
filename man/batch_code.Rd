@@ -14,8 +14,8 @@ autoexec_all_code(date = Sys.Date())
 
 \item{date}{The date stamped in the banner.}
 
-\item{root}{The study folder (the definitions' fingerprints read the
-files the ARD programs name from it).}
+\item{root}{The study folder (the definition files it keeps with the
+code of a run are listed from it).}
 }
 \value{
 The program, one element per line.

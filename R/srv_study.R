@@ -1366,7 +1366,7 @@
                              "steps_table", t("Open it")),
         step(t("ARD: where the numbers come from (cards / cardx). A click on a row shows the analysis as a form."),
              "steps_ard", t("Go to ARD")),
-        step(t("Runs: preview every report and open its RTF."),
+        step(t("Runs: make the ARD and the reports in an official run."),
              "steps_runs", t("Go to Runs"))))
   })
   shiny::observeEvent(input$steps_close, {

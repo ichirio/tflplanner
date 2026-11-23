@@ -241,75 +241,6 @@ test_that("the report set buttons: what they say with nothing to work on, a bad 
 
 # ---- the runs ---------------------------------------------------------------------
 
-test_that("a preview run: started once, said while it goes on, how it ended; one that cannot start", {
-  skip_on_cran()
-  dr_home()
-  dr_study("DR")
-  asked <- list()
-  px <- dr_proc(status = 0L)
-  end_run <- function() px$state$alive <- FALSE
-  fail <- FALSE
-  testthat::local_mocked_bindings(run_study = function(study, output_id = NULL, wait = TRUE) {
-    if (fail) stop("R is not found")
-    asked[[length(asked) + 1L]] <<- list(ids = output_id, wait = wait)
-    px
-  })
-  notes <- dr_notes()
-  shiny::testServer(server_for("DR"), {
-    rv <- session$userData$rv
-    last <- function() notes()[[length(notes())]]
-    session$setInputs(nav = "results", run_selected = 1)
-    expect_identical(last()$text, "Choose a report")
-    expect_length(asked, 0L)
-    session$setInputs(run_all = 1)
-    expect_length(asked, 1L)
-    expect_null(asked[[1L]]$ids)
-    expect_false(asked[[1L]]$wait)
-    expect_identical(rv$job_kind, "preview")
-    expect_match(output$job$html, "Running every report ...", fixed = TRUE)
-    # one at a time
-    session$setInputs(run_all = 2)
-    expect_length(asked, 1L)
-    expect_identical(last()$text, "A run is going on")
-    expect_identical(last()$type, "warning")
-    # it ends
-    end_run()
-    session$elapse(1100)
-    expect_null(rv$job)
-    expect_identical(last()$text, "Finished: every report")
-    expect_null(output$job)
-    # the reports chosen in the list: those only; this one ends with an error
-    px <<- dr_proc(status = 1L)
-    session$setInputs(status_rows_selected = c(1L, 3L), run_selected = 2)
-    expect_identical(asked[[2L]]$ids, c("DM", "L1"))
-    expect_identical(rv$job_what, "DM, L1")
-    end_run()
-    session$elapse(1100)
-    expect_identical(last()$text, "Finished with errors: DM, L1")
-    expect_identical(last()$type, "warning")
-    # a run that cannot start: said, and no run
-    fail <<- TRUE
-    suppressMessages(session$setInputs(run_all = 3))
-    expect_null(rv$job)
-    expect_identical(last()$type, "error")
-    expect_match(last()$text, "R is not found", fixed = TRUE)
-  })
-})
-
-test_that("a preview is stopped with the session", {
-  skip_on_cran()
-  dr_home()
-  dr_study("DR")
-  px <- dr_proc()
-  testthat::local_mocked_bindings(run_study = function(...) px)
-  dr_notes()
-  shiny::testServer(server_for("DR"), {
-    session$setInputs(nav = "results", run_all = 1)
-    expect_false(px$state$killed)
-  })
-  expect_true(px$state$killed)
-})
-
 test_that("the official run: nothing ticked is refused; reports left out; a report set; what it reads first", {
   skip_on_cran()
   dr_home()
@@ -326,6 +257,7 @@ test_that("the official run: nothing ticked is refused; reports left out; a repo
     .ai_run_warnings = function(p, ids) warn)
   notes <- dr_notes()
   modals <- dr_modals()
+  ticks <- dr_ticks()
   shiny::testServer(server_for("DR"), {
     rv <- session$userData$rv
     last <- function() notes()[[length(notes())]]
@@ -355,25 +287,30 @@ test_that("the official run: nothing ticked is refused; reports left out; a repo
     expect_identical(asked[[2L]]$batch, "Topline")
     expect_null(asked[[2L]]$exclude)
     expect_match(rv$job_what, "(the report set Topline)", fixed = TRUE)
-    # a run that leaves out a report another reads: said first, Cancel, then Run anyway
+    # a run that leaves out a report another reads: it does not start; the
+    # modal names the missing report, and one button ticks it (#790)
     rv$job <- NULL
-    rv$p <- set_step_code(rv$p, "L1", "data",
-      "data <- readRDS(file.path(path_ard, \"ard.rds\")) |> filter(output_id == \"DM\")")
+    # (a declared read: L1 reads DM's ARD, as a figure reads its table's)
+    testthat::local_mocked_bindings(
+      .batch_report_reads = function(x) data.frame(
+        report = c("DM", "VS", "L1"), reads = c("DM", "VS", "DM"), kind = "own",
+        reason = NA_character_, stringsAsFactors = FALSE))
     session$setInputs(batch_set = ".all", batch_parts = "all", batch_reports = c("VS", "L1"),
                       batch_run = 5)
     expect_length(asked, 2L)
-    expect_match(modals()[1L], "A report the run makes reads an ARD it leaves out", fixed = TRUE)
-    expect_match(modals()[1L], "L1 reads the ARD of DM", fixed = TRUE)
-    session$setInputs(batch_need_cancel = 1)
-    expect_length(asked, 2L)
-    session$setInputs(batch_need_go = 1)
+    expect_length(modals(), 1L)
+    expect_match(modals()[1L], "L1 reads the ARD of: DM", fixed = TRUE)
+    session$setInputs(batch_needs_tick = 1)
+    expect_setequal(ticks()$batch_reports, c("DM", "VS", "L1"))
+    session$setInputs(batch_reports = c("DM", "VS", "L1"), batch_run = 6)
+    expect_length(modals(), 1L)
     expect_length(asked, 3L)
-    expect_identical(asked[[3L]]$exclude, "DM")
-    expect_match(rv$job_what, "^the official run: ARD, Reports +[(]1 left out[)]$")
+    expect_length(asked[[3L]]$exclude, 0L)
+    expect_match(rv$job_what, "^the official run: ARD, Reports$")
     # the AI's reports with a changed draft or places to confirm: said first
     rv$job <- NULL
     warn <<- list(newer = "DM", confirm = c("VS", "L1"))
-    session$setInputs(batch_parts = "all", batch_reports = c("DM", "VS", "L1"), batch_run = 6)
+    session$setInputs(batch_parts = "all", batch_reports = c("DM", "VS", "L1"), batch_run = 7)
     expect_length(asked, 3L)
     expect_match(modals()[2L], "Their draft changed after they were adopted .*: DM\\.")
     expect_match(modals()[2L], "places the AI left to confirm .*: VS, L1\\.")

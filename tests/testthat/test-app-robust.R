@@ -454,7 +454,7 @@ test_that("the next steps in Japanese name the tabs as the Japanese app does", {
   st <- .strings()
   ja <- function(en) st$ja[match(en, st$en)]
   steps <- ja(c("Open %s: its Content builds the table in words, with the table as it will print beside it.",
-                "Runs: preview every report and open its RTF.", "Go to Runs"))
+                "Runs: make the ARD and the reports in an official run.", "Go to Runs"))
   expect_false(any(grepl("Runs|Content", steps)))
   expect_true(all(grepl(ja("Runs"), steps[2:3], fixed = TRUE)))
   # the tab reads "内容（content）"; the step names its words
