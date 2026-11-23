@@ -414,15 +414,15 @@
           }
         },
         study = {
-          # study.yml as the bridge writes it, with the blocks no planner
-          # writes (.study_yml_not_planner: ai:) kept as
-          # the spec's text has them
+          # study.yml as the writer writes it, with every key of the spec's
+          # text before that the writer does not write kept as it was (ai:,
+          # a block by hand, a settings: key no sheet holds ...):
+          # .keep_study_yml_keys()
           mine <- new$study$study
-          blocks <- .yaml_top_blocks(p$spec$text[[r]])
-          kept <- setdiff(intersect(.study_yml_not_planner, names(blocks)), names(mine))
-          if (length(kept)) {
-            sp$text[[r]] <- c(sp$text[[r]], unlist(blocks[kept], use.names = FALSE))
-            for (k in intersect(kept, names(sp$study$study))) mine[k] <- list(sp$study$study[[k]])
+          if (length(old_text)) {
+            k <- .keep_study_yml_keys(sp$text[[r]], old_text)
+            sp$text[[r]] <- k$lines
+            mine <- .keep_study_yml_values(mine, sp$study$study, k$kept)
           }
           sp$study["study"] <- list(mine)
         },

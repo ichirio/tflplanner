@@ -20,6 +20,18 @@
 .fig_setup_file <- "fig_setup.R"
 .report_setup_file <- "report_setup.R"
 .autoexec_all_file <- "autoexec_all.R"
+.autoexec_report_file <- "autoexec_report.R"
+
+# Every file name tflplanner writes under programs/ (any folder: programs/,
+# programs/ard/, programs/tfl/).  A report's program, or an ARD program's
+# name (from its output ID), must not be one of them: the save writes the
+# report's program and then this file over it.  A new generated file is added here --
+# test-program-names.R fails when a save writes one that is not.
+.generated_program_files <- function() {
+  c(.ard_setup_file, .ard_autoexec_file, .batch_file, .fig_setup_file,
+    .report_setup_file, .autoexec_all_file, .autoexec_report_file,
+    .study_setup_file, .study_helpers_file)
+}
 
 #' The official-run programs of a study
 #'
@@ -69,7 +81,7 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
     ard = c(file.path(lay[["programs_ard"]], c(.ard_setup_file,
                                                .ard_autoexec_file)),
             spec_files),
-    tfl = c(file.path(lay[["programs_tfl"]], c("autoexec_report.R",
+    tfl = c(file.path(lay[["programs_tfl"]], c(.autoexec_report_file,
                                                .fig_setup_file,
                                                .report_setup_file)),
             spec_files),
@@ -320,7 +332,7 @@ batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
   put(.fig_setup_code(p), file.path(lay[["programs_tfl"]], .fig_setup_file))
   put(report_setup_code(p), file.path(lay[["programs_tfl"]], .report_setup_file))
   put(autoexec_all_code(), file.path("programs", .autoexec_all_file))
-  put(autoexec_code(p), file.path(lay[["programs_tfl"]], "autoexec_report.R"))
+  put(autoexec_code(p), file.path(lay[["programs_tfl"]], .autoexec_report_file))
   out
 }
 

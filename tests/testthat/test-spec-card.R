@@ -640,3 +640,12 @@ test_that("normalize_ard(): a stack written as R keeps its R switch and reads ba
   expect_identical(r$stack, args$stack)
   expect_identical(spec_card_args(r, it, "normalize_ard"), args)
 })
+
+test_that("a positional dots key's field takes the dots' label and help (tflspec#902)", {
+  for (k in list(c("plan_titles", "titles", "Titles"), c("plan_footnotes", "footnotes", "Footnotes"))) {
+    d <- spec_card_defs(k[1L])$args[[k[2L]]]
+    expect_true(isTRUE(d$dots), info = k[1L])
+    expect_identical(d$label$en, k[3L], info = k[1L])
+    expect_true(is.character(d$help) && nzchar(d$help), info = k[1L])
+  }
+})

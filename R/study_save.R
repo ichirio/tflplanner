@@ -105,10 +105,13 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
   }
   progs <- vapply(p$outputs$output_id, function(id)
     report_info(p, id)$program, "")
-  dup <- unique(progs[duplicated(progs)])
-  if (length(dup)) {
-    stop("Two reports share the program ", paste(dup, collapse = ", "),
-         "; give each its own `program` on the report sheet.", call. = FALSE)
+  # (before anything is written: a program name that is a generated file's,
+  # or one another report's, stops the save)
+  bad <- .program_name_problems(p)
+  if (length(bad)) {
+    stop(paste(vapply(bad, .program_name_message, ""), collapse = "
+"),
+         call. = FALSE)
   }
   # A save that stops part way (a report whose program cannot be written
   # ...) writes nothing: the files it wrote before it stopped are put back
@@ -215,7 +218,57 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
     new <- file.path(root, lay[["programs_tfl"]], p)
     if (file.exists(old) && !file.exists(new)) file.rename(old, new)
   }
-  old <- file.path(root, "programs", "autoexec_report.R")
+  old <- file.path(root, "programs", .autoexec_report_file)
   if (file.exists(old)) file.remove(old)
   invisible()
+}
+
+# ---- program names no report or ARD program may have ----------------------
+
+# The sentences, by kind (the English is the key of inst/i18n/strings/)
+.program_name_templates <- c(
+  reserved = "Report %s: the program %s is the name of a file tflplanner writes itself. Give the report another `program` on the report sheet.",
+  duplicate = "Reports %s and %s share the program %s (names that differ only in case are one file). Give each its own `program` on the report sheet.",
+  ard_reserved = "The ARD program of the output ID %s would be %s, the name of a file tflplanner writes itself. Use another output ID.",
+  ard_duplicate = "The output IDs %s and %s make the same ARD program %s (names that differ only in case are one file). Use output IDs whose ARD programs differ.")
+
+# What stops a save, from the report list alone: a list of problems, each
+# list(id, kind, args, sheet, field).  Names are compared in lower case
+# (Windows and macOS keep one file for T1.R and t1.R).  A report's program
+# is in programs/tfl/ and an ARD program in programs/ard/: each is compared
+# with its own folder's, and both with every name tflplanner writes, in any
+# folder of programs/ (one rule: a name is either a report's or tflplanner's).
+.program_name_problems <- function(p) {
+  ids <- p$outputs$output_id
+  ids <- ids[!is.na(ids) & nzchar(ids)]
+  out <- list()
+  add <- function(id, kind, args, sheet, field) {
+    out[[length(out) + 1L]] <<- list(id = id, kind = kind, args = as.character(args),
+                                     sheet = sheet, field = field)
+  }
+  reserved <- tolower(.generated_program_files())
+  one <- function(ids, names, kind, sheet, field) {
+    low <- tolower(names)
+    for (i in seq_along(ids)) {
+      if (is.na(names[i])) next
+      if (low[i] %in% reserved) {
+        add(ids[i], kind[1L], c(ids[i], names[i]), sheet, field)
+      }
+      j <- match(low[i], low[seq_len(i - 1L)])
+      if (!is.na(j)) {
+        add(ids[i], kind[2L], c(ids[j], ids[i], names[i]), sheet, field)
+      }
+    }
+  }
+  prog <- vapply(ids, function(id)
+    tryCatch(report_info(p, id)$program, error = function(e) NA_character_), "")
+  one(ids, unname(prog), c("reserved", "duplicate"), "report", "program")
+  ids <- unique(ids)
+  one(ids, .ard_prog_name(ids), c("ard_reserved", "ard_duplicate"),
+      "_tflplanner", "output_id")
+  out
+}
+
+.program_name_message <- function(x) {
+  do.call(sprintf, c(list(.program_name_templates[[x$kind]]), as.list(x$args)))
 }
