@@ -106,7 +106,7 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
     paste0(".batch_report_ids <- ", vec(out_ids, tfl_progs)),
     "# a figure printing an ARD's numbers: the report whose ARD it reads, and",
     "# the fingerprint of that ARD's definition when this file was written",
-    "# (made again first when the ARD is not made from it)",
+    "# (that ARD made first in a run that has not made it)",
     paste0(".batch_needs <- ", vec(need_ids, need_progs)),
     paste0(".batch_needs_hash <- ", vec(need_hash, names(need_hash))),
     "# the named batches (the report list's `batches`): name -> outputs",
@@ -340,7 +340,9 @@ batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
 #' The programs are the saved ones: save the study first.
 #'
 #' @param study An `rtfstudy`.
-#' @param parts `"ard"`, `"tfl"` or both.
+#' @param parts `"ard"` (the ARD only) or `c("ard", "tfl")` (the ARD,
+#'   then the reports from it).  There is no run of the reports alone:
+#'   the reports of a run are made from the ARD the same run makes.
 #' @param code Keep the code in the batch folder.
 #' @param data Keep the data files the programs read in the batch folder.
 #' @param only Programs or outputs to run; `NULL` for all.
@@ -369,7 +371,7 @@ batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
 #' # (needs the sample data and rtfreporter; the run is in child R processes)
 #' s <- create_sample_study(run = FALSE)
 #' id <- s$planner$outputs$output_id[1]  # one report
-#' b <- run_batch(s, parts = "tfl", only = id)
+#' b <- run_batch(s, only = id)  # its ARD, then the report
 #' b$ok
 #' list_batches(s)[, c("batch", "state")]
 #' }
@@ -377,6 +379,14 @@ batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
 #' @export
 run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE, data = FALSE,
                       only = NULL, exclude = NULL, batch = NULL, wait = TRUE) {
+  # the ARD only, or the ARD then the reports: the reports are made from
+  # the ARD the same run makes, never from one an earlier run left (#790)
+  parts <- match.arg(parts, c("ard", "tfl"), several.ok = TRUE)
+  if (identical(parts, "tfl")) {
+    stop("An official run is the ARD only (parts = \"ard\") or the ARD, ",
+         "then the reports (parts = c(\"ard\", \"tfl\")): the reports are ",
+         "made from the ARD the same run makes.", call. = FALSE)
+  }
   # one official run at a time in a study, whoever started it
   live <- .live_run(study$meta$study_id)
   if (!is.null(live)) {
@@ -384,10 +394,8 @@ run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE, data = FALSE,
          live$started, "): wait until it has finished.", call. = FALSE)
   }
   lay <- study_layout()
-  parts <- match.arg(parts, c("ard", "tfl"), several.ok = TRUE)
   prog <- if (length(parts) == 2L) file.path("programs", .autoexec_all_file) else
-    if (parts == "ard") file.path(lay[["programs_ard"]], .ard_autoexec_file) else
-      file.path(lay[["programs_tfl"]], "autoexec_report.R")
+    file.path(lay[["programs_ard"]], .ard_autoexec_file)
   if (!file.exists(file.path(study$path, prog))) {
     stop("The study has no ", prog, " yet: save it first (an ARD definition ",
          "that does not hold writes no ARD program; see the Review tab).",

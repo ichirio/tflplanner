@@ -330,19 +330,19 @@ test_that("the official run: nothing ticked is refused; reports left out; a repo
     rv <- session$userData$rv
     last <- function() notes()[[length(notes())]]
     # nothing ticked
-    session$setInputs(nav = "runs", batch_parts = "tfl", batch_code = FALSE, batch_data = FALSE,
+    session$setInputs(nav = "runs", batch_parts = "ard", batch_code = FALSE, batch_data = FALSE,
                       batch_reports = character(), batch_run = 1)
     expect_identical(last()$text, "Choose at least one report for the run.")
     expect_length(asked, 0L)
     # a report unticked is left out
     session$setInputs(batch_reports = c("DM", "VS"), batch_run = 2)
     expect_length(asked, 1L)
-    expect_identical(asked[[1L]]$parts, "tfl")
+    expect_identical(asked[[1L]]$parts, "ard")
     expect_identical(asked[[1L]]$exclude, "L1")
     expect_null(asked[[1L]]$batch)
     expect_false(asked[[1L]]$code)
     expect_identical(rv$job_kind, "official")
-    expect_match(rv$job_what, "^the official run: Reports +[(]1 left out[)]$")
+    expect_match(rv$job_what, "^the official run: ARD +[(]1 left out[)]$")
     # one at a time
     session$setInputs(batch_run = 3)
     expect_length(asked, 1L)
@@ -373,7 +373,7 @@ test_that("the official run: nothing ticked is refused; reports left out; a repo
     # the AI's reports with a changed draft or places to confirm: said first
     rv$job <- NULL
     warn <<- list(newer = "DM", confirm = c("VS", "L1"))
-    session$setInputs(batch_parts = "tfl", batch_reports = c("DM", "VS", "L1"), batch_run = 6)
+    session$setInputs(batch_parts = "all", batch_reports = c("DM", "VS", "L1"), batch_run = 6)
     expect_length(asked, 3L)
     expect_match(modals()[2L], "Their draft changed after they were adopted .*: DM\\.")
     expect_match(modals()[2L], "places the AI left to confirm .*: VS, L1\\.")
@@ -388,7 +388,7 @@ test_that("the official run: nothing ticked is refused; reports left out; a repo
 test_that("an official run that ends is said from its run folder: how many programs, how long", {
   skip_on_cran()
   dr_home()
-  s <- dr_study("DR")
+  s <- dr_study("DR", ard = TRUE)
   px <- dr_proc()
   end_run <- function() px$state$alive <- FALSE
   status <- "OK"
@@ -401,7 +401,7 @@ test_that("an official run that ends is said from its run folder: how many progr
   shiny::testServer(server_for("DR"), {
     rv <- session$userData$rv
     last <- function() notes()[[length(notes())]]
-    session$setInputs(nav = "runs", batch_parts = "tfl", batch_run = 1)
+    session$setInputs(nav = "runs", batch_parts = "all", batch_run = 1)
     expect_identical(rv$job_batches_before, character())
     end_run()
     session$elapse(1100)
