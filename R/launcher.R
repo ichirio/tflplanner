@@ -2,17 +2,24 @@
 #
 # add_shortcut() keeps a copy of the launcher (inst/launcher: launch.R,
 # update.R, the OS script and an icon) in
-# tools::R_user_dir("tflplanner", "config")/launcher, and points the
+# tools::R_user_dir("tflplanner", "config")/launcher-R<x.y>, and points the
 # shortcuts at that copy -- not at the package library, which moves with
-# every R version.  The OS script finds R at every start, so an R update
-# does not break a shortcut either.
+# every R version.  Each R x.y has its own icon ("tflplanner (R 4.6)") and
+# its own folder, and the folder's launcher.conf remembers the R it was made
+# in (r_home, r_xy).  The OS script looks for R at every start and never
+# falls back to another x.y (.pick_r() is the rule, in R, for the tests;
+# tflplanner.vbs and tflplanner.sh do the same):
+#   1. the remembered R, when its Rscript is there;
+#   2. the newest R of the same x.y in the usual places;
+#   3. Rscript on PATH, only when its x.y matches;
+#   4. else it stops and says so (.r_not_found_text()).
 #
 #   Windows  desktop and Start menu .lnk -> wscript.exe tflplanner.vbs
-#            (no console window; the R installer's registry entry, else the
-#            newest R-x.y.z folder)
-#   macOS    ~/Applications/tflplanner.app and "tflplanner (update).app",
+#            (no console window; the usual places: R-x.y.* under
+#            Program Files\R and %LOCALAPPDATA%\Programs\R)
+#   macOS    ~/Applications/tflplanner (R 4.6).app and "... (update).app",
 #            each a shell script in an application bundle
-#   Linux    ~/.local/share/applications/tflplanner.desktop, with an
+#   Linux    ~/.local/share/applications/tflplanner-R4.6.desktop, with an
 #            "Update and launch" action
 #
 # The app never updates itself: a session cannot replace a package it has
@@ -21,8 +28,83 @@
 
 .default_port <- 7470L
 
-.launcher_dir <- function() {
+# The R x.y a launcher is made for: "4.6" for R 4.6.1.
+.r_xy <- function(v = R.version) {
+  paste0(v$major, ".", sub("\\..*$", "", v$minor))
+}
+
+# The icon's name for an R x.y: "tflplanner (R 4.6)".
+.shortcut_base <- function(xy = .r_xy()) sprintf("tflplanner (R %s)", xy)
+
+# The launcher folder of an R x.y: next to the home pointer, so launch.R
+# finds the home one folder up.
+.launcher_dir <- function(xy = .r_xy()) {
+  file.path(tools::R_user_dir("tflplanner", "config"), paste0("launcher-R", xy))
+}
+
+# The one folder every launcher had before the x.y: replaced by add_shortcut().
+.legacy_launcher_dir <- function() {
   file.path(tools::R_user_dir("tflplanner", "config"), "launcher")
+}
+
+# ------------------------------------------------------------- which R
+
+# Where the launcher looks for R, as one rule for the Windows and the
+# mac / linux scripts (tflplanner.vbs, tflplanner.sh: they cannot call R,
+# R is what they look for, so they do the same in their own language; this
+# function is the rule they are written from, and what the tests check).
+# Never another x.y.  `folders` are R homes ("C:/Program Files/R/R-4.6.1");
+# `rscript_of(folder)` is the Rscript inside one; `exists()` says whether a
+# file is there; `path_rscript` / `path_xy` are the Rscript found on PATH and
+# its x.y.  Returns list(rscript, from) with from = "remembered", "folder" or
+# "path", or NULL when there is none.
+.pick_r <- function(xy, remembered = NULL, folders = character(),
+                    path_rscript = NULL, path_xy = NA_character_,
+                    rscript_of = function(f) file.path(f, "bin", "Rscript.exe"),
+                    exists = file.exists) {
+  if (length(remembered) == 1L && !is.na(remembered) && nzchar(remembered) &&
+      exists(rscript_of(remembered))) {
+    return(list(rscript = rscript_of(remembered), from = "remembered"))
+  }
+  v <- .r_folder_version(folders)
+  keep <- !is.na(v) & .version_xy(v) == xy
+  keep[keep] <- vapply(folders[keep], function(f) isTRUE(exists(rscript_of(f))), NA)
+  if (any(keep)) {
+    best <- which(keep)[order(package_version(v[keep]), decreasing = TRUE)[1L]]
+    return(list(rscript = rscript_of(folders[[best]]), from = "folder"))
+  }
+  if (length(path_rscript) == 1L && !is.na(path_rscript) && nzchar(path_rscript) &&
+      identical(unname(path_xy), xy)) {
+    return(list(rscript = path_rscript, from = "path"))
+  }
+  NULL
+}
+
+# "4.6.1" from the folder "R-4.6.1" (also "R-4.6.1patched"); NA when the
+# name is not an R folder's.
+.r_folder_version <- function(folders) {
+  m <- regmatches(basename(folders),
+                  regexec("^R-([0-9]+(\\.[0-9]+)+)", basename(folders),
+                          ignore.case = TRUE))
+  vapply(m, function(x) if (length(x)) x[[2L]] else NA_character_, "")
+}
+
+# "4.6" from "4.6.1".
+.version_xy <- function(v) {
+  vapply(strsplit(v, ".", fixed = TRUE),
+         function(p) if (length(p) >= 2L) paste(p[1:2], collapse = ".") else NA_character_,
+         "")
+}
+
+# What the launcher says when no R of that x.y is found, in the language the
+# launcher's messages use.
+.r_not_found_text <- function(xy, lang = .console_language()) {
+  sprintf(tr("R %s is not found. Install tflplanner in the R you will use, and run add_shortcut() in that R.", lang), xy)
+}
+
+# The launcher's settings file: the R it was made in (key=value lines).
+.launcher_conf_text <- function(r_home, xy) {
+  c(paste0("r_home=", r_home), paste0("r_xy=", xy))
 }
 
 .os <- function() {
@@ -70,14 +152,23 @@
 }
 
 # Write (or refresh) the launcher's files.  Returns the folder.
-.write_launcher <- function(dir = .launcher_dir(),
-                            lang = .console_language()) {
+.write_launcher <- function(dir = .launcher_dir(xy),
+                            lang = .console_language(), xy = .r_xy(),
+                            r_home = R.home()) {
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
   for (f in c("launch.R", "update.R", "tflplanner.png", "tflplanner.ico",
               "tflplanner.icns")) {
     file.copy(.launcher_src(f), file.path(dir, f), overwrite = TRUE)
   }
-  no_r <- tr("R was not found. Install R, then try again.", lang)
+  # the R this launcher is for: UTF-16 for the VBScript (a path may hold
+  # Japanese), UTF-8 for the shell script
+  conf <- .launcher_conf_text(.show_path(r_home), xy)
+  if (identical(.os(), "windows")) {
+    .write_utf16(conf, file.path(dir, "launcher.conf"))
+  } else {
+    .write_text(conf, file.path(dir, "launcher.conf"))
+  }
+  no_r <- .r_not_found_text(xy, lang)
   vbs <- readLines(.launcher_src("tflplanner.vbs"), warn = FALSE)
   .write_utf16(gsub("{{NO_R}}", no_r, vbs, fixed = TRUE),
                file.path(dir, "tflplanner.vbs"))
@@ -137,9 +228,27 @@
     })
 }
 
-.shortcut_names <- function(lang) {
-  c(launch = "tflplanner",
-    update = tr("tflplanner (update and launch)", lang))
+.shortcut_names <- function(lang, xy = .r_xy()) {
+  c(launch = .shortcut_base(xy),
+    update = paste0(.shortcut_base(xy), " - ", tr("Update and launch", lang)))
+}
+
+# The icons of the version before the R x.y (one "tflplanner", one launcher
+# folder), found by name: add_shortcut() removes them -- the new icon
+# replaces them.  The folder's shortcuts.txt names any other place.
+.legacy_shortcuts <- function(os = .os(), dirs = .shortcut_dirs(os),
+                              lang = .console_language(),
+                              dir = .legacy_launcher_dir()) {
+  found <- switch(os,
+    windows = c(file.path(dirs$desktop, "tflplanner.lnk"),
+                file.path(dirs$start_menu,
+                          paste0(c("tflplanner", "tflplanner (update and launch)",
+                                   tr("tflplanner (update and launch)", lang)), ".lnk"))),
+    mac = file.path(dirs$applications, c("tflplanner.app", "tflplanner (update).app")),
+    linux = file.path(dirs$applications, "tflplanner.desktop"))
+  rec <- file.path(dir, "shortcuts.txt")
+  if (file.exists(rec)) found <- c(found, readLines(rec, warn = FALSE))
+  unique(found[file.exists(found)])
 }
 
 # ------------------------------------------------------------- Windows
@@ -155,8 +264,8 @@
 # The shortcuts as data: one row per .lnk.
 .windows_shortcuts <- function(dir, dirs, lang, desktop = TRUE,
                                start_menu = TRUE, update = FALSE,
-                               port = NULL) {
-  nm <- .shortcut_names(lang)
+                               port = NULL, xy = .r_xy()) {
+  nm <- .shortcut_names(lang, xy)
   extra <- if (!is.null(port)) paste0(" --port=", port) else ""
   wscript <- file.path(Sys.getenv("SystemRoot", "C:/Windows"), "System32",
                        "wscript.exe")
@@ -285,12 +394,14 @@
 
 # ------------------------------------------------------------- macOS
 
-.mac_app_files <- function(dir, apps, lang, update = FALSE, port = NULL) {
-  nm <- .shortcut_names(lang)
+.mac_app_files <- function(dir, apps, lang, update = FALSE, port = NULL,
+                           xy = .r_xy()) {
+  nm <- .shortcut_names(lang, xy)
   sh <- file.path(dir, "tflplanner.sh")
   one <- function(name, args) {
     app <- file.path(apps, paste0(if (identical(name, nm[["update"]]))
-                                    "tflplanner (update)" else name, ".app"))
+                                    paste0(nm[["launch"]], " (update)") else name,
+                                  ".app"))
     exe <- paste0(
       "#!/bin/sh\n",
       "# tflplanner launcher (tflplanner::add_shortcut()); see ", sh, "\n",
@@ -304,7 +415,8 @@
       "  <key>CFBundleExecutable</key><string>tflplanner</string>\n",
       "  <key>CFBundleIconFile</key><string>tflplanner</string>\n",
       "  <key>CFBundleIdentifier</key><string>org.tflplanner.",
-      if (nzchar(args)) "update" else "launch", "</string>\n",
+      if (nzchar(args)) "update" else "launch", ".R",
+      gsub(".", "-", xy, fixed = TRUE), "</string>\n",
       "  <key>CFBundleName</key><string>", .xml_escape(name), "</string>\n",
       "  <key>CFBundlePackageType</key><string>APPL</string>\n",
       "  <key>CFBundleShortVersionString</key><string>",
@@ -334,7 +446,11 @@
 
 # ------------------------------------------------------------- Linux
 
-.desktop_file <- function(dir, lang, update = FALSE, port = NULL) {
+# The menu entry's file name: one per R x.y.
+.desktop_name <- function(xy = .r_xy()) paste0("tflplanner-R", xy, ".desktop")
+
+.desktop_file <- function(dir, lang, update = FALSE, port = NULL,
+                          xy = .r_xy()) {
   # Exec: a quoted path needs no other escaping (it has no " ` $ \ in it)
   q <- function(p) paste0('"', p, '"')
   sh <- file.path(dir, "tflplanner.sh")
@@ -342,7 +458,7 @@
   c("[Desktop Entry]",
     "Type=Application",
     "Version=1.0",
-    "Name=tflplanner",
+    paste0("Name=", .shortcut_base(xy)),
     paste0("Comment=", tr("Start tflplanner in the browser", lang)),
     paste0("Exec=", q(sh), extra),
     paste0("Icon=", file.path(dir, "tflplanner.png")),
@@ -374,10 +490,11 @@
 .shortcut_plan <- function(os = .os(), dirs = .shortcut_dirs(os),
                            lang = .console_language(), desktop = TRUE,
                            start_menu = TRUE, update = FALSE,
-                           dir = .launcher_dir()) {
+                           xy = .r_xy(), dir = .launcher_dir(xy)) {
   rows <- switch(os,
     windows = {
-      sc <- .windows_shortcuts(dir, dirs, lang, desktop, start_menu, update)
+      sc <- .windows_shortcuts(dir, dirs, lang, desktop, start_menu, update,
+                               xy = xy)
       if (is.null(sc)) return(NULL)
       # compared as normalized paths: dirname() may change the separators
       np <- function(p) normalizePath(p, "/", mustWork = FALSE)
@@ -389,18 +506,18 @@
                  path = sc$path, stringsAsFactors = FALSE)
     },
     mac = {
-      apps <- vapply(.mac_app_files(dir, dirs$applications, lang, update),
+      apps <- vapply(.mac_app_files(dir, dirs$applications, lang, update, xy = xy),
                      `[[`, "", "app")
       data.frame(place = tr("Applications", lang), folder = dirname(apps),
                  name = basename(apps), path = apps, stringsAsFactors = FALSE)
     },
     linux = {
-      f <- file.path(dirs$applications, "tflplanner.desktop")
+      f <- file.path(dirs$applications, .desktop_name(xy))
       data.frame(place = tr("the application menu", lang),
                  folder = dirs$applications,
-                 name = if (update) sprintf(
+                 name = if (update) sub("^tflplanner", .shortcut_base(xy), sprintf(
                    tr("tflplanner (with the action \"%s\")", lang),
-                   tr("Update and launch", lang)) else "tflplanner",
+                   tr("Update and launch", lang))) else .shortcut_base(xy),
                  path = f, stringsAsFactors = FALSE)
     })
   rows$exists <- file.exists(rows$path)
@@ -410,13 +527,18 @@
 # What add_shortcut() is about to do, in words: what, where, that one
 # already there is replaced, where the launcher is kept, how to undo it.
 .shortcut_plan_text <- function(plan, lang = .console_language(),
-                                dir = .launcher_dir()) {
-  out <- tr("tflplanner will make these shortcuts:", lang)
+                                dir = .launcher_dir(), legacy = character()) {
+  out <- sprintf(tr("tflplanner will make these shortcuts, for R %s:", lang),
+                 .r_xy())
   for (f in unique(plan$folder)) {
     p <- plan[plan$folder == f, , drop = FALSE]
     out <- c(out, sprintf("  %s  (%s)", p$place[1L], .show_path(f)),
              paste0("    - ", p$name, ifelse(p$exists, paste0(
                "  ", tr("[already there: it will be replaced]", lang)), "")))
+  }
+  if (length(legacy)) {
+    out <- c(out, tr("The shortcuts made before the R version was in the name are removed:", lang),
+             paste0("    - ", .show_path(legacy)))
   }
   c(out,
     tr("A double click starts tflplanner in the browser; \"update and launch\" first updates rtfreporter, tflspec and tflplanner.", lang),
@@ -448,20 +570,33 @@
 #' Makes the shortcuts that start tflplanner in the browser with a double
 #' click, without R or RStudio open:
 #'
-#' * **Windows**: "tflplanner" on the desktop and in the Start menu, and
-#'   "tflplanner (update and launch)" in the Start menu.  To pin tflplanner
-#'   to the taskbar, right-click it in the Start menu and choose *Pin to
-#'   taskbar* (Windows does not let a program do it).
-#' * **macOS**: `tflplanner.app` and `tflplanner (update).app` in
-#'   `~/Applications`.
-#' * **Linux**: a `tflplanner.desktop` menu entry in
+#' The shortcut is named for the R it is made in: in R 4.6.1 it is
+#' "tflplanner (R 4.6)".  Each R `x.y` has its own shortcut and launcher
+#' folder, so several can stand side by side; running `add_shortcut()` again
+#' in the same `x.y` replaces that one.  The shortcut named just "tflplanner"
+#' (made before the R version was in the name) is replaced.
+#'
+#' * **Windows**: "tflplanner (R 4.6)" on the desktop and in the Start menu,
+#'   and "tflplanner (R 4.6) - Update and launch" in the Start menu.  To pin
+#'   tflplanner to the taskbar, right-click it in the Start menu and choose
+#'   *Pin to taskbar* (Windows does not let a program do it).
+#' * **macOS**: `tflplanner (R 4.6).app` and `tflplanner (R 4.6) (update).app`
+#'   in `~/Applications`.
+#' * **Linux**: a `tflplanner-R4.6.desktop` menu entry in
 #'   `~/.local/share/applications`, with an *Update and launch* action.
 #'
 #' A shortcut runs a small launcher that tflplanner keeps in
-#' `tools::R_user_dir("tflplanner", "config")`.  The launcher finds R each
-#' time it starts (on Windows from the registry entry the R installer
-#' writes), so updating R does not break the shortcut, and it shows no
-#' console window.  It starts the app, and closing the browser stops it.
+#' `tools::R_user_dir("tflplanner", "config")`, in a folder for the R `x.y`
+#' (`launcher-R4.6`), with a `launcher.conf` that remembers the R it was made
+#' in.  The launcher looks for R each time it starts, and never uses another
+#' `x.y`: first the remembered R; then the newest R of the same `x.y` (on
+#' Windows `R-x.y.*` under `C:\Program Files\R` and
+#' `%LOCALAPPDATA%\Programs\R`; on macOS and Linux the usual install places);
+#' then `Rscript` on the `PATH`, when its `x.y` matches.  When there is none,
+#' it says so: install tflplanner in the R you will use and run
+#' `add_shortcut()` in that R.  So updating R within an `x.y`, or removing
+#' an older R, does not break the shortcut, and it shows no console window.
+#' It starts the app, and closing the browser stops it.
 #' When the port is taken:
 #'
 #' * by this version of tflplanner, it opens that one;
@@ -471,6 +606,7 @@
 #' * by another program, it starts on the next free port.
 #'
 #' Each start is noted in the launcher's `launcher.log`.
+#' `remove_shortcut()` removes the shortcut of the R it runs in.
 #'
 #' "Update and launch" first updates rtfreporter, tflspec and tflplanner
 #' ([update_tflplanner()], on the channel last used), then starts the app;
@@ -508,13 +644,15 @@ add_shortcut <- function(port = NULL, desktop = TRUE, start_menu = TRUE,
   os <- .os()
   if (!is.null(port)) port <- .check_port(port)
   dirs <- .shortcut_dirs(os)
+  xy <- .r_xy()
+  legacy <- .legacy_shortcuts(os, dirs, lang)
   if (isTRUE(ask)) {
-    plan <- .shortcut_plan(os, dirs, lang, desktop, start_menu, update)
+    plan <- .shortcut_plan(os, dirs, lang, desktop, start_menu, update, xy)
     if (is.null(plan) || !nrow(plan)) {
       message(tr("Nothing to make: both desktop and start_menu are FALSE.", lang))
       return(invisible(character()))
     }
-    cat(.shortcut_plan_text(plan, lang), sep = "\n")
+    cat(.shortcut_plan_text(plan, lang, legacy = legacy), sep = "\n")
     if (!.ask_yes(.shortcut_question(nrow(plan), lang))) {
       message(tr("No shortcut was made.", lang))
       return(invisible(character()))
@@ -528,12 +666,12 @@ add_shortcut <- function(port = NULL, desktop = TRUE, start_menu = TRUE,
   } else if (!.is_set_up()) {
     suppressMessages(setup_tflplanner(language = lang))
   }
-  dir <- .write_launcher(lang = lang)
+  dir <- .write_launcher(lang = lang, xy = xy)
   made <- switch(os,
     windows = .make_lnk(.windows_shortcuts(dir, dirs, lang, desktop,
-                                           start_menu, update)),
+                                           start_menu, update, xy = xy)),
     mac = {
-      apps <- .mac_app_files(dir, dirs$applications, lang, update)
+      apps <- .mac_app_files(dir, dirs$applications, lang, update, xy = xy)
       for (a in apps) {
         unlink(a$app, recursive = TRUE)
         for (f in a$files) {
@@ -544,10 +682,13 @@ add_shortcut <- function(port = NULL, desktop = TRUE, start_menu = TRUE,
       }
       vapply(apps, `[[`, "", "app")
     },
-    linux = .write_text(.desktop_file(dir, lang, update),
-                        file.path(dirs$applications, "tflplanner.desktop"),
+    linux = .write_text(.desktop_file(dir, lang, update, xy = xy),
+                        file.path(dirs$applications, .desktop_name(xy)),
                         "0755"))
   writeLines(made, file.path(dir, "shortcuts.txt"))
+  # the icon made before the R version was in the name is replaced
+  unlink(setdiff(legacy, made), recursive = TRUE)
+  unlink(.legacy_launcher_dir(), recursive = TRUE)
   message(paste(.shortcut_made_text(made, os, lang), collapse = "\n"))
   invisible(made)
 }
@@ -561,6 +702,8 @@ remove_shortcut <- function(launcher = TRUE, ask = interactive()) {
   rec <- file.path(dir, "shortcuts.txt")
   made <- if (file.exists(rec)) readLines(rec, warn = FALSE) else character()
   made <- made[file.exists(made)]
+  # the icons of before the R version was in the name go with it
+  made <- unique(c(made, .legacy_shortcuts(lang = lang)))
   gone <- c(made, if (launcher && dir.exists(dir)) dir)
   if (!length(gone)) {
     message(tr("There is no tflplanner shortcut to remove.", lang))

@@ -341,6 +341,50 @@ update_tflplanner <- function(channel = NULL, from = NULL,
   out
 }
 
+# The versions this process runs, as data: one row per package with its
+# version and, for a development install (GitHub: the DESCRIPTION has a
+# RemoteSha), the branch or tag it came from (RemoteRef) and the first 8
+# characters of the commit (RemoteSha); `ref` and `sha` are NA for a release
+# install.  `desc(p)` is the package's DESCRIPTION as a list: the one in the
+# folder the loaded package came from.  Returns list(packages, r).
+.running_versions <- function(pkgs = c("rtfreporter", "tflspec", "tflplanner"),
+                              desc = .running_description,
+                              r = as.character(getRversion())) {
+  rows <- lapply(pkgs, function(p) {
+    d <- desc(p)
+    one <- function(k) {
+      x <- if (is.list(d)) d[[k]] else NULL
+      if (is.null(x) || length(x) != 1L || is.na(x) || !nzchar(x)) NA_character_ else as.character(x)
+    }
+    sha <- one("RemoteSha")
+    data.frame(package = p, version = one("Version"),
+               ref = if (is.na(sha)) NA_character_ else one("RemoteRef"),
+               sha = if (is.na(sha)) NA_character_ else substr(sha, 1L, 8L),
+               stringsAsFactors = FALSE)
+  })
+  list(packages = do.call(rbind, rows), r = r)
+}
+
+# The DESCRIPTION of the package this process has loaded.
+.running_description <- function(p) {
+  path <- tryCatch(getNamespaceInfo(p, "path"), error = function(e) NULL)
+  suppressWarnings(utils::packageDescription(
+    p, lib.loc = if (!is.null(path)) dirname(path)))
+}
+
+# The versions in a line: "rtfreporter 0.9.0, tflplanner 0.9.0 (development
+# version: next 535c9048), R 4.6.1".  `dev` is the words for a development
+# install.
+.running_versions_text <- function(v = .running_versions(), dev = "development version") {
+  p <- v$packages
+  pk <- vapply(seq_len(nrow(p)), function(i) {
+    paste0(p$package[i], " ", if (is.na(p$version[i])) "?" else p$version[i],
+           if (!is.na(p$sha[i])) paste0(
+             " (", dev, ": ", if (!is.na(p$ref[i])) paste0(p$ref[i], " "), p$sha[i], ")"))
+  }, "")
+  paste(c(pk, paste("R", v$r)), collapse = ", ")
+}
+
 .update_check_result <- function() {
   if (!is.null(.upd$result)) return(.upd$result)
   p <- .upd$proc

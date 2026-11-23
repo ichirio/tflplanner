@@ -42,22 +42,34 @@ Makes the shortcuts that start tflplanner in the browser with a double
 click, without R or RStudio open:
 }
 \details{
+The shortcut is named for the R it is made in: in R 4.6.1 it is
+"tflplanner (R 4.6)".  Each R \code{x.y} has its own shortcut and launcher
+folder, so several can stand side by side; running \code{add_shortcut()} again
+in the same \code{x.y} replaces that one.  The shortcut named just "tflplanner"
+(made before the R version was in the name) is replaced.
 \itemize{
-\item \strong{Windows}: "tflplanner" on the desktop and in the Start menu, and
-"tflplanner (update and launch)" in the Start menu.  To pin tflplanner
-to the taskbar, right-click it in the Start menu and choose \emph{Pin to
-taskbar} (Windows does not let a program do it).
-\item \strong{macOS}: \code{tflplanner.app} and \verb{tflplanner (update).app} in
-\verb{~/Applications}.
-\item \strong{Linux}: a \code{tflplanner.desktop} menu entry in
+\item \strong{Windows}: "tflplanner (R 4.6)" on the desktop and in the Start menu,
+and "tflplanner (R 4.6) - Update and launch" in the Start menu.  To pin
+tflplanner to the taskbar, right-click it in the Start menu and choose
+\emph{Pin to taskbar} (Windows does not let a program do it).
+\item \strong{macOS}: \verb{tflplanner (R 4.6).app} and \verb{tflplanner (R 4.6) (update).app}
+in \verb{~/Applications}.
+\item \strong{Linux}: a \verb{tflplanner-R4.6.desktop} menu entry in
 \verb{~/.local/share/applications}, with an \emph{Update and launch} action.
 }
 
 A shortcut runs a small launcher that tflplanner keeps in
-\code{tools::R_user_dir("tflplanner", "config")}.  The launcher finds R each
-time it starts (on Windows from the registry entry the R installer
-writes), so updating R does not break the shortcut, and it shows no
-console window.  It starts the app, and closing the browser stops it.
+\code{tools::R_user_dir("tflplanner", "config")}, in a folder for the R \code{x.y}
+(\code{launcher-R4.6}), with a \code{launcher.conf} that remembers the R it was made
+in.  The launcher looks for R each time it starts, and never uses another
+\code{x.y}: first the remembered R; then the newest R of the same \code{x.y} (on
+Windows \verb{R-x.y.*} under \verb{C:\\Program Files\\R} and
+\verb{\%LOCALAPPDATA\%\\Programs\\R}; on macOS and Linux the usual install places);
+then \code{Rscript} on the \code{PATH}, when its \code{x.y} matches.  When there is none,
+it says so: install tflplanner in the R you will use and run
+\code{add_shortcut()} in that R.  So updating R within an \code{x.y}, or removing
+an older R, does not break the shortcut, and it shows no console window.
+It starts the app, and closing the browser stops it.
 When the port is taken:
 \itemize{
 \item by this version of tflplanner, it opens that one;
@@ -68,6 +80,7 @@ itself: \code{\link[=run_batch]{run_batch()}});
 }
 
 Each start is noted in the launcher's \code{launcher.log}.
+\code{remove_shortcut()} removes the shortcut of the R it runs in.
 
 "Update and launch" first updates rtfreporter, tflspec and tflplanner
 (\code{\link[=update_tflplanner]{update_tflplanner()}}, on the channel last used), then starts the app;
