@@ -164,10 +164,10 @@
   lines <- as.character(lines)
   new_top <- .yaml_key_chunks(lines)
   old_top <- .yaml_key_chunks(old)
-  top <- setdiff(names(old_top), c(names(new_top), .study_yml_writer_keys()))
+  top <- as.character(setdiff(names(old_top), c(names(new_top), .study_yml_writer_keys())))
   old_set <- .study_yml_settings_chunks(old_top[["settings"]])
   new_set <- .study_yml_settings_chunks(new_top[["settings"]])
-  set <- setdiff(names(old_set), c(names(new_set), .study_yml_writer_settings()))
+  set <- as.character(setdiff(names(old_set), c(names(new_set), .study_yml_writer_settings())))
   if (length(set)) {
     add <- unlist(old_set[set], use.names = FALSE)
     at <- grep("^settings:[[:space:]]*(#.*)?$", lines)[1L]
