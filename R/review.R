@@ -315,12 +315,10 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
   ad_all <- .adata_rows(p)
   tok <- p$sheets$tokens
   files <- character()
-  progs <- character()
   for (id in ids) {
     info <- tryCatch(report_info(p, id), error = function(e) NULL)
     type <- info$type %||% "table"
     files[id] <- info$file %||% NA
-    progs[id] <- info$program %||% NA
     # R01: no title -- no line of the titles (its own, the defaults), no
     # OUTPUT_TITLE of its own
     own_title <- tok$value[!is.na(tok$output_id) & tok$output_id == id &
