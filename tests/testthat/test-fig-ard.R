@@ -47,7 +47,7 @@ test_that("the sample's F-14-2-3 reads T-14-2-2's ARD in its data section", {
   i_ard <- which(code == "ard <- readRDS(file.path(path_ard, \"ard.rds\")) |>")
   # (the ADaM data is read once, in the study's setup: the data section
   # derives its set from the `adtte` that is there)
-  i_adam <- grep("^adtte_ttskin <- adtte", code)[1L]
+  i_adam <- grep("^adtte_sub <- adtte", code)[1L]
   expect_length(i_ard, 1L)
   expect_false(any(grepl("^adtte <- readRDS", code)))
   expect_true(i_data < i_ard && i_ard < i_adam)
@@ -353,4 +353,107 @@ test_that("a template figure's ARD tabs are on when it makes an ARD (forest_hr),
   # a table (template or not) and a figure of its own code keep their answers
   expect_true(.report_uses_ard(p, "T-14-1-1"))
   expect_false(.report_uses_ard(p, "F-14-2-1"))
+})
+
+# (a study of its own: a home in a folder of the test, no withr)
+stale_ard_study <- function() {
+  home <- tempfile("tflplanner-test")
+  dir.create(home)
+  old <- options(tflplanner.home = home)
+  suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
+  s <- suppressMessages(sample_study_copy())
+  list(s = s, done = function() {
+    options(old)
+    unlink(home, recursive = TRUE)
+  })
+}
+
+test_that("a figure's preview makes its table's outdated ARD again first, and redraws (2026-11-23)", {
+  st <- stale_ard_study()
+  on.exit(st$done(), add = TRUE)
+  s <- st$s
+  state <- "outdated"
+  fetched <- character()
+  rows_df <- data.frame(output_id = "T-14-2-2", analysis_id = "KM")
+  local_mocked_bindings(
+    ard_preview_state = function(study, output_id, ...) state,
+    fetch_ard = function(study, output_id, ...) {
+      fetched <<- c(fetched, output_id)
+      state <<- "current"
+      invisible(list(print = "p2"))
+    },
+    ard_raw = function(study, output_id, rows = FALSE, ...) rows_df,
+    ard_info = function(study, output_id, ...) list(print = "p2"),
+    .ard_print = function(study, output_id) "p2")
+  # outdated: the table's ARD made again (as its Update preview), then read
+  a <- .fig_preview_ard(s, "F-14-2-3")
+  expect_identical(fetched, "T-14-2-2")
+  expect_identical(a$rows, rows_df)
+  expect_identical(a$print, "p2")
+  expect_null(a$error)
+  # current now: read, not made again
+  a2 <- .fig_preview_ard(s, "F-14-2-3")
+  expect_identical(fetched, "T-14-2-2")
+  expect_identical(a2$print, "p2")
+  # the drawing's key follows what its ARD was made from: made again, drawn again
+  d <- fig_design(s$planner, "F-14-2-3")
+  expect_false(identical(.fig_draw_key(s, d, list(print = "p1")), .fig_draw_key(s, d, a)))
+  expect_identical(.fig_draw_key(s, d, a), .fig_draw_key(s, d, a2))
+  # one that cannot be made: its error, not tried again from the same definition
+  state <- "outdated"
+  local_mocked_bindings(fetch_ard = function(study, output_id, ...) {
+    fetched <<- c(fetched, output_id)
+    stop("no data")
+  })
+  a3 <- .fig_preview_ard(s, "F-14-2-3")
+  expect_null(a3$rows)
+  expect_identical(a3$error, "no data")
+  expect_identical(.fig_preview_ard(s, "F-14-2-3")$error, "no data")
+  expect_length(fetched, 2L)
+  # a figure that reads no ARD: nothing to make
+  expect_null(.fig_preview_ard(s, "F-14-2-1"))
+})
+
+test_that("a figure's own ARD for its preview: the study ARD's while built, else made, once a definition", {
+  st <- stale_ard_study()
+  on.exit(st$done(), add = TRUE)
+  s <- st$s
+  s$planner <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF")
+  pr <- "p1"
+  built <- "not built"
+  made <- 0L
+  rows_df <- data.frame(output_id = "F-9-1", analysis_id = "HR")
+  local_mocked_bindings(
+    .ard_print = function(study, output_id) pr,
+    ard_status = function(study) data.frame(output_id = "F-9-1", state = built),
+    run_ard = function(study, output_id = NULL, ...) {
+      made <<- made + 1L
+      list(ard = rows_df)
+    },
+    study_ard_rows = function(study, output_id) rows_df[0, ])
+  a <- .fig_preview_ard(s, "F-9-1")
+  expect_identical(made, 1L)
+  expect_identical(a$rows, rows_df)
+  expect_identical(a$print, "p1")
+  # the same definition: kept
+  .fig_preview_ard(s, "F-9-1")
+  expect_identical(made, 1L)
+  # its definition changed, the study ARD made from it now: its rows
+  pr <- "p2"
+  built <- "built"
+  b <- .fig_preview_ard(s, "F-9-1")
+  expect_identical(made, 1L)
+  expect_identical(nrow(b$rows), 0L)
+  expect_identical(b$print, "p2")
+})
+
+test_that("a figure's preview says when its ARD could not be made", {
+  skip_if_not_installed("ggsurvfit")
+  st <- stale_ard_study()
+  on.exit(st$done(), add = TRUE)
+  s <- st$s
+  r <- suppressMessages(.preview_figure(s, "F-14-2-3", fig_design(s$planner, "F-14-2-3"),
+                                        max_px = 600,
+                                        ard = list(rows = NULL, print = "p", error = "no data")))
+  expect_match(r$error, "The preview's ARD could not be made: no data", fixed = TRUE)
 })
