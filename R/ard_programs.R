@@ -87,8 +87,10 @@ ard_setup_code <- function(spec, date = Sys.Date()) {
     .drop_leading_blank(.ard_spec_code(x, part = "setup")),
     "# the files each ARD is built with, recorded with it (tflspec's",
     "# save_ard(): tflplanner compares the study setup's)",
-    sprintf("options(tflspec.ard_sources = c(setup = %s))",
-            encodeString(.study_setup_path(), quote = "\"")),
+    "options(tflspec.ard_sources = c(",
+    paste0("  ", names(.study_setup_files()), " = ",
+           encodeString(.study_setup_files(), quote = "\""),
+           c(rep(",", length(.study_setup_files()) - 1L), "))")),
     "")
 }
 
@@ -125,7 +127,8 @@ ard_program_code <- function(spec, output_id, date = Sys.Date(), dir = ".",
     # its rows into the study ARD with its definition's fingerprint
     # (tflspec's save_ard(); tflplanner compares it)
     .ard_spec_code(x, output_id = output_id, part = "body", dir = dir,
-                   codelists = codelists))
+                   codelists = codelists),
+    .run_end)
 }
 
 #' @rdname ard_setup_code

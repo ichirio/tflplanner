@@ -413,6 +413,7 @@ study_ard_rows <- function(study, output_id) {
   empty <- data.frame(output_id = character(), definition = character(),
                       built = character(), rows = integer(),
                       error = character(), setup = character(),
+                      company = character(), user = character(),
                       stringsAsFactors = FALSE)
   if (!file.exists(f)) return(empty)
   d <- utils::read.csv(f, colClasses = "character")
@@ -466,7 +467,7 @@ ard_status <- function(study) {
     state <- if (is.na(r$output_id)) "not built" else
       if (!is.na(r$error) && nzchar(r$error)) "error" else
         if (!identical(r$definition, now) ||
-            .setup_changed(r$setup, study$path)) "outdated" else "built"
+            .setup_changed(.ard_recorded_setup(r), study$path)) "outdated" else "built"
     data.frame(output_id = id, analyses = sum(a$analyses$output_id %in% id),
                state = state, rows = r$rows, built = r$built,
                error = if (is.na(r$error)) "" else r$error,
