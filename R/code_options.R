@@ -3,7 +3,7 @@
 # path_ard, ...), and no `pkg::` for the packages it attaches.  tflspec
 # writes its part so with its options tflspec.paths and tflspec.attached;
 # tflplanner's own lines read the same options.  tflspec.study_setup: the
-# study's rounding is in programs/study_setup.R's part 2, so the ARD and
+# study's rounding is in programs/study_setup.R (generated), so the ARD and
 # report setups leave it out (tflspec#791).
 #
 # They are set only while a program is written or compared with its file
@@ -53,16 +53,21 @@
   stats::setNames(unname(lay), paste0("path_", names(lay)))
 }
 
-# The packages programs/study_setup.R attaches: its library() and
-# require() calls, wherever they are (in its part 1, its part 3, inside
-# suppressPackageStartupMessages()).  A study whose file is without
+# The packages the study's setup attaches: the library() and require()
+# calls of its files, in the order a program runs them (company_setup.R,
+# study_setup.R, study_user.R; a study made before #910, its one
+# study_setup.R), wherever they are (inside
+# suppressPackageStartupMessages()).  A study whose files are without
 # dplyr (made before it was in the company's setup code) keeps `dplyr::`.
 .study_setup_packages <- function(root) {
-  f <- file.path(root, .study_setup_path())
-  # a study not saved yet: the company's setup code its file starts with
-  ex <- tryCatch(if (file.exists(f)) parse(f, keep.source = FALSE, encoding = "UTF-8") else
+  f <- .study_setup_present(root)
+  # a study not saved yet: the company's setup code it starts with
+  ex <- tryCatch(if (length(f)) {
+    do.call(c, lapply(f, parse, keep.source = FALSE, encoding = "UTF-8"))
+  } else {
     parse(text = gsub("{STUDY_ID}", "STUDYID", setup_code(), fixed = TRUE),
-          keep.source = FALSE), error = function(e) NULL)
+          keep.source = FALSE)
+  }, error = function(e) NULL)
   out <- character()
   walk <- function(e) {
     if (!is.call(e)) return(invisible())

@@ -30,7 +30,7 @@
 .generated_program_files <- function() {
   c(.ard_setup_file, .ard_autoexec_file, .batch_file, .fig_setup_file,
     .report_setup_file, .autoexec_all_file, .autoexec_report_file,
-    .study_setup_file, .study_helpers_file)
+    .study_setup_file, .study_helpers_file, .company_setup_file, .study_user_file)
 }
 
 #' The official-run programs of a study
@@ -90,7 +90,7 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
             spec_files),
     all = c(file.path("programs", c(.batch_file, .autoexec_all_file,
                                     .study_helpers_file)),
-            .study_setup_path(), .study_file))
+            .study_setup_files(), .study_file))
   vec <- function(v, names = NULL, indent = "  ") {
     if (!length(v)) return("character()")
     q <- encodeString(v, quote = "\"")

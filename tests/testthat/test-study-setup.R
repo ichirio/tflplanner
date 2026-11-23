@@ -1,7 +1,10 @@
-# programs/study_setup.R (#268): one study-wide setup in three parts --
-# the company standard (copied), tflplanner's (rewritten on save), the
-# user's (never touched) -- sourced by ard_setup.R, report_setup.R and
-# fig_setup.R.
+# The study's setup (#268, #910): three files -- programs/company_setup.R
+# (the company's, copied), programs/study_setup.R (generated on every save;
+# it runs the other two, the company's first and the user's last, once per
+# program) and programs/study_user.R (the user's) -- and study_setup.R
+# sourced by ard_setup.R, report_setup.R and fig_setup.R.  A study made
+# before has one study_setup.R of three marked parts: its first save splits
+# it.
 
 # (slow: its tests write study folders or start the app -- run on CI
 # and locally with NOT_CRAN=true, not in CRAN's check)
@@ -21,6 +24,9 @@ setup_planner <- function() {
 }
 
 setup_file <- function(s) file.path(s$path, "programs", "study_setup.R")
+company_file <- function(s) file.path(s$path, "programs", "company_setup.R")
+user_file <- function(s) file.path(s$path, "programs", "study_user.R")
+bytes <- function(f) readBin(f, "raw", file.size(f))
 setup_bytes <- function(s) {
   f <- setup_file(s)
   readBin(f, "raw", file.size(f))
@@ -45,40 +51,51 @@ give_data <- function(s) {
   invisible(s)
 }
 add_to_part3 <- function(s, lines) {
-  cat(paste0(lines, "\n", collapse = ""), file = setup_file(s), append = TRUE)
+  cat(paste0(lines, "\n", collapse = ""), file = user_file(s), append = TRUE)
+}
+# A study_setup.R in the form before #910, its three parts as given: part 2
+# a tflplanner part with its checksum (of `code`), `edit` a line put in
+# after the checksum was taken
+old_setup <- function(s, part1, code, part3, edit = NULL, extra = NULL) {
+  p2 <- c(.setup_marker_study, paste("#  Checksum   :", .body_hash(code)), code, edit)
+  txt <- paste0(paste(c(.setup_marker_standard(as.Date("2026-10-08")), part1, p2,
+                        .setup_marker_user, part3, extra), collapse = "\n"), "\n")
+  unlink(c(company_file(s), user_file(s)))
+  writeBin(charToRaw(enc2utf8(txt)), setup_file(s))
+  txt
 }
 
-test_that("a new study gets programs/study_setup.R with its three parts", {
+test_that("a new study gets its three setup files; study_setup.R is generated", {
   local_home()
   s <- create_study("ABC-101", title = "A phase 2 study", phase = "2")
   f <- setup_file(s)
-  expect_true(file.exists(f))
+  expect_true(all(file.exists(c(company_file(s), f, user_file(s)))))
+  # the company's: the standard's library() lines, under a line saying when
+  co <- readLines(company_file(s))
+  expect_match(co[1L], "^# The company's code [(]programs/company_setup.R[)]")
+  expect_match(co[2L], paste0("0\\.1.* on ", format(Sys.Date())))
+  expect_true(all(c("library(cards)", "library(dplyr)", "library(rtfreporter)") %in% co))
+  # the user's: comments only
+  expect_true(all(grepl("^#|^$", readLines(user_file(s)))))
+  # the generated one: a banner, its checksum, the layout and the study
   txt <- readLines(f)
-  m <- grep("^# ==== ", txt)
-  expect_length(m, 3L)
-  expect_match(txt[m[1]], paste0("^# ==== tflplanner: company standard \\(copied ",
-                                 format(Sys.Date()), ", standards .*0\\.1"))
-  expect_match(txt[m[2]], "tflplanner: study", fixed = TRUE)
-  expect_match(txt[m[3]], "your study: edit freely below", fixed = TRUE)
-  expect_identical(m[1], 1L)
-  expect_identical(m[3], length(txt))         # part 3 empty
-  # part 1: the standard's library() lines
-  expect_true(all(c("library(cards)", "library(dplyr)", "library(rtfreporter)")
-                  %in% txt[seq(m[1], m[2])]))
-  # the programs call programs/study_helpers.R, not tflspec
-  expect_false("library(tflspec)" %in% txt)
-  # part 2: the layout and the study, as variables
-  p2 <- txt[seq(m[2], m[3])]
-  expect_true(any(grepl("^#  Checksum   : [0-9a-f]{32}$", p2)))
+  expect_false(any(grepl("^# ==== ", txt)))
+  expect_true(any(grepl("^#  Generated  : tflplanner ", txt)))
+  expect_true(any(grepl("^#  Checksum   : [0-9a-f]{32}$", txt)))
+  expect_false("library(tflspec)" %in% c(co, txt))
   lay <- study_layout()
   for (k in names(lay)) {
-    expect_true(any(grepl(sprintf("^path_%s +<- \"%s\"$", k, lay[[k]]), p2)),
-                label = k)
+    expect_true(any(grepl(sprintf("^path_%s +<- \"%s\"$", k, lay[[k]]), txt)), label = k)
   }
-  expect_true(any(grepl("^study_id +<- \"ABC-101\"$", p2)))
-  expect_true(any(grepl("^study_title +<- \"A phase 2 study\"$", p2)))
-  expect_true(any(grepl("^study_phase +<- \"2\"$", p2)))
-  expect_true(any(grepl("^study_compound +<- NA_character_$", p2)))
+  expect_true(any(grepl("^study_id +<- \"ABC-101\"$", txt)))
+  expect_true(any(grepl("^study_title +<- \"A phase 2 study\"$", txt)))
+  expect_true(any(grepl("^study_phase +<- \"2\"$", txt)))
+  expect_true(any(grepl("^study_compound +<- NA_character_$", txt)))
+  # the company's runs before the study's lines, the user's after them
+  co_at <- grep("source(.tfl_free[[\"company\"]]", txt, fixed = TRUE)
+  us_at <- grep("source(.tfl_free[[\"user\"]]", txt, fixed = TRUE)
+  id_at <- grep("^study_id ", txt)
+  expect_true(co_at < id_at && id_at < us_at)
   # it runs, and defines them
   give_data(s)
   e <- new.env()
@@ -87,36 +104,68 @@ test_that("a new study gets programs/study_setup.R with its three parts", {
   expect_identical(e$study_id, "ABC-101")
   expect_identical(e$study_title, "A phase 2 study")
   expect_true(is.na(e$study_compound))
-  # saved again unchanged: not written
+  # saved again unchanged: not written; the free files never are
   s2 <- save_study(s)
   expect_identical(s2$files$status[s2$files$file == f], "unchanged")
+  expect_false(any(s2$files$file %in% c(company_file(s), user_file(s))))
 })
 
-test_that("saving rewrites part 2 only: parts 1 and 3 stay byte for byte", {
+test_that("the company's code and the user's run once per program, again when changed", {
+  local_home()
+  s <- create_study("ABC-110")
+  f <- setup_file(s)
+  count <- function(v) sprintf("%s <- if (exists(\"%s\", inherits = FALSE)) %s + 1 else 1", v, v, v)
+  # the company's sees nothing of the study yet, and its path_adam is
+  # overwritten; the user's study_title wins
+  writeLines(c(count("n_company"), "saw_id <- exists(\"study_id\", inherits = FALSE)",
+               "path_adam <- \"mine\""), company_file(s))
+  writeLines(c(count("n_user"), "study_title <- \"mine\""), user_file(s))
+  give_data(s)
+  e <- new.env()
+  src <- function() withr::with_dir(s$path, sys.source(f, envir = e, toplevel.env = e))
+  src()
+  expect_identical(c(e$n_company, e$n_user), c(1, 1))
+  expect_false(e$saw_id)
+  expect_identical(e$path_adam, "data/adam")
+  expect_identical(e$study_title, "mine")
+  # sourced again in the same program (a figure report): not again
+  src()
+  expect_identical(c(e$n_company, e$n_user), c(1, 1))
+  # a file changed: both run again
+  cat("# changed\n", file = user_file(s), append = TRUE)
+  src()
+  expect_identical(c(e$n_company, e$n_user), c(2, 2))
+  # by hand
+  rm(".tfl_free_ran", envir = e)
+  src()
+  expect_identical(c(e$n_company, e$n_user), c(3, 3))
+  # another environment (another program's): they run there
+  e2 <- new.env()
+  withr::with_dir(s$path, sys.source(f, envir = e2, toplevel.env = e2))
+  expect_identical(c(e2$n_company, e2$n_user), c(1, 1))
+})
+
+test_that("saving writes study_setup.R again and never the company's or the user's file", {
   local_home()
   s <- create_study("ABC-102", title = "First")
   f <- setup_file(s)
-  # the user's own lines in parts 1 and 3, with odd spacing, a non-ASCII
-  # character and a CRLF line
-  lines <- readLines(f)
-  m <- grep("^# ==== ", lines)
-  own1 <- c("options(digits = 4)", "  # indented  ", "my_label <- \"caf\u00e9\"")
-  txt <- paste0(paste(c(lines[1L], own1, lines[-1L]), collapse = "\n"), "\n")
-  txt <- paste0(txt, "my_fun <- function(x) {\r\n  x + 1\n}\n\n  \n")
-  writeBin(charToRaw(enc2utf8(txt)), f)
-  p1 <- setup_part(s, "standard")
-  p3 <- setup_part(s, "user")
+  # the user's own lines, with odd spacing, a non-ASCII character and a CRLF line
+  own <- paste0("options(digits = 4)\n  # indented  \nmy_label <- \"caf\u00e9\"\n",
+                "my_fun <- function(x) {\r\n  x + 1\n}\n\n  \n")
+  writeBin(charToRaw(enc2utf8(paste0("library(cards)\n", own))), company_file(s))
+  writeBin(charToRaw(enc2utf8(own)), user_file(s))
+  co <- bytes(company_file(s))
+  us <- bytes(user_file(s))
   s$meta$title <- "Second"
   s$meta$compound <- "XY-1"
   s <- save_study(s)
   expect_identical(s$files$status[s$files$file == f], "written")
-  expect_identical(charToRaw(setup_part(s, "standard")), charToRaw(p1))
-  expect_identical(charToRaw(setup_part(s, "user")), charToRaw(p3))
-  p2 <- setup_part(s, "study")
-  expect_match(p2, "study_title       <- \"Second\"", fixed = TRUE)
-  expect_match(p2, "study_compound    <- \"XY-1\"", fixed = TRUE)
+  expect_identical(bytes(company_file(s)), co)
+  expect_identical(bytes(user_file(s)), us)
+  txt <- readLines(f)
+  expect_true("study_title       <- \"Second\"" %in% txt)
+  expect_true("study_compound    <- \"XY-1\"" %in% txt)
   expect_false(dir.exists(file.path(s$path, "programs", ".edited")))
-  # the file still runs: part 3 after part 2
   give_data(s)
   e <- new.env()
   withr::with_dir(s$path, sys.source(f, envir = e, toplevel.env = e))
@@ -124,11 +173,10 @@ test_that("saving rewrites part 2 only: parts 1 and 3 stay byte for byte", {
   expect_identical(e$study_title, "Second")
 })
 
-test_that("a hand edit of part 2 is backed up to programs/.edited/ and undone", {
+test_that("a hand edit of study_setup.R is backed up to programs/.edited/ and undone", {
   local_home()
   s <- create_study("ABC-103")
   f <- setup_file(s)
-  add_to_part3(s, "mine <- 1")
   txt <- readLines(f)
   txt <- sub("^path_adam( +)<- .*$", "path_adam\\1<- \"elsewhere\"", txt)
   writeLines(txt, f)
@@ -139,17 +187,70 @@ test_that("a hand edit of part 2 is backed up to programs/.edited/ and undone", 
                     "^study_setup_.*[.]R$", full.names = TRUE)
   expect_length(bak, 1L)
   expect_identical(readLines(bak), edited)
-  now <- readLines(f)
-  expect_true(any(grepl("^path_adam +<- \"data/adam\"$", now)))
-  expect_identical(utils::tail(now, 1L), "mine <- 1")
-  # a file whose markers are gone: kept in .edited/, made again
-  writeLines("library(dplyr)", f)
-  Sys.sleep(1.1)   # a backup of its own (the time in its name)
+  expect_true(any(grepl("^path_adam +<- \"data/adam\"$", readLines(f))))
+})
+
+test_that("an old study_setup.R is split byte for byte, once", {
+  local_home()
+  s <- create_study("ABC-111")
+  f <- setup_file(s)
+  part1 <- c("library(cards)", "options(digits = 4)\r", "# caf\u00e9")
+  part3 <- c("my_fun <- function(x) x + 1", "", "  ")
+  txt <- old_setup(s, part1, c("# the study, then", "x_old <- 1"), part3)
+  lines <- strsplit(txt, "(?<=\n)", perl = TRUE)[[1L]]
+  m2 <- grep(.setup_marker[["study"]], lines)
+  m3 <- grep(.setup_marker[["user"]], lines)
+  want1 <- paste(lines[seq_len(m2 - 1L)], collapse = "")
+  want3 <- paste(lines[seq(m3, length(lines))], collapse = "")
   s <- save_study(s)
-  expect_identical(s$files$status[s$files$file == f], "rewritten")
-  expect_length(list.files(file.path(s$path, "programs", ".edited"),
-                           "^study_setup_"), 2L)
-  expect_length(grep("^# ==== ", readLines(f)), 3L)
+  expect_identical(s$files$status[match(c(company_file(s), user_file(s), f), s$files$file)],
+                   rep("split", 3L))
+  expect_null(s$setup_note)
+  expect_identical(bytes(company_file(s)), charToRaw(enc2utf8(want1)))
+  expect_identical(bytes(user_file(s)), charToRaw(enc2utf8(want3)))
+  now <- readLines(f)
+  expect_false(any(grepl("^# ==== ", now)))
+  expect_true(any(grepl("^#  Generated  :", now)))
+  # the old one kept
+  expect_length(list.files(file.path(s$path, "programs", ".edited"), "^study_setup_"), 1L)
+  # it runs: the user's function there
+  give_data(s)
+  e <- new.env()
+  withr::with_dir(s$path, sys.source(f, envir = e, toplevel.env = e))
+  expect_identical(e$my_fun(1), 2)
+  # saved again: nothing split, nothing written
+  s <- save_study(s)
+  expect_false(any(s$files$status == "split"))
+  expect_identical(s$files$status[s$files$file == f], "unchanged")
+})
+
+test_that("an old study_setup.R that cannot be split is kept as it was, and says why", {
+  local_home()
+  s <- create_study("ABC-112")
+  f <- setup_file(s)
+  code <- c("# the study", "x_old <- 1")
+  kept <- function(txt, why) {
+    s2 <- save_study(s)
+    expect_identical(s2$files$status[s2$files$file == f], "kept")
+    expect_identical(s2$setup_note, why)
+    expect_identical(bytes(f), charToRaw(enc2utf8(txt)))
+    s2
+  }
+  # its tflplanner part edited by hand
+  txt <- old_setup(s, "library(cards)", code, "mine <- 1", edit = "x_old <- 2")
+  kept(txt, "its tflplanner part was edited by hand")
+  expect_false(any(file.exists(c(company_file(s), user_file(s)))))
+  expect_true(length(list.files(file.path(s$path, "programs", ".edited"), "^study_setup_")) >= 1L)
+  # a marker line repeated
+  txt <- old_setup(s, "library(cards)", code, "mine <- 1", extra = .setup_marker_user)
+  kept(txt, "its marker lines are missing, repeated or out of order")
+  # study_user.R there already, with other content
+  txt <- old_setup(s, "library(cards)", code, "mine <- 1")
+  writeLines("theirs <- 1", user_file(s))
+  kept(txt, "company_setup.R or study_user.R is there already, with other content")
+  expect_identical(readLines(user_file(s)), "theirs <- 1")
+  # the old file is still read as the study's setup
+  expect_true("cards" %in% .study_setup_packages(s$path))
 })
 
 test_that("each setup file sources study_setup.R first; programs no library()", {
@@ -223,25 +324,25 @@ test_that("setup_code: read as written, indentation kept, checked", {
   expect_error(setup_tflplanner(standards = write_std(c("library(cards)", q))),
                "curly quotes.*line\\(s\\) 2 \\(Excel row\\(s\\) 3\\)")
   expect_error(.check_setup_code("x <- \u2018a\u2019"), "straight quotes")
-  # installed, a new study's part 1 is a copy of them
+  # installed, a new study's company_setup.R is a copy of them
   suppressMessages(setup_tflplanner(standards = write_std(code)))
   st <- create_study("ABC-105")
-  txt <- readLines(setup_file(st))
+  txt <- readLines(company_file(st))
   expect_true("    formatC(x, digits = 2, format = \"f\")" %in% txt)
   expect_true("study_label <- \"ABC-105\"  " %in% txt)
-  # the standards changing later: a finished study's part 1 stays
+  # the standards changing later: a finished study's company_setup.R stays
   suppressMessages(setup_tflplanner(standards = write_std("library(dplyr)")))
   st <- save_study(st)
-  expect_identical(readLines(setup_file(st)), txt)
+  expect_identical(readLines(company_file(st)), txt)
 })
 
-test_that("an existing study gets study_setup.R on its first save", {
+test_that("an existing study gets its setup files on its first save", {
   local_home()
   s <- create_study("ABC-106", planner = setup_planner())
   f <- setup_file(s)
-  # as an earlier tflplanner left it: no study_setup.R, report programs
+  # as an earlier tflplanner left it: no setup files, report programs
   # with their own library() lines, ARD status without the setup
-  unlink(f)
+  unlink(c(company_file(s), f, user_file(s)))
   dm <- file.path(s$path, "programs", "tfl", "DM.R")
   old <- readLines(dm)
   writeLines(c(old[1:2], "library(rtfreporter)", "library(tflspec)", old[-(1:2)]),
@@ -254,12 +355,9 @@ test_that("an existing study gets study_setup.R on its first save", {
   .write_ard_status(s, st)
   expect_equal(ard_status(s)$state, "built")
   s <- save_study(s)
-  expect_identical(s$files$status[s$files$file == f], "written")
-  txt <- readLines(f)
-  m <- grep("^# ==== ", txt)
-  expect_length(m, 3L)
-  expect_true("library(rtfreporter)" %in% txt[seq(m[1], m[2])])
-  expect_identical(m[3], length(txt))
+  expect_identical(s$files$status[match(c(company_file(s), f, user_file(s)), s$files$file)],
+                   rep("written", 3L))
+  expect_true("library(rtfreporter)" %in% readLines(company_file(s)))
   # an output built before the setup was recorded is not outdated by it
   expect_equal(ard_status(s)$state, "built")
   # the program edited by hand was backed up and written again
@@ -271,7 +369,7 @@ test_that("a change to study_setup.R marks the ARD and the reports outdated", {
   s <- create_study("ABC-107", planner = setup_planner())
   # as the programs record a build: the setup's fingerprint
   h <- .study_setup_hash(s$path)
-  expect_match(h, "^[0-9a-f]{32}$")
+  expect_match(h, "^([0-9a-f]{32}[+]){2}[0-9a-f]{32}$")
   withr::with_dir(s$path, expect_identical(eval(parse(text = .setup_hash_code())), h))
   def <- tflspec::tfl_ard_spec_hash(structure(s$planner$ard, class = "tfl_ard_spec"),
                                     "DM", dir = s$path,
@@ -294,11 +392,11 @@ test_that("a change to study_setup.R marks the ARD and the reports outdated", {
   })
   # (a report records report_setup.R too)
   expect_identical(.report_setup_recorded(s$path, "DM"), .report_setup_hash(s$path))
-  expect_match(.report_setup_hash(s$path), "^[0-9a-f]{32}[|]([0-9a-f]{32})?$")
+  expect_match(.report_setup_hash(s$path), "^([0-9a-f]{32}[+]){2}[0-9a-f]{32}[|]([0-9a-f]{32})?$")
   expect_equal(ard_status(s)$state, "built")
   expect_equal(study_status(s)$status, "ok")
   expect_equal(.report_run_light(s)$status, "ok")
-  # part 3 changed by the user: both outdated
+  # study_user.R changed by the user: both outdated
   add_to_part3(s, "options(digits = 3)")
   expect_equal(ard_status(s)$state, "outdated")
   expect_equal(.report_run_light(s)$status, "outdated")
@@ -313,7 +411,8 @@ test_that("a sample built by its programs records the setup, and goes stale with
   u <- update_study_ard(s, "DM")
   expect_true(u$ok)
   st <- .read_ard_status(s)
-  expect_identical(st$setup, .study_setup_hash(s$path))
+  # (the ARD program records the three files: company, setup, user)
+  expect_identical(.ard_recorded_setup(st), .study_setup_hash(s$path))
   expect_equal(ard_status(s)$state, "built")
   add_to_part3(s, "# a comment of mine")
   expect_equal(ard_status(s)$state, "outdated")
@@ -402,19 +501,17 @@ test_that("a change to report_setup.R (the rounding) marks the reports outdated,
   expect_true(.report_setup_changed(paste0(.study_setup_hash(s$path), "|x"), s$path))
 })
 
-test_that("the study's rounding is set once, in study_setup.R's part 2 (tflspec#791)", {
+test_that("the study's rounding is set once, in study_setup.R (tflspec#791)", {
   skip_on_cran()
   local_home()
   s <- suppressMessages(sample_study_copy())
   s$planner <- .spec_set_rounding(s$planner, "sas")
   s <- suppressMessages(save_study(s))
-  setup <- readLines(file.path(s$path, .study_setup_path()), encoding = "UTF-8")
-  part2 <- setup[seq(grep(.setup_marker_study, setup, fixed = TRUE),
-                     grep(.setup_marker_user, setup, fixed = TRUE) - 1L)]
+  part2 <- readLines(file.path(s$path, .study_setup_path()), encoding = "UTF-8")
   rnd <- "options(rtfreporter.rounding = \"sas\", cards.round_type = \"round-half-up\")"
   expect_true(rnd %in% trimws(part2))
   # the input data (tflspec#794), where tflspec writes it: after the rounding,
-  # through the folder variables part 2 defines, not the catalog's paths
+  # through the folder variables study_setup.R defines, not the catalog's paths
   if (any(grepl("readRDS", tflspec::tfl_study_setup_code(s$planner$spec$study)))) {
     # (an object of its own, or study$adam_org's, read when first used: tflspec#814)
     expect_true(any(grepl("readRDS(file.path(path_adam, \"adsl.rds\"))", part2, fixed = TRUE)))
@@ -440,7 +537,7 @@ test_that("the study's rounding is set once, in study_setup.R's part 2 (tflspec#
   # the program as study_setup_code() gives it: with the study's spec, or none
   expect_true(rnd %in% trimws(study_setup_code(s$meta, study = s$planner$spec$study)))
   expect_false(any(grepl("rounding", study_setup_code(s$meta), fixed = TRUE)))
-  # the study's rounding changed: part 2 says the new one, once
+  # the study's rounding changed: study_setup.R says the new one, once
   s$planner <- .spec_set_rounding(s$planner, "r")
   s <- suppressMessages(save_study(s))
   setup <- readLines(file.path(s$path, .study_setup_path()), encoding = "UTF-8")

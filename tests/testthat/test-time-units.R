@@ -1,5 +1,5 @@
 # The days in a week, a month, a year: named constants the company
-# standards set (study_setup.R part 1), the figure programs divide by.
+# standards set (the study's company_setup.R), the figure programs divide by.
 
 test_that("the built-in standards set the days in a week, a month, a year", {
   code <- setup_code(standards = .builtin_standards())
@@ -17,6 +17,10 @@ test_that("a study's values are its setup's (the last one set), else tflspec's",
   u <- .study_time_units(d)
   expect_identical(u[["days_per_month"]], 30)
   expect_identical(u[["days_per_year"]], 365.25)
+  # the three setup files, in the order a program runs them: the user's last
+  writeLines("days_per_month <- 31", file.path(d, .study_user_path()))
+  writeLines("days_per_month <- 29", file.path(d, .company_setup_path()))
+  expect_identical(.study_time_units(d)[["days_per_month"]], 31)
 })
 
 test_that("the preview divides by the study's value", {
@@ -26,7 +30,7 @@ test_that("the preview divides by the study's value", {
   d <- fig_design(s$planner, "F-14-2-3")
   i <- which(vapply(d$data, function(p) identical(p$step, "time_unit"), NA))
   d$data[[i]]$unit <- "months"
-  f <- file.path(s$path, .study_setup_path())
+  f <- file.path(s$path, .study_user_path())
   writeLines(c(readLines(f), "days_per_month <- 1"), f)
   r <- preview_figure(s, "F-14-2-3", design = d, max_px = 400)
   days <- preview_figure(s, "F-14-2-3", max_px = 400)
