@@ -33,3 +33,6 @@
 "Shortcuts:","ショートカット:"
 "The launcher files the shortcuts run:","ショートカットが実行する起動用のファイル:"
 "Your studies, their files and tflplanner's settings are not touched.","試験とそのファイル、tflplanner の設定はそのまま残ります。"
+"Removed the shortcuts made before the R version was in the name:","R の版が名前に入る前に作られたショートカットを削除しました:"
+"The shortcuts of R %s: that R is not installed any more (remove_shortcut(xy = ""%s"") removes them):","R %s のショートカット: その R はもう入っていません（remove_shortcut(xy = ""%s"") で削除できます）:"
+"This shortcut is out of date. Use ""%s"", made by add_shortcut().","このショートカットは古くなりました。add_shortcut() が作った「%s」を使ってください。"

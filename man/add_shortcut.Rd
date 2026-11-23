@@ -13,7 +13,7 @@ add_shortcut(
   ask = interactive()
 )
 
-remove_shortcut(launcher = TRUE, ask = interactive())
+remove_shortcut(launcher = TRUE, ask = interactive(), xy = NULL)
 }
 \arguments{
 \item{port}{The port the app runs on.  \code{NULL} keeps the setting
@@ -33,6 +33,10 @@ when \code{update = TRUE}, or \code{\link[=update_tflplanner]{update_tflplanner(
 \code{ask = FALSE}.}
 
 \item{launcher}{Also remove the launcher files tflplanner keeps.}
+
+\item{xy}{The R version whose shortcut to remove, like \code{"4.4"} (for an R
+that is not installed any more); \code{NULL} is the R this runs in, and
+\code{"all"} every R's.}
 }
 \value{
 The shortcuts made, invisibly.
@@ -62,10 +66,10 @@ A shortcut runs a small launcher that tflplanner keeps in
 \code{tools::R_user_dir("tflplanner", "config")}, in a folder for the R \code{x.y}
 (\code{launcher-R4.6}), with a \code{launcher.conf} that remembers the R it was made
 in.  The launcher looks for R each time it starts, and never uses another
-\code{x.y}: first the remembered R; then the newest R of the same \code{x.y} (on
-Windows \verb{R-x.y.*} under \verb{C:\\Program Files\\R} and
-\verb{\%LOCALAPPDATA\%\\Programs\\R}; on macOS and Linux the usual install places);
-then \code{Rscript} on the \code{PATH}, when its \code{x.y} matches.  When there is none,
+\code{x.y}: first the remembered R (when it is that \code{x.y}); then the newest R of the same \code{x.y} (on
+Windows \verb{R-x.y.*} under \verb{C:\\Program Files\\R}, \verb{\%LOCALAPPDATA\%\\Programs\\R} and beside the remembered R;
+on macOS and Linux the usual install places);
+then the first \code{Rscript} on the \code{PATH} of that \code{x.y}.  When there is none,
 it says so: install tflplanner in the R you will use and run
 \code{add_shortcut()} in that R.  So updating R within an \code{x.y}, or removing
 an older R, does not break the shortcut, and it shows no console window.

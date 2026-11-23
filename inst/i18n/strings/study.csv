@@ -204,3 +204,7 @@
 "Save them before opening %s, or discard them (every unsaved change of the study goes).","%s を開く前に保存するか、破棄してください（試験の保存していない変更がすべて消えます）。"
 "Versions this window runs","この画面が動かしている版"
 "development version","開発版"
+"About","このアプリについて"
+"About tflplanner","tflplanner について"
+"local build","ローカルのビルド"
+"The shortcut you start tflplanner from was made by an older tflplanner. Run add_shortcut() in the R you use: it makes ""tflplanner (R x.y)"" and removes the old one.","今使っているショートカットは、古い tflplanner が作ったものです。使う R で add_shortcut() を実行すると、「tflplanner (R x.y)」を作り、古いものを削除します。"

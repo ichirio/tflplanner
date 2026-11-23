@@ -71,8 +71,8 @@ test_that(".write_launcher() writes the launcher, localized, beside the home poi
   }
   expect_match(conf, paste0("r_xy=", .r_xy()), fixed = TRUE)
   expect_match(conf, "r_home=", fixed = TRUE)
-  expect_match(conf, .show_path(R.home()), fixed = TRUE)
-  expect_true(any(grepl("R.framework/Resources/bin/Rscript", sh, fixed = TRUE)))
+  expect_match(conf, .show_path(normalizePath(R.home(), "/", mustWork = FALSE)), fixed = TRUE)
+  expect_true(any(grepl("R.framework/Versions", sh, fixed = TRUE)))
   if (.Platform$OS.type != "windows") {
     expect_true(file.access(file.path(dir, "tflplanner.sh"), 1L) == 0L)
   }
@@ -712,19 +712,32 @@ test_that("the R x.y, the icon's name and the launcher folder", {
                    c("r_home=C:\\R\\R-4.6.1", "r_xy=4.6"))
 })
 
-test_that("which R: the remembered one, else the newest of the same x.y, else PATH -- never another x.y", {
+test_that("an Rscript's x.y from its path", {
+  expect_identical(.xy_of_path("C:/Program Files/R/R-4.6.1/bin/Rscript.exe"), "4.6")
+  expect_identical(.xy_of_path("C:/R/R-4.10.0patched/bin/Rscript.exe"), "4.10")
+  expect_identical(.xy_of_path("/opt/R/4.6.1/bin/Rscript"), "4.6")
+  expect_identical(.xy_of_path("/Library/Frameworks/R.framework/Versions/4.6-arm64/Resources/bin/Rscript"), "4.6")
+  expect_identical(.xy_of_path("/Library/Frameworks/R.framework/Versions/4.6/Resources/bin/Rscript"), "4.6")
+  # the paths that do not say: the Current R, a system R
+  expect_true(is.na(.xy_of_path("/Library/Frameworks/R.framework/Resources/bin/Rscript")))
+  expect_true(is.na(.xy_of_path("/Library/Frameworks/R.framework/Versions/Current/Resources/bin/Rscript")))
+  expect_true(is.na(.xy_of_path("/usr/lib/R/bin/Rscript")))
+})
+
+test_that(".pick_r(): remembered (of its x.y), else the newest of the x.y, else PATH -- never another x.y", {
   have <- c("C:/R/R-4.6.1/bin/Rscript.exe", "C:/R/R-4.6.2/bin/Rscript.exe",
+            "C:/R/R-4.6.10/bin/Rscript.exe",
             "C:/R/R-4.10.0/bin/Rscript.exe", "C:/R/R-4.5.3/bin/Rscript.exe")
-  folders <- c("C:/R/R-4.6.1", "C:/R/R-4.6.2", "C:/R/R-4.10.0", "C:/R/R-4.5.3",
-               "C:/R/notR")
+  folders <- c("C:/R/R-4.6.1", "C:/R/R-4.6.2", "C:/R/R-4.6.10", "C:/R/R-4.10.0",
+               "C:/R/R-4.5.3", "C:/R/notR")
   ex <- function(f) f %in% have
-  # 1. the remembered R, when its Rscript is there
+  # 1. the remembered R, when its Rscript is there and is this x.y
   r <- .pick_r("4.6", "C:/R/R-4.6.1", folders, exists = ex)
   expect_identical(r, list(rscript = "C:/R/R-4.6.1/bin/Rscript.exe", from = "remembered"))
-  # 2. it is gone (removed): the newest of the same x.y -- 4.6.2, not 4.6.1,
-  # and not 4.10 or 4.5
+  # 2. it is gone: the newest of the same x.y -- 4.6.10, not 4.6.2 (a number,
+  # not a string), not 4.10.0 or 4.5.3
   r <- .pick_r("4.6", "C:/R/R-4.6.0", folders, exists = ex)
-  expect_identical(r, list(rscript = "C:/R/R-4.6.2/bin/Rscript.exe", from = "folder"))
+  expect_identical(r, list(rscript = "C:/R/R-4.6.10/bin/Rscript.exe", from = "folder"))
   expect_identical(.pick_r("4.10", NULL, folders, exists = ex)$rscript,
                    "C:/R/R-4.10.0/bin/Rscript.exe")
   # a folder without its Rscript is not a candidate
@@ -732,15 +745,25 @@ test_that("which R: the remembered one, else the newest of the same x.y, else PA
                    have[[1L]])
   # no R of 4.9 is there, and 4.10 or 4.5 are not taken for it
   expect_null(.pick_r("4.9", NULL, folders, exists = ex))
-  # 3. PATH, only when its x.y matches
-  expect_identical(.pick_r("4.7", NULL, folders, "D:/bin/Rscript.exe", "4.7", exists = ex),
-                   list(rscript = "D:/bin/Rscript.exe", from = "path"))
-  expect_null(.pick_r("4.7", NULL, folders, "D:/bin/Rscript.exe", "4.6", exists = ex))
-  expect_null(.pick_r("4.7", NULL, folders, "D:/bin/Rscript.exe", NA_character_, exists = ex))
-  # 4. none: nothing is returned (the launcher stops with the message)
+  # the remembered R of another x.y is not used (the Current R moved on)
+  cur <- "C:/R/Current"
+  r <- .pick_r("4.6", cur, folders, exists = function(f) ex(f) || f == "C:/R/Current/bin/Rscript.exe",
+               xy_of = function(f) if (grepl("Current", f)) "4.7" else .xy_of_path(f))
+  expect_identical(r$from, "folder")
+  expect_identical(.pick_r("4.7", cur, character(),
+                           exists = function(f) f == "C:/R/Current/bin/Rscript.exe",
+                           xy_of = function(f) "4.7")$from, "remembered")
+  # 3. PATH: the first entry of this x.y, in order
+  px <- function(f) if (grepl("^D:", f)) sub("^D:/(.*)/bin/.*$", "\\1", f) else .xy_of_path(f)
+  path <- c("D:/9.6/bin/Rscript.exe", "D:/4.7/bin/Rscript.exe", "D:/4.7/bin/Rscript.exe")
+  r <- .pick_r("4.7", NULL, folders, path, xy_of = px, exists = function(f) TRUE)
+  expect_identical(r, list(rscript = "D:/4.7/bin/Rscript.exe", from = "path"))
+  expect_null(.pick_r("4.8", NULL, folders, path, xy_of = px, exists = function(f) TRUE))
+  expect_null(.pick_r("4.7", NULL, folders, path, xy_of = function(f) NA_character_,
+                      exists = function(f) TRUE))
+  # 4. none
   expect_null(.pick_r("4.6", NULL, character(), exists = ex))
   expect_null(.pick_r("4.6", "C:/R/R-4.6.9", character(), exists = ex))
-  # the folders of the R installer: R-4.6.1patched is R 4.6.1
   expect_identical(.r_folder_version(c("C:/R/R-4.6.1patched", "x/R-4.7.0beta", "x/other")),
                    c("4.6.1", "4.7.0", NA))
   expect_identical(.version_xy(c("4.6.1", "4.10.0", NA)), c("4.6", "4.10", NA))
@@ -755,24 +778,255 @@ test_that("no R of the x.y: the message names the x.y, in the launcher's languag
     "R 4.6 \u304c\u898b\u3064\u304b\u308a\u307e\u305b\u3093\u3002\u4f7f\u3046 R \u3067 tflplanner \u3092\u5165\u308c\u3001\u305d\u306e R \u3067 add_shortcut() \u3092\u6d41\u3057\u3066\u304f\u3060\u3055\u3044")
 })
 
-test_that("the launcher scripts follow the same rule as .pick_r()", {
-  vbs <- readLines(system.file("launcher", "tflplanner.vbs", package = "tflplanner"),
-                   encoding = "UTF-8")
-  # remembered, then the folders, then PATH (the calls in FindRscript); no registry
-  i <- c(grep("= FromRemembered()", vbs, fixed = TRUE), grep("= FromFolders()", vbs, fixed = TRUE),
-         grep("= FromPath()", vbs, fixed = TRUE))
-  expect_length(i, 3L)
-  expect_true(all(diff(i) > 0L))
-  expect_false(any(grepl("InstallPath", vbs, fixed = TRUE)))
-  expect_true(any(grepl("%LOCALAPPDATA%\\Programs\\R", vbs, fixed = TRUE)))
-  sh <- readLines(system.file("launcher", "tflplanner.sh", package = "tflplanner"),
-                  encoding = "UTF-8")
-  expect_true(any(grepl('"$RHOME/bin/Rscript"', sh, fixed = TRUE)))
-  expect_true(any(grepl('xy_of "$c"', sh, fixed = TRUE)))
-  expect_true(any(grepl("command -v Rscript", sh, fixed = TRUE)))
+# One table of cases, run through .pick_r(), tflplanner.sh and tflplanner.vbs
+# (their `--which`: print the pick, start nothing).  x.y 9.9, so a real R never
+# matches.  Each R is <root>/R-<version>/bin/Rscript[.exe]; the .sh's fake
+# Rscript says its version, the VBScript reads it from the folder's name.
+.fake_r_tree <- function(base) {
+  win <- identical(.Platform$OS.type, "windows")
+  exe <- if (win) "Rscript.exe" else "Rscript"
+  make <- function(root, v, rscript = TRUE) {
+    d <- file.path(root, paste0("R-", v), "bin")
+    dir.create(d, recursive = TRUE, showWarnings = FALSE)
+    f <- file.path(d, exe)
+    if (!rscript) return(invisible(f))
+    if (win) file.create(f) else {
+      writeLines(c("#!/bin/sh", sprintf("echo 'Rscript (R) version %s (2099-01-01)'", v)), f)
+      Sys.chmod(f, "0755")
+    }
+    invisible(f)
+  }
+  root <- file.path(base, "roots")
+  for (v in c("9.9.1", "9.9.10", "9.10.0", "9.8.5")) make(root, v)
+  make(root, "9.9.2", rscript = FALSE)                  # a folder without its Rscript
+  p1 <- file.path(base, "p1")
+  make(p1, "9.8.7")                                      # PATH: another x.y first
+  p2 <- file.path(base, "p2")
+  make(p2, "9.9.3")
+  p3 <- file.path(base, "p3")
+  make(p3, "9.9.4")                                      # a later PATH entry of 9.9
+  list(root = root, exe = exe,
+       path = file.path(c(p1, p2, p3), c("R-9.8.7", "R-9.9.3", "R-9.9.4"), "bin"),
+       nowhere = file.path(base, "empty", "R-9.9.0"))
+}
+
+.which_cases <- function(t) {
+  r <- function(v) file.path(t$root, paste0("R-", v))
+  list(
+    list(name = "remembered wins over newer", remembered = r("9.9.1"), path = FALSE,
+         expect = "roots/R-9.9.1/bin"),
+    list(name = "remembered gone: newest of the x.y", remembered = r("9.9.0"), path = FALSE,
+         expect = "roots/R-9.9.10/bin"),
+    list(name = "remembered of another x.y", remembered = r("9.8.5"), path = FALSE,
+         expect = "roots/R-9.9.10/bin"),
+    list(name = "no folder of the x.y: PATH, first of the x.y", remembered = t$nowhere,
+         roots = FALSE, path = TRUE, expect = "p2/R-9.9.3/bin"),
+    list(name = "nothing", remembered = t$nowhere, roots = FALSE, path = FALSE,
+         expect = NA_character_))
+}
+
+test_that("the R rule: one table through .pick_r(), tflplanner.sh and tflplanner.vbs", {
+  base <- withr_tempdir()
+  t <- .fake_r_tree(base)
+  cases <- .which_cases(t)
+  norm <- function(x) gsub("\\", "/", x, fixed = TRUE)
+  has <- function(got, expect) {
+    if (is.na(expect)) length(got) == 0L else endsWith(norm(got), paste0(expect, "/", t$exe))
+  }
+  # the rule in R
+  for (cs in cases) {
+    folders <- if (isFALSE(cs$roots)) character() else
+      list.dirs(t$root, recursive = FALSE)
+    path <- if (isTRUE(cs$path)) file.path(t$path, t$exe) else character()
+    pick <- .pick_r("9.9", cs$remembered, folders, path,
+                    rscript_of = function(f) file.path(f, "bin", t$exe))
+    expect_true(has(pick$rscript, cs$expect), info = cs$name)
+  }
+  # the .sh
+  if (.Platform$OS.type != "windows" && nzchar(Sys.which("sh"))) {
+    for (cs in cases) {
+      dir <- withr_tempdir()
+      .write_launcher(dir, "en", "9.9", cs$remembered)
+      search <- if (isFALSE(cs$roots)) file.path(base, "none", "*", "bin", "Rscript") else
+        file.path(t$root, "R-*", "bin", "Rscript")
+      path <- paste(c(if (isTRUE(cs$path)) t$path, Sys.getenv("PATH")), collapse = ":")
+      out <- withr::with_envvar(c(TFLPLANNER_R_SEARCH = search, PATH = path),
+        suppressWarnings(system2("sh", c(shQuote(file.path(dir, "tflplanner.sh")), "--which"),
+                                 stdout = TRUE, stderr = FALSE)))
+      expect_true(has(out, cs$expect), info = paste(".sh:", cs$name))
+    }
+    # the remembered R is the Current one, now of another x.y: not used
+    dir <- withr_tempdir()
+    cur <- file.path(base, "current")
+    dir.create(file.path(cur, "bin"), recursive = TRUE)
+    writeLines(c("#!/bin/sh", "echo 'Rscript (R) version 9.7.0 (2099-01-01)'"),
+               file.path(cur, "bin", "Rscript"))
+    Sys.chmod(file.path(cur, "bin", "Rscript"), "0755")
+    .write_launcher(dir, "en", "9.9", cur)
+    out <- withr::with_envvar(
+      c(TFLPLANNER_R_SEARCH = file.path(t$root, "R-*", "bin", "Rscript")),
+      suppressWarnings(system2("sh", c(shQuote(file.path(dir, "tflplanner.sh")), "--which"),
+                               stdout = TRUE, stderr = FALSE)))
+    expect_true(endsWith(out, "R-9.9.10/bin/Rscript"))
+    # none: the message of step 4 is in launcher.log, and it stops
+    dir <- withr_tempdir()
+    .write_launcher(dir, "en", "9.9", t$nowhere)
+    st <- withr::with_envvar(
+      c(TFLPLANNER_R_SEARCH = file.path(base, "none", "*", "bin", "Rscript")),
+      suppressWarnings(system2("sh", shQuote(file.path(dir, "tflplanner.sh")),
+                               stdout = FALSE, stderr = FALSE)))
+    expect_identical(st, 1L)
+    expect_match(paste(readLines(file.path(dir, "launcher.log")), collapse = "\n"),
+                 .r_not_found_text("9.9", "en"), fixed = TRUE)
+  }
+  # the VBScript (Windows)
+  if (identical(.Platform$OS.type, "windows")) {
+    cscript <- file.path(Sys.getenv("SystemRoot"), "System32", "cscript.exe")
+    for (cs in cases) {
+      dir <- withr_tempdir()
+      .write_launcher(dir, "en", "9.9", cs$remembered)
+      roots <- if (isFALSE(cs$roots)) file.path(base, "none") else t$root
+      path <- paste(c(if (isTRUE(cs$path)) .win_path(t$path), Sys.getenv("PATH")),
+                    collapse = ";")
+      out <- withr::with_envvar(
+        c(TFLPLANNER_R_ROOTS = .win_path(roots), PATH = path),
+        suppressWarnings(system2(cscript, c("//nologo", shQuote(file.path(dir, "tflplanner.vbs")),
+                                            "--which"), stdout = TRUE, stderr = FALSE)))
+      expect_true(has(out, cs$expect), info = paste(".vbs:", cs$name))
+    }
+  }
 })
 
-test_that("the icons made before the R version was in the name are found, to be replaced", {
+test_that("launcher.conf holds the R it was made in, whatever the characters of the path", {
+  dir <- withr_tempdir()
+  home <- "C:/Program Files/R/\u65e5\u672c\u8a9e/R-9.9.1"
+  .write_launcher(dir, "en", "9.9", home)
+  cf <- .read_launcher_conf(dir)
+  expect_identical(cf$r_xy, "9.9")
+  expect_identical(cf$r_home, .show_path(normalizePath(home, "/", mustWork = FALSE)))
+  expect_match(cf$r_home, "\u65e5\u672c\u8a9e", fixed = TRUE)
+  # UTF-8 as well (the shell script reads it)
+  local_mocked_bindings(.os = function() "linux")
+  .write_launcher(dir, "en", "9.9", home)
+  expect_match(.read_launcher_conf(dir)$r_home, "\u65e5\u672c\u8a9e", fixed = TRUE)
+  # .write_utf16() takes text in any encoding
+  f <- tempfile()
+  x <- iconv("\u00e9", "UTF-8", "latin1")                 # marked latin1
+  .write_utf16(x, f)
+  expect_identical(iconv(list(readBin(f, "raw", 100)[-(1:2)]), "UTF-16LE", "UTF-8"), "\u00e9")
+})
+
+test_that("only add_shortcut() says the R: a refresh and launch_app() keep it", {
+  local_launcher()
+  dir <- .write_launcher(r_home = "C:/R/R-4.6.1")
+  before <- .read_launcher_conf(dir)
+  writeLines("0.0.0", file.path(dir, "VERSION"))
+  expect_true(.refresh_launcher(dir))
+  expect_identical(.read_launcher_conf(dir), before)
+  .write_launcher()                                     # launch_app()
+  expect_identical(.read_launcher_conf(dir), before)
+  # a launcher with no record gets this R's
+  unlink(file.path(dir, "launcher.conf"))
+  .write_launcher()
+  expect_identical(.read_launcher_conf(dir)$r_home,
+                   .show_path(normalizePath(R.home(), "/", mustWork = FALSE)))
+})
+
+test_that("two R x.y: two launcher folders, each with its own R; removing one leaves the other", {
+  p <- local_launcher()
+  local_mocked_bindings(.os = function() "linux")
+  d44 <- .write_launcher(xy = "4.4", r_home = "/opt/R/4.4.3")
+  d46 <- .write_launcher(xy = "4.6", r_home = "/opt/R/4.6.1")
+  expect_identical(.read_launcher_conf(d44)$r_xy, "4.4")
+  expect_match(.read_launcher_conf(d46)$r_home, "opt/R/4.6.1$")
+  expect_identical(names(.launcher_dirs()), c("4.4", "4.6"))
+  # their icons
+  apps <- .shortcut_dirs()$applications
+  dir.create(apps, recursive = TRUE)
+  i44 <- file.path(apps, .desktop_name("4.4"))
+  i46 <- file.path(apps, .desktop_name("4.6"))
+  file.create(c(i44, i46))
+  writeLines(i44, file.path(d44, "shortcuts.txt"))
+  writeLines(i46, file.path(d46, "shortcuts.txt"))
+  # R 4.4 is gone (its R home, and no R 4.4 installed): the plan says so
+  dead <- .dead_launchers(.launcher_dirs(), "4.6", installed = "4.6", os = "linux")
+  expect_identical(names(dead), "4.4")
+  expect_identical(dead[["4.4"]], i44)
+  expect_length(.dead_launchers(.launcher_dirs(), "4.6", installed = c("4.4", "4.6"),
+                                os = "linux"), 0L)
+  txt <- paste(.shortcut_plan_text(data.frame(place = "x", folder = apps, name = "n",
+                                              path = i46, exists = FALSE,
+                                              stringsAsFactors = FALSE),
+                                   "en", dead = dead), collapse = "\n")
+  expect_match(txt, 'remove_shortcut(xy = "4.4")', fixed = TRUE)
+  # remove_shortcut(xy = ) removes that one only
+  suppressMessages(remove_shortcut(ask = FALSE, xy = "4.4"))
+  expect_false(file.exists(i44))
+  expect_false(dir.exists(d44))
+  expect_true(file.exists(i46) && dir.exists(d46))
+  # "all" removes every x.y
+  suppressMessages(remove_shortcut(ask = FALSE, xy = "all"))
+  expect_false(file.exists(i46))
+  expect_false(dir.exists(d46))
+})
+
+test_that("add_shortcut() replaces the old icons and launcher, only its own, and says so", {
+  p <- local_launcher()
+  local_mocked_bindings(.os = function() "linux")
+  apps <- .shortcut_dirs()$applications
+  dir.create(apps, recursive = TRUE)
+  old <- file.path(apps, "tflplanner.desktop")
+  foreign <- file.path(apps, "notes.txt")
+  file.create(c(old, foreign))
+  ldir <- .legacy_launcher_dir()
+  dir.create(ldir, recursive = TRUE)
+  writeLines("0.0.1", file.path(ldir, "VERSION"))
+  writeLines(c(old, foreign), file.path(ldir, "shortcuts.txt"))
+  expect_true(.legacy_only())
+  expect_message(made <- add_shortcut(ask = FALSE), "Removed the shortcuts made before")
+  expect_identical(basename(made), .desktop_name())
+  expect_true(file.exists(made))
+  expect_false(file.exists(old))                       # the old icon is gone
+  expect_true(file.exists(foreign))                    # what is not tflplanner's stays
+  expect_false(dir.exists(ldir))
+  expect_false(.legacy_only())
+  # again in the same x.y: one icon, replaced
+  suppressMessages(again <- add_shortcut(ask = FALSE))
+  expect_identical(again, made)
+  expect_identical(length(list.files(apps, "^tflplanner")), 1L)
+  expect_identical(.read_launcher_conf(.launcher_dir())$r_home,
+                   normalizePath(R.home(), "/", mustWork = FALSE))
+})
+
+test_that("the old launcher folder on Windows stays as a stub that names the new icon", {
+  d <- withr_tempdir()
+  ldir <- file.path(d, "launcher")
+  dir.create(ldir)
+  for (f in c("tflplanner.ico", "tflplanner.vbs", "launch.R", "VERSION", "shortcuts.txt")) {
+    writeLines("x", file.path(ldir, f))
+  }
+  expect_true(.replace_legacy_launcher("windows", "4.6", "en", ldir))
+  expect_setequal(list.files(ldir), c("tflplanner.ico", "tflplanner.vbs"))
+  raw <- readBin(file.path(ldir, "tflplanner.vbs"), "raw", 1e5)
+  expect_identical(raw[1:2], as.raw(c(0xFF, 0xFE)))
+  vbs <- iconv(list(raw[-(1:2)]), "UTF-16LE", "UTF-8")
+  expect_match(vbs, "tflplanner (R 4.6)", fixed = TRUE)
+  expect_false(grepl("{{MSG}}", vbs, fixed = TRUE))
+  # it is not the old launcher any more: the app does not call for add_shortcut()
+  expect_false(.legacy_only(ldir, d))
+  # elsewhere the folder goes
+  expect_true(.replace_legacy_launcher("linux", "4.6", "en", ldir))
+  expect_false(dir.exists(ldir))
+  expect_false(.replace_legacy_launcher("linux", "4.6", "en", ldir))
+  # only the old launcher folder, with no x.y beside it: the app says to run add_shortcut()
+  dir.create(ldir)
+  writeLines("0.0.1", file.path(ldir, "VERSION"))
+  expect_true(.legacy_only(ldir, d))
+  dir.create(file.path(d, "launcher-R4.6"))
+  expect_false(.legacy_only(ldir, d))
+})
+
+test_that("the icons made before the R version was in the name are found, only tflplanner's own", {
   d <- withr_tempdir()
   dirs <- list(desktop = file.path(d, "Desktop"),
                start_menu = file.path(d, "Programs", "tflplanner"),
@@ -782,12 +1036,14 @@ test_that("the icons made before the R version was in the name are found, to be 
   new <- file.path(dirs$desktop, "tflplanner (R 4.6).lnk")
   file.create(c(old, new))
   expect_identical(.legacy_shortcuts("windows", dirs, "en", file.path(d, "none")), old)
-  # a shortcuts.txt of the old launcher folder names the others
+  # a shortcuts.txt of the old launcher folder names the others -- the ones
+  # that look like tflplanner's own icons
   ldir <- file.path(d, "launcher")
   dir.create(ldir)
-  other <- file.path(d, "elsewhere.lnk")
-  file.create(other)
-  writeLines(c(other, file.path(d, "gone.lnk")), file.path(ldir, "shortcuts.txt"))
+  other <- file.path(d, "tflplanner-extra.lnk")
+  foreign <- file.path(d, "report.docx")
+  file.create(c(other, foreign))
+  writeLines(c(other, foreign, file.path(d, "gone.lnk")), file.path(ldir, "shortcuts.txt"))
   expect_setequal(.legacy_shortcuts("windows", dirs, "en", ldir), c(old, other))
   expect_identical(.legacy_shortcuts("linux", dirs, "en", file.path(d, "none")), character())
   file.create(file.path(dirs$applications, "tflplanner.desktop"))
@@ -800,54 +1056,94 @@ test_that("the icons made before the R version was in the name are found, to be 
   expect_match(txt, "are removed", fixed = TRUE)
 })
 
+test_that("health carries the R x.y, and the launcher takes another x.y for another version", {
+  d <- .serve_health()
+  expect_true(paste("r", .r_xy()) %in% readLines(file.path(d, "health.txt")))
+  src <- readLines(system.file("launcher", "launch.R", package = "tflplanner"))
+  expect_true(any(grepl("same_build(h)", src, fixed = TRUE)))
+  expect_true(any(grepl("identical(h$xy, my_xy)", src, fixed = TRUE)))
+  expect_true(any(grepl('sub("^r ", "", grep("^r ", h', src, fixed = TRUE)))
+})
+
 # ------------------------------------------------------------- the running versions (#785)
 
-test_that(".running_versions(): a release install shows no ref, a development install ref and 8 characters of the sha", {
+test_that(".running_versions(): the loaded version; dev, tag, local and release installs told apart", {
   fake <- list(
-    rtfreporter = list(Version = "0.9.0"),
-    tflspec = list(Version = "0.9.1", RemoteRef = "main",
+    rtfreporter = list(Version = "0.9.0"),                          # CRAN: no mark
+    tflspec = list(Version = "0.9.1", RemoteType = "github", RemoteRef = "main",
                    RemoteSha = "0123456789abcdef0123456789abcdef01234567"),
-    tflplanner = list(Version = "0.9.2", RemoteType = "github"))
-  v <- .running_versions(desc = function(p) fake[[p]], r = "4.6.1")
+    tflplanner = list(Version = "0.9.2", RemoteType = "local",
+                      Built = "R 4.6.1; ; 2026-11-20 12:00:00 UTC; windows"))
+  run <- function(p) c(rtfreporter = "0.9.0", tflspec = "0.9.1", tflplanner = "0.9.3")[[p]]
+  v <- .running_versions(desc = function(p) fake[[p]], running = run, r = "4.6.1")
   p <- v$packages
   expect_identical(p$package, c("rtfreporter", "tflspec", "tflplanner"))
-  expect_identical(p$version, c("0.9.0", "0.9.1", "0.9.2"))
+  # the loaded version, not the DESCRIPTION on disk
+  expect_identical(p$version, c("0.9.0", "0.9.1", "0.9.3"))
+  expect_identical(p$kind, c(NA, "dev", "local"))
   expect_identical(p$ref, c(NA, "main", NA))
   expect_identical(p$sha, c(NA, "01234567", NA))
-  expect_identical(nchar(p$sha[2L]), 8L)
+  expect_identical(p$built, c(NA, NA, "2026-11-20"))
   expect_identical(v$r, "4.6.1")
-  # a package that is not installed (the DESCRIPTION is NA): a "?"
-  v2 <- .running_versions("tflspec", desc = function(p) NA, r = "4.5.0")
-  expect_identical(v2$packages$version, NA_character_)
-  expect_identical(.running_versions_text(v2), "tflspec ?, R 4.5.0")
-  # the line
   expect_identical(
     .running_versions_text(v),
     paste0("rtfreporter 0.9.0, tflspec 0.9.1 (development version: main 01234567), ",
-           "tflplanner 0.9.2, R 4.6.1"))
-  expect_match(.running_versions_text(v, dev = "dev"), "(dev: main 01234567)", fixed = TRUE)
-  # the real one: the three packages and this R
+           "tflplanner 0.9.3 (local build, 2026-11-20), R 4.6.1"))
+  expect_match(.running_versions_text(v, dev = "d", local = "l"), "(d: main 01234567)", fixed = TRUE)
+  expect_match(.running_versions_text(v, dev = "d", local = "l"), "(l, 2026-11-20)", fixed = TRUE)
+  # an @*release install (a tag), pak's standard install (the version as RemoteSha),
+  # and an install of the default branch (HEAD)
+  one <- function(d) .running_versions("x", desc = function(p) d, running = function(p) "1.0.0")$packages
+  tag <- one(list(Version = "1.0.0", RemoteType = "github", RemoteRef = "v1.0.0",
+                  RemoteSha = "89abcdef0123456789abcdef0123456789abcdef"))
+  expect_identical(tag$kind, "tag")
+  expect_identical(.running_versions_text(list(packages = tag, r = "4.6.1")), "x 1.0.0 (v1.0.0), R 4.6.1")
+  std <- one(list(Version = "1.0.0", RemoteType = "standard", RemoteSha = "1.0.0"))
+  expect_true(is.na(std$kind))
+  expect_identical(.running_versions_text(list(packages = std, r = "4.6.1")), "x 1.0.0, R 4.6.1")
+  head <- one(list(Version = "1.0.0", RemoteType = "github", RemoteRef = "HEAD",
+                   RemoteSha = "89abcdef0123456789abcdef0123456789abcdef"))
+  expect_identical(c(head$kind, head$ref, head$sha), c("dev", "HEAD", "89abcdef"))
+  # a package that is not there: a "?"
+  v2 <- .running_versions("tflspec", desc = function(p) NULL, running = function(p) NA_character_,
+                          r = "4.5.0")
+  expect_identical(.running_versions_text(v2), "tflspec ?, R 4.5.0")
+})
+
+test_that(".running_versions() of this process: the three packages and this R, read once", {
   real <- .running_versions()
   expect_identical(real$packages$package, c("rtfreporter", "tflspec", "tflplanner"))
   expect_identical(real$r, as.character(getRversion()))
-  expect_false(is.na(real$packages$version[3L]))
+  expect_false(anyNA(real$packages$version))
+  expect_identical(real$packages$version[3L], as.character(getNamespaceVersion("tflplanner")))
+  # the DESCRIPTION is read where the namespace is (a load_all folder too)
+  d <- .running_description("tflplanner")
+  expect_identical(d$Package, "tflplanner")
+  # once: a later call gives the first answer
+  old <- .run$v
+  on.exit(.run$v <- old, add = TRUE)
+  .run$v <- NULL
+  n <- 0L
+  local_mocked_bindings(.running_versions = function(...) { n <<- n + 1L; list(packages = n, r = "x") })
+  a <- .running_versions_once()
+  b <- .running_versions_once()
+  expect_identical(a, b)
+  expect_identical(n, 1L)
 })
 
-test_that("the page says the versions it runs, in the old-build note's place", {
+test_that("the page has an About button for the versions; the old-build note stays as it was", {
+  html <- as.character(app_ui("en"))
+  expect_match(html, 'id="about_app"', fixed = TRUE)
+  expect_match(as.character(app_ui("ja")), "\u3053\u306e\u30a2\u30d7\u30ea\u306b\u3064\u3044\u3066", fixed = TRUE)
   local_home()
   two_studies()
   testthat::local_mocked_bindings(
-    .stale_versions = function(...) list(),
-    .running_versions = function(...) list(
-      packages = data.frame(package = c("rtfreporter", "tflspec", "tflplanner"),
-                            version = c("1.0.0", "1.1.0", "1.2.0"),
-                            ref = c(NA, NA, "next"),
-                            sha = c(NA, NA, "535c9048"), stringsAsFactors = FALSE),
-      r = "4.6.1"))
+    .stale_versions = function(...) list(tflplanner = c(running = "0.0.2.9070",
+                                                        installed = "0.0.2.9088")))
   shiny::testServer(server_for("S1"), {
     h <- output$update_note$html
-    expect_match(h, "Versions this window runs", fixed = TRUE)
-    expect_match(h, "tflplanner 1.2.0 (development version: next 535c9048)", fixed = TRUE)
-    expect_match(h, "R 4.6.1", fixed = TRUE)
+    expect_match(h, "A newer version is installed", fixed = TRUE)
+    # the versions are in the About, not on every page
+    expect_false(grepl("Versions this window runs", h, fixed = TRUE))
   })
 })

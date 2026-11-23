@@ -193,6 +193,7 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
   if (!.is_set_up()) setup_tflplanner(home = NULL)
   .refresh_launcher()
   .serve_health()
+  .running_versions_once()       # what this process runs, noted at its start
   # the study is checked here, once; each session (a new tab, a reload)
   # opens it again from its folder -- as last saved, not as it was when the
   # app started (a copy taken at start would be written back by a save)
@@ -222,7 +223,10 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
 .serve_health <- function() {
   d <- file.path(tempdir(), "tflplanner-health")
   dir.create(d, showWarnings = FALSE)
+  # the R x.y too: two icons (one per R x.y) share the port, and an app of
+  # another x.y is another version to the launcher
   writeLines(c(paste("tflplanner", as.character(utils::packageVersion("tflplanner"))),
+               paste("r", .r_xy()),
                paste("pid", Sys.getpid())), file.path(d, "health.txt"))
   shiny::addResourcePath("tflplanner-health", d)
   invisible(d)
