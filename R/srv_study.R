@@ -874,15 +874,16 @@
     shiny::invalidateLater(60000)
     .stale_versions()
   })
-  # [About] (top right): the versions this window runs -- rtfreporter,
+  # The "tflplanner" brand (top left) opens this: the versions this window runs -- rtfreporter,
   # tflspec, tflplanner (the branch and commit of a development install) and
   # R -- in the words of the note above.  Noted once, when the app started.
   shiny::observeEvent(input$about_app, {
     shiny::showModal(shiny::modalDialog(
-      title = t("About tflplanner"), easyClose = TRUE,
-      shiny::p(shiny::strong(t("Versions this window runs")), ": ",
-               .running_versions_text(dev = t("development version"),
-                                      local = t("local build"))),
+      title = t("About this version"), easyClose = TRUE,
+      shiny::p(shiny::strong(paste0(t("Versions this window runs"), ":"))),
+      lapply(.running_versions_lines(dev = t("development version"),
+                                     local = t("installed from a folder")),
+             shiny::tags$div),
       footer = shiny::modalButton(t("Close"))))
   })
   # a shortcut made before the R version was in its name keeps the old

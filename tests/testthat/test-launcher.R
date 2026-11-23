@@ -1083,7 +1083,7 @@ test_that(".running_versions(): the loaded version; dev, tag, local and release 
   expect_identical(
     .running_versions_text(v),
     paste0("rtfreporter 0.9.0, tflspec 0.9.1 (development version: main 01234567), ",
-           "tflplanner 0.9.3 (local build, 2026-11-20), R 4.6.1"))
+           "tflplanner 0.9.3 (installed from a folder, 2026-11-20), R 4.6.1"))
   expect_match(.running_versions_text(v, dev = "d", local = "l"), "(d: main 01234567)", fixed = TRUE)
   expect_match(.running_versions_text(v, dev = "d", local = "l"), "(l, 2026-11-20)", fixed = TRUE)
   # an @*release install (a tag), pak's standard install (the version as RemoteSha),
@@ -1099,6 +1099,14 @@ test_that(".running_versions(): the loaded version; dev, tag, local and release 
   head <- one(list(Version = "1.0.0", RemoteType = "github", RemoteRef = "HEAD",
                    RemoteSha = "89abcdef0123456789abcdef0123456789abcdef"))
   expect_identical(c(head$kind, head$ref, head$sha), c("dev", "HEAD", "89abcdef"))
+  # an install by commit (RemoteRef is the sha itself): the 8 characters only
+  sha <- "db4b15462f50b89f6cdbb38d75f3250a4fef00b7"
+  cm <- one(list(Version = "1.0.0", RemoteType = "github", RemoteRef = sha, RemoteSha = sha))
+  expect_identical(c(cm$kind, cm$ref, cm$sha), c("dev", NA, "db4b1546"))
+  expect_identical(.running_versions_text(list(packages = cm, r = "4.6.1"),
+                                          dev = "d"), "x 1.0.0 (d: db4b1546), R 4.6.1")
+  expect_identical(.running_versions_lines(list(packages = cm, r = "4.6.1")),
+                   c("x 1.0.0 (development version: db4b1546)", "R 4.6.1"))
   # a package that is not there: a "?"
   v2 <- .running_versions("tflspec", desc = function(p) NULL, running = function(p) NA_character_,
                           r = "4.5.0")
@@ -1126,10 +1134,12 @@ test_that(".running_versions() of this process: the three packages and this R, r
   expect_identical(n, 1L)
 })
 
-test_that("the page has an About button for the versions; the old-build note stays as it was", {
+test_that("the tflplanner brand opens the versions (no About button); the old-build note stays as it was", {
   html <- as.character(app_ui("en"))
   expect_match(html, 'id="about_app"', fixed = TRUE)
-  expect_match(as.character(app_ui("ja")), "\u3053\u306e\u30a2\u30d7\u30ea\u306b\u3064\u3044\u3066", fixed = TRUE)
+  expect_match(html, 'title="About this version"', fixed = TRUE)
+  expect_false(grepl("btn-outline-secondary ms-1", html, fixed = TRUE) && grepl(">About<", html, fixed = TRUE))
+  expect_match(as.character(app_ui("ja")), "\u30d0\u30fc\u30b8\u30e7\u30f3\u60c5\u5831", fixed = TRUE)
   local_home()
   two_studies()
   testthat::local_mocked_bindings(

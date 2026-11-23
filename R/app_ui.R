@@ -735,7 +735,10 @@ app_ui <- function(lang = "en") {
 
   bslib::page_navbar(
     id = "nav",
-    title = "tflplanner",
+    title = shiny::actionLink("about_app", "tflplanner", class = "p-0",
+                              style = "cursor: pointer; text-decoration: none; color: inherit;",
+                              title = t("About this version"),
+                              `aria-label` = t("About this version")),
     # pages scroll: a grid squeezed to fit the window would be 0 px high
     fillable = FALSE,
     lang = lang,
@@ -1065,8 +1068,5 @@ app_ui <- function(lang = "en") {
     bslib::nav_item(shiny::uiOutput("save_state")),
     bslib::nav_item(shiny::uiOutput("save_btn")),
     bslib::nav_item(shiny::uiOutput("discard_btn")),
-    # About: the versions this window runs (a modal, one line)
-    bslib::nav_item(.btn("about_app", t("About"),
-                         class = "btn-sm btn-outline-secondary ms-1")),
     bslib::nav_item(shiny::uiOutput("close_btn")))
 }

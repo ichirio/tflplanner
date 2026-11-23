@@ -367,10 +367,17 @@ update_tflplanner <- function(channel = NULL, from = NULL,
     sha <- one("RemoteSha")
     ref <- one("RemoteRef")
     type <- one("RemoteType")
+    # an install by commit (owner/repo@<sha>): RemoteRef is the commit id
+    # itself; only the 8 characters of `sha` are shown
+    by_commit <- !is.na(ref) && !is.na(sha) && grepl("^[0-9a-f]{7,40}$", ref) &&
+      startsWith(sha, ref)
+    if (by_commit) ref <- NA_character_
     kind <- if (identical(type, "local")) {
       "local"
     } else if (is.na(sha) || identical(type, "standard")) {
       NA_character_
+    } else if (by_commit) {
+      "dev"
     } else if (!is.na(ref) && grepl("^v?[0-9]+([.-][0-9A-Za-z]+)*$", ref)) {
       "tag"
     } else "dev"
@@ -417,12 +424,15 @@ update_tflplanner <- function(channel = NULL, from = NULL,
 }
 
 # The versions in a line: "rtfreporter 0.9.0, tflspec 0.9.1 (development
-# version: main 01234567), tflplanner 0.9.2 (local build, 2026-11-20), R 4.6.1".
+# version: main 01234567), tflplanner 0.9.2 (installed from a folder, 2026-11-20), R 4.6.1".
 # A tag shows the tag; CRAN or a release, nothing.  `dev` and `local` are the
 # words (translated by the caller).
-.running_versions_text <- function(v = .running_versions_once(),
-                                   dev = "development version",
-                                   local = "local build") {
+.running_versions_text <- function(...) paste(.running_versions_lines(...), collapse = ", ")
+
+# The same, one entry per element: each package, then "R 4.6.1".
+.running_versions_lines <- function(v = .running_versions_once(),
+                                    dev = "development version",
+                                    local = "installed from a folder") {
   p <- v$packages
   pk <- vapply(seq_len(nrow(p)), function(i) {
     mark <- switch(
@@ -434,7 +444,7 @@ update_tflplanner <- function(channel = NULL, from = NULL,
     paste0(p$package[i], " ", if (is.na(p$version[i])) "?" else p$version[i],
            if (!is.null(mark)) paste0(" (", mark, ")"))
   }, "")
-  paste(c(pk, paste("R", v$r)), collapse = ", ")
+  c(pk, paste("R", v$r))
 }
 
 .update_check_result <- function() {
