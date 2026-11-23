@@ -65,10 +65,6 @@ test_that("left out of a run: a report's ARD and report programs; who reads them
   reads <- .batch_ard_reads(p)
   expect_identical(reads$DM, "DM")
   expect_identical(reads$L1, "DM")
-  need <- .batch_excluded_needs(p, "DM")
-  expect_identical(need$report, "L1")
-  expect_identical(need$needs, "DM")
-  expect_equal(nrow(.batch_excluded_needs(p, "VS")), 0L)
 })
 
 test_that("an official run of a named batch, or leaving reports out", {
@@ -384,4 +380,12 @@ test_that("the runs list of a study with no run yet is drawn (no run, no row)", 
     session$setInputs(nav = "outputs", target = "VS")
     expect_no_error(output$batches)
   })
+})
+
+test_that("the Runs tab has no preview buttons: an official run is the one way to run", {
+  html <- as.character(app_ui("en"))
+  expect_false(grepl("id=\"run_selected\"", html, fixed = TRUE))
+  expect_false(grepl("id=\"run_all\"", html, fixed = TRUE))
+  expect_false(grepl("Preview selected", html, fixed = TRUE))
+  expect_true(grepl("id=\"batch_run\"", html, fixed = TRUE))
 })

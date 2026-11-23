@@ -34,20 +34,26 @@ test_that("a figure from an ARD records the definition it read; batch.R knows it
   # (one element a statement: a line each)
   lines_of <- function(x) unlist(strsplit(x, "\n", fixed = TRUE))
   b <- lines_of(batch_code(p, root = s$path))
-  i <- grep("^[.]batch_needs <- ", b)
+  # .batch_needs: a report program -> the reports whose ARD it reads (#790)
+  needs_of <- function(lines) {
+    i <- grep("^[.]batch_needs <- ", lines)
+    j <- grep("^# the named batches", lines)
+    eval(parse(text = paste(lines[i:(j - 1L)], collapse = "\n")))
+  }
+  n <- needs_of(b)
   # (F-14-2-2's own code reads T-14-2-2's ARD too, as its ARD source)
-  expect_identical(b[i + 1L], "  `programs/tfl/F-14-2-2.R` = \"T-14-2-2\",")
-  expect_identical(b[i + 2L], "  `programs/tfl/F-14-2-3.R` = \"T-14-2-2\",")
+  expect_true("T-14-2-2" %in% n[["programs/tfl/F-14-2-2.R"]])
+  expect_true("T-14-2-2" %in% n[["programs/tfl/F-14-2-3.R"]])
   # the forest plot reads its own ARD (#293 P6): made first too
-  expect_identical(b[i + 3L], "  `programs/tfl/F-14-2-4.R` = \"F-14-2-4\")")
-  h <- grep("^[.]batch_needs_hash <- ", b)
-  expect_match(b[h + 1L], "^  `T-14-2-2` = \"[0-9a-f]{32}\",$")
-  expect_match(b[h + 2L], "^  `F-14-2-4` = \"[0-9a-f]{32}\"[)]$")
-  # no figure from an ARD (the forest plot's own taken away too): empty
+  expect_true("F-14-2-4" %in% n[["programs/tfl/F-14-2-4.R"]])
+  # a table reads its own ARD
+  expect_true("T-14-2-2" %in% n[["programs/tfl/T-14-2-2.R"]])
+  # no figure from an ARD: that figure reads none
   p0 <- set_fig_ard_source(set_fig_ard_source(set_fig_ard_source(p, "F-14-2-3", NULL),
                                                 "F-14-2-4", NULL), "F-14-2-2", NULL)
-  b0 <- lines_of(batch_code(p0, root = s$path))
-  expect_true(".batch_needs <- character()" %in% b0)
+  n0 <- needs_of(lines_of(batch_code(p0, root = s$path)))
+  expect_false("T-14-2-2" %in% n0[["programs/tfl/F-14-2-3.R"]])
+  expect_false(any(grepl("batch_needs_hash", b, fixed = TRUE)))
 })
 
 test_that("the figure turns outdated with the table's ARD, and the preview and the batch make it first", {
@@ -111,8 +117,7 @@ runner_env <- function() {
   e$.batch_programs <- list(ard = "programs/ard/T1.R", tfl = "programs/tfl/F1.R")
   e$.batch_ard_outputs <- c(T1.R = "T1")
   e$.batch_report_ids <- c(`programs/tfl/F1.R` = "F1")
-  e$.batch_needs <- c(`programs/tfl/F1.R` = "T1")
-  e$.batch_needs_hash <- c(T1 = "abc")
+  e$.batch_needs <- list(`programs/tfl/F1.R` = "T1")
   e$.batch_sets <- list()
   e$.batch_outputs <- list(`programs/tfl/F1.R` = "output/tfl/F1.rtf")
   e$.batch_support <- list(ard = character(), tfl = character(), all = character())
@@ -152,4 +157,53 @@ test_that("the runner makes the ARD before the reports, even when one is built",
   expect_identical(r2$part, c("ard", "tfl"))
   # each run its own run folder; the earlier one kept
   expect_length(list.files("runs"), 2L)
+})
+
+# A report kept in a run that reads the ARD of one the run leaves out: the
+# run makes that ARD too (#790); no earlier rows are read, and no question.
+test_that("a kept report that reads a left-out report's ARD: that ARD program runs in the same run", {
+  d <- tempfile("runner")
+  dir.create(d)
+  on.exit(unlink(d, recursive = TRUE), add = TRUE)
+  old <- setwd(d)
+  on.exit(setwd(old), add = TRUE)
+  writeLines("study_id: R1", "study.yml")
+  e <- runner_env()
+  e$.batch_programs <- list(ard = c("programs/ard/T1.R", "programs/ard/T2.R"),
+                            tfl = c("programs/tfl/T1.R", "programs/tfl/L1.R"))
+  e$.batch_ard_outputs <- c(T1.R = "T1", T2.R = "T2")
+  e$.batch_report_ids <- c(`programs/tfl/T1.R` = "T1", `programs/tfl/L1.R` = "L1")
+  e$.batch_needs <- list(`programs/tfl/T1.R` = "T1", `programs/tfl/L1.R` = c("T1", "T2"))
+  e$.batch_outputs <- list(`programs/tfl/T1.R` = "output/tfl/T1.rtf",
+                           `programs/tfl/L1.R` = "output/tfl/L1.rtf")
+  # T2 left out: L1 reads its ARD, so that ARD program runs, before L1
+  utils::capture.output(r <- suppressMessages(e$run_batch(c("ard", "tfl"), "--exclude=T2")))
+  expect_identical(e$ran, c("programs/ard/T1.R", "programs/tfl/T1.R",
+                            "programs/ard/T2.R", "programs/tfl/L1.R"))
+  expect_identical(r$part, c("ard", "tfl", "ard", "tfl"))
+  # it ran, so it is not "left out" in the run's record
+  bt <- readLines(file.path("runs", list.files("runs")[1L], "batch.txt"))
+  expect_true("Excluded : none" %in% bt)
+})
+
+test_that("two runs in the same second get two run folders, and the runs table lists both", {
+  d <- tempfile("runner")
+  dir.create(d)
+  on.exit(unlink(d, recursive = TRUE), add = TRUE)
+  old <- setwd(d)
+  on.exit(setwd(old), add = TRUE)
+  writeLines("study_id: R1", "study.yml")
+  e <- runner_env()
+  # the clock stands still
+  e$Sys.time <- function() as.POSIXct("2026-11-02 10:00:00", tz = "UTC")
+  for (i in 1:3) {
+    utils::capture.output(suppressMessages(e$run_batch(c("ard", "tfl"))))
+  }
+  expect_setequal(list.files("runs"), c("20261102_100000_all", "20261102_100000_all_2",
+                                        "20261102_100000_all_3"))
+  lb <- list_batches(list(path = d))
+  expect_setequal(lb$batch, list.files("runs"))
+  expect_true(all(lb$what == "all"))
+  expect_true(all(lb$started == lb$started[1L]))
+  expect_true(all(lb$state == "done"))
 })

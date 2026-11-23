@@ -31,8 +31,8 @@
 #'
 #' @param x A `tflplanner`.
 #' @param date The date stamped in the banner.
-#' @param root The study folder (the definitions' fingerprints read the
-#'   files the ARD programs name from it).
+#' @param root The study folder (the definition files it keeps with the
+#'   code of a run are listed from it).
 #' @return The program, one element per line.
 #' @examples
 #' x <- add_output(new_planner(), "T-14-1-1", type = "table")
@@ -50,15 +50,16 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
                          vapply(infos, `[[`, "", "program"))
   made <- lapply(infos, function(info) info$file)
   ard_out <- .study_value(spec, "output", "output/ard/ard.rds")
-  # the figures printing an ARD's numbers (#293)
-  need <- vapply(out_ids, function(id)
-    tryCatch(.fig_ard_need(x, id), error = function(e) NA_character_), "")
-  need_progs <- tfl_progs[!is.na(need)]
-  need_ids <- unname(need[!is.na(need)])
-  need_hash <- vapply(unique(need_ids), function(id) tryCatch(
-    tflspec::tfl_ard_spec_hash(structure(spec, class = "tfl_ard_spec"), id, dir = root,
-                               codelists = .study_codelists(x)),
-    error = function(e) ""), "")
+  # the ARD each report reads (#293, #790): its own, a figure's source, and
+  # what its code names; a run makes these first when it has not made them
+  reads <- tryCatch(.batch_ard_reads(x), error = function(e) list())
+  need <- lapply(out_ids, function(id) {
+    fig <- tryCatch(.fig_ard_need(x, id), error = function(e) NA_character_)
+    n <- unique(c(fig[!is.na(fig)], reads[[id]]))
+    intersect(n, ids)
+  })
+  names(need) <- tfl_progs
+  need <- need[lengths(need) > 0L]
   # (the definition: the YAML spec's files)
   spec_files <- setdiff(.spec_files_yaml(root), .study_file)
   support <- list(
@@ -104,11 +105,12 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
     paste0(".batch_ard_outputs <- ", vec(ids, basename(ard_progs))),
     "# the output each report program makes",
     paste0(".batch_report_ids <- ", vec(out_ids, tfl_progs)),
-    "# a figure printing an ARD's numbers: the report whose ARD it reads, and",
-    "# the fingerprint of that ARD's definition when this file was written",
-    "# (that ARD made first in a run that has not made it)",
-    paste0(".batch_needs <- ", vec(need_ids, need_progs)),
-    paste0(".batch_needs_hash <- ", vec(need_hash, names(need_hash))),
+    "# a report program -> the reports whose ARD it reads (that ARD is made",
+    "# first in a run that has not made it, even when the run leaves it out)",
+    paste0(".batch_needs <- ", if (length(need))
+      paste0("list(\n", paste0("  ", encodeString(names(need), quote = "`"), " = ",
+                               vapply(need, vec, "", indent = "    "),
+                               collapse = ",\n"), ")") else "list()"),
     "# the named batches (the report list's `batches`): name -> outputs",
     paste0(".batch_sets <- ", if (length(sets <- batch_sets(x)))
       paste0("list(\n", paste0("  ", encodeString(names(sets), quote = "`"), " = ",
@@ -478,19 +480,6 @@ run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE, data = FALSE,
     q <- gsub('"', "", q)
     unique(c(if (ids[i] %in% has) ids[i], intersect(setdiff(q, ids[i]), has)))
   }), ids)
-}
-
-# The reports of a run that read an ARD the run leaves out: data frame
-# report (kept) / needs (left out)
-.batch_excluded_needs <- function(x, exclude) {
-  reads <- .batch_ard_reads(x)
-  keep <- setdiff(names(reads), exclude)
-  rows <- lapply(keep, function(k) {
-    n <- intersect(reads[[k]], exclude)
-    if (length(n)) data.frame(report = k, needs = n, stringsAsFactors = FALSE)
-  })
-  out <- do.call(rbind, rows)
-  if (is.null(out)) data.frame(report = character(), needs = character()) else out
 }
 
 #' @rdname run_batch

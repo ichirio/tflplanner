@@ -149,16 +149,6 @@
   shiny::observeEvent(input$tfl_open, .open_folder(
     file.path(rv$study$path, study_layout()[["tfl"]])))
 
-  start_run <- function(ids, what) {
-    if (!is.null(rv$job)) return(notify(t("A run is going on"), "warning"))
-    if (dirty() && !do_save()) return()
-    px <- guarded(run_study(rv$study, ids, wait = FALSE))
-    if (is.null(px)) return()
-    rv$job <- px
-    rv$job_kind <- "preview"
-    rv$job_what <- what
-    rv$job_study <- rv$study$meta$study_id
-  }
   # a new copy of the sample: its official run (the ARD and the reports)
   # in the background, as the Runs tab starts one; the app stays usable and
   # the study list says it is running
@@ -180,7 +170,6 @@
     notify(sprintf(t("%s is copied; its ARD and reports are being made in the background (a few minutes). You can use the app meanwhile."),
                    s$meta$study_id))
   }
-  shiny::observeEvent(input$run_all, start_run(NULL, t("every report")))
   start_batch <- function(parts, code, exclude = NULL, set = NULL, data = FALSE) {
     if (!is.null(rv$job)) return(notify(t("A run is going on"), "warning"))
     if (dirty() && !do_save()) return()
@@ -411,24 +400,8 @@
     if (length(exclude) == length(ids)) {
       return(notify(t("Choose at least one report for the run."), "warning"))
     }
-    # a report the run makes that reads the ARD of one it leaves out:
-    # said before the run (its rows are as an earlier run left them)
-    need <- if (identical(parts, "all")) .batch_excluded_needs(rv$p, exclude)
-    if (!is.null(need) && nrow(need)) {
-      return(shiny::showModal(shiny::modalDialog(
-        title = t("A report the run makes reads an ARD it leaves out"),
-        shiny::p(t("These reports read the study ARD's rows of a report left out of the run. Its ARD program does not run, so they use those rows as an earlier run left them (or none):")),
-        shiny::tags$ul(lapply(seq_len(nrow(need)), function(i) shiny::tags$li(
-          sprintf(t("%s reads the ARD of %s"), need$report[i], need$needs[i])))),
-        footer = shiny::tagList(
-          .btn("batch_need_cancel", t("Cancel"), class = "btn-outline-secondary"),
-          .btn("batch_need_go", t("Run anyway"), class = "btn-primary")))))
-    }
-    batch_go_ai()
-  })
-  shiny::observeEvent(input$batch_need_cancel, shiny::removeModal())
-  shiny::observeEvent(input$batch_need_go, {
-    shiny::removeModal()
+    # (a report kept that reads the ARD of one left out: the run makes that
+    # ARD too, its runner does; no earlier rows are read, #790)
     batch_go_ai()
   })
   # the AI's reports in the run whose draft changed since they were
@@ -629,11 +602,6 @@
     if (!length(i)) {
       .open_folder(file.path(rv$study$path, study_layout()[["runs"]]))
     } else .open_folder(d$path[i])
-  })
-  shiny::observeEvent(input$run_selected, {
-    d <- selected_status()
-    if (!nrow(d)) return(notify(t("Choose a report"), "warning"))
-    start_run(d$output_id, paste(d$output_id, collapse = ", "))
   })
   # A run this session did not start, or lost (the app restarted, another
   # session, R): what it writes -- the study ARD's status, a batch's

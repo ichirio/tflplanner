@@ -215,6 +215,13 @@ run_batch <- function(parts, args = character()) {
   started <- Sys.time()
   dir <- file.path(.batch_root, paste0(format(started, "%Y%m%d_%H%M%S"), "_",
                                        what))
+  # a run started in the same second as another: a folder of its own (_2, _3)
+  base <- dir
+  n <- 1L
+  while (dir.exists(dir)) {
+    n <- n + 1L
+    dir <- paste0(base, "_", n)
+  }
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
   engine <- if (requireNamespace("logrx", quietly = TRUE)) "logrx" else "batch"
   if (engine == "batch") message("logrx is not installed: the logs are R CMD BATCH's.")
@@ -240,13 +247,14 @@ run_batch <- function(parts, args = character()) {
     log_dir <- file.path(dir, "logs", part)
     dir.create(log_dir, recursive = TRUE, showWarnings = FALSE)
     for (p in progs) {
-      # a figure printing an ARD's numbers: that ARD first, when this run
-      # has not made it (#293, #790)
-      need <- if (part == "tfl") unname(.batch_needs[p]) else NA_character_
-      if (length(need) && !is.na(need) && !need %in% made_ard) {
+      # a report reading the ARD of reports (its own, a figure's table, what
+      # its code names): the ARD of each the run has not made is made first,
+      # also one the run leaves out, so no earlier rows are read (#293, #790)
+      needs <- if (part == "tfl") unique(unlist(.batch_needs[p], use.names = FALSE))
+      for (need in setdiff(needs[!is.na(needs)], made_ard)) {
         ap <- .batch_programs$ard[.batch_ard_outputs[basename(.batch_programs$ard)] %in% need]
         if (length(ap)) {
-          cat(sprintf("(%s prints %s's ARD, which this run has not made: made first)
+          cat(sprintf("(%s reads %s's ARD, which this run has not made: made first)
 ",
                       basename(p), need))
           ard_dir <- file.path(dir, "logs", "ard")
@@ -267,6 +275,8 @@ run_batch <- function(parts, args = character()) {
   }
   result <- do.call(rbind, rows)
   if (is.null(result)) stop("Nothing to run.")
+  # a program left out that ran as another's ARD is not left out
+  excluded <- setdiff(excluded, result$program)
   if (length(excluded)) {
     cat("\nLeft out:", paste(basename(excluded), collapse = ", "), "\n")
   }

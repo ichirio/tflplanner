@@ -83,7 +83,7 @@
 "Open %s: its Content builds the table in words, with the table as it will print beside it.","%s を開く: 「内容」で Table を言葉で組み立て、右にでき上がりが出ます。"
 "Open it","開く"
 "ARD: where the numbers come from (cards / cardx). A click on a row shows the analysis as a form.","ARD: Table の数字の元（cards / cardx）。行をクリックすると、解析がフォームで出ます。"
-"Runs: preview every report and open its RTF.","実行: 全部の帳票をプレビューし、RTF を開きます。"
+"Runs: make the ARD and the reports in an official run.","実行: 正式実行で ARD と帳票を作ります。"
 "Go to Runs","実行へ"
 "The language is changed: the page reloads to show it.","言語を変えました。画面を読み込み直すと切り替わります。"
 "Reload now","今すぐ読み込み直す"
