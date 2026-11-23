@@ -246,6 +246,10 @@ builder_card_read <- function(input, id, schema = NULL, args = NULL, logical_fal
       out[[a]] <- .text_value(trimws(as.character(v[[1L]])))
     } else if (kind == "r") {
       out[[a]] <- tflspec::tfl_r(trimws(as.character(v)))
+    } else if (kind == "call") {
+      # (a call drawn as its R -- its function has no fields to show,
+      # rtf_border(): .field_call() -- is R, not a text)
+      out[[a]] <- .text_value(trimws(as.character(v[[1L]])))
     } else {
       out[[a]] <- .coerce_value(v[[1L]], ty)
     }
