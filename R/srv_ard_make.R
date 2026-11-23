@@ -2,50 +2,6 @@
 # app_server()'s environment (.srv_part()); what it makes is copied back
 # there for the parts after it (.srv_keep()).
 .srv_ard_make <- function() {
-  # Make the ARD (step 1): this report's rows of the study ARD, by its
-  # saved ARD program (the study saved first) -- what a table program
-  # and a figure printing its numbers read; then read for the preview
-  do_study_ard <- function(id) {
-    if (is.null(id)) return(notify(t("Choose a report"), "warning"))
-    if (!any(rv$p$ard$analyses$output_id %in% id)) {
-      return(notify(sprintf(t("%s has no analyses in the ARD definition."), id), "warning"))
-    }
-    t0 <- Sys.time()
-    ok <- FALSE
-    n_an <- sum(rv$p$ard$analyses$output_id %in% id)
-    shiny::withProgress(message = sprintf(t("The study ARD of %s"), id), {
-      shiny::setProgress(0.05, detail = t("1/2 saving the study"))
-      if (ard_ready()) {
-        shiny::setProgress(0.2, detail = sprintf(
-          t("2/2 making its ARD (%d analyses, in its own R process)"), n_an))
-        r <- guarded(update_study_ard(current_study(), id))
-        ard_state_ver(ard_state_ver() + 1L)
-        rv$status_ver <- rv$status_ver + 1L
-        if (!is.null(r)) {
-          ard_preview_out(list(id = id, text = r$output))
-          if (!r$ok) {
-            ard_res(list(scope = id, error = r$error))
-            notify(t("The ARD program failed: see what it printed in Data > Study ARD."),
-                   "error")
-          } else ok <- TRUE
-        }
-      }
-    })
-    if (!ok) return(invisible(FALSE))
-    ard_res(list(ard = study_ard_rows(current_study(), id), scope = id,
-                 seconds = as.numeric(difftime(Sys.time(), t0, units = "secs"))))
-    notify(sprintf(t("%s: its rows of the study ARD are made."), id))
-    # (the preview reads them, when it is a report's)
-    if (id %in% rv$p$outputs$output_id &&
-        !identical(ard_preview_state(current_study(), id), "current")) {
-      tryCatch(fetch_ard(current_study(), id), error = function(e) NULL)
-    }
-    # (what the builder and the content step read is read again: the ARD may
-    # be on disk already, made by the program above, with no fetch to say so)
-    rv$ard_ver <- rv$ard_ver + 1L
-    invisible(TRUE)
-  }
-  shiny::observeEvent(input$ard_make_study, do_study_ard(ard_target()))
   shiny::observeEvent(input$fetch, do_preview())
   shiny::observeEvent(input$page_fetch, do_preview())
   shiny::observeEvent(input$fetch2, do_preview())

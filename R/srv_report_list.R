@@ -14,9 +14,11 @@
     p_list()
     p <- shiny::isolate(rv$p)
     if (is.null(p) || !has_study()) return(.report_rows(new_planner()))
-    # the ARD's state as the ARD step has it; the runs' from their files
+    # the ARD's state and the runs' from the latest official runs, read from
+    # their files
     # (study_status() writes every program again: slow for a big study)
-    d <- .report_rows(p, tryCatch(shiny::isolate(ard_state()), error = function(e) NULL),
+    d <- .report_rows(p, tryCatch(ard_status(shiny::isolate(current_study()), from = "run"),
+                             error = function(e) NULL),
                       tryCatch(.report_run_light(shiny::isolate(current_study())),
                                error = function(e) NULL))
     mark_clock$n <- mark_clock$n + 1

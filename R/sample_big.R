@@ -64,32 +64,85 @@
   cl <- .study_codelists(s$planner)
   hash <- vapply(ard_ids, function(id)
     tflspec::tfl_ard_spec_hash(spec, id, dir = s$path, codelists = cl), "")
+  # the reports: about half made, a few failed (a later run's error)
+  run <- .big_mix(length(ids), c(made = 0.5, failed = 0.06, none = 0.44), shift = 13L)
+  lay <- study_layout()
+  Sys.sleep(1)  # the runs after the programs, by the files' times
+  # the states are the results of official runs: two batch folders
+  # (the first made what was made, the second -- later -- failed what failed),
+  # written as the files that say so
   keep <- pick != "none"
-  .write_ard_status(s, data.frame(
+  ok_ard <- pick %in% c("built", "outdated")
+  ard_rows <- data.frame(
     output_id = ard_ids[keep],
     definition = ifelse(pick[keep] == "outdated", "an earlier definition", hash[keep]),
     built = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
     rows = ifelse(pick[keep] == "error", NA_integer_, 50L),
     error = ifelse(pick[keep] == "error", "Error in cards::ard_summary(): a made-up failure", ""),
     setup = .study_setup_hash(s$path),
-    stringsAsFactors = FALSE))
-  # the reports: about half made, a few failed (a log after the RTF)
-  run <- .big_mix(length(ids), c(made = 0.5, failed = 0.06, none = 0.44), shift = 13L)
-  lay <- study_layout()
-  Sys.sleep(1)  # the RTFs after the programs, by the files' times
-  for (j in seq_along(ids)) {
-    info <- report_info(s$planner, ids[j])
-    if (run[j] %in% c("made", "failed")) {
-      f <- file.path(s$path, info$file)
-      dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
-      writeLines("{\\rtf1 }", f)
-    }
-    if (run[j] == "failed") {
-      Sys.setFileTime(file.path(s$path, info$file), Sys.time() - 60)
-      log <- file.path(s$path, lay[["logs_preview"]], sub("\\.[Rr]$", ".log", info$program))
-      dir.create(dirname(log), recursive = TRUE, showWarnings = FALSE)
-      writeLines(c("Error in eval(expr): a made-up failure", "Execution halted"), log)
-    }
+    stringsAsFactors = FALSE)
+  progs <- vapply(ids, function(id) report_info(s$planner, id)$program, "")
+  made <- run %in% c("made", "failed")
+  md5 <- unname(tools::md5sum(file.path(s$path, lay[["programs_tfl"]], progs)))
+  rtfs <- vapply(ids, function(id) report_info(s$planner, id)$file, "")
+  .write_run_folder(
+    s, "20260101_100000_all", started = Sys.time(),
+    rows = rbind(
+      .run_rows("ard", ard_ids[ok_ard], "OK"),
+      .run_rows("tfl", ids[made], "OK", md5 = md5[made],
+                program = file.path(lay[["programs_tfl"]], progs[made])),
+      .run_rows("ard", ard_ids[pick == "error"], "ERROR",
+                note = "Error in cards::ard_summary(): a made-up failure")),
+    ard_status = ard_rows, files = rtfs[made])
+  if (any(run == "failed")) {
+    .write_run_folder(
+      s, "20260102_100000_all", started = Sys.time() + 5,
+      rows = .run_rows("tfl", ids[run == "failed"], "ERROR",
+                       program = file.path(lay[["programs_tfl"]], progs[run == "failed"]),
+                       note = "Error in eval(expr): a made-up failure"))
   }
   invisible(open_study(s$path, home = home))
+}
+
+# the rows of a fake run's run.csv: one per id (as tflspec's runner writes
+# them; `program` the program's path, `md5` its md5)
+.run_rows <- function(part, ids, status, program = NULL, md5 = NA_character_,
+                      note = "") {
+  n <- length(ids)
+  if (is.null(program)) program <- file.path("programs", part, paste0(ids, ".R"))
+  data.frame(part = rep(part, n), program = rep(program, length.out = n),
+             output_id = ids, status = rep(status, n),
+             errors = rep(as.integer(status != "OK"), n), warnings = rep(0L, n),
+             note = rep(note, n), started = rep("2026-01-01 10:00:00", n),
+             seconds = rep(1, n), md5 = rep(md5, length.out = n),
+             log = rep(NA_character_, n), stringsAsFactors = FALSE)
+}
+
+# A batch folder as the runner leaves it, without running anything: run.csv
+# (`rows`), batch.txt (the study's id, when it started and finished: one
+# second after `started`), the study's ARD status (`ard_status`, at the
+# study ARD's own path) and the files the run made (`files`, relative to the
+# folder, each a stub RTF).  The reports and the ARD read the latest run
+# (R/latest_run.R), so this is how a study of fake results is made.
+.write_run_folder <- function(study, stamp, rows, started = Sys.time(),
+                              ard_status = NULL, files = character()) {
+  d <- file.path(study$path, study_layout()[["runs"]], stamp)
+  dir.create(d, recursive = TRUE, showWarnings = FALSE)
+  utils::write.csv(rows, file.path(d, "run.csv"), row.names = FALSE)
+  if (!is.null(ard_status)) {
+    f <- file.path(dirname(.study_ard_file(study, d)), "ard_status.csv")
+    dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+    utils::write.csv(ard_status, f, row.names = FALSE)
+  }
+  for (f in file.path(d, files)) {
+    dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+    writeLines("{\\rtf1 }", f)
+  }
+  fmt <- function(t) format(t, "%Y-%m-%d %H:%M:%S")
+  writeLines(c(paste("Batch    :", stamp),
+               paste("Study    :", study$meta$study_id),
+               paste("Started  :", fmt(started)),
+               paste("Finished :", fmt(started + 1))),
+             file.path(d, "batch.txt"))
+  invisible(d)
 }

@@ -853,17 +853,13 @@
         `not built` = t("not made yet (nothing to show)"),
         t(.ard_state_labels[[s0]]))
       why <- switch(s0,
-        outdated = t("Since this report's ARD was made, something it is made from has changed: its analyses, their populations or datasets, the study's settings, the study's own ARD functions or the code lists. Make it again to see the tables as the definition is now."),
-        `not built` = t("This report's ARD has not been made yet: make it to see its tables."),
-        error = t("Its ARD program failed: see what it printed (Data > Study ARD), fix it and make it again."),
+        outdated = t("Since this report's ARD was made, something it is made from has changed: its analyses, their populations or datasets, the study's settings, the study's own ARD functions or the code lists. Press Preview in the report builder (it makes the working ARD to look at), or start an official run (Runs)."),
+        `not built` = t("This report's ARD has not been made yet. Press Preview in the report builder (it makes the working ARD to look at), or start an official run (Runs)."),
+        error = t("Its ARD program failed: see what it printed (Data > Study ARD), fix it, then press Preview in the report builder or start an official run (Runs)."),
         NULL)
-      go <- switch(s0, `not built` = t("Make the ARD"),
-                   outdated = , error = t("Make the ARD again"), NULL)
       shiny::div(
         class = "small mb-1", title = why,
-        sprintf(t("This report's ARD: %s"), words),
-        if (!is.null(go)) shiny::actionLink("ard_make_study", go, title = why,
-                                            class = "btn btn-sm btn-link py-0"))
+        sprintf(t("This report's ARD: %s"), words))
     }
     picked <- !is.na(pick) && pick %in% a$analysis_id
     prole <- if (picked) st_role(a[a$analysis_id == pick, , drop = FALSE][1L, ], a) else ""
@@ -1399,13 +1395,6 @@
   # what is built is what anyone rerunning autoexec_ard.R gets
   ard_log_ver <- shiny::reactiveVal(0L)
   ard_preview_out <- shiny::reactiveVal(NULL)
-  ard_ready <- function() {
-    if (!is.null(ard_valid())) {
-      notify(t("Correct the ARD definition first."), "warning")
-      return(FALSE)
-    }
-    !(dirty() && !do_save())
-  }
   # the result kept is the report's it was made for: another report's table
   # is not shown under this one's
   ard_res_here <- function() {
@@ -1536,8 +1525,7 @@
     ard_state_ver()
     shiny::req(has_study())
     s <- current_study()
-    out <- .ard_study_value(s$planner$ard, "output", "output/ard/ard.rds")
-    f <- file.path(s$path, out)
+    f <- .study_ard_file(s)
     k <- paste(f, if (file.exists(f)) file.mtime(f))
     if (!identical(ard_cols[["conds_key"]], k)) {
       ard_cols[["conds"]] <- study_ard_conditions(s)

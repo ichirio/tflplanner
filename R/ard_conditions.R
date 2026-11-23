@@ -54,8 +54,7 @@
 #' options(old)
 #' @export
 study_ard_conditions <- function(study) {
-  out <- .ard_study_value(study$planner$ard, "output", "output/ard/ard.rds")
-  f <- file.path(study$path, out)
+  f <- .study_ard_file(study)
   own <- if (file.exists(f)) {
     a <- tryCatch(.read_study_ard(f), error = function(e) NULL)
     .ard_conditions_of(a)

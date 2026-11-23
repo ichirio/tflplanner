@@ -107,7 +107,7 @@
     id <- current()
     if (isTRUE(auto_read[[id]])) return()
     st <- tryCatch(ard_status(shiny::isolate(current_study())), error = function(e) NULL)
-    if (is.null(st) || !identical(st$state[match(id, st$output_id)], "built")) return()
+    if (is.null(st) || !.ard_rows_ready(shiny::isolate(current_study()), id, st)) return()
     auto_read[[id]] <- TRUE
     m <- NULL
     shiny::withProgress(message = sprintf(t("Reading the ARD of %s for the builder"), id),

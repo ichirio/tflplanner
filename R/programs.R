@@ -298,7 +298,7 @@ code_templates <- function(name = NULL) {
   lay <- study_layout()
   sub <- c(
     `{OUTPUT_ID}` = if (is.na(output_id)) "" else output_id,
-    `{ARD}` = .ard_study_value(x$ard, "output", "output/ard/ard.rds"),
+    `{ARD}` = .study_ard_rel(x$ard),
     `{ARD_PROGRAM}` = if (is.na(output_id)) "" else
       file.path(lay[["programs_ard"]], .ard_prog_name(output_id)),
     `{PROGRAM}` = if (is.na(output_id)) "" else
