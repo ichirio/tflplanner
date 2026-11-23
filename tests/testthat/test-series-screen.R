@@ -315,6 +315,14 @@ test_that("Undo puts back what the card wrote; a draft back at the saved values 
     expect_identical(notes$p()$series_edits$tflspec_v1, list(population_safety = "SAF9"))
     session$setInputs(series_edit_2 = "SAF2")
     expect_null(notes$p()$series_edits)
+    # a key back to the series, then changed again: its field's old text
+    # (still the input's value) is no edit; the series' value is the draft's
+    session$setInputs(series_change = list(key = "formats", n = 2))
+    session$setInputs(series_edit_3 = "{N: 9}")
+    expect_identical(notes$p()$series_edits$tflspec_v1$formats, "{N: 9}")
+    session$setInputs(series_back = list(key = "formats", n = 3))
+    session$setInputs(series_change = list(key = "formats", n = 4))
+    expect_identical(notes$p()$series_edits$tflspec_v1$formats, "{N: 0, mean: 2, p: xx.x%}")
   })
 })
 

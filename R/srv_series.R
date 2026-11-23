@@ -238,7 +238,13 @@
     !is.null(dir) && !is.null(rv$series) && .series_copied(dir, rv$series)
   }
   # what is typed goes into the draft as it is typed (a text that is not
-  # YAML is said under the card, and not taken in)
+  # YAML is said under the card, and not taken in).  A field's value is
+  # taken only when it changed since last seen, and is not the first value
+  # back after the field was drawn, its text (its echo): a row's
+  # field keeps its old text after its key went back to the series, and is
+  # no edit when the key is changed again.
+  seen <- new.env(parent = emptyenv())
+  drawn <- new.env(parent = emptyenv())
   shiny::observe({
     keys <- union(names(chosen()$values), names(rv$draft))
     d <- shiny::isolate(rv$draft)
@@ -248,7 +254,16 @@
     shiny::isolate({
       if (!editable()) return()
       new <- d
-      for (k in names(got)) if (!is.null(got[[k]])) new[[k]] <- got[[k]]
+      for (k in names(got)) {
+        iid <- paste0("series_edit_", match(k, keys))
+        v <- got[[k]]
+        if (is.null(v) || identical(v, seen[[iid]])) next
+        seen[[iid]] <- v
+        echo <- identical(v, drawn[[iid]])
+        drawn[[iid]] <- NULL
+        if (echo) next
+        new[[k]] <- v
+      }
       bad <- names(new)[vapply(new, function(x)
         inherits(tryCatch(.series_yaml_load(x), error = function(e) e), "error"), NA)]
       rv$problem <- if (length(bad)) sprintf(t("Not YAML, so not taken in: %s"), paste(bad, collapse = ", "))
@@ -309,8 +324,12 @@
                    if (is.null(dir)) t("Open a study to change its values.") else
                      t("This study has no copy of this series yet: adding a report from one of its templates copies it.")))
       } else {
+        # (the fields' texts as drawn: their values coming back are no edit)
+        d <- shiny::isolate(rv$draft)
+        keys <- union(names(x$values), names(d))
+        for (k in names(d)) drawn[[paste0("series_edit_", match(k, keys))]] <- d[[k]]
         shiny::tagList(
-          .series_values_ui(x$values, shiny::isolate(rv$draft), shiny::isolate(rv$saved), t,
+          .series_values_ui(x$values, d, shiny::isolate(rv$saved), t,
                             x$descriptions),
           shiny::uiOutput("series_problem"),
           shiny::uiOutput("series_undo_ui"))
