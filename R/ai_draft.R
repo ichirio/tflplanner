@@ -834,19 +834,16 @@
   out
 }
 
-# The levels written into study.yml's ai: review (the three kinds), the rest
-# of the file as it is.  `levels`: figure, table, listing as the select's text.
+# The levels written into study.yml's ai: review (the three kinds), every
+# other line of the file as it is (.yml_set_key(): its tags and comments
+# kept).  `levels`: figure, table, listing as the select's text.
 .ai_review_write <- function(path, levels) {
   f <- file.path(path, "study.yml")
-  y <- yaml::read_yaml(f)
-  if (is.null(y)) y <- list()
-  if (!is.list(y$ai)) y$ai <- list()
-  y$ai$review <- stats::setNames(lapply(.ai_review_kinds, function(k) {
+  review <- stats::setNames(lapply(.ai_review_kinds, function(k) {
     v <- levels[[k]]
     if (identical(v, "none")) "none" else as.integer(v)
   }), .ai_review_kinds)
-  yaml::write_yaml(y, f, fileEncoding = "UTF-8")
-  invisible(f)
+  .study_yml_write(.yml_set_key(.study_yml_lines(f), "review", review, under = "ai"), f)
 }
 
 # The agent's AGENTS.md written again with the study's settings now:
@@ -905,15 +902,11 @@
   out
 }
 
-# The value written into study.yml's ai: run, the rest of the file as it is
+# The value written into study.yml's ai: run, every other line of the file
+# as it is (.yml_set_key(): its tags and comments kept)
 .ai_run_write <- function(path, value) {
   f <- file.path(path, "study.yml")
-  y <- yaml::read_yaml(f)
-  if (is.null(y)) y <- list()
-  if (!is.list(y$ai)) y$ai <- list()
-  y$ai$run <- value
-  yaml::write_yaml(y, f, fileEncoding = "UTF-8")
-  invisible(f)
+  .study_yml_write(.yml_set_key(.study_yml_lines(f), "run", value, under = "ai"), f)
 }
 
 # The value set for a study: written into study.yml, the agent's files made
