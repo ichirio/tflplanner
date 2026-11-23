@@ -16,6 +16,10 @@
   out
 }
 
+# the end of a run started from Rscript with a non-zero status (one place,
+# so the tests that source this file can catch it instead of ending R)
+.batch_quit <- function(status) quit(save = "no", status = status)
+
 # one program in its own R process, from the study folder, with its log
 .batch_run <- function(part, prog, log_dir, engine) {
   log <- file.path(log_dir, sub("[.][Rr]$", ".log", basename(prog)))
@@ -249,7 +253,7 @@ run_batch <- function(parts, args = character()) {
              "Select the reports it reads too (or leave this report out), then start again.")
     cat(msg, sep = "\n")
     message(paste(msg, collapse = "\n"))
-    quit(save = "no", status = 1L)
+    .batch_quit(1L)
   }
   what <- if (length(parts) > 1L) "all" else
     c(ard = "ard", tfl = "report")[[parts]]
@@ -347,7 +351,7 @@ run_batch <- function(parts, args = character()) {
   if (any(result$status != "OK")) {
     print(result[result$status != "OK", c("program", "note")],
           right = FALSE, row.names = FALSE)
-    if (!interactive()) quit(status = 1L)
+    if (!interactive()) .batch_quit(1L)
   }
   invisible(result)
 }

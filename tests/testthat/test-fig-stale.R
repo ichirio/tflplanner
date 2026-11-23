@@ -136,6 +136,7 @@ runner_env <- function() {
                log = file.path(log_dir, "x.log"), stringsAsFactors = FALSE)
   }
   e$.batch_session_info <- function(progs, dir) invisible(NULL)
+  e$.batch_quit <- function(status) stop("the runner ended with status ", status, call. = FALSE)
   e
 }
 
@@ -273,7 +274,10 @@ test_that("the runner does not run a report whose ARD program failed", {
                md5 = NA_character_, log = file.path(log_dir, "x.log"),
                stringsAsFactors = FALSE)
   }
+  # (a run with an error ends Rscript with status 1: here it is kept)
+  e$.batch_quit <- function(status) e$quit_status <- status
   utils::capture.output(r <- suppressMessages(e$run_batch(c("ard", "tfl"))))
+  expect_identical(e$quit_status, 1L)
   expect_identical(e$ran, "programs/ard/T1.R")
   expect_identical(r$status, c("ERROR", "ERROR"))
   expect_match(r$note[2L], "the ARD of T1 failed", fixed = TRUE)
