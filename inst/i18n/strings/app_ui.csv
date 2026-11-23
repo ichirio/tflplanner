@@ -31,6 +31,7 @@
 "Preview all","すべてプレビュー"
 "Official runs (run folders)","正式実行（実行フォルダ）"
 "An official run makes a run folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs), the R and package versions (session_info.txt) and, if kept, the programs and definition workbooks it ran and the data they read.","正式実行は runs/<日付>_<時刻>_<内容>/ の実行フォルダを作り、各プログラムのログ（logrx）、作成物（試験 ARD、RTF）、R とパッケージの版（session_info.txt）、指定すれば実行したプログラムと定義ブック、読んだデータを格納します。"
+"An official run makes a run folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs), the R and package versions (session_info.txt) and, if kept, the programs and definition workbooks it ran and the data they read. Every run makes a new run folder; the earlier ones are never deleted. The reports are made from the ARD the same run makes.","正式実行は runs/<日付>_<時刻>_<内容>/ の実行フォルダを作り、各プログラムのログ（logrx）、作成物（試験 ARD、RTF）、R とパッケージの版（session_info.txt）、指定すれば実行したプログラムと定義ブック、読んだデータを格納します。実行のたびに新しい実行フォルダを作り、前の実行フォルダは自動では消しません。帳票は、同じ実行で作った ARD から作ります。"
 "Start the official run","正式実行を開始"
 "Updating ...","更新しています…"
 "Content","内容（content）"

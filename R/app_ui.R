@@ -1030,13 +1030,13 @@ app_ui <- function(lang = "en") {
         DT::DTOutput("status"),
         shiny::tags$script(shiny::HTML(.status_loading_js))),
       bslib::card(
-        bslib::card_header(with_tip(t("Official runs (run folders)"), t("An official run makes a run folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs), the R and package versions (session_info.txt) and, if kept, the programs and definition workbooks it ran and the data they read."))),
+        bslib::card_header(with_tip(t("Official runs (run folders)"), t("An official run makes a run folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs), the R and package versions (session_info.txt) and, if kept, the programs and definition workbooks it ran and the data they read. Every run makes a new run folder; the earlier ones are never deleted. The reports are made from the ARD the same run makes."))),
         shiny::div(
           class = "d-flex flex-wrap gap-3 align-items-center",
           shiny::radioButtons(
             "batch_parts", NULL, inline = TRUE,
-            stats::setNames(c("ard", "tfl", "all"),
-                            t(c("ARD", "Reports", "ARD, then reports")))),
+            stats::setNames(c("ard", "all"),
+                            t(c("ARD", "ARD, then reports")))),
           shiny::checkboxInput("batch_code",
                                t("keep the code in the run folder"),
                                value = TRUE),

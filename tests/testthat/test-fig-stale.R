@@ -71,21 +71,85 @@ test_that("the figure turns outdated with the table's ARD, and the preview and t
   expect_identical(fig_state(s), list(status = "outdated", why = "ard:T-14-2-2"))
   run_study(s, "F-14-2-3")
   expect_identical(fig_state(s), list(status = "ok", why = ""))
-  # changed again; the official run of the reports alone makes the ARD first
+  # changed again; an official run of the figure alone makes the ARD first
   an$code[k] <- sub("150)", "150, 180)", an$code[k], fixed = TRUE)
   s$planner$ard$analyses <- an
   s <- suppressMessages(save_study(s))
-  b <- run_batch(s, "tfl", only = "F-14-2-3", code = FALSE)
+  b <- run_batch(s, c("ard", "tfl"), only = "F-14-2-3", code = FALSE)
   expect_identical(b$result$part, c("ard", "tfl"))
   expect_identical(b$result$program, c("programs/ard/T-14-2-2.R", "programs/tfl/F-14-2-3.R"))
   expect_true(any(grepl("made first", b$output, fixed = TRUE)))
   expect_identical(fig_state(s), list(status = "ok", why = ""))
-  # nothing changed: the ARD is not made again
-  b2 <- run_batch(s, "tfl", only = "F-14-2-3", code = FALSE)
-  expect_identical(b2$result$part, "tfl")
+  # nothing changed: made again all the same (a run never reads an ARD an
+  # earlier run left, #790), in a run folder of its own
+  Sys.sleep(1.1)
+  b2 <- run_batch(s, c("ard", "tfl"), only = "F-14-2-3", code = FALSE)
+  expect_identical(b2$result$program, c("programs/ard/T-14-2-2.R", "programs/tfl/F-14-2-3.R"))
+  expect_false(identical(b2$batch, b$batch))
+  expect_true(dir.exists(b$batch))
 })
 
 test_that("the runs table says why", {
   expect_identical(.why_text(c("", "program", "ard:T-14-2-2 setup")),
                    c("", ": its program changed", ": T-14-2-2's ARD changed; the study setup changed"))
+})
+
+# An official run makes the ARD its reports read (#790): the ARD only, or
+# the ARD then the reports; never the reports alone, and a report never
+# reads an ARD an earlier run left.
+test_that("an official run is the ARD only, or the ARD then the reports", {
+  expect_error(run_batch(list(), "tfl"), "the ARD only (parts = \"ard\")", fixed = TRUE)
+})
+
+# the runner (inst/batch/runner.R) with the lists batch.R gives it, its
+# programs not run: which ran, in what order
+runner_env <- function() {
+  e <- new.env()
+  sys.source(system.file("batch", "runner.R", package = "tflplanner"), envir = e)
+  e$.batch_root <- "runs"
+  e$.batch_ard <- "output/ard/ard.rds"
+  e$.batch_programs <- list(ard = "programs/ard/T1.R", tfl = "programs/tfl/F1.R")
+  e$.batch_ard_outputs <- c(T1.R = "T1")
+  e$.batch_report_ids <- c(`programs/tfl/F1.R` = "F1")
+  e$.batch_needs <- c(`programs/tfl/F1.R` = "T1")
+  e$.batch_needs_hash <- c(T1 = "abc")
+  e$.batch_sets <- list()
+  e$.batch_outputs <- list(`programs/tfl/F1.R` = "output/tfl/F1.rtf")
+  e$.batch_support <- list(ard = character(), tfl = character(), all = character())
+  e$.batch_data <- list()
+  e$ran <- character()
+  e$.batch_run <- function(part, prog, log_dir, engine) {
+    e$ran <- c(e$ran, prog)
+    data.frame(part = part, program = prog, status = "OK", errors = 0L, warnings = 0L,
+               note = "", started = "", seconds = 0, md5 = NA_character_,
+               log = file.path(log_dir, "x.log"), stringsAsFactors = FALSE)
+  }
+  e$.batch_session_info <- function(progs, dir) invisible(NULL)
+  e
+}
+
+test_that("the runner makes the ARD before the reports, even when one is built", {
+  d <- tempfile("runner")
+  dir.create(file.path(d, "output", "ard"), recursive = TRUE)
+  on.exit(unlink(d, recursive = TRUE), add = TRUE)
+  old <- setwd(d)
+  on.exit(setwd(old), add = TRUE)
+  writeLines("study_id: R1", "study.yml")
+  # T1's ARD made by an earlier run, from the definition as it is now
+  utils::write.csv(data.frame(output_id = "T1", definition = "abc",
+                              built = "2026-11-01 10:00:00", rows = "1", error = ""),
+                   file.path("output", "ard", "ard_status.csv"), row.names = FALSE)
+  e <- runner_env()
+  # the ARD, then the reports: T1's ARD program first, once
+  utils::capture.output(r <- suppressMessages(e$run_batch(c("ard", "tfl"))))
+  expect_identical(e$ran, c("programs/ard/T1.R", "programs/tfl/F1.R"))
+  expect_identical(r$part, c("ard", "tfl"))
+  # the figure alone: the ARD it reads made first in the same run
+  e$ran <- character()
+  Sys.sleep(1.1)
+  utils::capture.output(r2 <- suppressMessages(e$run_batch(c("ard", "tfl"), "F1")))
+  expect_identical(e$ran, c("programs/ard/T1.R", "programs/tfl/F1.R"))
+  expect_identical(r2$part, c("ard", "tfl"))
+  # each run its own run folder; the earlier one kept
+  expect_length(list.files("runs"), 2L)
 })

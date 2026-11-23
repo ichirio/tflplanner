@@ -136,8 +136,10 @@ test_that("the runner takes an output id as a program name, and --exclude too", 
   b <- run_batch(o, c("ard", "tfl"), only = "DM")
   expect_identical(progs(b), c("DM.R", "t_dm.R"))
   Sys.sleep(1.1)
-  # a file name still works, with or without .R
-  expect_identical(progs(run_batch(o, "tfl", only = "t_dm")), "t_dm.R")
+  # a file name still works, with or without .R (an official run makes the
+  # ARD first, so the ARD program is named too)
+  expect_identical(progs(run_batch(o, c("ard", "tfl"), only = c("DM.R", "t_dm"))),
+                   c("DM.R", "t_dm.R"))
   Sys.sleep(1.1)
   expect_identical(progs(run_batch(o, "ard", only = "VS.R")), "VS.R")
   Sys.sleep(1.1)
