@@ -148,9 +148,9 @@ test_that("the Data tab puts the files without a row into the catalog once, and 
   })
 })
 
-# ---- the log and the RTF ----------------------------------------------------------
+# ---- the log ----------------------------------------------------------------------
 
-test_that("the log: what to do with nothing chosen, a report not run, a run folder; the RTF download", {
+test_that("the log: what to do with nothing chosen, a report not run, a run folder", {
   skip_on_cran()
   dr_home()
   s <- dr_study("DR")
@@ -159,17 +159,8 @@ test_that("the log: what to do with nothing chosen, a report not run, a run fold
   shiny::testServer(server_for("DR"), {
     session$setInputs(nav = "results")
     expect_match(output$log, "Choose a report to see what its last preview printed", fixed = TRUE)
-    # no report chosen: no RTF
-    expect_error(output$rtf_download, "No RTF")
     session$setInputs(status_rows_selected = 2L)
     expect_identical(output$log, "VS has not been run yet.")
-    # a report built: its RTF is what the download gives
-    d <- study_status(session$userData$rv$study)
-    expect_identical(d$output_id[1L], "DM")
-    session$setInputs(status_rows_selected = 1L)
-    dir.create(dirname(d$rtf_path[1L]), recursive = TRUE, showWarnings = FALSE)
-    writeLines("{rtf1 hello}", d$rtf_path[1L])
-    expect_identical(readLines(output$rtf_download), "{rtf1 hello}")
     # a run folder chosen: its batch.txt and the programs it ran
     session$setInputs(batches_rows_selected = 1L)
     expect_match(output$log, "Finished : 2026-01-01 10:00:30", fixed = TRUE)
@@ -460,10 +451,8 @@ test_that("the runs table: state, what was left out (the first few); folders ope
     expect_identical(basename(opened[2L]), "runs")
     session$setInputs(batches_rows_selected = 3L, batch_open = 2)
     expect_identical(basename(opened[3L]), "20260101_100000_all")
-    session$setInputs(tfl_open = 1)
-    expect_identical(basename(opened[4L]), "tfl")
     session$setInputs(data_open = 1)
-    expect_identical(basename(opened[5L]), "adam")
+    expect_identical(basename(opened[4L]), "adam")
   })
 })
 

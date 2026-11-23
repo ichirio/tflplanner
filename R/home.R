@@ -219,7 +219,9 @@ setup_tflplanner <- function(home = NULL, studies_root = NULL,
 #'
 #' @param home The home folder.
 #' @return A list: `studies_root`, `last_study`, `language`, and when set
-#'   `port`, `update_channel`, `check_updates`.
+#'   `port`, `update_channel`, `check_updates`, `zip_download_limit_mb` (the
+#'   largest run folder the Runs tab downloads as one ZIP at once, in MB;
+#'   500 when not set).
 #' @examples
 #' # a home in the temporary folder: used in this R session only, nothing
 #' # is written to your settings
