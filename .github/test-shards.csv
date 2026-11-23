@@ -45,6 +45,7 @@ test-toc-rules.R,1,0.6
 test-tpl-suggest-ui.R,1,2.0
 test-tpl-table-field-fixes.R,1,1.2
 test-update-gaps.R,1,0.0
+test-series-one-save.R,1,0.3
 test-adam-levels.R,2,0.1
 test-ai-list.R,2,0.0
 test-ai-notes.R,2,0.0
@@ -127,6 +128,7 @@ test-time-units.R,3,0.3
 test-toc-import.R,3,1.3
 test-tpl-badges.R,3,0.0
 test-tpl-data.R,3,0.0
+test-tpl-study-default.R,3,0.3
 test-ai-adam-spec.R,4,0.0
 test-ai-dialog.R,4,0.0
 test-ai-draft.R,4,6.1
