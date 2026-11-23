@@ -13,6 +13,7 @@ test-ard-args-form.R,1,0.7
 test-ard-fn-search.R,1,1.8
 test-arg-defs.R,1,0.0
 test-builder-cards.R,1,1.6
+test-card-all-fields.R,1,1.4
 test-cells-vars.R,1,0.4
 test-codelist-inline.R,1,0.9
 test-col-header-form.R,1,0.6
