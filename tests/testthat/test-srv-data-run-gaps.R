@@ -238,6 +238,9 @@ test_that("the official run: nothing ticked is refused; reports left out; a repo
   dr_study("DR", ard = TRUE)
   asked <- list()
   warn <- list(newer = character(), confirm = character())
+  # (a mock made inside testServer() is undone with this test, not left on:
+  # testServer()'s code has no frame of its own that ends)
+  test_frame <- environment()
   testthat::local_mocked_bindings(
     run_batch = function(study, parts, code = TRUE, data = FALSE, exclude = NULL, batch = NULL,
                          wait = TRUE, ...) {
@@ -285,7 +288,8 @@ test_that("the official run: nothing ticked is refused; reports left out; a repo
     testthat::local_mocked_bindings(
       .batch_report_reads = function(x) data.frame(
         report = c("DM", "VS", "L1"), reads = c("DM", "VS", "DM"), kind = "own",
-        reason = NA_character_, stringsAsFactors = FALSE))
+        reason = NA_character_, stringsAsFactors = FALSE),
+      .env = test_frame)
     session$setInputs(batch_set = ".all", batch_parts = "all", batch_reports = c("VS", "L1"),
                       batch_run = 5)
     expect_length(asked, 2L)

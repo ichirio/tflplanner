@@ -91,21 +91,30 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
     all = c(file.path("programs", c(.batch_file, .autoexec_all_file,
                                     .study_helpers_file)),
             .study_setup_files(), .study_file))
-  vec <- function(v, names = NULL, indent = "  ") {
-    if (!length(v)) return("character()")
-    q <- encodeString(v, quote = "\"")
-    if (!is.null(names)) q <- paste(encodeString(names, quote = "`"), "=", q)
-    paste0("c(\n", paste0(indent, q, collapse = ",\n"), ")")
+  # the study's id (study.yml's; a study folder is named by its id): each
+  # run records it, and only its own runs count (tflspec::tfl_run_index())
+  sf <- file.path(root, .study_file)
+  sid <- if (file.exists(sf)) tryCatch(.read_meta(root)$study_id,
+                                       error = function(e) NA_character_)
+  if (!length(sid) || is.na(sid)) {
+    sid <- basename(normalizePath(root, winslash = "/", mustWork = FALSE))
   }
-  # a list of vectors, its elements indented as the list's
-  vlist <- function(...) {
-    v <- list(...)
-    paste0("list(\n", paste0("  ", names(v), " = ",
-                             vapply(v, vec, "", indent = "    "), collapse = ",\n"),
-           "\n)")
-  }
-  runner <- readLines(system.file("batch", "runner.R", package = "tflplanner"),
-                      warn = FALSE, encoding = "UTF-8")
+  made <- stats::setNames(lapply(made, as.character), tfl_progs)
+  # the runner is tflspec's: the lists of the study's programs (the
+  # manifest), then its lines
+  manifest <- list(
+    root = lay[["runs"]], ard = ard_out, study = sid, spec = lay[["spec"]],
+    programs = list(ard = ard_progs, tfl = tfl_progs),
+    ard_outputs = stats::setNames(as.character(ids), basename(ard_progs)),
+    report_ids = stats::setNames(as.character(out_ids), tfl_progs),
+    needs = lapply(need, as.character),
+    unresolved = stats::setNames(as.character(unresolved), names(unresolved)),
+    sets = lapply(batch_sets(x), as.character),
+    outputs = made,
+    support = list(ard = as.character(support$ard),
+                   tfl = as.character(support$tfl),
+                   all = as.character(support$all)),
+    data = lapply(.batch_data_files(x), as.character))
   c(.banner(
       paste("Program    :", file.path("programs", .batch_file)),
       "The runner of the study's official runs: programs/ard/autoexec_ard.R,",
@@ -115,47 +124,7 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
       paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
              ", ", format(date, "%Y-%m-%d"))),
     "",
-    "# ---- the study's programs, in the order they run ---------------------------",
-    paste0(".batch_root <- ", encodeString(lay[["runs"]], quote = "\"")),
-    paste0(".batch_ard  <- ", encodeString(ard_out, quote = "\"")),
-    paste0(".batch_programs <- ", vlist(ard = ard_progs, tfl = tfl_progs)),
-    "# the output each ARD program makes",
-    paste0(".batch_ard_outputs <- ", vec(ids, basename(ard_progs))),
-    "# the output each report program makes",
-    paste0(".batch_report_ids <- ", vec(out_ids, tfl_progs)),
-    "# a report program -> the reports whose ARD it reads (a run that selects",
-    "# the report but not these reports does not start)",
-    paste0(".batch_needs <- ", if (length(need))
-      paste0("list(\n", paste0("  ", encodeString(names(need), quote = "`"), " = ",
-                               vapply(need, vec, "", indent = "    "),
-                               collapse = ",\n"), ")") else "list()"),
-    "# a report program -> why the ARD it reads cannot be worked out (a run that",
-    "# selects the report does not start)",
-    paste0(".batch_unresolved <- ", vec(unname(unresolved), names(unresolved))),
-    "# the named batches (the report list's `batches`): name -> outputs",
-    paste0(".batch_sets <- ", if (length(sets <- batch_sets(x)))
-      paste0("list(\n", paste0("  ", encodeString(names(sets), quote = "`"), " = ",
-                               vapply(sets, function(v) paste0("c(", paste(
-                                 encodeString(v, quote = "\""), collapse = ", "), ")"), ""),
-                               collapse = ",\n"), ")") else "list()"),
-    "# what each report program makes",
-    paste0(".batch_outputs <- list(\n",
-           paste0("  ", encodeString(tfl_progs, quote = "`"), " = ",
-                  vapply(made, function(m) paste0("c(", paste(
-                    encodeString(m, quote = "\""), collapse = ", "), ")"), ""),
-                  collapse = ",\n"), ")"),
-    "# kept with the code of a run",
-    paste0(".batch_support <- ", vlist(ard = support$ard, tfl = support$tfl,
-                                       all = support$all)),
-    "# the data files each program reads (the data catalog's; --data keeps them)",
-    paste0(".batch_data <- ", if (length(dat <- .batch_data_files(x))) paste0(
-      "list(\n", paste0("  ", encodeString(names(dat), quote = "`"), " = ",
-                        vapply(dat, function(v) if (length(v)) paste0("c(", paste(
-                          encodeString(v, quote = "\""), collapse = ", "), ")") else
-                            "character()", ""),
-                        collapse = ",\n"), ")") else "list()"),
-    "",
-    runner,
+    tflspec::tfl_runner_code(manifest),
     "")
 }
 

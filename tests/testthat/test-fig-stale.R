@@ -116,13 +116,15 @@ test_that("an official run is the ARD only, or the ARD then the reports", {
   expect_error(run_batch(list(), "tfl"), "the ARD only (parts = \"ard\")", fixed = TRUE)
 })
 
-# the runner (inst/batch/runner.R) with the lists batch.R gives it, its
+# the runner (tflspec::tfl_runner_file()) with the lists batch.R gives it, its
 # programs not run: which ran, in what order
 runner_env <- function() {
   e <- new.env()
-  sys.source(system.file("batch", "runner.R", package = "tflplanner"), envir = e)
+  sys.source(tflspec::tfl_runner_file(), envir = e)
   e$.batch_root <- "runs"
   e$.batch_ard <- "output/ard/ard.rds"
+  e$.batch_study <- "S-1"
+  e$.batch_spec <- "spec"
   e$.batch_programs <- list(ard = "programs/ard/T1.R", tfl = "programs/tfl/F1.R")
   e$.batch_ard_outputs <- c(T1.R = "T1")
   e$.batch_report_ids <- c(`programs/tfl/F1.R` = "F1")
@@ -179,7 +181,7 @@ test_that("a hand run of a report that reads the ARD of a report not selected st
   writeLines("study_id: R1", file.path(d, "study.yml"))
   script <- file.path(d, "go.R")
   writeLines(c(
-    paste0("sys.source(", encodeString(system.file("batch", "runner.R", package = "tflplanner"), quote = "'"),
+    paste0("sys.source(", encodeString(tflspec::tfl_runner_file(), quote = "'"),
            ", envir = globalenv())"),
     ".batch_root <- 'runs'",
     ".batch_ard <- 'output/ard/ard.rds'",
@@ -213,7 +215,7 @@ test_that("a hand run of the reports alone stops: their ARD is not made in this 
   writeLines("study_id: R1", file.path(d, "study.yml"))
   script <- file.path(d, "go.R")
   writeLines(c(
-    paste0("sys.source(", encodeString(system.file("batch", "runner.R", package = "tflplanner"), quote = "'"),
+    paste0("sys.source(", encodeString(tflspec::tfl_runner_file(), quote = "'"),
            ", envir = globalenv())"),
     ".batch_root <- 'runs'",
     ".batch_ard <- 'output/ard/ard.rds'",
