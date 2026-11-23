@@ -280,11 +280,8 @@ test_that("a change to study_setup.R marks the ARD and the reports outdated", {
                                   built = "2026-10-08 10:00:00", rows = 10L,
                                   error = "", setup = h,
                                   stringsAsFactors = FALSE))
-  # the report: its RTF, and the record its program leaves
-  info <- report_info(s$planner, "DM")
-  rtf <- file.path(s$path, info$file)
-  dir.create(dirname(rtf), recursive = TRUE, showWarnings = FALSE)
-  writeLines("{\\rtf1}", rtf)
+  # the report: the record its program leaves, and an official run that
+  # made it (its batch folder holds that record: the screens read the run)
   rec <- report_setup_code(s$planner)
   rec <- rec[seq(grep("^record_report <- function", rec),
                  length(rec) - 1L)]
@@ -292,6 +289,9 @@ test_that("a change to study_setup.R marks the ARD and the reports outdated", {
     eval(parse(text = rec))
     record_report("DM")
   })
+  fake_run(s$path, "run1", "tfl", "DM", report_status = utils::read.csv(
+    file.path(s$path, study_layout()[["tfl"]], .report_status_name),
+    colClasses = "character"))
   # (a report records report_setup.R too)
   expect_identical(.report_setup_recorded(s$path, "DM"), .report_setup_hash(s$path))
   expect_match(.report_setup_hash(s$path), "^[0-9a-f]{32}[|]([0-9a-f]{32})?$")
@@ -371,23 +371,23 @@ test_that("a change to report_setup.R (the rounding) marks the reports outdated,
                                   built = "2026-10-08 10:00:00", rows = 10L,
                                   error = "", setup = .study_setup_hash(s$path),
                                   stringsAsFactors = FALSE))
-  # report_setup.R, then the RTF (a program newer than its RTF is outdated
-  # anyway: report_setup.R keeps its time below)
+  # report_setup.R, then the run that made the report (report_setup.R keeps
+  # its time below: the run's record, not a file time, says what it was made
+  # with)
   rs <- file.path(s$path, .report_setup_path())
   dir.create(dirname(rs), recursive = TRUE, showWarnings = FALSE)
   writeLines("options(rtfreporter.rounding = \"sas\")", rs)
   then <- Sys.time() - 3600
   Sys.setFileTime(rs, then)
-  info <- report_info(s$planner, "DM")
-  rtf <- file.path(s$path, info$file)
-  dir.create(dirname(rtf), recursive = TRUE, showWarnings = FALSE)
-  writeLines("{\\rtf1}", rtf)
   rec <- report_setup_code(s$planner)
   rec <- rec[seq(grep("^record_report <- function", rec), length(rec) - 1L)]
   withr::with_dir(s$path, {
     eval(parse(text = rec))
     record_report("DM")
   })
+  fake_run(s$path, "run1", "tfl", "DM", report_status = utils::read.csv(
+    file.path(s$path, study_layout()[["tfl"]], .report_status_name),
+    colClasses = "character"))
   expect_identical(.report_setup_recorded(s$path, "DM"), .report_setup_hash(s$path))
   expect_equal(study_status(s)$status, "ok")
   # the study's rounding changed: report_setup.R written again

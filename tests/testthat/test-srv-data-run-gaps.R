@@ -39,12 +39,16 @@ dr_study <- function(id = "DR", files = character(), ard = FALSE) {
 dr_batch <- function(s, name, status = "OK", excluded = NULL) {
   d <- file.path(s$path, "runs", name)
   dir.create(d, recursive = TRUE, showWarnings = FALSE)
-  utils::write.csv(data.frame(part = "tfl", program = "programs/tfl/DM.R", status = status,
+  # (a run of DM as the runner leaves it: its output id, and its study in
+  # batch.txt -- the screens read the latest run of a report)
+  utils::write.csv(data.frame(part = "tfl", program = "programs/tfl/DM.R",
+                              output_id = "DM", status = status, md5 = NA_character_,
                               errors = if (status == "OK") 0L else 2L, warnings = 0L,
                               seconds = 1.5, note = "", stringsAsFactors = FALSE),
                    file.path(d, "run.csv"), row.names = FALSE)
   end <- strptime(substr(name, 1, 15), "%Y%m%d_%H%M%S", tz = "UTC") + 30
   writeLines(c("Batch : test",
+               paste("Study :", yaml::read_yaml(file.path(s$path, "study.yml"))$study_id),
                if (!is.null(excluded)) paste("Excluded :", excluded),
                paste("Finished :", format(end, "%Y-%m-%d %H:%M:%S"))),
              file.path(d, "batch.txt"))

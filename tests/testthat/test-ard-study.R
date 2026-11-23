@@ -107,8 +107,11 @@ test_that("the definition is saved, reopened and run", {
   expect_equal(nrow(list_batches(o)), 2L)
 
   # the reports: previews keep what they print in logs/preview
+  # (a failed preview is the design aid's: preview_error, not the report's
+  # status, which is the latest official run's)
   st <- run_study(o, "DM")
-  expect_equal(st$status[st$output_id == "DM"], "error")   # no table spec
+  expect_true(st$preview_error[st$output_id == "DM"])   # no table spec
+  expect_equal(st$status[st$output_id == "DM"], "not run")
   expect_true(file.exists(file.path(s$path, "logs", "preview", "DM.log")))
 
   # a function the installed package has not: the definition's check says

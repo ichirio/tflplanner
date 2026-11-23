@@ -73,29 +73,29 @@ test_that("the marks a run sent are the browser's: one span a report", {
   expect_match(m$B$cls, "^rp-mark text-muted$")
 })
 
-test_that("the stamp of a study's run results: the ARD's status and the batches, not the logs", {
+test_that("the stamp of a study's run results: the batches' run.csv and batch.txt, not the working output nor the logs", {
   d <- withr_tempdir()
-  expect_identical(.run_files_stamp(d), c(ard = "", out = "", runs = ""))
+  expect_identical(.run_files_stamp(d), c(runs = "", done = ""))
+  # the working output of a preview or a hand run: the screens do not read
+  # it, so it is not watched
   dir.create(file.path(d, study_layout()[["ard"]]), recursive = TRUE)
-  f <- file.path(d, study_layout()[["ard"]], "ard_status.csv")
-  writeLines("output_id", f)
+  writeLines("output_id", file.path(d, study_layout()[["ard"]], "ard_status.csv"))
+  dir.create(file.path(d, study_layout()[["tfl"]]), recursive = TRUE)
+  writeLines("x", file.path(d, study_layout()[["tfl"]], "T1.rtf"))
   s1 <- .run_files_stamp(d)
-  expect_match(s1[["ard"]], "^1 ")
-  expect_identical(s1[["runs"]], "")
+  expect_identical(s1, c(runs = "", done = ""))
   # a log written (a preview's, all through a run): no change
   dir.create(file.path(d, study_layout()[["logs_preview"]]), recursive = TRUE)
   writeLines("x", file.path(d, study_layout()[["logs_preview"]], "T1.log"))
   expect_identical(.run_files_stamp(d), s1)
+  # a run going on has its run.csv; it is done when batch.txt is written
   dir.create(file.path(d, "runs", "20261011_000000_all"), recursive = TRUE)
   writeLines("part", file.path(d, "runs", "20261011_000000_all", "run.csv"))
   s2 <- .run_files_stamp(d)
-  expect_identical(s2[["ard"]], s1[["ard"]])
   expect_match(s2[["runs"]], "^1 ")
-  # a report's RTF made (each report program, during the run): its mark
-  # follows at once, not at the run's end
-  dir.create(file.path(d, study_layout()[["tfl"]]), recursive = TRUE)
-  writeLines("x", file.path(d, study_layout()[["tfl"]], "T1.rtf"))
+  expect_identical(s2[["done"]], "")
+  writeLines("Finished : 2026-10-11 00:00:00", file.path(d, "runs", "20261011_000000_all", "batch.txt"))
   s3 <- .run_files_stamp(d)
-  expect_match(s3[["out"]], "^1 ")
-  expect_identical(s3[c("ard", "runs")], s2[c("ard", "runs")])
+  expect_identical(s3[["runs"]], s2[["runs"]])
+  expect_match(s3[["done"]], "^1 ")
 })
