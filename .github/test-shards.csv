@@ -36,6 +36,7 @@ test-planner.R,1,0.4
 test-remove-analysis.R,1,0.0
 test-run-end.R,1,2.5
 test-save-widths.R,1,0.7
+test-settings-speed.R,1,0.0
 test-srv-add-report-gaps.R,1,14.5
 test-srv-builder-rows-gaps.R,1,2.7
 test-standards.R,1,0.1
