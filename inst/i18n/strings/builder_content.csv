@@ -274,4 +274,3 @@
 "One block of titles for each page, when the pages do not share one: one entry a page. Give this or Titles, not both. e.g. list(""Page A"", ""Page B"")","ページごとに違うタイトルのまとまり。1 ページに 1 つ。これか「タイトル」のどちらか一方を書く。例: list(""Page A"", ""Page B"")"
 "The footnote lines under the table, one entry a line, the same on every page. Give this or Pages, not both. e.g. n (%)","表の下の脚注の行。1 行に 1 つで、どのページも同じ。これか「ページ」のどちらか一方を書く。例: n (%)"
 "One block of footnotes for each page, when the pages do not share one: one entry a page. Give this or Footnotes, not both. e.g. list(""Note A"", ""Note B"")","ページごとに違う脚注のまとまり。1 ページに 1 つ。これか「脚注」のどちらか一方を書く。例: list(""Note A"", ""Note B"")"
-"With the column header styled, which of its rows, by number: 1 is the top row, the last one the column labels. Blank: every header row. Only bold, italic, underline, alignment and border go to one row. e.g. 1","列見出しに書式を付ける時の、その何行目か（番号）。1 が一番上で、最後が列の名前の行。空欄: 見出しのすべての行。1 つの行に付くのは太字・斜体・下線・揃え・罫線だけ。例: 1"
