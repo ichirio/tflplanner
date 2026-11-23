@@ -955,7 +955,9 @@
 # A template report's required values still empty, as its card says them:
 # .tpl_missing()'s, and "population" first when the template takes the
 # report's population (demog) and the report has none (character(): none,
-# or not a template report)
+# or not a template report).  With none of those, the required arguments
+# tflspec finds empty (.tpl_rule_missing(): demog's `continuous` or
+# `categorical`), with that error as the attribute `rule`.
 .tpl_missing_report <- function(p, output_id) {
   tp <- .tpl_of(p, output_id)
   if (is.null(tp)) return(character())
@@ -964,7 +966,96 @@
     pid <- as.character(p$spec$outputs[[output_id]]$common$population %||% "")[1L]
     if (is.na(pid) || !nzchar(pid)) miss <- c("population", miss)
   }
+  if (!length(miss)) {
+    rule <- .tpl_rule_missing(p, output_id)
+    if (!is.null(rule)) miss <- structure(rule$args, rule = rule)
+  }
   miss
+}
+
+# The required arguments tflspec finds empty when it resolves a template
+# report: a rule the card's own marks do not hold (demog: `continuous` or
+# `categorical`).  Read from tflspec's condition
+# (tflspec_template_args_missing: its template, arguments and whether one
+# of them is enough), never from its message.  NULL: none, or another
+# error (said where the report is run).  The last answer is kept per
+# report: the preview asks at each edit.
+.tpl_rule_cache <- new.env(parent = emptyenv())
+.tpl_rule_missing <- function(p, output_id) {
+  o <- p$spec$outputs[[output_id]]
+  if (is.null(o)) return(NULL)
+  key <- list(o, p$spec$study)
+  hit <- .tpl_rule_cache[[output_id]]
+  if (!is.null(hit) && identical(hit$key, key)) return(hit$value)
+  # (only its error is read: what else it says is the run's to say)
+  value <- tryCatch({
+    suppressWarnings(suppressMessages(tflspec::tfl_resolve_output(o, p$spec$study)))
+    NULL
+  }, tflspec_template_args_missing = .tpl_args_missing_of, error = function(e) NULL)
+  assign(output_id, list(key = key, value = value), envir = .tpl_rule_cache)
+  value
+}
+
+# tflspec's required-argument error as data
+.tpl_args_missing_of <- function(e) {
+  list(template = as.character(e$template)[1L], args = as.character(e$args),
+       any = isTRUE(e$any))
+}
+
+# An argument's heading, as its card shows it: "meaning (name)" (the
+# meaning from .tpl_arg_labels, or .tpl_doc_labels by its doc; the doc
+# itself when it has neither; the name alone when it has no doc)
+.tpl_arg_heading <- function(prm, t = identity) {
+  doc <- prm$doc %||% ""
+  # (the report's population a template hides (demog): the tip the other
+  # templates' population has, not tflspec's note that it is no parameter)
+  if (identical(prm$name, "population") && isTRUE(prm$hidden)) doc <- "the analysis set's id (SAF)"
+  short <- if (doc %in% names(.tpl_doc_labels)) .tpl_doc_labels[[doc]] else .tpl_arg_labels[prm$name]
+  head <- if (!is.na(short)) t(short) else if (nzchar(doc)) t(doc) else ""
+  if (nzchar(head)) sprintf(t("%s (%s)"), head, prm$name) else prm$name
+}
+
+# The required arguments to fill in, as the app says it (#752): each by its
+# card's heading, joined by "or" when one of them is enough, and the step
+# it is filled in -- "Fill in Continuous variables (continuous) or
+# Categorical variables (categorical) in 2 analysis."
+.tpl_args_missing_text <- function(template, args, any = FALSE, t = identity) {
+  prm <- .tpl_params(template)
+  heads <- vapply(args, function(a) .tpl_arg_heading(prm[[a]] %||% list(name = a), t), "")
+  secs <- vapply(args, function(a) {
+    if (identical(a, "population") && .tpl_pop_of_report(prm)) "data" else .tpl_arg_section(template, a)
+  }, "")
+  join <- if (isTRUE(any)) t("%s or %s") else t("%s and %s")
+  what <- Reduce(function(x, y) sprintf(join, x, y), unname(heads))
+  steps <- paste(unique(vapply(secs, function(s) t(.step_labels[[s]]), "")), collapse = ", ")
+  sprintf(t("Fill in %s in %s."), what, steps)
+}
+
+# What a template report's empty required arguments say where its preview
+# waits for them: tflspec's rule as .tpl_args_missing_text() says it, else
+# the names
+.tpl_missing_say <- function(miss, t = identity) {
+  rule <- attr(miss, "rule")
+  if (!is.null(rule)) return(.tpl_args_missing_text(rule$template, rule$args, rule$any, t))
+  sprintf(t("Required arguments are empty: %s. The preview waits for them."),
+          paste(miss, collapse = ", "))
+}
+
+# The note a required-argument error is shown in: one, replaced by the next
+# (a save and an Update preview say it once); NULL for any other error
+.tpl_args_note <- "tpl_args_missing"
+.error_note_id <- function(e) {
+  if (inherits(e, "tflspec_template_args_missing")) .tpl_args_note
+}
+
+# An error's text on screen: tflspec's required-argument error as
+# .tpl_args_missing_text() says it, any other as .error_view() does
+.error_text <- function(e, t = identity) {
+  if (inherits(e, "tflspec_template_args_missing")) {
+    r <- .tpl_args_missing_of(e)
+    return(.tpl_args_missing_text(r$template, r$args, r$any, t))
+  }
+  .error_view(conditionMessage(e), t)
 }
 
 # The editor step a template's argument is drawn in (#514): "data" (the

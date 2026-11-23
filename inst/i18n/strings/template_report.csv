@@ -44,3 +44,6 @@
 "The report's analysis set (common: population), set on the report list. The template's analysis data read it unless their own row names one.","帳票の解析対象集団（common: population）。帳票リストで設定します。テンプレートの解析データは、その行が自分の集団を指定していなければこれを読みます。"
 "Analysis data (id)","解析データ (id)"
 "Dataset (from)","データセット (from)"
+"Fill in %s in %s.","%sを %s で入れてください。"
+"%s or %s","%sか %s"
+"%s and %s","%sと %s"
