@@ -563,11 +563,12 @@ test_that("plan_cell_style(): cols, where, the looks as fields, each call its ow
   expect_identical(.plan_form_main("plan_cell_style"),
                    c("cols", "header", "where", "bold", "italic", "align", "color", "background"))
   sch <- .plan_form_schema("plan_cell_style")
-  # a look left blank is not written (not FALSE); border: under More settings, as R
+  # a look left blank is not written (not FALSE); border: under More settings,
+  # R where tflspec's definition says `input: r` (else rtf_border()'s fields)
   expect_identical(.arg_kind(sch$args$bold$type), "enum")
   expect_identical(.arg_kind(sch$args$color$type), "colour")
-  expect_identical(sch$args$border$type, "r")
-  expect_identical(sch$args$border$type, "r")
+  inp <- with(tflspec::tfl_arg_defs(fn = "plan_cell_style"), input[name == "border"])
+  expect_identical(identical(sch$args$border$type, "r"), identical(inp, "r"))
   expect_true(isFALSE(sch$args$header$default))
   it0 <- list(fn = "plan_cell_style", args = list(), own_args = list())
   h <- html(.plan_form_body("c", "plan_cell_style", it0, choices = c("row_label", "Placebo")))
