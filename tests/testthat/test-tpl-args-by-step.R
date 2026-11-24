@@ -28,7 +28,7 @@ test_that(".tpl_of() gives T-14-1-1T's values, and .tpl_output() writes it back 
   o <- tpl_by_step()
   p <- list(spec = list(outputs = list(`T-14-1-1T` = o)))
   tp <- .tpl_of(p, "T-14-1-1T")
-  expect_identical(tp$name, "tflspec_v1/demog")
+  expect_identical(tp$name, "tflspec_v1/tflspec_summary")
   expect_true(all(c("by", "continuous", "categorical", "labels", "cells") %in% names(tp$args)))
   # (unchanged: the same file)
   expect_identical(.tpl_output(p, "T-14-1-1T", tp$args)$template, o$template)
@@ -50,9 +50,9 @@ test_that(".tpl_of() gives T-14-1-1T's values, and .tpl_output() writes it back 
 })
 
 test_that("a flat report stays flat; a name in both goes flat; an emptied section is dropped", {
-  t <- list(name = "tflspec_v1/demog", args = list(by = "TRT01A", max_rows = 30L))
+  t <- list(name = "tflspec_v1/tflspec_summary", args = list(by = "TRT01A", max_rows = 30L))
   w <- .tpl_write_args(t, list(by = "TRT01A", max_rows = 12L, continuous = "AGE"))
-  expect_identical(w, list(name = "tflspec_v1/demog",
+  expect_identical(w, list(name = "tflspec_v1/tflspec_summary",
                            args = list(by = "TRT01A", max_rows = 12L, continuous = "AGE")))
   # (a series template: a name in two places is read in the file's order,
   # the later winning, as tflspec's .tr_given(); written back flat)
@@ -67,35 +67,35 @@ test_that("a flat report stays flat; a name in both goes flat; an emptied sectio
 })
 
 test_that("a new argument of a by-step report, and a new report, go to their step's section", {
-  ok <- tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/demog")), error = function(e) FALSE)
+  ok <- tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/tflspec_summary")), error = function(e) FALSE)
   skip_if(!isTRUE(ok), "this tflspec has no series templates (tflspec#824)")
-  st <- function(a) .tpl_arg_step("tflspec_v1/demog", a)
+  st <- function(a) .tpl_arg_step("tflspec_v1/tflspec_summary", a)
   expect_identical(st("continuous"), "analysis")
   expect_identical(st("max_rows"), "content")
-  t <- list(name = "tflspec_v1/demog", analysis = list(by = "TRT01A"))
+  t <- list(name = "tflspec_v1/tflspec_summary", analysis = list(by = "TRT01A"))
   w <- .tpl_write_args(t, list(by = "TRT01A", continuous = "AGE", max_rows = 9L))
   expect_identical(w$analysis, list(by = "TRT01A", continuous = "AGE"))
   expect_identical(w$content, list(max_rows = 9L))
   # (`ard:` is no section of a series template -- tflspec reads it as an
   # argument named ard and stops -- so it is an argument here too, kept
   # until the card's arguments leave it out)
-  t3 <- list(name = "tflspec_v1/demog", ard = list(by = "TRT01A"))
+  t3 <- list(name = "tflspec_v1/tflspec_summary", ard = list(by = "TRT01A"))
   expect_identical(names(.tpl_args_of(t3)), "ard")
   w <- .tpl_write_args(t3, list(by = "TRT01A", continuous = "AGE"))
   expect_null(w$ard)
   expect_identical(w$analysis, list(by = "TRT01A", continuous = "AGE"))
   # (a new report: by step)
-  w <- .tpl_write_args(list(name = "tflspec_v1/demog"), list(continuous = "AGE", max_rows = 9L), by_step = TRUE)
-  expect_identical(w, list(name = "tflspec_v1/demog", analysis = list(continuous = "AGE"),
+  w <- .tpl_write_args(list(name = "tflspec_v1/tflspec_summary"), list(continuous = "AGE", max_rows = 9L), by_step = TRUE)
+  expect_identical(w, list(name = "tflspec_v1/tflspec_summary", analysis = list(continuous = "AGE"),
                            content = list(max_rows = 9L)))
   # (an argument whose step the template does not say: flat)
-  w <- .tpl_write_args(list(name = "tflspec_v1/demog"), list(nosuch = 1L), by_step = TRUE)
+  w <- .tpl_write_args(list(name = "tflspec_v1/tflspec_summary"), list(nosuch = 1L), by_step = TRUE)
   expect_identical(w$args, list(nosuch = 1L))
 })
 
 test_that("T-14-1-1T in SAMPLE-01 has no empty required argument and its preview code runs", {
   skip_on_cran()
-  ok <- tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/demog")), error = function(e) FALSE)
+  ok <- tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/tflspec_summary")), error = function(e) FALSE)
   skip_if(!isTRUE(ok), "this tflspec has no series templates (tflspec#824)")
   home <- local_home()
   s <- suppressMessages(sample_study_copy(home))
@@ -167,7 +167,7 @@ test_that("the reader agrees with tflspec's for a series template (#751 item 1)"
 
 test_that("T-14-1-1T's analysis set is seen in step 1 (data) (#751 item 6)", {
   skip_on_cran()
-  ok <- tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/demog")), error = function(e) FALSE)
+  ok <- tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/tflspec_summary")), error = function(e) FALSE)
   skip_if(!isTRUE(ok), "this tflspec has no series templates (tflspec#824)")
   home <- local_home()
   s <- suppressMessages(sample_study_copy(home))

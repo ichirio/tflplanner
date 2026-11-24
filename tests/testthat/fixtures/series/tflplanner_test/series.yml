@@ -1,0 +1,7 @@
+# tflplanner_test/series.yml: a test-only series (local_test_series(),
+# helper-test-series.R); never shipped, never in the picker.
+name: tflplanner_test
+label: tflplanner test templates
+released: 2026-11-25
+fixes: []
+values: {}

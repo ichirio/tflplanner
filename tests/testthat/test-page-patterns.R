@@ -253,12 +253,12 @@ test_that("the user's notes: Standard under a pattern, the tokens card, the head
   p <- set_page_token(p, "T1", "OUTPUT_TITLE", "Demographics")
   h <- as.character(.page_form_ui(p, "T1", identity))
   # Standard's line 1 under Compact: the study default's
-  expect_match(h, "Study default", fixed = TRUE)
+  expect_match(h, "Study standard", fixed = TRUE)
   # the Titles card: the title the header prints, changed in the card above
   expect_match(h, "The header prints {OUTPUT_TITLE}: Demographics", fixed = TRUE)
   # one card first: the report's information (a field each), its own
   # tokens, rtfreporter's
-  expect_lt(regexpr("Report information and tokens", h, fixed = TRUE),
+  expect_lt(regexpr("Report information and values to insert", h, fixed = TRUE),
             regexpr("Paper and margins", h, fixed = TRUE))
   for (k in .pg_info_items) expect_match(h, sprintf('data-kind="info" data-name="%s"', k), fixed = TRUE)
   # no reset buttons (a TOC taken in again overwrites); an empty label is

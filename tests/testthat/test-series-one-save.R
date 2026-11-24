@@ -9,7 +9,7 @@ series_study <- function(env = parent.frame()) {
   testthat::skip_if(!isTRUE(ok), "this tflspec has no template series")
   home <- local_home(env)
   s <- suppressMessages(sample_study_copy(home))
-  invisible(tflspec::tfl_copy_templates(s$path, "tflspec_v1/demog"))
+  invisible(tflspec::tfl_copy_templates(s$path, "tflspec_v1/tflspec_summary"))
   s
 }
 copy_value <- function(s, key) {

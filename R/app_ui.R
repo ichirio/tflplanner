@@ -674,7 +674,7 @@ app_ui <- function(lang = "en") {
     class = "mt-2",
     # (a template report's "page" arguments)
     shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_card_page")),
-    pane_head(t("This report's page"), t("The page of the report chosen on the left: its titles, footnotes, its own header or footer, and tokens of your own ({STUDY} ...). Study defaults = every report's.")),
+    pane_head(t("This report's page"), t("The page of the report chosen on the left: its titles, footnotes, its own header or footer, and values of your own to insert ({STUDY} ...). Study defaults = every report's.")),
     shiny::tags$style(shiny::HTML(.page_form_css)),
     shiny::tags$script(shiny::HTML(.page_form_js)),
     # its page pattern (Standard, Compact ...): what it inherits
