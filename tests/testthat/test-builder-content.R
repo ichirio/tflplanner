@@ -349,11 +349,15 @@ test_that("the screen review's fixes: per-variable templates said, every argumen
   expect_match(h, "More settings", fixed = TRUE)
   expect_match(h, 'data-arg="keep"', fixed = TRUE)
   # ... read back onto the item's arguments as they are now
-  # (keep's default TRUE: unticked is written, ticked again is none)
+  # (keep's default TRUE: unticked is written, ticked again is written as
+  # the generated cards write it, spec_card_args(): #818)
   r <- .special_read(list(c__keep = FALSE), "c", "plan_sort")
   expect_identical(.special_args_put(it$args, r)$keep, FALSE)
   expect_identical(.special_args_put(c(it$args, list(keep = FALSE)),
                                      .special_read(list(c__keep = TRUE), "c", "plan_sort")),
+                   c(it$args, list(keep = TRUE)))
+  # (ticked at the default over an item that says none: no change)
+  expect_identical(.special_args_put(it$args, .special_read(list(c__keep = TRUE), "c", "plan_sort")),
                    it$args)
   expect_null(.special_read(list(), "c", "plan_sort"))
   # an off card: no body, the summary says what turning it on does
@@ -362,6 +366,35 @@ test_that("the screen review's fixes: per-variable templates said, every argumen
   h <- html(.table_cards(list(off)))
   expect_false(grepl("No arguments: the defaults of the function.", h, fixed = TRUE))
   expect_match(h, "On: its usual values are written.", fixed = TRUE)
+})
+
+test_that("a form of its own reads a check against the item's own value, as the generated cards (#818)", {
+  skip_on_cran()
+  fn <- "plan_cells"
+  expect_true("notes" %in% .special_args(fn))
+  expect_identical(.arg_kind(spec_card_defs(fn)$args$notes$type), "logical")
+  base <- list(default = "{n}")
+  put <- function(args, ticked) .special_args_put(args, .special_read(list(c__notes = ticked), "c", fn))
+  # notes = FALSE written: left unticked, it stays FALSE
+  got <- put(c(base, list(notes = FALSE)), FALSE)
+  expect_identical(got$notes, FALSE)
+  expect_identical(got, c(base, list(notes = FALSE)))
+  # no notes: left unticked, still none
+  got <- put(base, FALSE)
+  expect_false("notes" %in% names(got))
+  expect_identical(got, base)
+  # ticked: TRUE
+  expect_identical(put(base, TRUE)$notes, TRUE)
+  expect_identical(put(c(base, list(notes = FALSE)), TRUE)$notes, TRUE)
+  # TRUE unticked: as spec_card_args() has it
+  had <- c(base, list(notes = TRUE))
+  want <- spec_card_args(list(notes = FALSE), list(args = had), fn)
+  expect_identical(put(had, FALSE)$notes, want$notes)
+  expect_identical(put(had, FALSE), c(base, list(notes = want$notes)))
+  # (the form's other fields as before: a value put in, no check)
+  r <- .special_read(list(c__show_keys = "AGE"), "c", "table_plan")
+  expect_identical(r$set$show_keys, "AGE")
+  expect_length(r$check, 0L)
 })
 
 test_that("the rounding's choices say SAS, R, IEC 60559; the YAML keeps sas, r, iec60559 (#417)", {

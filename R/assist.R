@@ -298,11 +298,20 @@ fetch_ard <- function(study, output_id, timeout = 300,
   f_make <- NULL
   if (.ard_from_definition(p, output_id)) {
     st <- tryCatch(ard_status(study), error = function(e) NULL)
-    if (identical(st$state[match(output_id, st$output_id)], "built")) {
+    if (.ard_rows_ready(study, output_id, st)) {
       rows <- tryCatch(study_ard_rows(study, output_id), error = function(e) NULL)
     }
     if (!is.null(rows) && nrow(rows)) {
       made <- "study"
+      # (the rows are the latest official run's, not the working ARD's: the
+      # code reads them from a file of its own in place of the study ARD's)
+      if (!identical(st$state[match(output_id, st$output_id)], "built")) {
+        f_rows <- file.path(tmp, "study_ard.rds")
+        saveRDS(rows, f_rows)
+        ard_code <- gsub(.path_lit(.study_ard_rel(p$ard)),
+                         encodeString(normalizePath(f_rows, "/", FALSE), quote = "\""),
+                         ard_code, fixed = TRUE)
+      }
     } else {
       rows <- NULL
       f_make <- file.path(tmp, "make_ard.R")

@@ -34,7 +34,7 @@ test_that("the Spec tab's grids hold what the columns say; the rest of an item i
   skip_on_cran()
   skip_if_not_installed("jsonlite")
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   it <- tflspec::tfl_item
   # plan_columns with a cell_format, plan_labels with a heading named twice
   # and a data variable's value labels

@@ -74,7 +74,7 @@ test_that("the report list names the datasets a report reads, and its title", {
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  p <- suppressMessages(create_sample_study(run = FALSE))$planner
+  p <- suppressMessages(sample_study_copy())$planner
   # a table: its analyses' data and their population's
   expect_identical(.report_datasets(p, "T-14-1-1"), "ADSL")
   expect_identical(.report_datasets(p, "T-14-3-1"), c("ADAE", "ADSL"))
@@ -159,7 +159,7 @@ test_that("a Rework follows the table's own normalize_ard() arguments", {
     overall_label = "Subjects with at least one TEAE"))
   p$outputs$process_code[p$outputs$output_id == "AE"] <- "data <- data[data$variable != \"AGE\", ]"
   code <- program_code(p, "AE")
-  i <- match("# normalize and rework", code)
+  i <- .normalize_at(code)
   expect_identical(code[i + 1:6], c(
     "data <- ard |>",
     "  normalize_ard(",
@@ -181,17 +181,20 @@ test_that("the sample's Rework is written as tflspec writes it: normalize_ard() 
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  p <- suppressMessages(create_sample_study(run = FALSE))$planner
+  p <- suppressMessages(sample_study_copy())$planner
   # (the Rework is one element, as it is written: split into lines)
   code <- unlist(strsplit(program_code(p, "T-14-2-2"), "
 ", fixed = TRUE))
-  i <- match("# normalize and rework", code)
+  i <- .normalize_at(code)
   expect_identical(code[i + 1L], "data <- ard |> normalize_ard()")
   # the lines tflspec's content code has before the plan, the Rework as written
   y <- .code_output(p, "T-14-2-2")
   want <- tflspec::tfl_content_code(.code_content(y), pipe = "|>")
   want <- want[seq_len(match("", want) - 1L)]
-  expect_identical(code[i + seq_along(want)], want)
+  # (from where tflspec's lines start: any it writes before the normalization too)
+  j <- match(want[[1L]], code)
+  expect_false(is.na(j))
+  expect_identical(code[j - 1L + seq_along(want)], want)
   expect_false("data <- normalize_ard(ard)" %in% code)
   expect_true(any(startsWith(code, "plan <- table_plan(data")))
 })
@@ -203,7 +206,7 @@ test_that("an old Rework that normalizes itself gives the data the new form give
     code <- program_code(q, "T2")
     expect_silent(parse(text = code))
     # (from the table's normalization to its plan)
-    i <- match("# normalize and rework", code)
+    i <- .normalize_at(code)
     env <- new.env()
     env$ard <- ard
     eval(parse(text = c("library(rtfreporter)",
@@ -217,7 +220,7 @@ test_that("an old Rework that normalizes itself gives the data the new form give
   # (one spare line: written after the table's own, it overwrites it)
   q <- add_output(new_planner(), "T2", process_code = "data <- normalize_ard(ard)")
   code <- program_code(q, "T2")
-  i <- match("# normalize and rework", code)
+  i <- .normalize_at(code)
   expect_identical(code[i + 1:2], c("data <- ard |> normalize_ard()", "data <- normalize_ard(ard)"))
 })
 

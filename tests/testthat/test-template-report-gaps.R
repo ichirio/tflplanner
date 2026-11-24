@@ -34,12 +34,18 @@ test_that("a series' templates are listed by kind, \"<series>/<template>\", with
   w("dm.yml", c("# demo", "template: dm", "label: Demographics", "params: {}"))
   w("km.yml", c("template: km", "label: KM curves", "figure: km_curves"))
   w("lst.yml", c("template: lst", "label: A listing", "style: !series style_listing"))
+  # (a template's own `kind:` first: km_cards is a figure with no `figure:`
+  # key; a `kind:` over the other signs too)
+  w("pcards.yml", c("# cards", "template: pcards", "label: KM cards", "kind: figure", "style: !series style"))
+  w("rlist.yml", c("template: rlist", "label: Listed", "kind: listing", "style: !series style"))
+  w("tbl.yml", c("template: tbl", "label: A table", "kind:  table ", "figure: km_curves"))
   lister <- function() data.frame(name = c("demo_v1", "demo_v1"), label = "Demo", released = NA,
                                   path = file.path(d, "demo_v1"), source = c("option", "package"))
   x <- .tpl_series_templates(lister)
-  expect_identical(x$name, c("demo_v1/dm", "demo_v1/km", "demo_v1/lst"))
-  expect_identical(x$kind, c("table", "figure", "listing"))
-  expect_identical(x$label, c("Demographics", "KM curves", "A listing"))
+  expect_identical(x$name, c("demo_v1/dm", "demo_v1/km", "demo_v1/lst", "demo_v1/pcards", "demo_v1/rlist",
+                             "demo_v1/tbl"))
+  expect_identical(x$kind, c("table", "figure", "listing", "figure", "listing", "table"))
+  expect_identical(x$label, c("Demographics", "KM curves", "A listing", "KM cards", "Listed", "A table"))
   expect_identical(.tpl_desc_of("demo_v1/km", x), "KM curves")
   expect_identical(.tpl_desc_of("demog", x), .tpl_desc[["demog"]])
   expect_identical(.tpl_desc_of("no/such", x), "")
@@ -343,7 +349,13 @@ test_that("a template's name in a report's file, and its call in the program", {
   expect_null(.tpl_spec_name(list(template = "km_simple")))
   expect_null(.tpl_spec_name(list()))
   expect_identical(.tpl_call_name("demog"), "tfl_tpl()")
-  expect_identical(.tpl_call_name("no_such_template"), "tfl_template(no_such_template)")
+  # (one form whatever the template, the name not repeated: #751 item 7)
+  expect_identical(.tpl_call_name("no_such_template"), "tfl_tpl()")
+  expect_identical(.tpl_call_name("tflspec_v1/tflspec_summary"), "tfl_template_resolve()")
+  # (data_id, the analysis data's id, is drawn in the data step)
+  expect_identical(.tpl_arg_section("demog", "data_id"), "data")
+  expect_identical(.tpl_arg_section("stf_t02_demog", "data_id"), "data")
+  expect_identical(.tpl_arg_section("no_such_template", "data_id"), "data")
 })
 
 test_that("a template that hides its analysis set takes it from the report's population, asked in the dialog", {
@@ -366,7 +378,7 @@ test_that("a table field's column choices are the template's data's, not every d
   expect_identical(.tpl_columns(data, "ADAE"), c("USUBJID", "AEDECOD"))
   expect_identical(.tpl_columns(data, NULL), c("USUBJID", "AGE", "SEX", "AEDECOD"))
   expect_identical(.tpl_columns(data, "ADVS"), c("USUBJID", "AGE", "SEX", "AEDECOD"))
-  # tflspec_v1/demog's labels (map<column,string>, choices vars(adsl_sub)),
+  # tflspec_v1/tflspec_summary's labels (map<column,string>, choices vars(adsl_sub)),
   # the card's dataset none: ADSL's
   labels <- list(name = "labels", def = list(type = "map<column,string>", input = "table",
                                              choices = "vars(adsl_sub)"))

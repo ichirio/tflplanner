@@ -23,7 +23,7 @@
 # The titles' and the footnotes' style (rtf_titles(), rtf_footnotes()): the
 # size first, as their cards show it
 .pgs_band_fields <- list(
-  list(arg = "font_size_half_points", label = "Size (pt)", kind = "pt"),
+  list(arg = "font_size_half_points", label = "Font size (pt)", kind = "pt"),
   list(arg = "row_height_twips", label = "Row height (twips)", kind = "number"),
   list(arg = "markup", label = "Markup", kind = "choice",
        choices = c("script", "relational", "all", "none")),
@@ -51,7 +51,7 @@
   # fields: kept as the YAML says them)
   rtf_style = list(
     list(arg = "font", label = "Font family", kind = "text", choices = c("Courier", "Courier New")),
-    list(arg = "font_size_half_points", label = "Size (pt)", kind = "pt"),
+    list(arg = "font_size_half_points", label = "Font size (pt)", kind = "pt"),
     list(arg = "row_height_twips", label = "Row height (twips)", kind = "number"),
     list(arg = "cell_padding_left_twips", label = "Cell padding, left (twips)", kind = "number"),
     list(arg = "cell_padding_right_twips", label = "Cell padding, right (twips)", kind = "number"),
@@ -550,10 +550,12 @@ $", "", yaml::as.yaml(list(tokens = tokens))), "
 }
 
 # A study part's file text, as tflspec writes it from the study's spec.
-# `old`: the file's text before, whose study-level `codelists:` and
-# `adam_meta:` blocks of defaults.yml are kept as they were when the writer
-# does not give them (tfl_write_study_part() writes the layer and the styles
-# only; the app has no editor for either block yet).
+# `old`: the file's text before. For defaults.yml, every top-level block of
+# `old` the writer does not write is kept as it was, with its comment lines
+# (tfl_write_study_part() writes the layer and the styles only; the others,
+# `codelists:`, `adam_meta:`, `figure_style:`, `options:`, `ai:` ..., are read
+# by tflspec or written by hand, by tflspec or the AI kit), see
+# .keep_study_blocks(). A block the writer writes replaces the old one.
 .study_part_lines <- function(study, part, name = NULL, old = NULL) {
   f <- tempfile("tflplanner-part", fileext = ".yml")
   on.exit(unlink(f), add = TRUE)
@@ -563,26 +565,37 @@ $", "", yaml::as.yaml(list(tokens = tokens))), "
   lines
 }
 
-# `lines` with the top-level blocks `codelists:` and `adam_meta:` of `old`
-# (the key's line to the next top-level key, the comment lines above the key
-# included) added where `lines` has no such key
+# `lines` (the writer's text) with every top-level block of `old` whose key
+# `lines` has not: the key's line to the next top-level key, the comment
+# lines just above the key included (those just above the next key belong to
+# that one). The writer's own keys (content, page, data, styles) are not
+# kept: the writer leaves one out when it is empty, so the old one is gone.
+# A block `lines` has replaces the old one. The kept blocks keep their old
+# order and their place relative to `styles:`: those before the old
+# `styles:` (all, when it has none) go just before the new `styles:` (at the
+# end when there is none), those after it at the end.
 .keep_study_blocks <- function(lines, old) {
-  top <- grepl("^[A-Za-z_][A-Za-z0-9_]*:", old)
-  for (k in c("codelists", "adam_meta")) {
-    if (any(grepl(paste0("^", k, ":"), lines))) next
-    i <- which(grepl(paste0("^", k, ":"), old))[1L]
-    if (is.na(i)) next
+  is_key <- function(x) grepl("^[A-Za-z_][A-Za-z0-9_]*:", x)
+  key_of <- function(x) sub(":.*$", "", x)
+  top <- is_key(old)
+  keys <- ifelse(top, key_of(old), NA_character_)
+  skip <- c(key_of(lines[is_key(lines)]), "content", "page", "data", "styles")
+  st <- which(keys %in% "styles")[1L]
+  before <- character()
+  after <- character()
+  for (i in which(top)) {
+    if (keys[i] %in% skip) next
+    skip <- c(skip, keys[i])
     nxt <- which(top & seq_along(old) > i)
     j <- if (length(nxt)) nxt[1L] - 1L else length(old)
-    # (the comment lines just above the next key belong to it)
     while (j > i && grepl("^#", old[j])) j <- j - 1L
     from <- i
     while (from > 1L && grepl("^#", old[from - 1L])) from <- from - 1L
-    # (before `styles:`, as the sample's file has them)
-    at <- which(grepl("^styles:", lines))[1L]
-    lines <- if (is.na(at)) c(lines, old[from:j]) else append(lines, old[from:j], after = at - 1L)
+    if (!is.na(st) && i > st) after <- c(after, old[from:j]) else before <- c(before, old[from:j])
   }
-  lines
+  at <- which(grepl("^styles:", lines))[1L]
+  lines <- if (is.na(at)) c(lines, before) else append(lines, before, after = at - 1L)
+  c(lines, after)
 }
 
 # The view's study rows of the report sheets (the study's default page

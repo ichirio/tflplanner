@@ -19,13 +19,18 @@
 #     programs/ard/        one ARD program per output, ard_setup.R,
 #                          autoexec_ard.R
 #     programs/tfl/        one program per report, autoexec_report.R
-#     output/ard/          the study's working ARD (ard.rds)
+#     output/ard/          the study's working ARD (ard.rds): what previews
+#                          and hand runs of a program leave, for the design
+#                          aids to read; not an official result
 #     input/ard/           ARDs made elsewhere and taken in (import_ard()),
 #                          with their record imports.csv; nothing else
 #                          writes here
-#     output/tfl/          the working reports: the RTF files
-#     runs/                official runs: one batch folder each, with the
-#                          logs, the results and the code
+#     output/tfl/          the working reports: the RTF files of previews and
+#                          hand runs
+#     runs/                official runs: one batch folder each, a copy of
+#                          the study the programs ran in: the logs, the
+#                          results (the same output/ layout) and the code.  The screens read a report's state and
+#                          RTF from the latest run that made it
 #     logs/preview/        what a report program printed when last run on
 #                          its own (a preview; not a log of record)
 #
@@ -65,20 +70,117 @@ study_layout <- function() {
   id
 }
 
+# ---- study.yml written in place ---------------------------------------------
+# study.yml holds the study's fields, the YAML spec's study part (settings,
+# keys, setup code as !r, values tagged !series, !study, !unset ...) and
+# blocks written by hand or by the AI screens.  A writer that reads the whole
+# file and writes it back loses what the YAML reader does not keep: the tags
+# (`setup: !r x <- 1` comes back as the text `x <- 1`), the comments, the
+# quoting.  So every writer of study.yml changes its own key's lines in the
+# text and leaves every other line as it was (.yml_set_key()).
+
+# A file's lines (none when it is not there; a byte order mark left out)
+.study_yml_lines <- function(f) {
+  if (!file.exists(f)) return(character())
+  lines <- readLines(f, encoding = "UTF-8", warn = FALSE)
+  if (length(lines)) lines[1L] <- sub("^\ufeff", "", lines[1L])
+  lines
+}
+
+.study_yml_write <- function(lines, f) {
+  writeLines(enc2utf8(as.character(lines)), f, useBytes = TRUE)
+  invisible(f)
+}
+
+# The lines of the key `key` at `indent` spaces, looked for in lines `from`
+# to `to`: its line and the lines of its value (more indented; a sequence's
+# `- ` at its own indent; blank and comment lines between them), the blank
+# and comment lines at its end left out (they stay with what follows).
+# None when the key is not there.
+.yml_key_range <- function(lines, key, from = 1L, to = length(lines), indent = 0L) {
+  if (to < from) return(integer())
+  pad <- strrep(" ", indent)
+  ind <- nchar(sub("^( *).*$", "\\1", lines))
+  blank <- grepl("^[[:space:]]*$", lines)
+  comment <- grepl("^[[:space:]]*#", lines)
+  at <- NA_integer_
+  for (i in seq.int(from, to)) {
+    if (blank[i] || comment[i] || ind[i] != indent) next
+    rest <- substring(lines[i], indent + 1L)
+    k <- sub("[[:space:]]*:([[:space:]].*)?$", "", rest)
+    if (identical(k, rest)) next
+    if (identical(gsub("^[\"']|[\"']$", "", k), key)) {
+      at <- i
+      break
+    }
+  }
+  if (is.na(at)) return(integer())
+  end <- at
+  i <- at + 1L
+  while (i <= to) {
+    item <- ind[i] == indent && grepl("^-( |$)", substring(lines[i], indent + 1L))
+    if (!(blank[i] || comment[i] || ind[i] > indent || item)) break
+    if (!blank[i] && !comment[i]) end <- i
+    i <- i + 1L
+  }
+  at:end
+}
+
+# `lines` with the lines `r` replaced by `new`; no `r`: `new` put after line
+# `after`
+.yml_replace <- function(lines, r, new, after = length(lines)) {
+  if (!length(r)) return(append(lines, new, after = after))
+  c(lines[seq_len(r[1L] - 1L)], new, lines[-seq_len(r[length(r)])])
+}
+
+# A value's lines as the YAML package writes them, under `key`
+.yml_value_lines <- function(key, value) {
+  x <- stats::setNames(list(value), key)
+  out <- yaml::as.yaml(x, handlers = list(logical = yaml::verbatim_logical))
+  strsplit(sub("\n$", "", out), "\n", fixed = TRUE)[[1L]]
+}
+
+# `lines` (a YAML file's) with the top-level key `key` set to `value`, or,
+# with `under`, the key `key` of the top-level block `under`: that key's
+# lines replaced, or added at the end of the block (of the file), every other
+# line as it was.  `value` NULL: the key's lines taken out.  A block written
+# on its key's line (`ai: {run: one}`) is written again from what it says.
+.yml_set_key <- function(lines, key, value, under = NULL) {
+  lines <- as.character(lines %||% character())
+  new <- function(pad) if (is.null(value)) character() else paste0(pad, .yml_value_lines(key, value))
+  if (is.null(under)) return(.yml_replace(lines, .yml_key_range(lines, key), new("")))
+  b <- .yml_key_range(lines, under)
+  if (!length(b)) {
+    if (is.null(value)) return(lines)
+    return(c(lines, paste0(under, ":"), new("  ")))
+  }
+  if (!grepl(":[[:space:]]*(#.*)?$", lines[b[1L]])) {
+    v <- tryCatch(yaml::yaml.load(paste(lines[b], collapse = "\n"))[[under]],
+                  error = function(e) NULL)
+    if (!is.list(v)) v <- list()
+    v[[key]] <- value
+    blk <- if (length(v)) .yml_value_lines(under, v) else paste0(under, ":")
+    return(.yml_replace(lines, b, blk))
+  }
+  last <- b[length(b)]
+  inner <- if (last > b[1L]) seq.int(b[1L] + 1L, last) else integer()
+  inner <- inner[!grepl("^[[:space:]]*(#.*)?$", lines[inner])]
+  indent <- if (length(inner)) nchar(sub("^( *).*$", "\\1", lines[inner[1L]])) else 2L
+  r <- .yml_key_range(lines, key, b[1L] + 1L, last, indent)
+  .yml_replace(lines, r, new(strrep(" ", indent)), after = last)
+}
+
 .write_meta <- function(meta, path) {
   meta$updated <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
   meta$tflplanner <- as.character(utils::packageVersion("tflplanner"))
   meta <- lapply(meta, function(v) if (length(v) == 1L && is.na(v)) "" else v)
   f <- file.path(path, .study_file)
   # study.yml holds the YAML spec's study part too (its settings, keys,
-  # setup code -- an !r kept as one): the fields set, the rest as it is
-  old <- if (file.exists(f)) yaml::read_yaml(f, handlers = list(
-    r = function(x) structure(x, tag = "!r"),
-    `bool#yes` = function(x) x, `bool#no` = function(x) x))
-  out <- old %||% list()
-  for (k in names(meta)) out[[k]] <- meta[[k]]
-  writeLines(yaml::as.yaml(out, handlers = list(logical = yaml::verbatim_logical)), f,
-             useBytes = TRUE)
+  # setup code as !r, tagged values, comments): the fields' lines set, every
+  # other line as it is
+  lines <- .study_yml_lines(f)
+  for (k in names(meta)) lines <- .yml_set_key(lines, k, meta[[k]])
+  .study_yml_write(lines, f)
   invisible(meta)
 }
 

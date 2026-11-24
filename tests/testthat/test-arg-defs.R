@@ -167,10 +167,18 @@ test_that("each input form draws its field", {
   h <- html(arg_field("c", "conditions", "rows<map<string,string|r>>", def = list(input = "table")))
   expect_identical(h, html(arg_field("c", "conditions", "rows<map<string,string|r>>")))
   # text: as the type says, the same as without a def
-  for (ty in c("string", "number", "r", "template", "list<string>")) {
+  for (ty in c("string", "number", "r", "template")) {
     expect_identical(html(arg_field("c", "a", ty, value = NULL, def = list(input = "text"))),
                      html(arg_field("c", "a", ty)), info = ty)
   }
+  # (a list of text typed: the same select of several, but a value not among
+  # the choices may be typed -- normalize_ard(drop_contexts = ); without a
+  # def, or with another form, it cannot)
+  h_text <- html(arg_field("c", "a", "list<string>", value = NULL, def = list(input = "text")))
+  h_plain <- html(arg_field("c", "a", "list<string>"))
+  expect_match(h_text, "\"create\":true", fixed = TRUE)
+  expect_false(grepl("\"create\"", h_plain, fixed = TRUE))
+  expect_identical(sub("\"create\":true,", "", h_text, fixed = TRUE), h_plain)
 })
 
 test_that("without a def a field is today's", {
@@ -427,13 +435,14 @@ test_that("a level def's choices word levels(<param>) gives the card the variabl
   expect_identical(.tpl_levels(d, .tpl_levels_of(prm$many, prm, list())), c("F", "M"))
 })
 
-test_that("a series template's level params (orr_subgroup responder, forest_hr ref) read a variable", {
+test_that("a series template's level params (the test series' responder, forest_hr ref) read a variable", {
   skip_if_not("tfl_arg_defs" %in% getNamespaceExports("tflspec"))
-  ok <- tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/orr_subgroup")),
-                 error = function(e) FALSE)
-  skip_if_not(ok, "this tflspec has no series templates")
-  for (x in list(c("orr_subgroup", "responder"), c("forest_hr", "ref"))) {
-    prm <- .tpl_params(paste0("tflspec_v1/", x[[1L]]))
+  # (orr_subgroup's responder left tflspec_v1 with it, canon 2026-11-24: the
+  # test series has the same param)
+  local_test_series()
+  for (x in list(c("tflplanner_test/params", "responder"), c("tflspec_v1/forest_hr", "ref"))) {
+    prm <- .tpl_params(x[[1L]])
+    expect_true(x[[2L]] %in% names(prm), info = x[[1L]])
     expect_identical(.tpl_type(prm[[x[[2L]]]]), "levels", info = x[[1L]])
     expect_true(nzchar(prm[[x[[2L]]]]$of %||% ""), info = x[[1L]])
   }
@@ -451,7 +460,7 @@ test_that("a map keyed by columns (demog analysis_ids) offers the data's columns
   expect_identical(unname(spec$choices[[1L]]), c("AGE", "SEX"))
 })
 
-test_that("a condition / R param (lab_tox_shift record_where) is the R field: its text kept as R, not YAML", {
+test_that("a condition / R param (the test series' record_where) is the R field: its text kept as R, not YAML", {
   defs <- mk_defs(list(name = "record_where", step = "data", input = "condition", type = "r"),
                   list(name = "other", step = "data", input = "text", type = "r"))
   prm <- .tpl_params_from_defs(defs)
@@ -475,12 +484,16 @@ test_that("a condition / R param (lab_tox_shift record_where) is the R field: it
 
 test_that("every series template's condition / R params get the R field", {
   skip_if_not("tfl_arg_defs" %in% getNamespaceExports("tflspec"))
-  ok <- tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/lab_tox_shift")),
-                 error = function(e) FALSE)
-  skip_if_not(ok, "this tflspec has no series templates")
+  # (no shipped template has a scalar R / condition param since
+  # lab_tox_shift left tflspec_v1, canon 2026-11-24: the test series has one)
+  local_test_series()
   n <- 0L
-  for (tp in c("ae_soc_pt", "demog", "forest_hr", "km_simple", "lab_tox_shift", "orr_subgroup", "stf_t02_demog")) {
-    prm <- tryCatch(.tpl_params(paste0("tflspec_v1/", tp)), error = function(e) list())
+  tps <- c(paste0("tflspec_v1/", c("forest_hr", "km_simple", "tflspec_hierarchy", "tflspec_listing",
+                                   "tflspec_shift", "tflspec_summary")),
+           "tflplanner_test/params")
+  for (tp in tps) {
+    prm <- .tpl_params(tp)
+    expect_gt(length(prm), 0L, label = tp)
     for (x in prm) {
       isr <- identical(x$def$input, "condition") || identical(x$def$type, "r")
       if (isr) n <- n + 1L
@@ -488,5 +501,5 @@ test_that("every series template's condition / R params get the R field", {
     }
   }
   expect_gte(n, 1L)
-  expect_identical(.tpl_type(.tpl_params("tflspec_v1/lab_tox_shift")$record_where), "r")
+  expect_identical(.tpl_type(.tpl_params("tflplanner_test/params")$record_where), "r")
 })

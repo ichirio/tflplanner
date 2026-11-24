@@ -107,7 +107,7 @@
     id <- current()
     if (isTRUE(auto_read[[id]])) return()
     st <- tryCatch(ard_status(shiny::isolate(current_study())), error = function(e) NULL)
-    if (is.null(st) || !identical(st$state[match(id, st$output_id)], "built")) return()
+    if (is.null(st) || !.ard_rows_ready(shiny::isolate(current_study()), id, st)) return()
     auto_read[[id]] <- TRUE
     m <- NULL
     shiny::withProgress(message = sprintf(t("Reading the ARD of %s for the builder"), id),
@@ -468,7 +468,6 @@
     stub_name <- item_of("plan_stub")$args$name %||% "row_label"
     print_cols <- unique(c(stub_name, ".values",
                            if (length(st$key) == 1L && !anyNA(st$key)) st$arms[[st$key]]))
-    bform$form_cols <- list()
     # (each call its own card: plan_cell_style()'s second is
     # "plan_cell_style#2", its form read and written as the second)
     form_items <- Filter(function(it) it$fn %in% .plan_form_fns &&
@@ -485,13 +484,21 @@
                    # (texts, not columns: nothing offered)
                    plan_empty = , plan_titles = , plan_footnotes = , plan_after = NULL,
                    cols_offered)
-      wc <- if (identical(fn, "plan_columns")) .widths_cols(it$args$widths, ch)
-      bform$form_cols[[it$path]] <- wc
       # (normalize_ard(): its hierarchy the ARD analysis's, read only, the
       # way to step 1 beside it)
+      # (an argument's own columns, where the card's are not its:
+      # plan_filter(by = ) a row key, table_plan(rows = )'s; group_col
+      # none -- rtfreporter refuses it on an ARD's plan, whose groups are
+      # its outermost row key)
+      # (normalize_ard(): stack's layers ALL, the columns and the ARD's
+      # group slots; combine's the columns and the variables; the contexts
+      # dropped the ARD's)
+      arg_ch <- switch(fn, plan_filter = list(by = .filter_by_keys(st)),
+                       plan_row_group = list(group_col = character()),
+                       normalize_ard = .norm_arg_choices(ch, keys, st, m))
       body <- spec_card(
         card_id(it$path), fn, it, lang = lang,
-        ctx = list(choices = ch, cols = wc,
+        ctx = list(choices = ch, arg_choices = arg_ch,
                    ard = if (identical(fn, "normalize_ard")) list(hierarchy = st$hierarchy),
                    fixed_link = if (identical(fn, "normalize_ard"))
                      shiny::actionLink("b_norm_step1", sprintf(t("Step %s's analysis"), .step_no("ard")), class = "small ms-1")))
@@ -777,8 +784,7 @@
     for (it in bform$items) {
       if (!it$fn %in% .plan_form_fns ||
           !(isTRUE(it$present) || isTRUE(it$added))) next
-      r <- spec_card_read(input, card_id(it$path), it$fn,
-                          ctx = list(cols = bform$form_cols[[it$path]]))
+      r <- spec_card_read(input, card_id(it$path), it$fn)
       if (!is.null(r)) out[[it$path]] <- r
     }
     # (a form of its own: the other arguments' fields, the item's whole

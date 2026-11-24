@@ -94,21 +94,26 @@ test_that("the definition is saved, reopened and run", {
   expect_match(basename(b$batch), "^[0-9]{8}_[0-9]{6}_ard$")
   for (f in c("logs/ard/DM.log", "output/ard/ard.rds",
               "output/ard/ard_status.csv", "run.csv", "batch.txt",
-              "code/programs/ard/DM.R", "code/programs/ard/ard_setup.R",
-              "code/programs/batch.R")) {
+              "programs/ard/DM.R", "programs/ard/ard_setup.R",
+              "programs/batch.R", "snapshot.csv", "run_paths.R")) {
     expect_true(file.exists(file.path(b$batch, f)), label = f)
   }
-  expect_false(file.exists(file.path(b$batch, "code", "programs", "tfl",
-                                     "autoexec_report.R")))
+  # the folder holds the whole study's programs: its own entry files too
+  expect_true(file.exists(file.path(b$batch, "autoexec_ard.R")))
+  # the study's own output/ is untouched by the run (the working ARD is a
+  # preview's: made above)
   expect_equal(b$result$status, "OK")
   Sys.sleep(1.1)
   b2 <- run_batch(o, "ard", code = FALSE)
-  expect_false(dir.exists(file.path(b2$batch, "code")))
+  expect_true(b2$ok)
   expect_equal(nrow(list_batches(o)), 2L)
 
   # the reports: previews keep what they print in logs/preview
+  # (a failed preview is the design aid's: preview_error, not the report's
+  # status, which is the latest official run's)
   st <- run_study(o, "DM")
-  expect_equal(st$status[st$output_id == "DM"], "error")   # no table spec
+  expect_true(st$preview_error[st$output_id == "DM"])   # no table spec
+  expect_equal(st$status[st$output_id == "DM"], "not run")
   expect_true(file.exists(file.path(s$path, "logs", "preview", "DM.log")))
 
   # a function the installed package has not: the definition's check says

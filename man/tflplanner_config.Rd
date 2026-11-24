@@ -14,7 +14,9 @@ studies_root(home = tflplanner_home())
 }
 \value{
 A list: \code{studies_root}, \code{last_study}, \code{language}, and when set
-\code{port}, \code{update_channel}, \code{check_updates}.
+\code{port}, \code{update_channel}, \code{check_updates}, \code{zip_download_limit_mb} (the
+largest run folder the Runs tab downloads as one ZIP at once, in MB;
+500 when not set).
 }
 \description{
 tflplanner's settings

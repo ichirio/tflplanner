@@ -262,7 +262,7 @@ test_that("a report's own code runs out of the app; the line of an error is said
     session$setInputs(fig_ard_kind = "none", cc_run = 1)
     expect_match(output$cc_result$html, "It ran", fixed = TRUE)
     # the other report: its error's line, and the dataset to add
-    session$setInputs(target = "F-2")
+    open_report(session, "F-2")
     session$setInputs(cc_run = 1)
     h <- output$cc_result$html
     expect_match(h, "Line 3 of the content step", fixed = TRUE)
@@ -274,7 +274,7 @@ test_that("a report's own code runs out of the app; the line of an error is said
     session$setInputs(mode_drop = 1)
     expect_true(is.na(step_code(rv$p, "F-2", "content")))
     # a table's data step as code: its editor shown, the switch says so
-    session$setInputs(target = "F-1", step = "ard", data_mode = "code")
+    open_report(session, "F-1", step = "ard", data_mode = "code")
     expect_identical(output$data_is_code, "yes")
   })
 })
@@ -289,7 +289,7 @@ test_that("the rules are seven, said in full where the switch is", {
 test_that("the sample's figures of their own code: F-14-2-2 reads T-14-2-2's ARD as `ard`", {
   skip_on_cran()
   local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE))
+  s <- suppressMessages(sample_study_copy())
   p <- s$planner
   expect_identical(.fig_ard_source(p, "F-14-2-2"), list(kind = "table", id = "T-14-2-2"))
   code <- unlist(strsplit(program_code(p, "F-14-2-2"), "
@@ -307,7 +307,7 @@ test_that("the sample's figures of their own code: F-14-2-2 reads T-14-2-2's ARD
 test_that("report_content() is written once, in the study's fig_setup.R", {
   skip_on_cran()
   local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE))
+  s <- suppressMessages(sample_study_copy())
   setup <- readLines(file.path(s$path, "programs", "tfl", "fig_setup.R"))
   expect_true(any(grepl("^report_content <- function", setup)))
   expect_true(any(grepl("^report_data <- function", setup)))

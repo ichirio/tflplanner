@@ -20,7 +20,7 @@
   cell_styles = "cell_styles: cell looks",
   col_header = "col_header: column header",
   report = "report", page = "page", header = "header", footer = "footer",
-  titles = "titles", footnotes = "footnotes", tokens = "tokens: your own")
+  titles = "titles", footnotes = "footnotes", tokens = "tokens: your own values to insert")
 
 # The steps of making a report (the Make a report tab), by their tab values:
 # their names here only, so a name changes in one place.  A code SPEC report
@@ -193,6 +193,7 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
   if (!.is_set_up()) setup_tflplanner(home = NULL)
   .refresh_launcher()
   .serve_health()
+  .running_versions_once()       # what this process runs, noted at its start
   # the study is checked here, once; each session (a new tab, a reload)
   # opens it again from its folder -- as last saved, not as it was when the
   # app started (a copy taken at start would be written back by a save)
@@ -222,7 +223,10 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
 .serve_health <- function() {
   d <- file.path(tempdir(), "tflplanner-health")
   dir.create(d, showWarnings = FALSE)
+  # the R x.y too: two icons (one per R x.y) share the port, and an app of
+  # another x.y is another version to the launcher
   writeLines(c(paste("tflplanner", as.character(utils::packageVersion("tflplanner"))),
+               paste("r", .r_xy()),
                paste("pid", Sys.getpid())), file.path(d, "health.txt"))
   shiny::addResourcePath("tflplanner-health", d)
   invisible(d)
@@ -260,6 +264,9 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
 }
 
 app_server <- function(input, output, session, start) {
+  # (moved when a template is copied into the study: the series card's
+  # list of the study's copies is read again, R/srv_series.R)
+  tpl_copies_ver <- shiny::reactiveVal(0L)
   .srv_part(.srv_study, environment())
   .srv_part(.srv_report_list, environment())
   .srv_part(.srv_ard_figure, environment())
@@ -276,6 +283,7 @@ app_server <- function(input, output, session, start) {
   .srv_part(.srv_add_report, environment())
   .srv_part(.srv_first_table, environment())
   .srv_part(.srv_data_run, environment())
+  .srv_part(.srv_adam_levels, environment())
 }
 
 # app_server()'s parts (R/srv_*.R) run in its environment, one after

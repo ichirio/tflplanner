@@ -78,6 +78,7 @@ test_that("1-1: the report's code lists, copied in, a file read", {
                                         label = c("Placebo", "Drug X", "ALT")))
   p <- set_codelist(p, "T1", data.frame(variable = "COUNTRY", value = "JPN"))
   create_study("CL", planner = p)
+  test_frame <- environment()  # (a mock inside testServer() is undone with this test)
   shiny::testServer(server_for("CL"), {
     rv <- session$userData$rv
     session$setInputs(nav = "make", step = "ard", target = "T1")
@@ -104,7 +105,7 @@ test_that("1-1: the report's code lists, copied in, a file read", {
     d <- sheet_rows(rv$p, "codelists", "T1")
     expect_identical(d$value[d$variable == "SEX"], c("F", "M", "U"))
     # a file read into T1
-    f <- withr::local_tempfile(fileext = ".csv")
+    f <- withr::local_tempfile(fileext = ".csv", .local_envir = test_frame)
     writeLines(c("variable,value,label", "RACE,ASIAN,Asian"), f)
     session$setInputs(cl21_file = data.frame(name = "cl.csv", datapath = f))
     d <- sheet_rows(rv$p, "codelists", "T1")
@@ -295,7 +296,7 @@ test_that("a listing's and a figure's data: their code lists, where the data is 
     expect_identical(sheet_rows(rv$p, "codelists", "L-AE")$value,
                      c("MILD", "MODERATE", "SEVERE"))
     # the figure: the data steps' last (step 1, Data), the code lists
-    session$setInputs(target = "F-AE")
+    open_report(session, "F-AE")
     expect_match(output$pd_stack_data$html, "Code lists", fixed = TRUE)
     session$setInputs(pd_act = list(op = "sel", sec = "codelists", i = 1L, n = 1))
     expect_match(output$pd_form_data$html, "pd_cl", fixed = TRUE)
@@ -445,7 +446,7 @@ test_that("under in the app: the grids show it, edits and copies keep it", {
     expect_true("under" %in% hdr("cl21_hot"))
     session$setInputs(cl21_done = 1)
     # copied into T2: with it
-    session$setInputs(target = "T2")
+    open_report(session, "T2")
     session$setInputs(cl21_copy = 1, cl21_from = "T1")
     session$setInputs(cl21_pick = "AEDECOD", cl21_as_var = "AEDECOD", cl21_copy_ok = 1)
     expect_identical(sheet_rows(rv$p, "codelists", "T2")$under,

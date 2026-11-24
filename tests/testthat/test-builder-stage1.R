@@ -260,7 +260,7 @@ test_that("normalize_ard(): a form card -- the hierarchy a field marked From the
   hj <- html(.plan_card_note("normalize_ard", lang = "ja"))
   expect_match(hj, "ARD を Table を作りやすい形に整えます。", fixed = TRUE)
   expect_match(hj, "カテゴリの値は .label（行の文字）になります。", fixed = TRUE)
-  # every argument's help under Other arguments is said in Japanese too
+  # every argument's help under More settings is said in Japanese too
   helps <- unlist(lapply(.plan_verbs, function(fn)
     lapply(.schema_of(fn)$args, `[[`, "help")), use.names = FALSE)
   miss <- unique(helps[vapply(helps, tr, "", lang = "ja") == helps])
@@ -369,6 +369,17 @@ test_that("the variables shown: written as the row filter, read back; the user's
   expect_true("plan_filter" %in% fns_of(builder_items(q, "T-14-1-1")))
 })
 
+# a table field's state as the card draws it (its data-state, unescaped)
+drawn_state <- function(h, a) {
+  m <- regmatches(h, regexpr(sprintf('(?s)<div class="rp-tbl [^"]*" id="c__%s".*?data-state="[^"]*"', a),
+                             h, perl = TRUE))
+  x <- sub('^.*data-state="([^"]*)"$', "\\1", m)
+  for (p in list(c("&quot;", "\""), c("&#39;", "'"), c("&lt;", "<"), c("&gt;", ">"), c("&amp;", "&"))) {
+    x <- gsub(p[[1L]], p[[2L]], x, fixed = TRUE)
+  }
+  x
+}
+
 test_that("nothing changed, nothing written: the sample's items and program as they were", {
   skip_on_cran()
   p <- sample_planner()
@@ -377,8 +388,15 @@ test_that("nothing changed, nothing written: the sample's items and program as t
       if (!it$fn %in% .plan_form_fns) next
       sch <- .plan_form_schema(it$fn)
       inp <- list()
+      h <- NULL
       for (a in sch$formals) {
         v <- it$args[[a]]
+        # (a table field sends its state as the card draws it)
+        if (!is.null(v) && identical(.def_input(sch$args[[a]]), "table")) {
+          h <- h %||% html(spec_card("c", it$fn, list(fn = it$fn, args = it$args, own_args = it$args)))
+          inp[[paste0("c__", a)]] <- drawn_state(h, a)
+          next
+        }
         if (identical(.arg_kind(sch$args[[a]]$type), "logical")) v <- isTRUE(v)
         if (!is.null(v)) inp[[paste0("c__", a)]] <- if (is.logical(v)) v else
           if (.arg_kind(sch$args[[a]]$type) %in% c("r", "string") && !is.character(v)) .arg_to_r(v) else v

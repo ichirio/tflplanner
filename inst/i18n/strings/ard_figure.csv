@@ -24,7 +24,7 @@
 "Made %s: %d keys, %d variables, statistics %s","作成済み %s：キー %d、変数 %d、統計量 %s"
 "This report has a header of its own.","この帳票だけのヘッダーです。"
 "Back to the study's","試験標準に戻す"
-"The study's (its values: this report's tokens)","試験標準のヘッダー（値はこの帳票の tokens）"
+"The study's (its values: this report's values to insert)","試験標準のヘッダー（値はこの帳票の差し込む値）"
 "Every report has the study's header; what changes from report to report ({OUTPUT_LABEL}, {OUTPUT_TITLE}, {OUTPUT_POPULATION}) is in the tokens tab.","どの帳票も試験標準のヘッダーを使います。帳票ごとに変わる値（{OUTPUT_LABEL}、{OUTPUT_TITLE}、{OUTPUT_POPULATION}）は tokens のタブにあります。"
 "A header of this report's own","この帳票だけのヘッダーにする"
 "Code lists: the columns of %s","コードリスト：%s の列"

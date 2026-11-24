@@ -21,7 +21,9 @@ list_batches(study)
 \arguments{
 \item{study}{An \code{rtfstudy}.}
 
-\item{parts}{\code{"ard"}, \code{"tfl"} or both.}
+\item{parts}{\code{"ard"} (the ARD only) or \code{c("ard", "tfl")} (the ARD,
+then the reports from it).  There is no run of the reports alone:
+the reports of a run are made from the ARD the same run makes.}
 
 \item{code}{Keep the code in the batch folder.}
 
@@ -82,7 +84,7 @@ setup_tflplanner(home = tempfile("tflplanner-home"))
 # (needs the sample data and rtfreporter; the run is in child R processes)
 s <- create_sample_study(run = FALSE)
 id <- s$planner$outputs$output_id[1]  # one report
-b <- run_batch(s, parts = "tfl", only = id)
+b <- run_batch(s, only = id)  # its ARD, then the report
 b$ok
 list_batches(s)[, c("batch", "state")]
 }

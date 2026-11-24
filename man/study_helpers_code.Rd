@@ -19,7 +19,10 @@ data: each listed column a factor in the list's order, its values the
 labels; a value not listed stops the program), \code{tag_ard()}, \code{fmt_ard()},
 \code{fmt_pvalue()}, \code{keep_stats()} and \code{save_ard()} -- as tflspec gives them
 (\code{\link[tflspec:tfl_helpers_code]{tflspec::tfl_helpers_code()}}).  The study's setup sources it, so its
-programs run without tflspec.  Saving the study writes it again when
+programs do not call tflspec for these.  They still need tflspec to run
+in some cases: a report that reads an imported ARD calls
+\code{tflspec::tfl_read_ard()}, and a KM curve or forest plot calls tflspec's
+\code{km_curves()} or \code{forest_hr()}.  Saving the study writes it again when
 tflspec's have changed (one edited by hand is copied to
 \verb{programs/.edited/} first).
 }

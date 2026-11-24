@@ -12,12 +12,14 @@
 #' * `unsaved` -- the definition changed since the program was written;
 #'   save the study
 #' * `todo` -- the program's data part is still to be written
-#' * `not run` -- no RTF yet
-#' * `error` -- the last run failed (see its log)
-#' * `outdated` -- the report's program, or a file it sources (the figure
-#'   setup, say), changed after the RTF was made; or the report was made
-#'   with another `programs/study_setup.R` than the one there now (its
-#'   program records it in `output/tfl/report_status.csv`); or -- a figure
+#' * `not run` -- no official run has made the report without error
+#' * `error` -- the latest official run of the report failed, and later than
+#'   its last good run, if any (`log` is that run's log)
+#' * `outdated` -- the report's program (its md5 is not the one the run
+#'   ran), or a file it sources (the figure setup, say), changed after the
+#'   run; or the report was made with another `programs/study_setup.R` than
+#'   the one there now (its program records it in
+#'   `output/tfl/report_status.csv` of the run); or -- a figure
 #'   printing the numbers of an ARD (its own, or a table's) -- that ARD's
 #'   definition is not the one it was made from, or that ARD is not made
 #'   from its definition now.  The program holds the
@@ -25,12 +27,20 @@
 #'   reports it is about and no others.
 #' * `ok`
 #'
+#' The report's result is the one of the latest official run that made it
+#' without error (`runs/`): `rtf` is when that run ended
+#' and `rtf_path` the report's file in its batch folder (`NA` when no run
+#' made it).  The working RTFs of previews and hand runs (`output/tfl/`) are
+#' not read here.
+#'
 #' `why` says what made a report `outdated`: `program` (its program or a
-#' file it sources is newer), `setup` (the study setup changed), or
+#' file it sources is not the run's), `setup` (the study setup changed), or
 #' `ard:<id>` (the ARD of `<id>` changed, or is to be made again).
 #'
 #' @param study An `rtfstudy`.
-#' @return A data frame.
+#' @return A data frame.  `preview_error` is `TRUE` for a report whose last
+#'   preview failed (the log in `logs/preview/` is newer than the working RTF):
+#'   a design aid's fact, apart from `status`.
 #' @examples
 #' # a home in the temporary folder: used in this R session only, nothing
 #' # is written to your settings
@@ -53,65 +63,45 @@ study_status <- function(study) {
   p <- study$planner
   root <- study$path
   lay <- study_layout()
-  setup <- .report_setup_recorded(root, p$outputs$output_id)
-  now <- .report_setup_hash(root)
-  # the figures printing an ARD's numbers: to be made again because of it
-  ard_why <- .fig_ard_why(study, p$outputs$output_id)
-  rows <- lapply(p$outputs$output_id, function(id) {
+  ids <- p$outputs$output_id
+  # the latest official run of each report (one reader with the report
+  # list's lighter state); the program's own state from its file
+  run <- .report_run_state(study, ids)
+  prev <- .preview_failed(study, ids)
+  rows <- lapply(seq_along(ids), function(k) {
+    id <- ids[k]
     info <- report_info(p, id)
     prog <- file.path(root, lay[["programs_tfl"]], info$program)
-    rtf <- file.path(root, info$file)
-    log <- file.path(root, lay[["logs_preview"]], sub("\\.[Rr]$", ".log",
-                                             info$program))
     pstate <- .program_state(p, id, prog)
-    t_rtf <- .mtime(rtf)
-    t_log <- .mtime(log)
-    failed <- !is.na(t_log) && (is.na(t_rtf) || t_log > t_rtf) && .log_failed(log)
-    k <- match(id, p$outputs$output_id)
-    why <- c(
-      if (isTRUE(.program_time(prog, root) > t_rtf)) "program",
-      if (.report_setup_changed(setup[k], root, now)) "setup",
-      if (nzchar(ard_why[[k]])) ard_why[[k]])
+    # (the log shown: the failed run's; else what the last preview printed)
+    plog <- file.path(root, lay[["logs_preview"]], sub("\\.[Rr]$", ".log", info$program))
     status <- if (pstate == "missing") "no program" else
       if (pstate == "generated") "unsaved" else
       if (pstate == "todo") "todo" else
-        if (failed) "error" else
-          if (is.na(t_rtf)) "not run" else
-            if (length(why)) "outdated" else "ok"
-    if (status != "outdated") why <- character()
+        switch(run$state[k], `not run` = "not run", error = "error",
+               outdated = "outdated", "ok")
+    why <- if (status == "outdated") run$why[k] else ""
+    t_run <- run$finished[k]
     fmt <- function(t) if (is.na(t)) NA_character_ else
       format(t, "%Y-%m-%d %H:%M")
     data.frame(output_id = id, type = info$type, program = info$program,
                program_state = pstate,
-               rtf = fmt(t_rtf), status = status,
-               why = paste(why, collapse = " "),
-               log = if (file.exists(log)) log else NA_character_,
-               rtf_path = rtf, stringsAsFactors = FALSE)
+               rtf = fmt(t_run), status = status,
+               why = why,
+               log = if (identical(run$state[k], "error")) run$log[k] else
+                 if (file.exists(plog)) plog else NA_character_,
+               rtf_path = if (is.na(run$run_path[k])) NA_character_ else
+                 file.path(run$run_path[k], info$file),
+               preview_error = prev[k], stringsAsFactors = FALSE)
   })
   out <- do.call(rbind, c(list(data.frame(
     output_id = character(), type = character(), program = character(),
     program_state = character(), rtf = character(),
     status = character(), why = character(), log = character(),
-    rtf_path = character())),
+    rtf_path = character(), preview_error = logical())),
     rows))
   rownames(out) <- NULL
   out
-}
-
-# When a report's program last changed: the program itself, or a file of
-# the study it sources (programs/tfl/fig_setup.R, a setup of the user's).
-# The definition workbooks are not in it: the program is written from them
-# and holds all of the report's own definition, so saving a change to one
-# report rewrites that report's program only.
-.program_time <- function(prog, root) {
-  t <- .mtime(prog)
-  if (is.na(t)) return(t)
-  txt <- readLines(prog, warn = FALSE, encoding = "UTF-8")
-  src <- regmatches(txt, regexpr("^\\s*source\\(\"[^\"]+\"", txt))
-  src <- unique(sub("^\\s*source\\(\"", "", sub("\"$", "", src)))
-  if (!length(src)) return(t)
-  ts <- do.call(c, lapply(file.path(root, src), .mtime))
-  suppressWarnings(max(c(t, ts), na.rm = TRUE))
 }
 
 #' Preview a study's reports

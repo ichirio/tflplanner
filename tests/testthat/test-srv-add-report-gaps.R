@@ -4,6 +4,8 @@
 # -- driven through shiny::testServer() on the whole app, as the other server
 # tests do.
 
+skip_if_quick()  # slow: not in the quick check of a PR into next (helper.R)
+
 # what the server showed and where it went, instead of the screen: the notes,
 # the dialogs (as text) and the tabs chosen
 watch_add <- function(env = parent.frame()) {
@@ -506,22 +508,31 @@ test_that("demog with no population: no ARD run and no error note, the preview w
   })
 })
 
-test_that("demog's preview reads the study standard the report resolves with: its count cells and arm headings", {
+test_that("a summary's preview (demog's arguments) reads the study standard the report resolves with: its count cells and arm headings", {
   skip_on_cran()
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
+  # (a report names <series>/<template>: the study holds its copy)
+  skip_if_not("tfl_copy_templates" %in% getNamespaceExports("tflspec"), "this tflspec has no study copies (tflspec#879)")
+  invisible(tflspec::tfl_copy_templates(s$path, "tflspec_v1/tflspec_summary"))
+  # (the values' text from the study's code list, as demog's default said it)
   o <- tflspec::tfl_output("T-DM", "table", label = "Demog", common = list(population = "SAF"),
-                           template = list(name = "demog",
-                                           args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
+                           template = list(name = "tflspec_v1/tflspec_summary",
+                                           args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX",
+                                                       value_labels = list(
+                                                         SEX = tflspec::tfl_r("study$codelists$SEX")))))
   s$planner <- .spec_add_output(s$planner, o, label = "Demog", population = "SAF")
   s <- suppressMessages(save_study(s, home = home))
   suppressMessages(fetch_ard(s, "T-DM", home = home))
   ard <- ard_raw(s, "T-DM", home = home)
   skip_if(is.null(ard), "the report's ARD was not made")
   # (a study standard as tflspec's spec-yaml study says it: plan_cells'
-  # categorical, plan_col_header's lines -- demog's study references)
+  # categorical, plan_col_header's lines -- the template's study references)
   st <- tflspec::tfl_read_study_spec(system.file("extdata", "spec-yaml", package = "tflspec"))
-  s$planner$spec$study$defaults$content <- st$defaults$content
+  # (the series template leaves normalize_ard to the study standard: kept from the study's own)
+  own <- Filter(function(it) identical(it$fn, "normalize_ard"), s$planner$spec$study$defaults$content)
+  expect_length(own, 1L)
+  s$planner$spec$study$defaults$content <- c(own, st$defaults$content)
   r <- tflspec::tfl_resolve_output(.code_spec(s$planner)$outputs[["T-DM"]], .code_spec(s$planner)$study)
   cells <- Filter(function(it) identical(it$fn, "plan_cells"), r$content)[[1L]]$args
   expect_false(is.null(cells$categorical))
@@ -532,8 +543,7 @@ test_that("demog's preview reads the study standard the report resolves with: it
   expect_true("Characteristic" %in% hdr)
   # (the categorical rows' values, indented: hard spaces taken away)
   txt <- trimws(gsub(" ", " ", unlist(lapply(pages[[1L]]$data, as.character)), fixed = TRUE))
-  # (raw codes for now: whether the study list should label them is #759)
-  expect_true(all(c("F", "M") %in% txt))
+  expect_true(all(c("Female", "Male") %in% txt))
 })
 
 test_that("the dialog shows a key argument open under the required ones, marked, and counts only the rest in the fold", {
@@ -554,5 +564,59 @@ test_that("the dialog shows a key argument open under the required ones, marked,
       expect_match(more, sprintf('id="mtpl_ae_soc_pt__%s"', nm), fixed = TRUE)
       expect_false(grepl(sprintf('id="mtpl_ae_soc_pt__%s"', nm), fold, fixed = TRUE))
     }
+  })
+})
+
+# ---- Add from a series template: the study's copy (tflspec#879) ------------------------------
+
+test_that("Add from a series template copies it into the study and says so", {
+  skip_if_not("tfl_copy_templates" %in% getNamespaceExports("tflspec"), "this tflspec has no study copies (tflspec#879)")
+  id <- sample_for_add("TCOPY")
+  shown <- watch_add()
+  shiny::testServer(server_for(id), {
+    rv <- session$userData$rv
+    dir <- rv$study$path
+    nm <- "tflspec_v1/tflspec_summary"
+    session$setInputs(add = 1, modal_type = "table", modal_how = "template", modal_id = "TC-1",
+                      modal_desc = "", modal_tpl_table = nm)
+    do.call(session$setInputs, stats::setNames(list("TRT01A"), paste0("mtpl_", .tpl_id_part(nm), "__by")))
+    session$setInputs(add_ok = 1)
+    expect_true("T-TC-1" %in% rv$p$outputs$output_id)
+    expect_true(file.exists(.tpl_copy_file(dir, nm)))
+    expect_true(any(grepl("Copied the template tflspec_v1/tflspec_summary into this study", add_notes(shown), fixed = TRUE)))
+    expect_match(add_html(output$series_copies$html), "tflspec_v1/tflspec_summary", fixed = TRUE)
+    # a second report from it: the copy there, nothing said
+    n <- length(shown$notes)
+    session$setInputs(add = 2, modal_type = "table", modal_how = "template", modal_id = "TC-2",
+                      modal_desc = "", modal_tpl_table = nm)
+    do.call(session$setInputs, stats::setNames(list("TRT01A"), paste0("mtpl_", .tpl_id_part(nm), "__by")))
+    session$setInputs(add_ok = 2)
+    expect_true("T-TC-2" %in% rv$p$outputs$output_id)
+    new <- add_notes(shown)[seq_len(length(shown$notes) - n) + n]
+    expect_false(any(grepl("Copied the template", new, fixed = TRUE)))
+  })
+})
+
+test_that("a KM template's data card: its button says what it does, an action, not a save (#754)", {
+  id <- sample_for_add("KMB")
+  shown <- watch_add()
+  shiny::testServer(server_for(id), {
+    rv <- session$userData$rv
+    o <- tflspec::tfl_output("F-KMB-1", "figure", label = "KM",
+                             template = list(name = "km_survival"),
+                             data = list(steps = .tpl_steps_from("ADTTE", NULL, "", "")))
+    rv$p <- .spec_add_output(rv$p, o, label = "KM")
+    session$setInputs(target = "F-KMB-1", nav = "make", step = "data")
+    session$flushReact()
+    h <- add_html(output$tpl_card_data$html)
+    expect_match(h, ">Match the analysis set</span></button>", fixed = TRUE)
+    expect_match(h, "Writes the report&#39;s data: steps from these fields", fixed = TRUE)
+    expect_false(grepl(">Apply</span></button>", h, fixed = TRUE))
+    # (what it does is as before: the data: steps written, the analysis set's join)
+    session$setInputs(tpl_data_ds = "ADTTE", tpl_data_param = "", tpl_data_pop = "SAF",
+                      tpl_data_filter = "", tpl_data_apply = 1)
+    f <- .tpl_steps_fields(rv$p$spec$outputs[["F-KMB-1"]]$data$steps)
+    expect_true(f$join)
+    expect_identical(rv$p$spec$outputs[["F-KMB-1"]]$common$population, "SAF")
   })
 })

@@ -223,7 +223,7 @@
             .btn(paste0("band_study_", sh), t("Back to the study's"),
                  class = "btn-sm btn-outline-secondary py-0"))
           else shiny::tagList(
-            shiny::span(with_tip(t("The study's (its values: this report's tokens)"),
+            shiny::span(with_tip(t("The study's (its values: this report's values to insert)"),
                                  t("Every report has the study's header; what changes from report to report ({OUTPUT_LABEL}, {OUTPUT_TITLE}, {OUTPUT_POPULATION}) is in the tokens tab."))),
             if (!is.null(d)) .btn(paste0("band_own_", sh), t("A header of this report's own"),
                                   class = "btn-sm btn-outline-secondary py-0")))
@@ -505,8 +505,8 @@
   # its own (fetch_ard()): the study ARD (output/ard/ard.rds) is not
   # written, and the study is not saved for it.  Then the builder's choices
   # and the preview are read again, and the report's ARD is shown on the
-  # ARD tab.  Making the study ARD is do_study_ard() (step 1's Make the
-  # ARD) and the official run.
+  # ARD tab.  The study ARD is made by the official run (and a hand run of
+  # a program), not from here.
   do_preview <- function(id = current(), force = FALSE) {
     if (is.null(id)) return(notify(t("Choose a report"), "warning"))
     has_an <- any(rv$p$ard$analyses$output_id %in% id)
@@ -517,11 +517,15 @@
     }
     # (a template report with a required value empty -- demog with no
     # population: its card's alert says it; no ARD run that can only fail
-    # with an error note that stays)
+    # with an error note that stays.  One tflspec finds empty -- demog's
+    # variables -- said in the note a save's error of it is in: one note)
     miss <- if (is_report) .tpl_missing_report(rv$p, id) else character()
     if (length(miss)) {
-      notify(sprintf(t("Required arguments are empty: %s. The preview waits for them."),
-                     paste(miss, collapse = ", ")), "warning")
+      if (!is.null(attr(miss, "rule"))) {
+        notify(.tpl_missing_say(miss, t), "error", .tpl_args_note)
+      } else {
+        notify(.tpl_missing_say(miss, t), "warning")
+      }
       return(invisible(FALSE))
     }
     if (has_an && !is.null(ard_valid())) {

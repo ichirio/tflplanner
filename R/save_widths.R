@@ -49,9 +49,23 @@
 }
 
 # The reports' files before the save: id -> its report as read (NULL when
-# none)
-.widths_before <- function(root) {
-  tryCatch(suppressMessages(tflspec::tfl_read_outputs(root)), error = function(e) list())
+# none) -- of the files `rels` only (relative to the study folder: the ones
+# the save writes, #749; NULL: every report's file)
+.widths_before <- function(root, rels = NULL) {
+  if (is.null(rels)) {
+    return(tryCatch(suppressMessages(tflspec::tfl_read_outputs(root)), error = function(e) list()))
+  }
+  rels <- rels[startsWith(rels, paste0(study_layout()[["spec"]], "/outputs/")) &
+                 file.exists(file.path(root, rels))]
+  tryCatch(suppressMessages({
+    outs <- list()
+    for (r in rels) {
+      x <- tflspec::tfl_read_output(file.path(root, r))
+      if (inherits(x, "tfl_output")) x <- list(x)
+      for (o in x) outs[[o$id]] <- o
+    }
+    outs
+  }), error = function(e) list())
 }
 
 # (the reports whose widths could not be made, by their text: not tried
