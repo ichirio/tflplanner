@@ -1492,7 +1492,7 @@
                          with_tip(t("Font language"), t("The language of each script's font, written the same way. For the Font example (latin = Times New Roman | east_asian = MS Mincho), write east_asian = ja. Use it when the texts are in Japanese; without it, the Japanese text is printed in a font Word chooses. Other languages: zh-Hans, zh-Hant, ko. Blank: none.")),
                          v(study_page_value(rv$p, "font_lang")),
                          placeholder = "east_asian = ja", width = "13em"),
-        shiny::textInput(updateOn = "blur", "pg_font_size", t("Size (pt)"),
+        shiny::textInput(updateOn = "blur", "pg_font_size", t("Font size (pt)"),
                          .points(study_page_value(rv$p, "font_size_half_points")),
                          placeholder = "9", width = "8em")),
       shiny::div(

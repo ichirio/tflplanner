@@ -143,6 +143,12 @@ runner_env <- function() {
   e$.batch_outputs <- list(`programs/tfl/F1.R` = "output/tfl/F1.rtf")
   e$.batch_support <- list(ard = character(), tfl = character(), all = character())
   e$.batch_data <- list()
+  e$.batch_data_vars <- character()
+  e$.batch_data_dirs <- c(adam = "data/adam", sdtm = "data/sdtm", other = "data/other")
+  e$.batch_sources <- character()
+  e$.batch_check_code <- character()
+  e$.batch_kind <- "run"
+  e$.batch_paths <- list()
   e$ran <- character()
   e$.batch_run <- function(part, prog, log_dir, engine) {
     e$ran <- c(e$ran, prog)
@@ -155,30 +161,6 @@ runner_env <- function() {
   e
 }
 
-test_that("the runner makes the ARD before the reports, even when one is built", {
-  d <- tempfile("runner")
-  dir.create(file.path(d, "output", "ard"), recursive = TRUE)
-  on.exit(unlink(d, recursive = TRUE), add = TRUE)
-  old <- setwd(d)
-  on.exit(setwd(old), add = TRUE)
-  writeLines("study_id: R1", "study.yml")
-  # T1's ARD made by an earlier run, from the definition as it is now
-  utils::write.csv(data.frame(output_id = "T1", definition = "abc",
-                              built = "2026-11-01 10:00:00", rows = "1", error = ""),
-                   file.path("output", "ard", "ard_status.csv"), row.names = FALSE)
-  e <- runner_env()
-  # the ARD, then the reports: T1's ARD program first, once
-  utils::capture.output(r <- suppressMessages(e$run_batch(c("ard", "tfl"))))
-  expect_identical(e$ran, c("programs/ard/T1.R", "programs/tfl/F1.R"))
-  expect_identical(r$part, c("ard", "tfl"))
-  # the figure with the table it reads (each its own run folder)
-  e$ran <- character()
-  Sys.sleep(1.1)
-  utils::capture.output(r2 <- suppressMessages(e$run_batch(c("ard", "tfl"), c("T1", "F1"))))
-  expect_identical(e$ran, c("programs/ard/T1.R", "programs/tfl/F1.R"))
-  expect_identical(r2$part, c("ard", "tfl"))
-  expect_length(list.files("runs"), 2L)
-})
 
 # A report selected that reads the ARD of one the run does not select: the
 # run does not start (#790).  The runner quits, so it is run in its own R.
@@ -203,6 +185,12 @@ test_that("a hand run of a report that reads the ARD of a report not selected st
     ".batch_outputs <- list(`programs/tfl/T1.R` = 'output/tfl/T1.rtf', `programs/tfl/L1.R` = 'output/tfl/L1.rtf')",
     ".batch_support <- list(ard = character(), tfl = character(), all = character())",
     ".batch_data <- list()",
+    ".batch_data_vars <- character()",
+    ".batch_data_dirs <- c(adam = 'data/adam', sdtm = 'data/sdtm', other = 'data/other')",
+    ".batch_sources <- character()",
+    ".batch_check_code <- character()",
+    ".batch_kind <- 'run'",
+    ".batch_paths <- list()",
     "run_batch(c('ard', 'tfl'), commandArgs(trailingOnly = TRUE))"), script)
   old <- setwd(d)
   on.exit(setwd(old), add = TRUE)
@@ -236,6 +224,12 @@ test_that("a hand run of the reports alone stops: their ARD is not made in this 
     ".batch_outputs <- list(`programs/tfl/T1.R` = 'output/tfl/T1.rtf')",
     ".batch_support <- list(ard = character(), tfl = character(), all = character())",
     ".batch_data <- list()",
+    ".batch_data_vars <- character()",
+    ".batch_data_dirs <- c(adam = 'data/adam', sdtm = 'data/sdtm', other = 'data/other')",
+    ".batch_sources <- character()",
+    ".batch_check_code <- character()",
+    ".batch_kind <- 'run'",
+    ".batch_paths <- list()",
     "run_batch('tfl', commandArgs(trailingOnly = TRUE))"), script)
   old <- setwd(d)
   on.exit(setwd(old), add = TRUE)
@@ -246,30 +240,6 @@ test_that("a hand run of the reports alone stops: their ARD is not made in this 
   expect_false(dir.exists("runs"))
 })
 
-# A run that selects both reports starts as before.
-test_that("a run that selects the report and the report it reads runs both", {
-  d <- tempfile("runner")
-  dir.create(d)
-  on.exit(unlink(d, recursive = TRUE), add = TRUE)
-  old <- setwd(d)
-  on.exit(setwd(old), add = TRUE)
-  writeLines("study_id: R1", "study.yml")
-  e <- runner_env()
-  e$.batch_programs <- list(ard = c("programs/ard/T1.R", "programs/ard/T2.R"),
-                            tfl = c("programs/tfl/T1.R", "programs/tfl/L1.R"))
-  e$.batch_ard_outputs <- c(T1.R = "T1", T2.R = "T2")
-  e$.batch_report_ids <- c(`programs/tfl/T1.R` = "T1", `programs/tfl/L1.R` = "L1")
-  e$.batch_needs <- list(`programs/tfl/T1.R` = "T1", `programs/tfl/L1.R` = c("T1", "T2"))
-  e$.batch_outputs <- list(`programs/tfl/T1.R` = "output/tfl/T1.rtf",
-                           `programs/tfl/L1.R` = "output/tfl/L1.rtf")
-  # T2 is not a report of the run, but L1 reads it: ticked (T2.R is the name
-  # of its ARD program too)
-  utils::capture.output(r <- suppressMessages(e$run_batch(c("ard", "tfl"), c("T1", "L1", "T2"))))
-  expect_identical(e$ran, c("programs/ard/T1.R", "programs/ard/T2.R",
-                            "programs/tfl/T1.R", "programs/tfl/L1.R"))
-  bt <- readLines(file.path("runs", list.files("runs")[1L], "batch.txt"))
-  expect_true("Excluded : none" %in% bt)
-})
 
 # A report whose ARD program failed in the run is not run on the rows an
 # earlier run left: it is recorded as failed.
@@ -395,55 +365,9 @@ in_study <- function(env = parent.frame()) {
   d
 }
 
-test_that("the runner runs the ARD first whatever order parts come in", {
-  in_study()
-  e <- two_env()
-  utils::capture.output(r <- suppressMessages(e$run_batch(c("tfl", "ard"))))
-  expect_identical(e$ran, c("programs/ard/T1.R", "programs/ard/T2.R",
-                            "programs/tfl/T1.R", "programs/tfl/T2.R"))
-  expect_identical(r$part, c("ard", "ard", "tfl", "tfl"))
-  expect_error(e$run_batch(c("ard", "xyz")), "parts must be")
-  expect_error(e$run_batch(character()), "parts must be")
-})
 
-test_that("a name that stands for two outputs stops the run, naming both", {
-  in_study()
-  e <- two_env()
-  # T2's report program is a file named T1.R (in another folder)
-  e$.batch_programs$tfl <- c("programs/tfl/T1.R", "programs/other/T1.R")
-  e$.batch_report_ids <- c(`programs/tfl/T1.R` = "T1", `programs/other/T1.R` = "T2")
-  expect_error(utils::capture.output(suppressMessages(e$run_batch(c("ard", "tfl"), "T1"))),
-               "'T1' stands for more than one output: T1, T2", fixed = TRUE)
-  expect_false(dir.exists("runs"))
-  # the same for an exclude
-  expect_error(utils::capture.output(suppressMessages(e$run_batch(c("ard", "tfl"), "--exclude=T1.R"))),
-               "stands for more than one output", fixed = TRUE)
-  # a name of one output only runs
-  e <- two_env()
-  utils::capture.output(suppressMessages(e$run_batch(c("ard", "tfl"), "T1")))
-  expect_identical(e$ran, c("programs/ard/T1.R", "programs/tfl/T1.R"))
-})
 
-test_that("excluding an ARD program by its file name leaves out that whole output", {
-  in_study()
-  e <- two_env()
-  utils::capture.output(suppressMessages(e$run_batch(c("ard", "tfl"), "--exclude=T2.R")))
-  expect_identical(e$ran, c("programs/ard/T1.R", "programs/tfl/T1.R"))
-  bt <- readLines(file.path("runs", list.files("runs")[1L], "batch.txt"))
-  expect_true("Excluded : programs/ard/T2.R, programs/tfl/T2.R" %in% bt)
-})
 
-test_that("a selected report with an unresolved read stops the run before a folder; left out, it runs", {
-  in_study()
-  e <- two_env()
-  e$.batch_unresolved <- c(`programs/tfl/T2.R` = "source not in analyses")
-  out <- utils::capture.output(expect_error(
-    suppressMessages(e$run_batch(c("ard", "tfl"))), "status 1"))
-  expect_true(any(grepl("T2: source not in analyses", out, fixed = TRUE)))
-  expect_false(dir.exists("runs"))
-  utils::capture.output(suppressMessages(e$run_batch(c("ard", "tfl"), "--exclude=T2")))
-  expect_identical(e$ran, c("programs/ard/T1.R", "programs/tfl/T1.R"))
-})
 
 test_that(".batch_missing_needs names the selected reports that read an ARD not selected", {
   needs <- list(`T-1` = "T-1", `F-1` = c("T-1", "T-2"), `L-1` = "T-3")
@@ -460,24 +384,8 @@ test_that(".batch_missing_needs names the selected reports that read an ARD not 
   expect_identical(names(m0), c("report", "need"))
 })
 
-test_that("two runs in the same second get two run folders, and the runs table lists both", {
-  d <- tempfile("runner")
-  dir.create(d)
-  on.exit(unlink(d, recursive = TRUE), add = TRUE)
-  old <- setwd(d)
-  on.exit(setwd(old), add = TRUE)
-  writeLines("study_id: R1", "study.yml")
-  e <- runner_env()
-  # the clock stands still
-  e$Sys.time <- function() as.POSIXct("2026-11-02 10:00:00", tz = "UTC")
-  for (i in 1:3) {
-    utils::capture.output(suppressMessages(e$run_batch(c("ard", "tfl"))))
-  }
-  expect_setequal(list.files("runs"), c("20261102_100000_all", "20261102_100000_all_2",
-                                        "20261102_100000_all_3"))
-  lb <- list_batches(list(path = d))
-  expect_setequal(lb$batch, list.files("runs"))
-  expect_true(all(lb$what == "all"))
-  expect_true(all(lb$started == lb$started[1L]))
-  expect_true(all(lb$state == "done"))
-})
+
+# (the runner's own behaviour inside its batch folder -- the ARD before the
+# reports, the names and --exclude, the same-second folders -- is tested in
+# tflspec's test-runner-run.R with real Rscript children: the hand-made
+# in-process runners that stood here cannot stage a folder.)

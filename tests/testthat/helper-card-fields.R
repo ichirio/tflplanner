@@ -134,24 +134,14 @@ value_key <- function(x) {
 }
 
 # The kind of field a definition draws, as arg_field() decides it (the
-# class rp-field-<kind> it gives the field): a def's input form over the
-# type's kind, a table where the type has a table, a pick of text with
-# nothing to pick from its text field.  `dots`: the entries of a `...`.
+# class rp-field-<kind> it gives the field): field_look(), the card's word
+# (R/field_ui.R) -- a def's input form over the type's kind, a table where
+# the type has a table, a pick of text with nothing to pick from its text
+# field -- so that this helper cannot drift from the field.  `dots`: the
+# entries of a `...`.
 field_kind <- function(def) {
-  type <- def$type
-  kind <- .arg_kind(type)
-  form <- .def_input(def)
-  if (!is.null(form)) {
-    kind0 <- kind
-    kind <- .def_kind(form, kind, type, def)
-    if (identical(form, "table") && !is.null(.tbl_spec(type, def))) kind <- "table"
-    if (identical(kind, "pick_one") && identical(kind0, "string") && !length(def$choices) &&
-          !length(def$values) && !isTRUE(def$free)) {
-      kind <- kind0
-    }
-  }
   if (isTRUE(def$dots)) return("dots")
-  kind
+  field_look(def)
 }
 
 # ... and the class arg_field() gives that field (rp-field-<class>)
