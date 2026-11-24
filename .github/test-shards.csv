@@ -102,7 +102,7 @@ test-ard-import-ui.R,3,0.6
 test-ard-stack-branches.R,3,0.0
 test-ard-stack.R,3,0.0
 test-arg-defs-table.R,3,0.0
-test-batch-sets.R,3,2.0
+test-run-definitions.R,3,2.0
 test-builder-parts.R,3,0.9
 test-builder.R,3,0.3
 test-card-unset.R,3,6.2
