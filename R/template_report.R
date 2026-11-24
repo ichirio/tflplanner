@@ -54,8 +54,9 @@
 }
 
 # The templates of tflspec's series (tflspec#819/#824: tfl_series_list(), each
-# series' templates/<t>.yml): name "<series>/<t>", kind (a `figure:` a
-# figure, a listing's style a listing, else a table) and its label.  None
+# series' templates/<t>.yml): name "<series>/<t>", kind (its `kind:`, else
+# a `figure:` a figure, a listing's style a listing, else a table) and its
+# label.  None
 # for a tflspec with no series.
 .tpl_series_templates <- function(lister = .tpl_series_lister()) {
   none <- data.frame(name = character(), kind = character(), label = character())
@@ -69,8 +70,14 @@
     rows <- lapply(files, function(fl) {
       top <- readLines(fl, n = 80L, warn = FALSE, encoding = "UTF-8")
       lab <- sub("^label:\\s*", "", grep("^label:", top, value = TRUE)[1L])
-      kind <- if (any(grepl("^figure:", top))) "figure" else
-        if (any(grepl("^style:.*listing", top))) "listing" else "table"
+      # (the template's own `kind:` first -- km_cards is a figure with no
+      # `figure:` key; else a `figure:` a figure, a listing's style a
+      # listing, else a table)
+      kind <- trimws(sub("^kind:\\s*", "", grep("^kind:", top, value = TRUE)[1L]))
+      if (is.na(kind) || !kind %in% c("table", "listing", "figure")) {
+        kind <- if (any(grepl("^figure:", top))) "figure" else
+          if (any(grepl("^style:.*listing", top))) "listing" else "table"
+      }
       data.frame(name = paste0(s$name[[i]], "/", sub("\\.yml$", "", basename(fl))), kind = kind,
                  label = if (is.na(lab)) "" else trimws(lab))
     })
