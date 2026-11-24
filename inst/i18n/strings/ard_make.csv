@@ -53,7 +53,6 @@
 "Write this analysis as code...","この解析をコードで書く..."
 "Run together with other analyses (one call)...","ほかの解析とまとめる（1 回で計算）…"
 "The method","手法"
-"%d more, at their defaults","ほか %d 個（デフォルトのまま）"
 "(default: %s, the study's subject key)","（デフォルト: %s＝試験の被験者キー）"
 "(default: %s, the company's method)","（デフォルト: %s＝会社の手法のデフォルト）"
 "(default: none)","（デフォルト: なし）"
