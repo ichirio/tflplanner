@@ -10,7 +10,7 @@ gc717_study <- function(home, id, args) {
   skip_if_not_installed("cards")
   need <- c("tfl_arg_defs", "tfl_ai_study_init")
   skip_if_not(all(need %in% getNamespaceExports("tflspec")), "this tflspec has no series templates")
-  skip_if_not(tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/demog")),
+  skip_if_not(tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/tflspec_summary")),
                        error = function(e) FALSE), "this tflspec has no series templates")
   d <- file.path(studies_root(home), id)
   dir.create(file.path(d, "adam"), recursive = TRUE)
@@ -20,17 +20,17 @@ gc717_study <- function(home, id, args) {
   invisible(tflspec::tfl_ai_study_init(d, adam = "adam", study_id = id))
   s <- suppressMessages(open_study(d, home = home))
   # (copied into the study first, as the Add dialog does)
-  invisible(tflspec::tfl_copy_templates(d, "tflspec_v1/demog"))
-  o <- tflspec::tfl_output("T-717-1", "table", template = list(name = "tflspec_v1/demog", args = args))
+  invisible(tflspec::tfl_copy_templates(d, "tflspec_v1/tflspec_summary"))
+  o <- tflspec::tfl_output("T-717-1", "table", template = list(name = "tflspec_v1/tflspec_summary", args = args))
   s$planner <- suppressWarnings(.spec_add_output(s$planner, o))
   suppressMessages(save_study(s))
   id
 }
 
 test_that("a series template's columns are the data row's dataset's, not every dataset's", {
-  skip_if_not(tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/demog")),
+  skip_if_not(tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/tflspec_summary")),
                        error = function(e) FALSE), "this tflspec has no series templates")
-  prm <- .tpl_params("tflspec_v1/demog")
+  prm <- .tpl_params("tflspec_v1/tflspec_summary")
   data <- list(ADSL = data.frame(USUBJID = 1, TRT01A = "A", AGE = 1),
                ADAE = data.frame(USUBJID = 1, AEDECOD = "x"))
   expect_identical(.tpl_vars_dataset(prm$by, data), "ADSL")
@@ -48,13 +48,13 @@ test_that("a template card's switch with no default is drawn off: its first FALS
   shiny::testServer(server_for(id), {
     rv <- session$userData$rv
     session$setInputs(target = "T-717-1", nav = "make", step = "content", content_nav = "content")
-    expect_match(tpl_cards_html(output), "tpl_tflspec_v1_demog__total", fixed = TRUE)
+    expect_match(tpl_cards_html(output), "tpl_tflspec_v1_tflspec_summary__total", fixed = TRUE)
     before <- .tpl_of(rv$p, "T-717-1")$args
-    session$setInputs(`tpl_tflspec_v1_demog__total` = FALSE)
+    session$setInputs(`tpl_tflspec_v1_tflspec_summary__total` = FALSE)
     expect_identical(.tpl_of(rv$p, "T-717-1")$args, before)
     expect_false("total" %in% names(.tpl_of(rv$p, "T-717-1")$args))
     # (a change to on is one)
-    session$setInputs(`tpl_tflspec_v1_demog__total` = TRUE)
+    session$setInputs(`tpl_tflspec_v1_tflspec_summary__total` = TRUE)
     expect_true(isTRUE(.tpl_of(rv$p, "T-717-1")$args$total))
   })
 })
@@ -278,6 +278,7 @@ test_that("#717 item 7: a series template's column field lists its data's column
 
 test_that("#717 item 8: the notice of making the ARD is closed when the work ends, also on an error", {
   id <- gc717_sample("G717G")
+  test_frame <- environment()  # (a mock inside testServer() is undone with this test)
   shiny::testServer(server_for(id), {
     rv <- session$userData$rv
     pg <- gc717_progress(session)
@@ -287,7 +288,7 @@ test_that("#717 item 8: the notice of making the ARD is closed when the work end
     # again, made to fail: no notice is left either, and none piles up
     n <- length(pg$open)
     testthat::local_mocked_bindings(fetch_ard = function(...) stop("made to fail"),
-                                    .package = "tflplanner")
+                                    .package = "tflplanner", .env = test_frame)
     suppressWarnings(session$setInputs(ard_preview = 2))
     expect_setequal(pg$closed, pg$open)
     session$setInputs(ard_preview = 3)

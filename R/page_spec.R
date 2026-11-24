@@ -23,7 +23,7 @@
 # The titles' and the footnotes' style (rtf_titles(), rtf_footnotes()): the
 # size first, as their cards show it
 .pgs_band_fields <- list(
-  list(arg = "font_size_half_points", label = "Size (pt)", kind = "pt"),
+  list(arg = "font_size_half_points", label = "Font size (pt)", kind = "pt"),
   list(arg = "row_height_twips", label = "Row height (twips)", kind = "number"),
   list(arg = "markup", label = "Markup", kind = "choice",
        choices = c("script", "relational", "all", "none")),
@@ -51,7 +51,7 @@
   # fields: kept as the YAML says them)
   rtf_style = list(
     list(arg = "font", label = "Font family", kind = "text", choices = c("Courier", "Courier New")),
-    list(arg = "font_size_half_points", label = "Size (pt)", kind = "pt"),
+    list(arg = "font_size_half_points", label = "Font size (pt)", kind = "pt"),
     list(arg = "row_height_twips", label = "Row height (twips)", kind = "number"),
     list(arg = "cell_padding_left_twips", label = "Cell padding, left (twips)", kind = "number"),
     list(arg = "cell_padding_right_twips", label = "Cell padding, right (twips)", kind = "number"),

@@ -223,7 +223,7 @@
             .btn(paste0("band_study_", sh), t("Back to the study's"),
                  class = "btn-sm btn-outline-secondary py-0"))
           else shiny::tagList(
-            shiny::span(with_tip(t("The study's (its values: this report's tokens)"),
+            shiny::span(with_tip(t("The study's (its values: this report's values to insert)"),
                                  t("Every report has the study's header; what changes from report to report ({OUTPUT_LABEL}, {OUTPUT_TITLE}, {OUTPUT_POPULATION}) is in the tokens tab."))),
             if (!is.null(d)) .btn(paste0("band_own_", sh), t("A header of this report's own"),
                                   class = "btn-sm btn-outline-secondary py-0")))

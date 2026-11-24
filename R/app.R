@@ -20,7 +20,7 @@
   cell_styles = "cell_styles: cell looks",
   col_header = "col_header: column header",
   report = "report", page = "page", header = "header", footer = "footer",
-  titles = "titles", footnotes = "footnotes", tokens = "tokens: your own")
+  titles = "titles", footnotes = "footnotes", tokens = "tokens: your own values to insert")
 
 # The steps of making a report (the Make a report tab), by their tab values:
 # their names here only, so a name changes in one place.  A code SPEC report

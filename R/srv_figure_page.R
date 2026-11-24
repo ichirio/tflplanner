@@ -622,7 +622,7 @@
       shiny::textInput(updateOn = "blur", "rp_font", with_tip(t("This report's font"),
         t("Blank: every report's font and size (the study tab). A value here is this report's own (its row of the page sheet).")),
         rf_drawn$font, placeholder = all_font),
-      shiny::textInput(updateOn = "blur", "rp_font_size", t("Size (pt)"), own_size,
+      shiny::textInput(updateOn = "blur", "rp_font_size", t("Font size (pt)"), own_size,
                        placeholder = all_size, width = "8em"),
       shiny::span(class = "small text-muted mb-3",
                   sprintf(t("Every report's: %s, %s pt"), all_font, all_size)))

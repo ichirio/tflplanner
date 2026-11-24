@@ -7,8 +7,8 @@
 
 # The cards whose body is the generator's (spec_card(); the verbs:
 # .plan_form_fns): their arguments as fields by the definitions' types,
-# those the code writes above, the rest folded under "Arguments not in the
-# code".  The names the builder has used for the generator's parts:
+# those the code writes above, the rest folded under "More settings".  The
+# names the builder has used for the generator's parts:
 .plan_form_schema <- function(fn) spec_card_defs(fn)
 .plan_form_main <- function(fn) spec_card_defs(fn)$visible
 .plan_form_body <- function(cid, fn, it, choices = NULL, lang = "en",
