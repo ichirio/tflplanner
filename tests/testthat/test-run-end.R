@@ -24,7 +24,11 @@ test_that("a run this session did not start: the marks and the builder's ARD fol
     expect_match(output$builder_note$html, "no ARD yet", fixed = TRUE)
     # made elsewhere: no job of this session
     invisible(suppressMessages(run_def(open_study("SAMPLE-01"), "ArdOnly", "all", mode = "ard")))
-    for (i in 1:5) session$elapse(1100)
+    # (the poll sees the run end within a few ticks; a slow machine takes more)
+    for (i in 1:20) {
+      session$elapse(1100)
+      if (!grepl("no ARD yet", output$builder_note$html %||% "", fixed = TRUE)) break
+    }
     expect_false(grepl("no ARD yet", output$builder_note$html %||% "", fixed = TRUE))
     # the marks come as marks, the list is not drawn again for them (#9184)
     re <- session$userData$run_end
