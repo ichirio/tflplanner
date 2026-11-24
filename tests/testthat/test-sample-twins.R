@@ -1,6 +1,7 @@
 # SAMPLE-01's twins: the same report written as a template SPEC (T) and
-# as a code SPEC (C).  Their ARDs are the same but for output_id: the
-# analysis ids (the canon's: BIGN, an id a variable or a depth), groups,
+# as a code SPEC (C) -- T on the basic templates, tflspec_summary (DM) and
+# tflspec_hierarchy (AE; its ids, row label and sort given by the report).
+# Their ARDs are the same but for output_id: the analysis ids (the canon's: BIGN, an id a variable or a depth), groups,
 # variables, statistics and values.
 
 twin_ard <- function(p, s, id) {
@@ -33,7 +34,7 @@ twin_add_templates <- function(s, home) {
   for (id in ids) {
     f <- testthat::test_path("fixtures", "twins", paste0(id, ".yml"))
     expect_true(file.copy(f, file.path(s$path, "spec", "outputs", paste0(id, ".yml"))))
-    o <- yaml::read_yaml(f)
+    o <- yaml::read_yaml(f, handlers = list(r = function(x) x))
     toc$outputs <- c(toc$outputs, list(list(id = id, kind = o$kind, label = o$label,
                                             population = o$common$population)))
   }
@@ -47,7 +48,8 @@ twin_add_templates <- function(s, home) {
 test_that("SAMPLE-01's template and code twins make the same ARD (DM, AE)", {
   skip_on_cran()
   skip_if_not_installed("cards")
-  ok <- tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/demog")), error = function(e) FALSE)
+  ok <- tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/tflspec_hierarchy")),
+                 error = function(e) FALSE)
   skip_if(!isTRUE(ok), "this tflspec has no series templates (tflspec#824)")
   home <- local_home()
   s <- suppressMessages(create_sample_study(run = FALSE, home = home))
