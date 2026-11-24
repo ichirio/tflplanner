@@ -35,6 +35,11 @@ test_that("the sample study is copied, registered and written", {
     expect_true(file.exists(file.path(s$path, f)), label = f)
   }
   expect_equal(unique(study_status(s)$program_state), "current")
+  # the sample applies its define.xml levels (study.yml settings.adam_levels and
+  # defaults.yml adam_meta), and its generated setup says so and applies them
+  expect_identical(.study_adam_levels(s$planner), "define_xml")
+  setup <- readLines(file.path(s$path, "programs", "study_setup.R"))
+  expect_true("# ADaM levels: define_xml" %in% setup)
   # once only
   expect_error(create_sample_study(run = FALSE), "already registered")
   expect_message(setup_tflplanner(sample = TRUE), "already there")
