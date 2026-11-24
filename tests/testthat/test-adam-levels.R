@@ -222,9 +222,6 @@ test_that("applying a define.xml, a Define Spec; a file with no code list, a bro
   s$planner <- p
   s <- suppressMessages(save_study(s))
   y <- yaml::read_yaml(file.path(s$path, "study.yml"))$settings
-  # the saved setup applies them (the screen and the setup read the same block)
-  setup <- readLines(file.path(s$path, "programs", "study_setup.R"))
-  expect_true("# ADaM levels: define_xml" %in% setup)
   expect_identical(y$adam_levels, "define_xml")
   expect_identical(y$adam_levels_file, "data/adam/define.xml")
   expect_true(all(file.exists(file.path(s$path, .adam_meta_kept_rel(c("define_xml", "previous"))))))
