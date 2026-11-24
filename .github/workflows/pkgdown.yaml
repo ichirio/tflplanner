@@ -9,13 +9,13 @@ on:
   release:
     types: [published]
   # Nightly, 16:00 UTC = 1:00 JST: build next (no deploy), so a broken
-  # article shows before the daily next -> main merge at about 2:00 JST.
+  # article shows before next is merged into main (dev-rep ops/RULES.md 5).
   schedule:
     - cron: "0 16 * * *"
   workflow_dispatch:
     inputs:
       nightly:
-        description: "Build next only, as the nightly run does (no deploy)"
+        description: "Build the chosen branch as the nightly run builds next (no deploy)"
         type: boolean
         default: false
 
@@ -38,9 +38,11 @@ jobs:
       # true on the nightly build of next: build only, no deploy
       NIGHTLY: ${{ github.event_name == 'schedule' || inputs.nightly == true }}
     steps:
+      # the schedule builds next; a dispatch (nightly or not) builds the
+      # branch it was run on (--ref next: the manual check of next)
       - uses: actions/checkout@v4
         with:
-          ref: ${{ (github.event_name == 'schedule' || inputs.nightly) && 'next' || '' }}
+          ref: ${{ github.event_name == 'schedule' && 'next' || '' }}
 
       - uses: r-lib/actions/setup-pandoc@v2
 
