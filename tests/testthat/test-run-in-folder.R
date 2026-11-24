@@ -153,3 +153,20 @@ test_that("the generated study setup reads the data folders through the data roo
   # the option the programs are written with holds the relative folders
   expect_identical(unname(.study_path_vars()[["path_adam"]]), "data/adam")
 })
+
+test_that("an official run's R reads no .Rprofile (B2): not the runner's, not a program's", {
+  skip_if_not_installed("cards")
+  o <- rif_study("RIFB2")
+  mark <- tempfile("profile-read")
+  prof <- tempfile("rprofile", fileext = ".R")
+  writeLines(sprintf("writeLines('read', %s)", deparse(mark)), prof)
+  old <- Sys.getenv("R_PROFILE_USER", unset = NA)
+  Sys.setenv(R_PROFILE_USER = prof)
+  on.exit({
+    if (is.na(old)) Sys.unsetenv("R_PROFILE_USER") else Sys.setenv(R_PROFILE_USER = old)
+    unlink(c(mark, prof))
+  }, add = TRUE)
+  b <- run_def(o, "ArdOnly", "all", mode = "ard")
+  expect_true(b$ok)
+  expect_false(file.exists(mark))
+})
