@@ -278,6 +278,7 @@ test_that("#717 item 7: a series template's column field lists its data's column
 
 test_that("#717 item 8: the notice of making the ARD is closed when the work ends, also on an error", {
   id <- gc717_sample("G717G")
+  test_frame <- environment()  # (a mock inside testServer() is undone with this test)
   shiny::testServer(server_for(id), {
     rv <- session$userData$rv
     pg <- gc717_progress(session)
@@ -287,7 +288,7 @@ test_that("#717 item 8: the notice of making the ARD is closed when the work end
     # again, made to fail: no notice is left either, and none piles up
     n <- length(pg$open)
     testthat::local_mocked_bindings(fetch_ard = function(...) stop("made to fail"),
-                                    .package = "tflplanner")
+                                    .package = "tflplanner", .env = test_frame)
     suppressWarnings(session$setInputs(ard_preview = 2))
     expect_setequal(pg$closed, pg$open)
     session$setInputs(ard_preview = 3)

@@ -292,7 +292,7 @@ test_that("the screen: [Data] has ADaM levels; an old codelists is dropped on op
   skip_if_no_define_levels()
   html <- as.character(app_ui("ja"))
   expect_match(html, "adam_levels_path", fixed = TRUE)
-  expect_match(html, "ADaM \u306e\u6c34\u6e96", fixed = TRUE)
+  expect_match(html, "ADaM \u306e\u4e8b\u524d\u52a0\u5de5", fixed = TRUE)
   local_home()
   suppressMessages(create_study("LV2", planner = add_output(new_planner(), "T1", description = "a table")))
   # a study saved before #742: settings: adam_levels: codelists in its state
