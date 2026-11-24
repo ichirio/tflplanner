@@ -25,12 +25,6 @@ test_that("a run this session did not start: the marks and the builder's ARD fol
     # made elsewhere: no job of this session
     invisible(suppressMessages(run_def(open_study("SAMPLE-01"), "ArdOnly", "all", mode = "ard")))
     for (i in 1:5) session$elapse(1100)
-    local({ d <- open_study("SAMPLE-01")$path; r <- list.dirs(file.path(d, "runs"), recursive = FALSE)
-      message("DBG runs: ", paste(basename(r), collapse = ", "))
-      for (x in r) message("DBG ", basename(x), ": ", paste(readLines(file.path(x, "batch.txt"), warn = FALSE), collapse = " | "))
-      message("DBG list: ", paste(utils::capture.output(print(tflspec::tfl_list_runs(d))), collapse = " / "))
-      message("DBG latest: ", paste(utils::capture.output(str(tflspec::tfl_latest_run(d, "T-14-1-5"))), collapse = " / "))
-      message("DBG note: ", output$builder_note$html %||% "<null>") }) # TEMP-DEBUG
     expect_false(grepl("no ARD yet", output$builder_note$html %||% "", fixed = TRUE))
     # the marks come as marks, the list is not drawn again for them (#9184)
     re <- session$userData$run_end
