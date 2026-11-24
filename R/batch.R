@@ -437,11 +437,17 @@ run_batch <- function(study, name, wait = FALSE) {
     stop("No run definition named ", sQuote(name), if (length(have)) paste0(": the study's are ",
          paste(sQuote(have), collapse = ", ")) else " (the study has none)", ".", call. = FALSE)
   }
+  # an ARD definition that does not hold writes no ARD program (#323): the
+  # run does not start (the saved definition, the one the programs are of)
+  ap <- .ard_definition_problem(study$planner)
+  if (!is.null(ap)) {
+    stop("The study cannot start an official run: its ARD definition does not hold, ",
+         "and a definition that does not hold writes no ARD program (see the Review tab). ",
+         ap, call. = FALSE)
+  }
   prob <- tflspec::tfl_programs_problem(study$path)
   if (nzchar(prob)) {
-    stop("The study cannot start an official run yet: save it first (an ARD ",
-         "definition that does not hold writes no ARD program; see the Review tab). ",
-         prob, call. = FALSE)
+    stop("The study cannot start an official run yet: save it first. ", prob, call. = FALSE)
   }
   # a report whose template or code needs a package not installed: said
   # now, not as an error in the middle of the run (#682)
