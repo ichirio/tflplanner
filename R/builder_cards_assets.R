@@ -339,8 +339,11 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
   // those it does not (below, folded).  A value given below moves its
   // field up when the field is left; a field above emptied moves down --
   // each in the function's order (the upper group's data-formals), as the
-  // next drawing puts them
+  // next drawing puts them.  A field the server keeps above (data-keep-up:
+  // required, key, the ARD's -- spec_card_fields()) stays there; a field
+  // switched to R is being written, not emptied
   function fieldHas(f) {
+    if (f.find('.rp-isr').is(':checked')) return true;
     var has = false;
     f.find('input, select, textarea').each(function() {
       if ($(this).hasClass('rp-isr') || this.type === 'search') return;
@@ -379,7 +382,7 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
       var has = fieldHas(f);
       if (below && has) {
         placeField(f, up, true, order);
-      } else if (!below && !has) {
+      } else if (!below && !has && f.attr('data-keep-up') !== '1') {
         var cell = f.parent('.rp-group-cell');
         placeField(f, low, false, order);
         if (cell.length && !cell.children().length) cell.remove();

@@ -7,7 +7,8 @@
 #
 #   spec_card_defs(fn)                   the definitions a card is made from
 #   spec_card_fields(fn, item, ...)      its fields as a table: name, type,
-#                                        tier, group, shown (above the fold)
+#                                        tier, group, shown (above the fold),
+#                                        keep (above, whatever its value)
 #   spec_card(id, fn, item, ctx, lang)   the card's body
 #   spec_card_read(input, id, fn, ctx)   the body read back: the arguments
 #   spec_card_args(read, item, fn)       the item's whole arguments after
@@ -191,6 +192,9 @@ spec_card_defs <- function(fn) {
 #                tflspec::tfl_item_written()), one the ARD decides (`ard`)
 #                and a `key` one -- shown though it has a default; the
 #                rest (`usual`, `other`) are folded
+#   keep         TRUE where it is above whatever its value -- required, key
+#                or the ARD's: the page never moves it to the fold when it
+#                is emptied or switched to R (data-keep-up, the one rule)
 # The same for every report: no kind of table shows or hides an argument.
 # `only`: the arguments drawn (a card with an editor of its own draws the
 # others itself).
@@ -209,9 +213,10 @@ spec_card_fields <- function(fn, item = list(), ard = character(), defs = spec_c
   }, "", USE.NAMES = FALSE)
   tier <- col("tier")
   # (a verb's positional ... keyed by an argument -- plan_hide(cols) -- by its key too)
-  up <- unique(c(req, wr, names(a)[nzchar(names(a))], ard, fo[tier %in% c("required", "key")]))
+  keep <- unique(c(req, ard, fo[tier %in% c("required", "key")]))
+  up <- unique(c(keep, wr, names(a)[nzchar(names(a))]))
   data.frame(name = fo, type = col("type"), tier = tier, group = col("group"),
-             shown = fo %in% up, stringsAsFactors = FALSE)
+             shown = fo %in% up, keep = fo %in% keep, stringsAsFactors = FALSE)
 }
 
 # The groups of a card's fields, in the definition's order: each a list
@@ -300,7 +305,15 @@ spec_card <- function(id, fn, item = list(), ctx = list(), lang = "en",
   a <- item$args %||% list()
   fields <- spec_card_fields(fn, item, ard = names(Filter(length, ctx$ard)), defs = defs,
                              only = only)
-  draw <- function(k, shown) .spec_field(id, fn, k, if (shown) a[[k]], item, defs, ctx, lang)
+  draw <- function(k, shown) {
+    f <- .spec_field(id, fn, k, if (shown) a[[k]], item, defs, ctx, lang)
+    # (a field the definitions keep above: the page leaves it there, emptied
+    # or switched to R -- the rule is spec_card_fields()' alone)
+    if (inherits(f, "shiny.tag") && isTRUE(fields$keep[fields$name == k])) {
+      f <- htmltools::tagAppendAttributes(f, `data-keep-up` = "1")
+    }
+    f
+  }
   groups <- .spec_groups(defs, fields)
   if (is.null(groups)) {
     upper <- arg_group(NULL, lapply(fields$name[fields$shown], draw, shown = TRUE), lang = lang)
