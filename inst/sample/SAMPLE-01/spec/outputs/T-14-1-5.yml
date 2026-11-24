@@ -169,9 +169,9 @@ page:
         column of their own).  Percentages of the column''s subjects.'
     '2':
       left: 'Asian sub-categories (ASIANSUB: Chinese, Japanese, Korean, Other) are
-        derived for demonstration from the country (China, Japan, Korea; an Asian subject
-        of another country: Other); they are not in the source data.  As an EDC collects
-        them, each race has its own sub-category column.'
+        derived for demonstration from the country (China, Japan, Korea; an Asian
+        subject of another country: Other); they are not in the source data.  As an
+        EDC collects them, each race has its own sub-category column.'
   tokens:
     OUTPUT_TITLE: Demographic Characteristics, with the Asian Sub-categories of Race
     OUTPUT_POPULATION: All Screened Subjects
