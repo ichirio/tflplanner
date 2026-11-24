@@ -721,6 +721,11 @@
   if (!nzchar(trimws(text))) return(NULL)
   r <- yaml::yaml.load(text, handlers = .tpl_yaml_handlers())
   if (is.null(r) || (is.list(r) && !length(r))) return(NULL)
+  # a sequence of one entry (`- label`, `[label]`) is read as one value by
+  # yaml: it is a list as typed, not a scalar
+  lines <- trimws(strsplit(text, "\n", fixed = TRUE)[[1L]])
+  first <- lines[nzchar(lines) & !startsWith(lines, "#")][1L]
+  if (grepl("^(-( |$)|[[])", first)) return(r)
   if (!is.list(r) && is.null(names(r)) && length(r) == 1L) {
     stop("a map (`name: value` lines) or a list (`- value` lines) is expected", call. = FALSE)
   }

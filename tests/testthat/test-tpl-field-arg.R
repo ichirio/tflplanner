@@ -141,3 +141,11 @@ test_that("km_cards' x_breaks: a number a line", {
   expect_null(fa_dialog(k, req)$x_breaks)
   expect_identical(fa_dialog(k, c(req, list(x_breaks = "0\n30")))$x_breaks, c(0, 30))
 })
+
+test_that("a list of one entry is a list, as typed; a lone word is not a list", {
+  expect_identical(.tpl_yaml_read("- label"), "label")
+  expect_identical(.tpl_yaml_read("# keys\n\n- label\n"), "label")
+  expect_identical(.tpl_yaml_read("[label]"), "label")
+  expect_identical(.tpl_dialog_args(list(keys = fa_box), list(keys = "- label"))$keys, "label")
+  expect_error(.tpl_yaml_read("label"), "is expected")
+})
