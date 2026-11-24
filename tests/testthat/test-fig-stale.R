@@ -245,7 +245,7 @@ test_that("a hand run of the reports alone is refused: only the runner (tfl_run_
   rscript <- file.path(R.home("bin"), "Rscript")
   out <- suppressWarnings(system2(rscript, c(shQuote(script), "--run=Main"), stdout = TRUE, stderr = TRUE))
   expect_gt(attr(out, "status") %||% 0L, 0L)
-  expect_true(any(grepl("are not official runs", out, fixed = TRUE)), info = paste(out, collapse = "\n"))
+  expect_true(any(grepl("a run in the study starts from a run definition", out, fixed = TRUE)), info = paste(out, collapse = "\n"))
   expect_false(dir.exists("runs"))
 })
 

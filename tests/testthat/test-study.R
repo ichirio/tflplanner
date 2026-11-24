@@ -145,7 +145,7 @@ test_that("saving writes the programs from the definition, an edited one too", {
   # the YAML spec's files, the programs, batch.R,
   # fig_setup.R, report_setup.R, study_setup.R, study_helpers.R, and the
   # company's and the user's setup files (company_setup.R, study_user.R)
-  expect_equal(sum(s$files$status == "written"), length(.spec_files_yaml(s$path)) + 5 + 6)
+  expect_equal(sum(s$files$status == "written"), length(.spec_files_yaml(s$path)) + 5 + 7)
   s0 <- save_study(s)
   expect_true(all(s0$files$status == "unchanged"))
   f <- file.path(s$path, "programs", "tfl", "DM.R")
