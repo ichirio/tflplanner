@@ -1015,6 +1015,15 @@
   if (nzchar(head)) sprintf(t("%s (%s)"), head, prm$name) else prm$name
 }
 
+# An argument's help as its (i) shows it: in the Japanese UI the Japanese
+# tflspec gives (`help: {en, ja}`), else the doc through the app's texts;
+# "" for none
+.tpl_doc_shown <- function(prm, t = identity, lang = "en") {
+  if (identical(lang, "ja") && length(prm$doc_ja) && nzchar(prm$doc_ja[1L])) return(prm$doc_ja[1L])
+  doc <- prm$doc %||% ""
+  if (nzchar(doc)) t(doc) else ""
+}
+
 # The required arguments to fill in, as the app says it (#752): each by its
 # card's heading, joined by "or" when one of them is enough, and the step
 # it is filled in -- "Fill in Continuous variables (continuous) or
