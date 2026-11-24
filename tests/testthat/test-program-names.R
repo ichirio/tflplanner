@@ -102,18 +102,20 @@ test_that("tflspec checks the names; the cell each kind points at is tflplanner'
   p <- set_sheet_rows(p, "report", "T1", data.frame(program = "Batch.R"))
   p <- set_sheet_rows(p, "report", "T2", data.frame(program = "batch.r"))
   bad <- .program_name_problems(p)
+  # the reports in the planner's order: an id without digits sorts first
+  expect_identical(p$outputs$output_id, c("ard_setup", "T1", "T2"))
   expect_identical(bad, list(
+    list(id = "ard_setup", kind = "reserved", args = c("ard_setup", "ard_setup.R"),
+         sheet = "report", field = "program"),
     list(id = "T1", kind = "reserved", args = c("T1", "Batch.R"),
          sheet = "report", field = "program"),
     list(id = "T2", kind = "reserved", args = c("T2", "batch.r"),
          sheet = "report", field = "program"),
     list(id = "T2", kind = "duplicate", args = c("T1", "T2", "batch.r"),
          sheet = "report", field = "program"),
-    list(id = "ard_setup", kind = "reserved", args = c("ard_setup", "ard_setup.R"),
-         sheet = "report", field = "program"),
     list(id = "ard_setup", kind = "ard_reserved", args = c("ard_setup", "ard_setup.R"),
          sheet = "_tflplanner", field = "output_id")))
-  expect_identical(.program_name_message(bad[[3L]]),
+  expect_identical(.program_name_message(bad[[4L]]),
                    sprintf(.program_name_templates[["duplicate"]], "T1", "T2", "batch.r"))
 })
 
