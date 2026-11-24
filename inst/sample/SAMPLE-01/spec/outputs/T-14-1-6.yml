@@ -11,7 +11,8 @@ data:
     from: ADSL
     derive: !r ARMGRP = dplyr::if_else(ARMNRS %in% "SCREEN FAILURE", "Screen Failure",
       as.character(ARM)) | ASIANSUB = dplyr::case_when(RACE == "ASIAN" & COUNTRY ==
-      "JPN" ~ "JAPANESE", RACE == "ASIAN" & COUNTRY == "KOR" ~ "KOREAN")
+      "CHN" ~ "CHINESE", RACE == "ASIAN" & COUNTRY == "JPN" ~ "JAPANESE", RACE ==
+      "ASIAN" & COUNTRY == "KOR" ~ "KOREAN", RACE == "ASIAN" ~ "OTHER")
   - id: adsl_enr_1
     from: ADSL
 ard:
@@ -108,6 +109,8 @@ codelists:
       label: Japanese
     - value: KOREAN
       label: Korean
+    - value: OTHER
+      label: Other
   SEX:
     - value: F
       label: Female
@@ -164,9 +167,10 @@ page:
       left: 'Screened subjects: all subjects of ADSL, screen failures included (a
         column of their own).  Percentages of the column''s subjects.'
     '2':
-      left: 'Asian sub-categories (ASIANSUB: Chinese, Japanese, Korean) are derived
-        for demonstration from the country (Japan, Korea); they are not in the source
-        data.  As an EDC collects them, each race has its own sub-category column.'
+      left: 'Asian sub-categories (ASIANSUB: Chinese, Japanese, Korean, Other) are
+        derived for demonstration from the country (China, Japan, Korea; an Asian subject
+        of another country: Other); they are not in the source data.  As an EDC collects
+        them, each race has its own sub-category column.'
   tokens:
     OUTPUT_TITLE: Demographic Characteristics and the Asian Sub-categories of Race
     OUTPUT_POPULATION: All Screened Subjects

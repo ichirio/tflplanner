@@ -151,3 +151,41 @@ test_that("the sample's Study tab has keys and a setup code of its own", {
   expect_identical(o$planner$setup, s$planner$setup)
   expect_identical(o$planner$ard$study$value[o$planner$ard$study$key == "source"], src)
 })
+
+test_that("the sample's SPEC fixes of the 2026-11-25 reviews reach its programs", {
+  skip_on_cran()
+  local_home()
+  s <- suppressMessages(create_sample_study(run = FALSE))
+  p <- s$planner
+  has <- function(code, x) any(grepl(x, code, fixed = TRUE))
+  ard_prog <- function(id) readLines(file.path(s$path, "programs", "ard", paste0(id, ".R")),
+                                     warn = FALSE)
+  # L-16-2-7: the records of the safety set's subjects (its title says so),
+  # joined to them as the tables' records are; AESEV is upper case in the data
+  expect_identical(p$spec$outputs[["L-16-2-7"]]$data$population, "SAF")
+  l <- program_code(p, "L-16-2-7")
+  expect_true(has(l, "inner_join("))
+  expect_true(has(l, "SAFFL == \"Y\""))
+  expect_true(has(l, "AESEV == \"SEVERE\""))
+  # T-14-1-5 / T-14-1-6: every Asian subject has a sub-category (Other when
+  # the country is not China, Japan or Korea), and the code list has it
+  for (id in c("T-14-1-5", "T-14-1-6")) {
+    a <- ard_prog(id)
+    expect_true(has(a, "COUNTRY == \"CHN\" ~ \"CHINESE\""), label = id)
+    expect_true(has(a, "RACE == \"ASIAN\" ~ \"OTHER\""), label = id)
+    expect_true(has(a, "OTHER = \"Other\""), label = id)
+  }
+  # F-14-2-4: a subgroup's failing Cox model does not stop the ARD; a
+  # subgroup with no estimate prints NE (not dropped), by a named limit
+  expect_identical(sum(grepl("tryCatch(", ard_prog("F-14-2-4"), fixed = TRUE)), 2L)
+  f <- program_code(p, "F-14-2-4")
+  expect_true(has(f, "ne_upper <- 1000"))
+  expect_false(has(f, "conf.high < 1000"))
+  expect_false(has(f, "filter(!is.na(conf.low))"))
+  # T-14-1-1C: the header prints its label and title; no second title
+  expect_false(has(program_code(p, "T-14-1-1C"), "rtf_titles("))
+  # T-14-2-3: the p-value as the study formats it (fmt_pvalue: the ARD's stat_fmt)
+  t3 <- program_code(p, "T-14-2-3")
+  expect_true(has(t3, "{p.value:stat_fmt}"))
+  expect_false(has(t3, "{p.value:.3f}"))
+})

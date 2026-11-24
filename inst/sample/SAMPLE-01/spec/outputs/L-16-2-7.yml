@@ -6,6 +6,7 @@ extends:
 data:
   source: dataset
   dataset: ADAE
+  population: SAF
   where: !r AESEV == "SEVERE" & TRTEMFL == "Y"
   sort:
     - TRT01AN
