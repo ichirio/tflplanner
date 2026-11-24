@@ -728,8 +728,7 @@ review_facts <- function(study, refresh = FALSE, read = TRUE,
 # in), kept in the store while the files do not change
 .review_ard_facts <- function(study, home = tflplanner_home()) {
   p <- study$planner
-  out <- .ard_study_value(p$ard, "output", "output/ard/ard.rds")
-  f <- file.path(study$path, out)
+  f <- .study_ard_file(study)
   if (!file.exists(f)) return(list())
   i <- file.info(f)
   key <- list(path = normalizePath(f, "/"), mtime = as.numeric(i$mtime), size = i$size,

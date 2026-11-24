@@ -1374,7 +1374,7 @@
       id <- tpl_now()
       shiny::req(id)
       rv$ard_ver
-      out <- .ard_study_value(rv$p$ard, "output", "output/ard/ard.rds")
+      out <- .study_ard_rel(rv$p$ard)
       run <- shiny::p(class = "small text-muted mb-1",
                       sprintf(t("A run saves it in the study's ARD (%s)."), out))
       # no ARD made yet: Update preview makes it

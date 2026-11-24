@@ -485,7 +485,7 @@ preview_figure <- function(study, output_id,
   data_at <- file.info(list.files(file.path(study$path, "data"), recursive = TRUE,
                                   full.names = TRUE))$mtime
   # (the study ARD's too: a figure may print a table's numbers)
-  ard_at <- file.info(file.path(study$path, study_layout()[["ard"]], "ard.rds"))$mtime
+  ard_at <- file.info(.study_ard_file(study))$mtime
   list(.fig_norm(unclass(design)), study$planner, data_at, ard_at, ard$print)
 }
 

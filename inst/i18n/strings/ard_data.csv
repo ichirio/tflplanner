@@ -147,3 +147,6 @@
 "%s is a word R keeps for itself: give another name.","%s は R の予約語です。別の名前にしてください。"
 "%s is the name of another object of the ARD program (a dataset, pop_<population>, data, population, ard ...): give another name.","%s は ARD プログラムの他のオブジェクト（データセット、pop_<集団>、data、population、ard など）の名前です。別の名前にしてください。"
 "%s: this report has an analysis data of that name already.","%s：この帳票にはその名前の解析データがもうあります。"
+"Since this report's ARD was made, something it is made from has changed: its analyses, their populations or datasets, the study's settings, the study's own ARD functions or the code lists. Press Preview in the report builder (it makes the working ARD to look at), or start an official run (Runs).","この帳票の ARD を作った後で、元になるもの（この帳票の解析、その解析対象集団やデータセット、試験の設定、試験独自の ARD 関数、コードリスト）のどれかが変わりました。帳票ビルダーで「プレビュー」を押す（見るための作業用 ARD を作ります）か、正式な実行（実行）をしてください。"
+"This report's ARD has not been made yet. Press Preview in the report builder (it makes the working ARD to look at), or start an official run (Runs).","この帳票の ARD はまだ作っていません。帳票ビルダーで「プレビュー」を押す（見るための作業用 ARD を作ります）か、正式な実行（実行）をしてください。"
+"Its ARD program failed: see what it printed (Data > Study ARD), fix it, then press Preview in the report builder or start an official run (Runs).","ARD プログラムが失敗しました。出力（データ > 試験 ARD）を見て直してから、帳票ビルダーで「プレビュー」を押すか、正式な実行（実行）をしてください。"

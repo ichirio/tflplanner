@@ -4,10 +4,13 @@
 \alias{ard_status}
 \title{Where each output's ARD stands}
 \usage{
-ard_status(study)
+ard_status(study, from = c("working", "run"))
 }
 \arguments{
 \item{study}{An \code{rtfstudy}.}
+
+\item{from}{\code{"working"} (the default) or \code{"run"}: where the ARD is read
+from, see Details.}
 }
 \value{
 A data frame: \code{output_id}, \code{analyses}, \code{state}, \code{rows},
@@ -22,6 +25,15 @@ are in the study ARD, made from the definition as it is now), \code{outdated}
 update failed).  Many people may work on one study: the study ARD is
 updated output by output (\code{\link[=update_study_ard]{update_study_ard()}}), and a table is made
 from whatever of it is there.
+}
+\details{
+There are two places to look.  \code{from = "working"} reads the study's
+working ARD (\verb{output/ard/}: what a preview or a hand run of a program
+left), the design aids' view.  \code{from = "run"} reads the official runs
+(\verb{runs/}): each output's row is the \code{ard_status.csv} of the latest run
+that made its ARD without error (\verb{not built} where there is none), and
+it is \code{error} when a later run's ARD program for it failed.  The
+\code{outdated} / \code{built} test is the same.
 }
 \examples{
 # a home in the temporary folder: used in this R session only, nothing

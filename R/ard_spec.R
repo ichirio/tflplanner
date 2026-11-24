@@ -155,6 +155,17 @@
   if (length(v) && !is.na(v)) v else default
 }
 
+# Where the study ARD is, relative to the study folder: the ARD
+# definition's `output`, else output/ard/ard.rds
+.study_ard_rel <- function(a) .ard_study_value(a, "output", "output/ard/ard.rds")
+
+# The one resolver of the study ARD's file: in the study's working output
+# (`root` the study folder), or in a batch folder -- an official run made it
+# at the same relative path
+.study_ard_file <- function(study, root = study$path) {
+  file.path(root, .study_ard_rel(study$planner$ard))
+}
+
 # The ARD sheets whose columns are not fixed: after output_id, analysis_id
 # and row, conditions has a column a param and ards a call's keys
 # (tflspec#827)
@@ -379,47 +390,120 @@ ard_view <- function(ard) {
   out
 }
 
-# One output's rows of the study's working ARD (NULL when there are none).
+# One output's rows of the study ARD (NULL when there are none): the
+# working ARD's (what previews and hand runs left) while it is built from
+# the definition as it is now; else, read only, the latest official run's
+# ARD of that output when that was made from the definition as it is now
+# (nothing is copied into output/); else the working rows as they are, or
+# NULL.
 study_ard_rows <- function(study, output_id) {
-  out <- .ard_study_value(study$planner$ard, "output", "output/ard/ard.rds")
-  a <- .read_study_ard(file.path(study$path, out))
-  if (is.null(a) || !"output_id" %in% names(a)) return(NULL)
-  a[a$output_id %in% output_id, , drop = FALSE]
+  a <- .read_study_ard(.study_ard_file(study))
+  work <- if (!is.null(a) && "output_id" %in% names(a)) a
+  pick <- function(x, ids) x[x$output_id %in% ids, , drop = FALSE]
+  ids <- unique(output_id)
+  # (no official run made an ARD: no hash to work out)
+  ok <- if (length(ids)) .latest_ok(study, ids, "ard")
+  if (is.null(ok) || all(is.na(ok$path))) {
+    return(if (!is.null(work)) pick(work, output_id))
+  }
+  wst <- .read_ard_status(study)
+  from_run <- character()
+  runs <- list()
+  for (i in which(!is.na(ok$path))) {
+    id <- ids[i]
+    now <- .ard_hash_now(study, id)
+    r <- wst[wst$output_id == id, , drop = FALSE][1L, ]
+    if (identical(.ard_row_state(study, r, now), "built")) next
+    pth <- .ard_run_current(study, id, ok[i, ], now)
+    if (is.na(pth)) next
+    b <- tryCatch(.read_study_ard(.study_ard_file(study, pth), slot = "run"),
+                  error = function(e) NULL)
+    if (is.null(b) || !"output_id" %in% names(b)) next
+    from_run <- c(from_run, id)
+    runs[[id]] <- pick(b, id)
+  }
+  if (!length(from_run)) return(if (!is.null(work)) pick(work, output_id))
+  mine <- if (!is.null(work)) pick(work, setdiff(output_id, from_run))
+  do.call(rbind, c(list(mine)[!is.null(mine)], unname(runs)))
+}
+
+# The fingerprint of an output's ARD definition as it is now
+.ard_hash_now <- function(study, id) {
+  tryCatch(tflspec::tfl_ard_spec_hash(structure(study$planner$ard, class = "tfl_ard_spec"), id,
+                                      dir = study$path,
+                                      codelists = .study_codelists(study$planner)),
+           error = function(e) NA_character_)
+}
+
+# The batch folder of the latest OK run of an output's ARD when that was made
+# from the definition as it is now (its ard_status.csv row has the
+# fingerprint), else NA: the design aids read its rows, read only, when the
+# working ARD does not have them
+.ard_run_current <- function(study, id, ok = .latest_ok(study, id, "ard"),
+                             now = .ard_hash_now(study, id)) {
+  pth <- ok$path[1L]
+  if (is.na(pth)) return(NA_character_)
+  rs <- .read_ard_status(study, root = pth)
+  rs <- rs[rs$output_id == id, , drop = FALSE]
+  if (!nrow(rs) || is.na(now) || !identical(rs$definition[1L], now)) NA_character_ else pth
+}
+
+# An output's ARD rows are there for the design aids to read: the working
+# ARD's are made from the definition as it is now (`st`, ard_status()'s
+# data frame), or the latest official run's are
+.ard_rows_ready <- function(study, id, st) {
+  identical(st$state[match(id, st$output_id)], "built") ||
+    !is.na(.ard_run_current(study, id))
 }
 
 # The study ARD read once per file: every report asks for its rows as a
 # study opens (the report list, the review, the figures), and the file is
 # the same.  Its path, time and size are the key: a run writes a new file,
-# and it is read again.  One file is kept (the study shown).
+# and it is read again.  One file is kept (the study shown), and one more
+# for a run's ARD (`slot = "run"`), so reading that does not push the
+# working ARD out.
 .ard_memo <- new.env(parent = emptyenv())
-.read_study_ard <- function(f) {
+.read_study_ard <- function(f, slot = "ard") {
   if (!file.exists(f)) return(NULL)
   i <- file.info(f)
   key <- paste(normalizePath(f, "/"), as.numeric(i$mtime), i$size)
-  hit <- .ard_memo$ard
+  hit <- .ard_memo[[slot]]
   if (!is.null(hit) && identical(hit$key, key)) return(hit$ard)
   a <- readRDS(f)
-  .ard_memo$ard <- list(key = key, ard = a)
+  .ard_memo[[slot]] <- list(key = key, ard = a)
   a
 }
 
-.ard_status_file <- function(study) {
-  out <- .ard_study_value(study$planner$ard, "output", "output/ard/ard.rds")
-  file.path(study$path, dirname(out), "ard_status.csv")
+# the status file beside the ARD (in a batch folder when `root` is its)
+.ard_status_file <- function(study, root = study$path) {
+  file.path(dirname(.study_ard_file(study, root)), "ard_status.csv")
 }
 
-.read_ard_status <- function(study) {
-  f <- .ard_status_file(study)
-  empty <- data.frame(output_id = character(), definition = character(),
-                      built = character(), rows = integer(),
-                      error = character(), setup = character(),
-                      company = character(), user = character(),
-                      stringsAsFactors = FALSE)
+.ard_status_empty <- function() {
+  data.frame(output_id = character(), definition = character(),
+             built = character(), rows = integer(),
+             error = character(), setup = character(),
+             company = character(), user = character(),
+             stringsAsFactors = FALSE)
+}
+
+.read_ard_status <- function(study, root = study$path) {
+  f <- .ard_status_file(study, root)
+  empty <- .ard_status_empty()
   if (!file.exists(f)) return(empty)
   d <- utils::read.csv(f, colClasses = "character")
   for (c in names(empty)) if (!c %in% names(d)) d[[c]] <- NA_character_
   d$rows <- as.integer(d$rows)
   d[names(empty)]
+}
+
+# One output's state from its row of ard_status.csv (an NA row: none) and the
+# definition's fingerprint now
+.ard_row_state <- function(study, r, now) {
+  if (is.na(r$output_id)) "not built" else
+    if (!is.na(r$error) && nzchar(r$error)) "error" else
+      if (!identical(r$definition, now) ||
+          .setup_changed(.ard_recorded_setup(r), study$path)) "outdated" else "built"
 }
 
 .write_ard_status <- function(study, d) {
@@ -441,7 +525,17 @@ study_ard_rows <- function(study, output_id) {
 #' updated output by output ([update_study_ard()]), and a table is made
 #' from whatever of it is there.
 #'
+#' There are two places to look.  `from = "working"` reads the study's
+#' working ARD (`output/ard/`: what a preview or a hand run of a program
+#' left), the design aids' view.  `from = "run"` reads the official runs
+#' (`runs/`): each output's row is the `ard_status.csv` of the latest run
+#' that made its ARD without error (`not built` where there is none), and
+#' it is `error` when a later run's ARD program for it failed.  The
+#' `outdated` / `built` test is the same.
+#'
 #' @param study An `rtfstudy`.
+#' @param from `"working"` (the default) or `"run"`: where the ARD is read
+#'   from, see Details.
 #' @return A data frame: `output_id`, `analyses`, `state`, `rows`,
 #'   `built`, `error`.
 #' @examples
@@ -455,23 +549,41 @@ study_ard_rows <- function(study, output_id) {
 #' }
 #' options(old)
 #' @export
-ard_status <- function(study) {
+ard_status <- function(study, from = c("working", "run")) {
+  from <- match.arg(from)
   a <- study$planner$ard
   ids <- unique(stats::na.omit(a$analyses$output_id))
-  st <- .read_ard_status(study)
   spec <- structure(a, class = "tfl_ard_spec")
   cl <- .study_codelists(study$planner)
-  rows <- lapply(ids, function(id) {
-    r <- st[st$output_id == id, , drop = FALSE][1L, ]
+  if (identical(from, "working")) {
+    st <- .read_ard_status(study)
+  } else {
+    idx <- .run_index(study)
+    ok <- .latest_ok(study, ids, "ard", idx)
+    att <- .latest_attempt(study, ids, "ard", idx)
+    seen <- list()
+  }
+  rows <- lapply(seq_along(ids), function(i) {
+    id <- ids[i]
+    failed <- FALSE
+    if (identical(from, "working")) {
+      r <- st[st$output_id == id, , drop = FALSE][1L, ]
+    } else {
+      pth <- ok$path[i]
+      r <- if (is.na(pth)) .ard_status_empty()[1L, ] else {
+        if (is.null(seen[[pth]])) seen[[pth]] <<- .read_ard_status(study, root = pth)
+        seen[[pth]][seen[[pth]]$output_id == id, , drop = FALSE][1L, ]
+      }
+      failed <- .attempt_failed(att[i, ], ok[i, ])
+    }
     now <- tflspec::tfl_ard_spec_hash(spec, id, dir = study$path, codelists = cl)
-    state <- if (is.na(r$output_id)) "not built" else
-      if (!is.na(r$error) && nzchar(r$error)) "error" else
-        if (!identical(r$definition, now) ||
-            .setup_changed(.ard_recorded_setup(r), study$path)) "outdated" else "built"
+    state <- if (failed) "error" else .ard_row_state(study, r, now)
+    err <- if (failed) {
+      if (!is.na(att$note[i]) && nzchar(att$note[i])) att$note[i] else "failed"
+    } else if (is.na(r$error)) "" else r$error
     data.frame(output_id = id, analyses = sum(a$analyses$output_id %in% id),
                state = state, rows = r$rows, built = r$built,
-               error = if (is.na(r$error)) "" else r$error,
-               stringsAsFactors = FALSE)
+               error = err, stringsAsFactors = FALSE)
   })
   out <- do.call(rbind, c(list(data.frame(
     output_id = character(), analyses = integer(), state = character(),

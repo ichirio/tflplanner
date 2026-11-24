@@ -298,7 +298,7 @@ fetch_ard <- function(study, output_id, timeout = 300,
   f_make <- NULL
   if (.ard_from_definition(p, output_id)) {
     st <- tryCatch(ard_status(study), error = function(e) NULL)
-    if (identical(st$state[match(output_id, st$output_id)], "built")) {
+    if (.ard_rows_ready(study, output_id, st)) {
       rows <- tryCatch(study_ard_rows(study, output_id), error = function(e) NULL)
     }
     if (!is.null(rows) && nrow(rows)) {

@@ -214,32 +214,38 @@ test_that("a study runs end to end and reports what it produced", {
   expect_equal(nrow(read_data_head(study_files(s)$path, n = 5)), 5)
 
   expect_equal(study_status(s)$status, c("not run", "todo"))
+  # a hand run writes the working output (a design aid's): it is not an
+  # official run, so the report is still "not run"
   st <- run_study(s)
-  expect_equal(st$status, c("ok", "todo"))
+  expect_equal(st$status, c("not run", "todo"))
+  expect_false(st$preview_error[1])
   expect_true(file.exists(file.path(s$path, "output", "tfl", "DM.rtf")))
   expect_false(file.exists(file.path(s$path, "output", "ard", "DM.rds")))
   expect_true(file.exists(file.path(s$path, "logs", "preview", "DM.log")))
 
-  # saving an unchanged study leaves the RTF current
+  # an official run made it
+  t0 <- Sys.time() + 600  # after the study's files were written, as a real run is
+  fake_run(s$path, "run1", "tfl", "DM", finished = t0 - 300)
+  expect_equal(study_status(s)$status, c("ok", "todo"))
+
+  # saving an unchanged study leaves the report current
   s <- save_study(s)
   expect_equal(study_status(s)$status[1], "ok")
 
-  # a definition changed after the RTF was made
-  Sys.sleep(1.1)
+  # a definition changed after the run: the program is rewritten
   s$planner$sheets$variables$label[1] <- "Age"
   s <- save_study(s)
   expect_equal(study_status(s)$status[1], "outdated")
 
   # a change to one report leaves the others current: the workbooks are
   # rewritten, but only that report's program changes
-  st <- run_study(s, "DM")
-  expect_equal(st$status[1], "ok")
+  fake_run(s$path, "run2", "tfl", "DM", finished = t0 - 200)
+  expect_equal(study_status(s)$status[1], "ok")
   s$planner <- copy_output(s$planner, "DM", "DM2")
   s <- save_study(s)
-  st <- run_study(s, "DM2")
+  fake_run(s$path, "run3", "tfl", "DM2", finished = t0 - 100)
   expect_equal(study_status(s)$status[study_status(s)$output_id %in% c("DM", "DM2")],
                c("ok", "ok"))
-  Sys.sleep(1.1)
   i <- which(s$planner$outputs$output_id == "DM2")
   s$planner$outputs$description[i] <- "Another description"
   s <- save_study(s)
@@ -247,22 +253,26 @@ test_that("a study runs end to end and reports what it produced", {
   expect_equal(ss$status[ss$output_id == "DM2"], "outdated")
   expect_equal(ss$status[ss$output_id == "DM"], "ok")
 
-  # a file the program sources (the figure setup) changes: its reports too
+  # a file the program sources (the figure setup) changes: its reports too.
+  # (The latest run is the newest by its start, and the runs above are dated
+  # ahead of now (t0): this run is dated after them, and the file changes
+  # after it ends.)
   f <- file.path(s$path, "programs", "tfl", "DM.R")
   extra <- file.path(s$path, "programs", "tfl", "extra.R")
   writeLines("x <- 1", extra)
   writeLines(c(readLines(f), 'source("programs/tfl/extra.R")'), f)
-  Sys.sleep(1.1)
-  st <- run_study(s, "DM")
-  expect_equal(st$status[1], "ok")
-  Sys.sleep(1.1)
+  fake_run(s$path, "run4", "tfl", "DM", finished = t0 - 50)
+  expect_equal(study_status(s)$status[1], "ok")
   writeLines("x <- 2", extra)
+  Sys.setFileTime(extra, t0)
   expect_equal(study_status(s)$status[1], "outdated")
 
-  # a program that fails
+  # a program that fails in a later run
   writeLines("stop('boom')", file.path(s$path, "programs", "tfl", "DM.R"))
-  st <- run_study(s, "DM")
-  expect_equal(st$status[1], "error")
+  fake_run(s$path, "run5", "tfl", "DM", status = "ERROR", finished = t0 + 5)
+  ss <- study_status(s)
+  expect_equal(ss$status[1], "error")
+  expect_true(file.exists(ss$log[1]))
 })
 
 test_that("every study folder has its note on the study tab", {

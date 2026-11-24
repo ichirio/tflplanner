@@ -9,7 +9,7 @@ utils::globalVariables(c(
   "adata_counts", "adata_derive_now", "adata_edit", "adata_pick",
   "adata_root", "adata_where_now", "after_id_change", "an_data",
   "an_dataset", "an_pick", "app_local", "ard_conds_shown", "ard_log_ver",
-  "ard_preview_out", "ard_ready", "ard_res", "ard_state", "ard_state_ver",
+  "ard_preview_out", "ard_res", "ard_state", "ard_state_ver",
   "ard_state_view", "ard_target", "ard_valid", "arg_hint", "argl",
   "arms_id", "ask_id", "bform_drawn", "bid", "bstate", "builder_case",
   "builder_exc_ui", "builder_guard", "builder_rows_ui",

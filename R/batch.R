@@ -1,8 +1,11 @@
 # Official runs and previews.
 #
 # A program run on its own -- from the app, or opened in RStudio -- is a
-# preview: it writes the study's working output (output/ard/ard.rds,
-# output/tfl/) so the next step can go on, and keeps no log.
+# preview or a hand run: it writes the study's working output
+# (output/ard/ard.rds, output/tfl/) so the next step can go on, and keeps no
+# log.  That is a design aid's output: the builder and the figure designer
+# read it.  What the screens show as a report's result (its state, its RTF,
+# the report list's marks) is the latest official run's, read from runs/.
 #
 # An official run goes through an autoexec program, which makes a batch
 # folder stamped with the date and time (runs/20260927_143000_all/) and

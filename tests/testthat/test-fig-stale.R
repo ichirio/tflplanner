@@ -63,9 +63,14 @@ test_that("the figure turns outdated with the table's ARD, and the preview and t
   skip_on_cran()
   skip_if_not_installed("ggsurvfit")
   s <- stale_study()
-  # the preview: T-14-2-2's ARD made first (it is not made yet)
-  run_study(s, "F-14-2-3")
-  expect_identical(ard_status(s)$state[ard_status(s)$output_id == "T-14-2-2"], "built")
+  # an official run of the table and the figure: the table's ARD first.  The
+  # screens read the latest run (a preview or a hand run leaves the working
+  # output/, which the report's state does not read)
+  both <- c("T-14-2-2", "F-14-2-3")
+  b1 <- run_batch(s, c("ard", "tfl"), only = both, code = FALSE)
+  expect_true(b1$ok)
+  ard_run <- ard_status(s, "run")
+  expect_identical(ard_run$state[ard_run$output_id == "T-14-2-2"], "built")
   expect_identical(fig_state(s), list(status = "ok", why = ""))
   # T-14-2-2's definition changes: its ARD is not made from it, the figure
   # is to be made again because of it
@@ -75,10 +80,13 @@ test_that("the figure turns outdated with the table's ARD, and the preview and t
   s$planner$ard$analyses <- an
   s <- suppressMessages(save_study(s))
   expect_identical(fig_state(s), list(status = "outdated", why = "ard:T-14-2-2"))
-  # the ARD made again: the figure was made from the old one
+  # the working ARD made again (a design aid's): the figure's state is its
+  # run's, so it is to be made again all the same
   suppressMessages(update_study_ard(s, "T-14-2-2"))
   expect_identical(fig_state(s), list(status = "outdated", why = "ard:T-14-2-2"))
-  run_study(s, "F-14-2-3")
+  Sys.sleep(1.1)
+  b2 <- run_batch(s, c("ard", "tfl"), only = both, code = FALSE)
+  expect_true(b2$ok)
   expect_identical(fig_state(s), list(status = "ok", why = ""))
   # changed again; an official run of the figure alone does not start: it
   # reads the ARD of a report the run does not select (#790)
@@ -90,6 +98,7 @@ test_that("the figure turns outdated with the table's ARD, and the preview and t
   expect_null(b0$batch)
   expect_true(any(grepl("F-14-2-3 reads the ARD of T-14-2-2", b0$output, fixed = TRUE)))
   # with the table selected too: its ARD, then the table and the figure
+  Sys.sleep(1.1)
   b <- run_batch(s, c("ard", "tfl"), only = c("T-14-2-2", "F-14-2-3"), code = FALSE)
   expect_identical(b$result$part, c("ard", "tfl", "tfl"))
   expect_identical(b$result$program, c("programs/ard/T-14-2-2.R", "programs/tfl/T-14-2-2.R",

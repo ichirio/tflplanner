@@ -10,7 +10,9 @@ study_status(study)
 \item{study}{An \code{rtfstudy}.}
 }
 \value{
-A data frame.
+A data frame.  \code{preview_error} is \code{TRUE} for a report whose last
+preview failed (the log in \verb{logs/preview/} is newer than the working RTF):
+a design aid's fact, apart from \code{status}.
 }
 \description{
 One row per report: its program (\code{missing}; \code{current}, \code{todo} or
@@ -24,12 +26,14 @@ and when they were made, and a \code{status}:
 \item \code{unsaved} -- the definition changed since the program was written;
 save the study
 \item \code{todo} -- the program's data part is still to be written
-\item \verb{not run} -- no RTF yet
-\item \code{error} -- the last run failed (see its log)
-\item \code{outdated} -- the report's program, or a file it sources (the figure
-setup, say), changed after the RTF was made; or the report was made
-with another \code{programs/study_setup.R} than the one there now (its
-program records it in \code{output/tfl/report_status.csv}); or -- a figure
+\item \verb{not run} -- no official run has made the report without error
+\item \code{error} -- the latest official run of the report failed, and later than
+its last good run, if any (\code{log} is that run's log)
+\item \code{outdated} -- the report's program (its md5 is not the one the run
+ran), or a file it sources (the figure setup, say), changed after the
+run; or the report was made with another \code{programs/study_setup.R} than
+the one there now (its program records it in
+\code{output/tfl/report_status.csv} of the run); or -- a figure
 printing the numbers of an ARD (its own, or a table's) -- that ARD's
 definition is not the one it was made from, or that ARD is not made
 from its definition now.  The program holds the
@@ -38,8 +42,14 @@ reports it is about and no others.
 \item \code{ok}
 }
 
+The report's result is the one of the latest official run that made it
+without error (\code{runs/}): \code{rtf} is when that run ended
+and \code{rtf_path} the report's file in its batch folder (\code{NA} when no run
+made it).  The working RTFs of previews and hand runs (\code{output/tfl/}) are
+not read here.
+
 \code{why} says what made a report \code{outdated}: \code{program} (its program or a
-file it sources is newer), \code{setup} (the study setup changed), or
+file it sources is not the run's), \code{setup} (the study setup changed), or
 \verb{ard:<id>} (the ARD of \verb{<id>} changed, or is to be made again).
 }
 \examples{

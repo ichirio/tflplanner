@@ -505,8 +505,8 @@
   # its own (fetch_ard()): the study ARD (output/ard/ard.rds) is not
   # written, and the study is not saved for it.  Then the builder's choices
   # and the preview are read again, and the report's ARD is shown on the
-  # ARD tab.  Making the study ARD is do_study_ard() (step 1's Make the
-  # ARD) and the official run.
+  # ARD tab.  The study ARD is made by the official run (and a hand run of
+  # a program), not from here.
   do_preview <- function(id = current(), force = FALSE) {
     if (is.null(id)) return(notify(t("Choose a report"), "warning"))
     has_an <- any(rv$p$ard$analyses$output_id %in% id)

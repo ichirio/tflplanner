@@ -19,13 +19,18 @@
 #     programs/ard/        one ARD program per output, ard_setup.R,
 #                          autoexec_ard.R
 #     programs/tfl/        one program per report, autoexec_report.R
-#     output/ard/          the study's working ARD (ard.rds)
+#     output/ard/          the study's working ARD (ard.rds): what previews
+#                          and hand runs of a program leave, for the design
+#                          aids to read; not an official result
 #     input/ard/           ARDs made elsewhere and taken in (import_ard()),
 #                          with their record imports.csv; nothing else
 #                          writes here
-#     output/tfl/          the working reports: the RTF files
+#     output/tfl/          the working reports: the RTF files of previews and
+#                          hand runs
 #     runs/                official runs: one batch folder each, with the
-#                          logs, the results and the code
+#                          logs, the results (the same output/ layout) and
+#                          the code.  The screens read a report's state and
+#                          RTF from the latest run that made it
 #     logs/preview/        what a report program printed when last run on
 #                          its own (a preview; not a log of record)
 #

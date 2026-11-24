@@ -719,11 +719,12 @@
     } else .open_folder(d$path[i])
   })
   # A run this session did not start, or lost (the app restarted, another
-  # session, R): what it writes -- the study ARD's status, a batch's
-  # run.csv -- is watched, and only what changed follows it, without a
-  # reload and without drawing the page again (#9184): the report list's
-  # marks in place, the ARD's state when the study ARD's status changed
-  # (the builder reads a table's ARD then), the Runs tab when a batch ended
+  # session, R): what it writes when it ends -- a batch's run.csv and
+  # batch.txt -- is watched (the screens read the latest runs, not the
+  # working output/), and only what changed follows it, without a reload and
+  # without drawing the page again (#9184): the report list's marks in
+  # place, the ARD's state (the builder reads a table's ARD then), the Runs
+  # tab, when a batch ended
   runs_ver <- shiny::reactiveVal(0L)
   run_files <- shiny::reactivePoll(3000, session, checkFunc = function() {
     s <- shiny::isolate(rv$study)
@@ -744,11 +745,10 @@
     # the first look at a study is no change
     if (is.null(before) || identical(before, stamp)) return()
     shiny::isolate({
-      # the ARD's state again: while a run goes on, only when the report
-      # chosen has its ARD made or changed (its builder reads it then);
-      # every report's once, when the run has ended
-      ended <- !identical(before[["runs"]], stamp[["runs"]])
-      if (!identical(before[["ard"]], stamp[["ard"]]) || ended) {
+      # the ARD's state again, every report's, once when a run has ended
+      ended <- !identical(before[["runs"]], stamp[["runs"]]) ||
+        !identical(before[["done"]], stamp[["done"]])
+      if (ended) {
         st <- tryCatch(ard_status(current_study()), error = function(e) NULL)
         now <- if (!is.null(st)) stats::setNames(paste(st$state, st$built), st$output_id)
         was <- run_files_seen[[paste0(key, "|ard")]]

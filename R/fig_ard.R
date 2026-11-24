@@ -126,7 +126,7 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
 # choose it)
 .fig_ard_lines <- function(x, output_id, design = NULL) {
   src <- .fig_ard_source(x, output_id)
-  path <- .path_lit(.ard_study_value(x$ard, "output", "output/ard/ard.rds"))
+  path <- .path_lit(.study_ard_rel(x$ard))
   switch(src$kind,
     none = if (.fig_reads_ard(design, output_id)) c(
       "# the design reads an ARD (`ard`), but the figure has none",
@@ -176,23 +176,34 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
 # the others.  Read from ard_status.csv and report_status.csv, the
 # fingerprint worked out once a table: for study_status() and the report
 # list's lighter state alike.
-.fig_ard_why <- function(study, ids) {
+#
+# `roots`: a named vector, output id to the folder to read (a batch folder:
+# a figure's own run); each figure's two files are then read there, and a
+# figure with no folder (NA, not in it) is left "".  NULL: the study's
+# working files, as the builder and the figure preview read them.
+.fig_ard_why <- function(study, ids, roots = NULL) {
   p <- study$planner
   out <- stats::setNames(rep("", length(ids)), ids)
   need <- vapply(ids, function(id) tryCatch(.fig_ard_need(p, id), error = function(e) NA_character_), "")
   if (all(is.na(need))) return(out)
-  st <- .read_ard_status(study)
-  from <- .report_ard_recorded(study$path, ids)
-  for (tb in unique(stats::na.omit(need))) {
-    now <- tryCatch(tflspec::tfl_ard_spec_hash(structure(p$ard, class = "tfl_ard_spec"), tb,
-                                               dir = study$path, codelists = .study_codelists(p)),
-                    error = function(e) NA_character_)
-    r <- st[st$output_id == tb, , drop = FALSE]
-    made <- nrow(r) > 0L && (is.na(r$error[1L]) || !nzchar(r$error[1L])) &&
-      identical(r$definition[1L], now) && !isTRUE(.setup_changed(.ard_recorded_setup(r[1L, , drop = FALSE]), study$path))
-    k <- which(need %in% tb)
-    stale <- !made | (!is.na(from[k]) & nzchar(from[k]) & !(from[k] %in% now))
-    out[k[stale]] <- paste0("ard:", tb)
+  where <- if (is.null(roots)) rep(study$path, length(ids)) else
+    unname(roots[ids])
+  cl <- .study_codelists(p)
+  for (rt in unique(stats::na.omit(where))) {
+    in_rt <- which(where %in% rt)
+    st <- .read_ard_status(study, root = rt)
+    from <- .report_ard_recorded(rt, ids)
+    for (tb in unique(stats::na.omit(need[in_rt]))) {
+      now <- tryCatch(tflspec::tfl_ard_spec_hash(structure(p$ard, class = "tfl_ard_spec"), tb,
+                                                 dir = study$path, codelists = cl),
+                      error = function(e) NA_character_)
+      r <- st[st$output_id == tb, , drop = FALSE]
+      made <- nrow(r) > 0L && (is.na(r$error[1L]) || !nzchar(r$error[1L])) &&
+        identical(r$definition[1L], now) && !isTRUE(.setup_changed(.ard_recorded_setup(r[1L, , drop = FALSE]), study$path))
+      k <- in_rt[need[in_rt] %in% tb]
+      stale <- !made | (!is.na(from[k]) & nzchar(from[k]) & !(from[k] %in% now))
+      out[k[stale]] <- paste0("ard:", tb)
+    }
   }
   out
 }
@@ -260,7 +271,7 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
   hit <- .fig_ard_memo[[key]]
   if (!is.null(hit) && identical(hit$print, now)) return(hit)
   st <- tryCatch(ard_status(study), error = function(e) NULL)
-  out <- if (identical(st$state[match(tb, st$output_id)], "built")) {
+  out <- if (.ard_rows_ready(study, tb, st)) {
     list(rows = study_ard_rows(study, tb), print = now, error = NULL)
   } else {
     a <- run_ard(study, tb)

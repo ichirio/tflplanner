@@ -79,25 +79,3 @@ test_that("the ARD result kept for one report is not shown under another", {
     expect_match(info(), "T1: [0-9]+ rows", perl = TRUE)
   })
 })
-
-test_that("making a report's ARD reads it again for the builder and the content step", {
-  local_home()
-  p <- add_output(new_planner(), "DM")
-  p$ard$datasets <- data.frame(dataset = "ADSL", path = "data/adam/adsl.rds")
-  p$ard$analyses <- data.frame(output_id = "DM", analysis_id = "A1",
-                               method = "cards::ard_summary", variables = "AGE")
-  for (s in names(p$ard)) p$ard[[s]] <- .normalize_ard_sheet(p$ard[[s]], s)
-  create_study("GC5", planner = p)
-  # (the program's run and the rows are the ones of the ARD made; its meta is there already)
-  local_mocked_bindings(
-    update_study_ard = function(...) list(ok = TRUE, output = "made"),
-    study_ard_rows = function(...) data.frame(analysis_id = "A1", stat = 1),
-    ard_preview_state = function(...) "current")
-  shiny::testServer(server_for("GC5"), {
-    rv <- session$userData$rv
-    session$setInputs(nav = "make", step = "ard", target = "DM")
-    v <- rv$ard_ver
-    session$setInputs(ard_make_study = 1)
-    expect_gt(rv$ard_ver, v)
-  })
-})
