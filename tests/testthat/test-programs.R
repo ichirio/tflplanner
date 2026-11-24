@@ -48,9 +48,8 @@ test_that("listings and figures make `content` and skip the table plan", {
   for (id in c("L1", "F1")) {
     code <- program_code(p, id)
     expect_silent(parse(text = code))
-    expect_true(any(code == "  rtf_tables(content)" |
-                      startsWith(code, "  rtf_figures(content") |
-                      startsWith(code, "  rtf_figures(plot")))
+    expect_match(paste(code, collapse = "\n"),
+                 "  rtf_tables\\(content\\)|  rtf_figures\\(\\s*(content|plot)[,)]")
     expect_false(any(grepl("table_plan(", code, fixed = TRUE)))
   }
   expect_error(add_output(p, "X", type = "chart"))
