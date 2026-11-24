@@ -919,6 +919,9 @@ p$ard$analyses$purpose <- ifelse(
   p$ard$analyses$analysis_id %in% c("CI", "HR", "HR_SEX", "HR_AGEGR1"),
   "SECONDARY OUTCOME MEASURE", "PRIMARY OUTCOME MEASURE")
 
+# the run definition the sample ships with: every report (spec/runs.yml)
+p <- set_run_definition(p, "All", "all")
+
 # ------------------------------------------------------------ the study
 s <- create_study(id, title = "Sample study (tflspec's oncology sample data)",
                   compound = "Drug X", phase = "2",
@@ -933,7 +936,7 @@ saveRDS(strip(adae), file.path(adam, "adae.rds"))
 saveRDS(strip(advs), file.path(adam, "advs.rds"))
 saveRDS(strip(adtte), file.path(adam, "adtte.rds"))
 
-b <- run_batch(s, c("ard", "tfl"), code = FALSE)
+b <- run_batch(s, "All", wait = TRUE)
 cat(b$output, sep = "\n")
 if (!b$ok) {
   for (f in file.path(b$batch, b$result$log[b$result$status != "OK"])) {

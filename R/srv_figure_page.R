@@ -92,7 +92,7 @@
     rv$status_ver
     p <- shiny::isolate(rv$p)
     empty <- data.frame(output_id = character(), section = character(),
-                        batches = character(), type = character(), how = character(),
+                        runs = character(), type = character(), how = character(),
                         program = character(), rtf = character(),
                         data = character(), title = character())
     if (is.null(p) || !nrow(p$outputs)) return(empty)
@@ -136,7 +136,8 @@
     data.frame(
       output_id = o$output_id,
       section = .report_section(o$output_id, type, o$section),
-      batches = ifelse(is.na(o$batches %||% NA_character_), "", o$batches %||% ""),
+      # the run definitions the report is in
+      runs = .report_run_names(p, o$output_id),
       type = t(unname(.type_labels[type])),
       # how it is made: a template (its name) or code
       how = vapply(o$output_id, function(id) {
@@ -157,12 +158,12 @@
     ai <- .ai_adopted_marks(if (has_study()) shiny::isolate(rv$study$path), v$output_id)
     v$output_id <- paste0(htmltools::htmlEscape(v$output_id), .ai_mark_html(ai, t))
     v$section <- htmltools::htmlEscape(v$section)
-    v$batches <- htmltools::htmlEscape(v$batches)
+    v$runs <- htmltools::htmlEscape(v$runs)
     v$program <- htmltools::htmlEscape(v$program)
     v$rtf <- htmltools::htmlEscape(v$rtf)
     # "Title" here is the report's title; t("Title") is the study's
     v$how <- htmltools::htmlEscape(v$how)
-    names(v) <- c(t(c("output_id", "Section", "Report sets", "Type", "How it is made", "Program", "RTF", "Data")),
+    names(v) <- c(t(c("output_id", "Section", "Run definitions", "Type", "How it is made", "Program", "RTF", "Data")),
                   if (identical(lang, "en")) "Title" else t("Report title"))
     v$.key <- .report_search_keys(shiny::isolate(picker_rows()), outputs_view()$output_id)
     DT::datatable(v, rownames = FALSE, escape = FALSE,
@@ -189,8 +190,8 @@
       DT::selectRows(DT::dataTableProxy("outputs"), if (!is.na(sel)) sel)
     }
   })
-  # the report sets are defined on the Runs tab (a set is chosen there for
-  # an official run); the report list only shows them (its Report sets
+  # the run definitions are made on the Runs tab (one is chosen there for
+  # an official run); the report list only shows them (its Run definitions
   # column), and this button goes there
   shiny::observeEvent(input$report_batches, bslib::nav_select("nav", "results"))
 

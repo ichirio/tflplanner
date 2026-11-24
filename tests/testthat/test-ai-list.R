@@ -49,11 +49,15 @@ test_that("the reports adopted go into their TOC batches, as spec/toc.yml says t
   expect_identical(b$output_id, c("T-1", "T-2", "T-2", "T-3", "T-1"))
   x <- new_planner()
   for (id in c("T-1", "T-2", "T-3", "T-4")) x <- add_output(x, id, process_code = "1")
-  x <- .set_report_batches(x, "T-2", "Mine")
+  x <- set_run_definition(x, "Mine", "T-2")
   y <- .ai_apply_toc_batches(x, d, c("T-1", "T-2", "T-3", "T-4"))
-  expect_identical(y$outputs$batches, c("Topline | DSUR", "Mine", "DSUR", NA))
+  ids <- c("T-1", "T-2", "T-3", "T-4")
+  # (a report already in a run definition stays as it is)
+  expect_identical(.report_run_names(y, ids), c("Topline | DSUR", "Mine", "DSUR", ""))
+  expect_identical(vapply(y$runs, function(r) r$name, ""), c("Mine", "Topline", "DSUR"))
   # only the reports adopted
-  expect_identical(.ai_apply_toc_batches(x, d, "T-3")$outputs$batches, c(NA, "Mine", "DSUR", NA))
+  expect_identical(.report_run_names(.ai_apply_toc_batches(x, d, "T-3"), ids),
+                   c("", "Mine", "DSUR", ""))
 })
 
 

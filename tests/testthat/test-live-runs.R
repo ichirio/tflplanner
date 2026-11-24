@@ -80,7 +80,7 @@ test_that("a study runs one official run at a time", {
   px <- sleeper()
   on.exit(px$kill(), add = TRUE)
   .record_run(px, fake_study("S3"), "ard")
-  expect_error(run_batch(fake_study("S3")), "An official run of S3 is going on")
+  expect_error(run_batch(fake_study("S3"), "All"), "An official run of S3 is going on")
 })
 
 test_that("no update while an official run goes on", {

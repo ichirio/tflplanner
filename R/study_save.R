@@ -113,6 +113,14 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
 "),
          call. = FALSE)
   }
+  # (a run definition's name that is new or changed since the files, and
+  # breaks the name rule or repeats another ignoring case, stops the save;
+  # one the files have passes, with its Review row)
+  bad_runs <- .runs_save_problems(p, root)
+  if (nrow(bad_runs)) {
+    stop(paste0("Run definition ", sQuote(bad_runs$definition), ": ", bad_runs$problem,
+                collapse = "\n"), call. = FALSE)
+  }
   # A save that stops part way (a report whose program cannot be written
   # ...) writes nothing: the files it wrote before it stopped are put back
   # as they were, and the record of what is on disk is not touched -- the

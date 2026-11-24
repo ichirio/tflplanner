@@ -174,9 +174,9 @@ test_that("the log: what to do with nothing chosen, a report not run, a run fold
   })
 })
 
-# ---- the report sets --------------------------------------------------------------
+# ---- the run definitions ---------------------------------------------------------
 
-test_that("the report set buttons: what they say with nothing to work on, a bad name, rename, delete, the ticks", {
+test_that("the run definition buttons: what they say with nothing to work on, a bad name, rename, delete, the ticks", {
   skip_on_cran()
   dr_home()
   dr_study("DR")
@@ -186,29 +186,29 @@ test_that("the report set buttons: what they say with nothing to work on, a bad 
     rv <- session$userData$rv
     last <- function() notes()[[length(notes())]]
     session$setInputs(nav = "runs", batch_reports = character(), batch_save = 1)
-    expect_identical(last()$text, "Tick the reports of the report set first.")
+    expect_identical(last()$text, "Tick the reports of the run definition first.")
     expect_identical(last()$type, "warning")
     session$setInputs(batch_rename = 1)
-    expect_identical(last()$text, "Choose a report set first.")
+    expect_identical(last()$text, "Choose a run definition first.")
     session$setInputs(batch_delete = 1)
-    expect_identical(last()$text, "Choose a report set first.")
-    # a name the sets cannot carry: said, and no set made
+    expect_identical(last()$text, "Choose a run definition first.")
+    # a name the definitions cannot carry: said, and no definition made
     n <- length(notes())
     suppressMessages(session$setInputs(batch_reports = c("DM", "VS"), batch_save_name = "Top/line",
                                        batch_save_name_ok = 1))
     expect_identical(last()$type, "error")
     expect_gt(length(notes()), n)
-    expect_length(batch_sets(rv$p), 0L)
+    expect_length(rv$p$runs, 0L)
     session$setInputs(batch_save_name = "  Topline ", batch_save_name_ok = 2)
-    expect_identical(batch_sets(rv$p), list(Topline = c("DM", "VS")))
-    expect_match(last()$text, "The report set Topline: 2 reports", fixed = TRUE)
-    # choosing a set ticks its reports, the full run every report
+    expect_identical(run_def_ids(rv$p, "Topline"), c("DM", "VS"))
+    expect_match(last()$text, "The run definition Topline: 2 reports", fixed = TRUE)
+    # choosing a definition ticks its reports, the full run every report
     session$setInputs(batch_set = "Topline")
     expect_identical(ticks()$batch_reports, c("DM", "VS"))
     expect_identical(output$batch_reports_n, "Reports in the run: 2 of 3 (1 left out)")
     session$setInputs(batch_reports = "DM")
-    expect_match(output$batch_reports_n, "(not the report set Topline any more: the run has no name)",
-                 fixed = TRUE)
+    expect_match(output$batch_reports_n,
+                 "(not the run definition Topline any more: save the ticks to run them)", fixed = TRUE)
     session$setInputs(batch_set = ".all", batch_reports = c("DM", "VS", "L1"))
     expect_identical(ticks()$batch_reports, c("DM", "VS", "L1"))
     expect_identical(output$batch_reports_n, "Reports in the run: all 3")
@@ -219,25 +219,26 @@ test_that("the report set buttons: what they say with nothing to work on, a bad 
     expect_length(ticks()$batch_reports, 0L)
     session$setInputs(batch_all = 1)
     expect_identical(ticks()$batch_reports, c("DM", "VS", "L1"))
-    # a set renamed to the name another has: said; renamed, then deleted: its reports stay
-    rv$p <- set_batch(rv$p, "Final", c("DM", "VS"))
-    suppressMessages(session$setInputs(batch_set = "Topline", batch_rename_name = "Final",
+    # a definition renamed to the name another has (even in another case):
+    # said; renamed, then deleted: its reports stay
+    rv$p <- set_run_definition(rv$p, "Final", c("DM", "VS"))
+    suppressMessages(session$setInputs(batch_set = "Topline", batch_rename_name = "final",
                                        batch_rename_name_ok = 1))
     expect_identical(last()$type, "error")
     expect_match(last()$text, "exists already", fixed = TRUE)
     session$setInputs(batch_rename_name = "Interim", batch_rename_name_ok = 2)
-    expect_setequal(names(batch_sets(rv$p)), c("Final", "Interim"))
+    expect_setequal(.run_names(rv$p), c("Final", "Interim"))
     session$setInputs(batch_set = "Final", batch_delete_ok = 1)
-    expect_identical(names(batch_sets(rv$p)), "Interim")
+    expect_identical(.run_names(rv$p), "Interim")
     expect_identical(nrow(rv$p$outputs), 3L)
-    # the select lists the sets the study has
+    # the select lists the definitions the study has
     expect_match(output$batch_reports_ui$html, "Interim", fixed = TRUE)
   })
 })
 
 # ---- the runs ---------------------------------------------------------------------
 
-test_that("the official run: nothing ticked is refused; reports left out; a report set; what it reads first", {
+test_that("the official run: a saved definition only; the ticks must be its; what it reads first", {
   skip_on_cran()
   dr_home()
   dr_study("DR", ard = TRUE)
@@ -247,10 +248,8 @@ test_that("the official run: nothing ticked is refused; reports left out; a repo
   # testServer()'s code has no frame of its own that ends)
   test_frame <- environment()
   testthat::local_mocked_bindings(
-    run_batch = function(study, parts, code = TRUE, data = FALSE, exclude = NULL, batch = NULL,
-                         wait = TRUE, ...) {
-      asked[[length(asked) + 1L]] <<- list(parts = parts, code = code, data = data,
-                                           exclude = exclude, batch = batch, wait = wait)
+    run_batch = function(study, name, wait = FALSE) {
+      asked[[length(asked) + 1L]] <<- list(name = name, wait = wait)
       dr_proc()
     },
     .ai_run_warnings = function(p, ids) warn)
@@ -260,65 +259,64 @@ test_that("the official run: nothing ticked is refused; reports left out; a repo
   shiny::testServer(server_for("DR"), {
     rv <- session$userData$rv
     last <- function() notes()[[length(notes())]]
-    # nothing ticked
-    session$setInputs(nav = "runs", batch_parts = "ard", batch_code = FALSE, batch_data = FALSE,
-                      batch_reports = character(), batch_run = 1)
+    # no definition chosen: the run needs one
+    session$setInputs(nav = "runs", batch_reports = c("DM", "VS"), batch_run = 1)
+    expect_match(last()$text, "Choose a run definition first", fixed = TRUE)
+    expect_length(asked, 0L)
+    # a definition chosen, nothing ticked
+    rv$p <- set_run_definition(rv$p, "Topline", c("DM", "VS"), mode = "ard")
+    session$setInputs(batch_set = "Topline", batch_reports = character(), batch_run = 2)
     expect_identical(last()$text, "Choose at least one report for the run.")
     expect_length(asked, 0L)
-    # a report unticked is left out
-    session$setInputs(batch_reports = c("DM", "VS"), batch_run = 2)
+    # the ticks are not the definition's: save them first
+    session$setInputs(batch_reports = c("DM", "VS", "L1"), batch_run = 3)
+    expect_match(last()$text, "not the run definition Topline any more", fixed = TRUE)
+    expect_length(asked, 0L)
+    # the definition's own ticks: the run of that definition
+    session$setInputs(batch_reports = c("DM", "VS"), batch_run = 4)
     expect_length(asked, 1L)
-    expect_identical(asked[[1L]]$parts, "ard")
-    expect_identical(asked[[1L]]$exclude, "L1")
-    expect_null(asked[[1L]]$batch)
-    expect_false(asked[[1L]]$code)
+    expect_identical(asked[[1L]]$name, "Topline")
+    expect_false(asked[[1L]]$wait)
     expect_identical(rv$job_kind, "official")
-    expect_match(rv$job_what, "^the official run: ARD +[(]1 left out[)]$")
+    expect_match(rv$job_what, "the official run of the run definition Topline", fixed = TRUE)
     # one at a time
-    session$setInputs(batch_run = 3)
+    session$setInputs(batch_run = 5)
     expect_length(asked, 1L)
     expect_identical(last()$text, "A run is going on")
-    # a report set, when the ticks are its reports
-    rv$job <- NULL
-    rv$p <- set_batch(rv$p, "Topline", c("DM", "VS"))
-    session$setInputs(batch_set = "Topline", batch_run = 4)
-    expect_length(asked, 2L)
-    expect_identical(asked[[2L]]$batch, "Topline")
-    expect_null(asked[[2L]]$exclude)
-    expect_match(rv$job_what, "(the report set Topline)", fixed = TRUE)
     # a run that leaves out a report another reads: it does not start; the
     # modal names the missing report, and one button ticks it (#790)
     rv$job <- NULL
+    rv$p <- set_run_definition(rv$p, "Needs", c("VS", "L1"))
     # (a declared read: L1 reads DM's ARD, as a figure reads its table's)
     testthat::local_mocked_bindings(
       .batch_report_reads = function(x) data.frame(
         report = c("DM", "VS", "L1"), reads = c("DM", "VS", "DM"), kind = "own",
         reason = NA_character_, stringsAsFactors = FALSE),
       .env = test_frame)
-    session$setInputs(batch_set = ".all", batch_parts = "all", batch_reports = c("VS", "L1"),
-                      batch_run = 5)
-    expect_length(asked, 2L)
+    session$setInputs(batch_set = "Needs", batch_reports = c("VS", "L1"), batch_run = 6)
+    expect_length(asked, 1L)
     expect_length(modals(), 1L)
     expect_match(modals()[1L], "L1 reads the ARD of: DM", fixed = TRUE)
     session$setInputs(batch_needs_tick = 1)
     expect_setequal(ticks()$batch_reports, c("DM", "VS", "L1"))
-    session$setInputs(batch_reports = c("DM", "VS", "L1"), batch_run = 6)
+    # saved as the definition, the run starts
+    rv$p <- set_run_definition(rv$p, "Needs", c("DM", "VS", "L1"))
+    session$setInputs(batch_reports = c("DM", "VS", "L1"), batch_run = 7)
     expect_length(modals(), 1L)
-    expect_length(asked, 3L)
-    expect_length(asked[[3L]]$exclude, 0L)
-    expect_match(rv$job_what, "^the official run: ARD, Reports$")
+    expect_length(asked, 2L)
+    expect_identical(asked[[2L]]$name, "Needs")
+    expect_match(rv$job_what, "the run definition Needs", fixed = TRUE)
     # the AI's reports with a changed draft or places to confirm: said first
     rv$job <- NULL
     warn <<- list(newer = "DM", confirm = c("VS", "L1"))
-    session$setInputs(batch_parts = "all", batch_reports = c("DM", "VS", "L1"), batch_run = 7)
-    expect_length(asked, 3L)
+    session$setInputs(batch_reports = c("DM", "VS", "L1"), batch_run = 8)
+    expect_length(asked, 2L)
     expect_match(modals()[2L], "Their draft changed after they were adopted .*: DM\\.")
     expect_match(modals()[2L], "places the AI left to confirm .*: VS, L1\\.")
     session$setInputs(batch_ai_cancel = 1)
-    expect_length(asked, 3L)
+    expect_length(asked, 2L)
     session$setInputs(batch_ai_go = 1)
-    expect_length(asked, 4L)
-    expect_length(asked[[4L]]$exclude, 0L)
+    expect_length(asked, 3L)
   })
 })
 
@@ -338,7 +336,9 @@ test_that("an official run that ends is said from its run folder: how many progr
   shiny::testServer(server_for("DR"), {
     rv <- session$userData$rv
     last <- function() notes()[[length(notes())]]
-    session$setInputs(nav = "runs", batch_parts = "all", batch_run = 1)
+    rv$p <- set_run_definition(rv$p, "Everything", "all")
+    session$setInputs(nav = "runs", batch_set = "Everything", batch_reports = c("DM", "VS", "L1"),
+                      batch_run = 1)
     expect_identical(rv$job_batches_before, character())
     end_run()
     session$elapse(1100)

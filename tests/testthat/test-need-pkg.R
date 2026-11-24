@@ -164,10 +164,13 @@ test_that("a template report whose package is missing stops before it is run", {
   expect_identical(e$packages, "ggsurvfit")
   expect_match(conditionMessage(e), "The report F1 needs a package", fixed = TRUE)
   expect_true(.need_report_pkgs(p, "T2"))
-  # the reports a batch runs
+  # the reports a run definition runs (none named: every report)
   expect_identical(.batch_report_ids(p), c("F1", "T2"))
-  expect_identical(.batch_report_ids(p, only = "T2"), "T2")
-  expect_identical(.batch_report_ids(p, exclude = "T2"), "F1")
+  p <- set_run_definition(p, "Two", "T2")
+  p <- set_run_definition(p, "Every", "all")
+  expect_identical(.batch_report_ids(p, "Two"), "T2")
+  expect_identical(.batch_report_ids(p, "Every"), c("F1", "T2"))
+  expect_identical(.batch_report_ids(p, "Nope"), character())
 })
 
 test_that("run_study(), run_batch() and preview_code() check the reports' packages first", {
@@ -183,10 +186,13 @@ test_that("run_study(), run_batch() and preview_code() check the reports' packag
                class = "tflplanner_need_pkg")
   # the official run: said before the run starts (no batch folder made)
   dir.create(file.path(s$path, "programs"), recursive = TRUE, showWarnings = FALSE)
-  if (!file.exists(f <- file.path(s$path, "programs", .autoexec_all_file))) {
-    writeLines("", f)
+  for (f in c(file.path(s$path, "programs", .autoexec_all_file),
+              file.path(s$path, "programs", "ard", .ard_autoexec_file))) {
+    dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+    if (!file.exists(f)) writeLines("", f)
   }
-  expect_error(run_batch(s, c("ard", "tfl"), only = "F1"), "The report F1",
+  s$planner <- set_run_definition(s$planner, "Only", "F1")
+  expect_error(run_batch(s, "Only"), "The report F1",
                class = "tflplanner_need_pkg")
   expect_length(list_batches(s)$batch, 0L)
 })

@@ -290,6 +290,9 @@ create_study <- function(study_id, title = NA, compound = NA, phase = NA,
   # own from now on), and the state told of the file as it is now
   if (file.exists(file.path(path, .study_file))) {
     .ai_review_write(path, .ai_review_company())
+    # (study.yml is part of the spec's stamp: batch.R is made again with the
+    # stamp of the file as it is now, or the first run would be refused)
+    .save_batch_programs(s$planner, path)
     rel <- .study_file
     if (!is.null(s$planner$spec$text[[rel]])) {
       s$planner$spec$text[[rel]] <- readLines(file.path(path, rel), encoding = "UTF-8", warn = FALSE)

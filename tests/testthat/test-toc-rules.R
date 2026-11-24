@@ -406,7 +406,7 @@ test_that("taken in by the rules: the reports, the Topline batch, the record, th
   expect_identical(ch$reports$status, rep("new", 5))
   x <- toc_apply(st$planner, sp, ch)
   x <- toc_apply_extras(x, res)
-  expect_identical(batch_sets(x)$Topline, c("t.14.1.1.a", "t.14.1.1.b", "t.14.2.1.b"))
+  expect_identical(run_def_ids(x, "Topline"), c("t.14.1.1.a", "t.14.1.1.b", "t.14.2.1.b"))
   snap <- .toc_snapshot_rules(sp, toc_title_offset(x), NULL, res)
   rec <- .toc_record(st, f, "XYZ_TFL_shells.xlsx", ch, snap, res)
   log <- toc_imports(st)
@@ -429,15 +429,15 @@ test_that("taken in by the rules: the reports, the Topline batch, the record, th
   # the next time: the profile pre-fills; the flag dropped takes the batch off
   last <- toc_last(st)
   expect_identical(unlist(last[["t.14.1.1.a"]]$batches), "Topline")
-  x <- set_batch(x, "Final", x$outputs$output_id)
+  x <- set_run_definition(x, "Final", x$outputs$output_id)
   # the profile names the sheet the file still has (the file's own name)
   prof$sources[[1]]$file <- basename(f)
   res2 <- toc_import_read(f, toc_rules(), profile = prof)
   expect_identical(res2$detection$how, "profile")
   res2$batches <- res2$batches[res2$batches$output_id != "t.14.2.1.b", , drop = FALSE]
   y <- toc_apply_extras(x, res2, last)
-  expect_identical(batch_sets(y)$Topline, c("t.14.1.1.a", "t.14.1.1.b"))
-  expect_identical(length(batch_sets(y)$Final), 5L)
+  expect_identical(run_def_ids(y, "Topline"), c("t.14.1.1.a", "t.14.1.1.b"))
+  expect_identical(length(run_def_ids(y, "Final")), 5L)
   # a sheet renamed: found again, said
   prof$sources[[1]]$toc_sheet <- "Gone"
   res3 <- toc_import_read(f, toc_rules(), profile = prof)
@@ -502,7 +502,7 @@ test_that("the dialog: two files found, a sheet switched, the id rule, Take it i
     session$setInputs(toc1_type_1 = "table")
     session$setInputs(toc1_do = 1)
     expect_identical(length(rv$p$outputs$output_id), 7L)
-    expect_identical(batch_sets(rv$p)$Topline, c("t.14.1.1.a", "t.14.1.1.b", "t.14.2.1.b"))
+    expect_identical(run_def_ids(rv$p, "Topline"), c("t.14.1.1.a", "t.14.1.1.b", "t.14.2.1.b"))
     res <- output$toc1_result$html
     expect_match(res, "TOC001", fixed = TRUE)
     expect_match(res, "Topline report set: 3 reports", fixed = TRUE)
@@ -510,7 +510,7 @@ test_that("the dialog: two files found, a sheet switched, the id rule, Take it i
     expect_identical(toc_imports(rv$study)$sources, "2")
     expect_identical(nrow(toc_shell_links(rv$study)), 6L)
     expect_identical(toc_profile(rv$study)$rule_set, "two-phase")
-    expect_identical(open_study(rv$study$path)$planner$outputs$batches[1], "Topline")
+    expect_identical(.report_run_names(open_study(rv$study$path)$planner, "t.14.1.1.a"), "Topline")
     # remembered: the sheet's name is a candidate of the two-phase set now
     expect_match(toc_rules()$`two-phase`$settings$sheet_names, "TOC_table and figure", fixed = TRUE)
     # again: found by name, nothing new

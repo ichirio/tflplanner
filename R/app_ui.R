@@ -968,8 +968,8 @@ app_ui <- function(lang = "en") {
             class = "d-flex flex-wrap gap-1 ms-2",
             .btn("add", t("Add")), .btn("copy", t("Copy")),
             .btn("rename", t("Rename")),
-            .btn("report_batches", t("Report sets..."),
-                  title = t("Report sets are made and chosen on the Runs tab: this opens it")),
+            .btn("report_batches", t("Run definitions..."),
+                  title = t("Run definitions are made and chosen on the Runs tab: this opens it")),
             .btn("remove", t("Delete"), class = "btn-sm btn-outline-danger"),
             .btn("up", "\u2191"), .btn("down", "\u2193"),
             .btn("sort_ids", t("Sort by ID"),
@@ -1030,24 +1030,11 @@ app_ui <- function(lang = "en") {
         bslib::card_header(with_tip(t("Official runs (run folders)"), t("An official run makes a run folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs), the R and package versions (session_info.txt) and, if kept, the programs and definition workbooks it ran and the data they read. Every run makes a new run folder; the earlier ones are never deleted. The reports are made from the ARD the same run makes. A row's Download (ZIP): Output is output/, logs/, run.csv and batch.txt; All files is the whole run folder, made in the background as runs/<folder>.zip when it is over zip_download_limit_mb (config.yml, 500 MB)."))),
         shiny::div(
           class = "d-flex flex-wrap gap-3 align-items-center",
-          shiny::radioButtons(
-            "batch_parts", NULL, inline = TRUE,
-            stats::setNames(c("ard", "all"),
-                            t(c("ARD", "ARD, then reports")))),
-          shiny::checkboxInput("batch_code",
-                               t("keep the code in the run folder"),
-                               value = TRUE),
-          shiny::checkboxInput("batch_data",
-                               with_tip(t("keep the data in the run folder"),
-                                        t("The data files the run's programs read (the data catalog's: each table's datasets, a listing's, a figure's, an ARD taken in), copied with their md5 (data_manifest.csv). With the code, the logs and the R and package versions (session_info.txt), the run can be made again.")),
-                               value = FALSE),
           .btn("batch_run", t("Start the official run"),
                class = "btn-sm btn-primary"),
           shiny::uiOutput("batch_open_ui", inline = TRUE),
           .btn("batch_compare", t("Compare..."))),
-        # the data the run would keep: its size, before the run
-        shiny::uiOutput("batch_data_size"),
-        # the reports the run takes: all, unless some are left out
+        # the run definition, and the reports it takes
         shiny::uiOutput("batch_reports_ui"),
         # as tall as its rows (a fill table left a card of empty space)
         DT::DTOutput("batches", height = "auto", fill = FALSE),

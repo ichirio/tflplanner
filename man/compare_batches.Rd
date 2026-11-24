@@ -24,7 +24,7 @@ changed).
 \description{
 What changed between two batch folders of a study (\code{\link[=list_batches]{list_batches()}}):
 their inputs -- the data, by the md5 \code{data_manifest.csv} records, and
-the code, by the md5 of the files of \verb{code/}, where both runs kept them
+the code, by the md5 of the files of the folder's \verb{programs/}, where both runs kept them
 -- and their results (\verb{output/}).  After a fix to the data or the
 programs, it says whether only what was fixed changed.
 }

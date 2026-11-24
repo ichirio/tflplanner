@@ -393,18 +393,17 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
   out
 }
 
-# The planner with the reports `ids` in their TOC batches (a report's
-# batches set already are kept; a name a batch folder cannot carry is left)
+# The planner with the reports `ids` in their TOC batches, as run definitions
+# of those names (a report already in a definition is kept as it is; a name a
+# run definition cannot carry, or that repeats another ignoring case, is left)
 .ai_apply_toc_batches <- function(x, p, ids) {
   b <- .ai_toc_batches(p)
   if (!nrow(b) || !length(ids)) return(x)
-  have <- x$outputs$batches %||% rep(NA_character_, nrow(x$outputs))
   for (id in intersect(ids, x$outputs$output_id)) {
-    i <- match(id, x$outputs$output_id)
-    if (!is.na(have[i]) && nzchar(have[i])) next
-    n <- b$batch[b$output_id == id]
-    n <- n[vapply(n, function(v) !inherits(tryCatch(.check_batch_name(v), error = function(e) e), "error"), NA)]
-    if (length(n)) x <- .set_report_batches(x, id, n)
+    if (any(vapply(x$runs %||% list(), function(d) id %in% .run_def_ids(x, d), NA))) next
+    for (v in b$batch[b$output_id == id]) {
+      x <- tryCatch(.run_def_member(x, v, id, TRUE), error = function(e) x)
+    }
   }
   x
 }

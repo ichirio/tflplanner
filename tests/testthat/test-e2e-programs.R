@@ -98,7 +98,8 @@ test_that("the sample study's official run makes every report", {
   e2e_libs()
   s <- suppressMessages(create_sample_study(run = FALSE, home = home))
   s <- suppressMessages(save_study(s, home = home, fill_widths = TRUE))
-  invisible(run_batch(s, c("ard", "tfl"), wait = TRUE))
+  # (the sample ships the run definition All)
+  invisible(run_batch(s, "All", wait = TRUE))
   res <- e2e_results(s, s$planner$outputs$output_id)
   expect_identical(nrow(res), nrow(s$planner$outputs))
   e2e_expect_ok(res)
@@ -115,7 +116,7 @@ e2e_tpl_code <- function(p, id, name, args, kind = "table", population = args$po
   .spec_add_output(p, b, label = name, population = population)
 }
 
-test_that("tables from templates converted to code and a listing started from the data run; a report set's run makes its own", {
+test_that("tables from templates converted to code and a listing started from the data run; a run definition's run makes its own", {
   e2e_skip()
   home <- local_home()
   e2e_libs()
@@ -128,23 +129,24 @@ test_that("tables from templates converted to code and a listing started from th
   p <- e2e_tpl_code(p, "C-AEGR", "ae_max_grade", list(population = "SAF"))
   p <- first_listing(p, "F-LAE", "adam/adae.rds", st$data$adae, columns = c("USUBJID", "AEDECOD", "AESEV"),
                      group = "TRT01A")
-  p <- .set_report_batches(p, "C-DM", "Topline")
+  p <- set_run_definition(p, "Topline", "C-DM")
+  p <- set_run_definition(p, "All", "all")
   s$planner <- p
   s <- suppressMessages(save_study(s, home = home, fill_widths = TRUE))
   # (code reports: no template left in their files)
   for (id in c("C-DM", "C-AE", "C-AEGR")) {
     expect_null(tflspec::tfl_read_output(file.path(s$path, "spec", "outputs", paste0(id, ".yml")))$template)
   }
-  # the report set alone: its programs only
+  # the run definition alone: its programs only
   before <- list_batches(s)$batch
-  invisible(run_batch(s, c("ard", "tfl"), batch = "Topline", wait = TRUE))
+  invisible(run_batch(s, "Topline", wait = TRUE))
   b <- setdiff(list_batches(s)$batch, before)
   expect_length(b, 1L)
   r <- utils::read.csv(file.path(s$path, "runs", b, "run.csv"), stringsAsFactors = FALSE)
   expect_setequal(r$program, c("programs/ard/C-DM.R", "programs/tfl/C-DM.R"))
   expect_true(all(r$status == "OK"))
   # every report
-  invisible(run_batch(s, c("ard", "tfl"), wait = TRUE))
+  invisible(run_batch(s, "All", wait = TRUE))
   e2e_expect_ok(e2e_results(s, c("C-DM", "C-AE", "C-AEGR", "F-LAE")))
 })
 
@@ -165,8 +167,9 @@ test_that("a report adopted from the AI's draft is in the run and runs", {
   invisible(suppressMessages(tflspec::tfl_ai_adopt(st$path, "A-DM")))
   s <- suppressMessages(reload_from_spec("AI-2", home = home))
   expect_true("A-DM" %in% s$planner$outputs$output_id)
+  s$planner <- set_run_definition(s$planner, "All", "all")
   s <- suppressMessages(save_study(s, home = home, fill_widths = TRUE))
-  invisible(run_batch(s, c("ard", "tfl"), wait = TRUE))
+  invisible(run_batch(s, "All", wait = TRUE))
   e2e_expect_ok(e2e_results(s, c("F-DM", "A-DM")))
 })
 
@@ -232,9 +235,9 @@ test_that("every template of tflspec makes its report in an official run", {
     ids <- c(ids, id)
   }
   if ("X-forest-hr" %in% ids) p <- set_fig_ard_source(p, "X-forest-hr", "own")
-  s$planner <- p
+  s$planner <- set_run_definition(p, "All", "all")
   s <- suppressWarnings(suppressMessages(save_study(s, home = home, fill_widths = TRUE)))
-  invisible(run_batch(s, c("ard", "tfl"), wait = TRUE))
+  invisible(run_batch(s, "All", wait = TRUE))
   res <- e2e_results(s, ids)
   expect_identical(sort(res$output_id), sort(ids))
   e2e_expect_ok(res)

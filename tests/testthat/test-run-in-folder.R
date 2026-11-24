@@ -70,7 +70,7 @@ test_that("an official run leaves the study's working output as it was", {
     paste(f, unname(tools::md5sum(f)))
   }
   before <- tree()
-  b <- run_batch(o, "ard")
+  b <- run_def(o, "ArdOnly", "all", mode = "ard")
   expect_true(b$ok)
   expect_identical(tree(), before)
   # what it made is in its own folder, which holds the programs it ran
@@ -93,7 +93,7 @@ test_that("an official run refuses a data path outside the study, and makes no f
   p$ard$datasets$path <- paste0(normalizePath(out, "/"), "/adsl.rds")
   s <- create_study("RIF3", planner = p)
   o <- open_study("RIF3")
-  b <- run_batch(o, "ard")
+  b <- run_def(o, "ArdOnly", "all", mode = "ard")
   expect_false(b$ok)
   expect_null(b$batch)
   txt <- paste(b$output, collapse = "\n")
@@ -105,7 +105,7 @@ test_that("an official run refuses a data path outside the study, and makes no f
   expect_true(u$ok)
 })
 
-test_that("list_batches lists real batch folders: not .lock, _2 is no set, kind is said", {
+test_that("list_batches lists real batch folders: not .lock, _2 is a definition, kind is said", {
   bs_home()
   s <- create_study("RIF4", planner = bs_planner())
   d <- file.path(s$path, "runs")
@@ -115,22 +115,28 @@ test_that("list_batches lists real batch folders: not .lock, _2 is no set, kind 
     writeLines(c("part,program,status", "ard,programs/ard/DM.R,OK"),
                file.path(d, name, "run.csv"))
   }
+  hdr <- function(def, mode = "all", kind = "run", at = "2026-01-01 10:00:00") {
+    c(paste("Run      :", def), paste("Mode     :", mode), paste("Kind     :", kind),
+      paste("Started  :", at))
+  }
   dir.create(file.path(d, ".lock"), recursive = TRUE)
-  mk("20260101_100000_all", "Batch set : none")
-  mk("20260101_100000_all_2", "Batch set : none")
+  mk("batch_20260101-100000_Topline", hdr("Topline"))
+  mk("batch_20260101-100000_Topline_2", hdr("Topline_2", "ard"))
+  # a folder of an older runner: the definition in `Batch set :`, the mode in its name
   mk("20260102_100000_ard_Topline", "Batch set : Topline")
-  mk("20260103_100000_report", "Kind     : preview")
-  mk("20260104_100000_all", "Re-run   : 2026-01-05 09:00:00")
+  mk("preview_20260103-100000", hdr("none", kind = "preview"))
+  mk("batch_20260104-100000_Again", c(hdr("Again"), "Re-run   : 2026-01-05 09:00:00"))
   lb <- list_batches(s)
   expect_false(any(startsWith(lb$batch, ".")))
   expect_identical(nrow(lb), 5L)
   row <- function(b) lb[lb$batch == b, ]
-  expect_identical(row("20260101_100000_all_2")$set, "")
-  expect_identical(row("20260101_100000_all_2")$what, "all")
-  expect_identical(row("20260102_100000_ard_Topline")$set, "Topline")
-  expect_identical(row("20260101_100000_all")$kind, "run")
-  expect_identical(row("20260103_100000_report")$kind, "preview")
-  expect_identical(row("20260104_100000_all")$kind, "rerun")
+  expect_identical(row("batch_20260101-100000_Topline_2")$definition, "Topline_2")
+  expect_identical(row("batch_20260101-100000_Topline_2")$what, "ard")
+  expect_identical(row("batch_20260101-100000_Topline")$definition, "Topline")
+  expect_identical(row("20260102_100000_ard_Topline")$definition, "Topline")
+  expect_identical(row("batch_20260101-100000_Topline")$kind, "run")
+  expect_identical(row("preview_20260103-100000")$kind, "preview")
+  expect_identical(row("batch_20260104-100000_Again")$kind, "rerun")
 })
 
 test_that("the generated study setup reads the data folders through the data root", {

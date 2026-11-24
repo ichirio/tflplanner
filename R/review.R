@@ -141,7 +141,8 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
   spec$study <- spec$study %||% NULL
   r <- tflspec::tfl_review_spec(spec = spec, ard = p$ard, listings = p$lf,
                                 figures = p$fig_designs, facts = facts)
-  .review_bind(list(.review_no_read_ard(r, p), .rules_report_list(p), .rules_ard_list(p)))
+  .review_bind(list(.review_no_read_ard(r, p), .rules_report_list(p), .rules_ard_list(p),
+                    .rules_runs(p)))
 }
 
 # The page sheet's "(none)" (a value left out here, `!unset` in the YAML; the
@@ -285,6 +286,36 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
         if (src) "" else pr$part[i], pr$field[i],
         args = pr$args[[i]], template = pr$template[i])
     }
+  }
+  .review_bind(out)
+}
+
+# ---- the run definitions ----------------------------------------------------
+
+# What is wrong with a run definition (tflspec's check: the name rule, the
+# same name ignoring case, an empty list, an option, a report the study does
+# not have), one row each; a name that breaks the rule is a check (an older
+# study can still be saved: it is asked to be renamed), and the notice that
+# definitions of an older form were moved here (they are written at the next
+# save)
+.rules_runs <- function(p) {
+  r <- p$runs %||% list()
+  out <- list()
+  add <- function(template, args, level) {
+    row <- .rv_row("RUN1", NA_character_, "runs", "", "", args = args, level = level,
+                   template = template)
+    row$area <- "report"
+    out[[length(out) + 1L]] <<- row
+  }
+  n <- attr(r, "migrated")
+  if (length(n) == 1L && !is.na(n) && n > 0) {
+    add("%s report set(s) of the earlier form were moved to run definitions (they are written at the next save).",
+        n, "check")
+  }
+  chk <- .runs_problems(p)
+  for (i in seq_len(nrow(chk))) {
+    add("Run definition %s: %s", c(chk$definition[i], chk$problem[i]),
+        if (identical(chk$field[i], "name")) "check" else "error")
   }
   .review_bind(out)
 }

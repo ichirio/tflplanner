@@ -265,6 +265,9 @@ review_server <- function(id, review, rows, jump, apply_fix, run_light, run_data
     out$inputs <- list(pd_act = list(op = "sel", sec = sec, i = i))
   } else if (identical(sheet, "_tflplanner")) {
     out$nav <- list(nav = "outputs")
+  } else if (identical(sheet, "runs")) {
+    # (the run definitions are made and chosen on the Runs tab)
+    out$nav <- list(nav = "results")
   } else if (identical(area, "program")) {
     out$go <- "report_spec"
   }
