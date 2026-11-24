@@ -492,7 +492,7 @@ test_that("set_total_column() switches a Total column on and off in both halves 
   tb <- sheet_rows(p, "tables", "T1")
   expect_identical(c(tb$total, tb$total_position), c("All", "first"))
   # the programs say it
-  code <- .report_code_lines(p, "T1", table = TRUE)
+  code <- .program_code(p, "T1")
   expect_true(any(grepl('plan_total(label = "All", position = "first")', code, fixed = TRUE)))
   # off: both halves cleared, nothing else touched
   p <- set_total_column(p, "T1", NULL)

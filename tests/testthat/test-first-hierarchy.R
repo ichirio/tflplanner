@@ -41,7 +41,7 @@ test_that("the starter writes the rows of the sample's T-14-3-1", {
   same("sheet", "tables", "overall_label")
   # (in the table's pipe, tflspec #302)
   norm <- function(p, id) {
-    code <- .report_code_lines(p, id, table = TRUE)
+    code <- .program_code(p, id)
     i <- which(code == "plan <- ard |>")
     j <- which(startsWith(trimws(code), "table_plan("))
     paste(trimws(code[(i + 1L):(j[j > i][1L] - 1L)]), collapse = " ")
@@ -75,7 +75,7 @@ test_that("its own hierarchy (medications), all records, a Total column", {
   expect_identical(an$variables, "CMCLAS | CMDECOD")
   expect_identical(an$overall, "TRUE")
   expect_identical(sheet_rows(p, "tables", "T-CM")$overall_label, "Any CM")
-  code <- .report_code_lines(p, "T-CM", table = TRUE)
+  code <- .program_code(p, "T-CM")
   expect_match(norm_line <- paste(code, collapse = " "),
                "hierarchy = c(\"CMCLAS\", \"CMDECOD\")", fixed = TRUE)
   expect_match(norm_line, "overall = \"Any CM\"", fixed = TRUE)
