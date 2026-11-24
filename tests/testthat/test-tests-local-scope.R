@@ -29,8 +29,10 @@ scope_leaks <- function(e, inside = FALSE) {
   is_ts <- identical(nm, "testServer")
   args <- as.list(e)[-1L]
   for (i in seq_along(args)) {
+    # (an empty argument, x[i, ], is no call; testing args[[i]] itself, not
+    # a variable bound to it, which would be a missing argument)
+    if (!is.call(args[[i]])) next
     a <- args[[i]]
-    if (!is.call(a)) next
     out <- c(out, scope_leaks(a, inside || (is_ts && identical(a[[1L]], as.name("{")))))
   }
   out
