@@ -340,7 +340,8 @@ test_that("the screen review's fixes: per-variable templates said, every argumen
   expect_match(h, "Per variable: prob (3), time", fixed = TRUE)
   # a form of its own: the function's other arguments, below it
   expect_true("keep" %in% .special_args("plan_sort"))
-  expect_false("keys" %in% .special_args("plan_sort"))
+  # (plan_sort's keys are Rows, a field of the card like the others: s1/sort-rows-trial)
+  expect_true("keys" %in% .special_args("plan_sort"))
   expect_true(all(c("stat", "show_keys") %in% .special_args("table_plan")))
   expect_false(any(c("cols", "rows", "label") %in% .special_args("table_plan")))
   it <- list(fn = "plan_sort", args = list(keys = c(".overall", "label")), path = "plan_sort",

@@ -47,10 +47,10 @@ test_that("plan_sort's keys are a Rows field: the key text shown as rows, read b
 
 test_that("a Rows column's fixed values are its choices, labelled in the language", {
   cd <- list(values = c("asc", "desc"),
-             value_labels = data.frame(value = c("asc", "desc"), label_en = c("Up", "Down"),
+             value_labels = data.frame(value = c("asc", "desc"), label_en = c("Up", "Downward z"),
                                        label_ja = c("\u6607\u9806", NA), stringsAsFactors = FALSE))
-  expect_identical(names(.tbl_fixed_values(cd, "ja")), c("\u6607\u9806", "Down"))
-  expect_identical(names(.tbl_fixed_values(cd, "en")), c("Up", "Down"))
+  expect_identical(names(.tbl_fixed_values(cd, "ja")), c("\u6607\u9806", "Downward z"))
+  expect_identical(names(.tbl_fixed_values(cd, "en")), c("Up", "Downward z"))
   expect_identical(.tbl_fixed_values(list(values = c("a", "b")), "en"), c("a", "b"))
   expect_null(.tbl_fixed_values(list(), "en"))
 })

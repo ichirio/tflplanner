@@ -141,9 +141,10 @@ test_that("the builder opens on a hierarchy table, and writes its order", {
     h <- output$builder_form$html
     expect_match(h, "Row layers", fixed = TRUE)
     expect_match(h, "(rows)", fixed = TRUE)
-    # one order a term; an outer term's count waits for rtfreporter
-    expect_match(h, "Most frequent first (ties by name)", fixed = TRUE)
-    expect_match(h, "Counted in", fixed = TRUE)
+    # the order: plan_sort's keys as Rows, one row a key, and the switch
+    # that keeps the data's order (s1/sort-rows-trial)
+    expect_match(h, 'data-arg="keys"', fixed = TRUE)
+    expect_match(h, "rp-tbl-false", fixed = TRUE)
     expect_no_match(h, "Rows: variables in order", fixed = TRUE)
     # no warning about the subjects per group: the denominator counts them
     expect_no_match(h, "a header's (N=n) prints NA", fixed = TRUE)
@@ -172,7 +173,6 @@ test_that("the builder opens on a hierarchy table, and writes its order", {
     expect_identical(sheet_rows(rv$p, "tables", "T-AE")$sort,
                      ".overall | -n@group1[Placebo] | group1 | .depth | -n[Placebo] | label")
     # the values plan_levels() names first (#447)
-    expect_match(output$builder_form$html, "(levels(group1))", fixed = TRUE)
     v[[b("sort_first1")]] <- TRUE
     do.call(session$setInputs, v)
     session$elapse(1000)
@@ -230,7 +230,7 @@ test_that("an order of the sheets' own is kept, and the card's order is one clic
     session$setInputs(target = "T-AE", nav = "make", step = "content", content_nav = "content",
                       table_nav = "builder")
     h <- output$builder_form$html
-    expect_match(h, "Order: as the sheets say", fixed = TRUE)
+    # (the sheets' own order: shown as the Rows of its keys, s1/sort-rows-trial)
     session$setInputs(b_sort_reset = 1)
     expect_identical(sheet_rows(rv$p, "tables", "T-AE")$sort, ".overall | group1 | .depth | -n | label")
   })

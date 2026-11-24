@@ -23,8 +23,8 @@
 
 # The value as the field shows it: the rows (a data frame) and whether the
 # switch is on (the value is FALSE).  A value the serializer cannot read
-# (plan_sort(TRUE), R) is given back as it is -- the table then shows it as
-# its R, nothing lost.
+# (plan_sort(TRUE)) is given back as its R -- the field then shows it as R,
+# nothing lost.
 .rows_text_read <- function(value, def) {
   ser <- .def_serializer(def)
   if (is.null(ser) || is.null(value) || inherits(value, c("tfl_r", "tfl_unset"))) {
@@ -32,7 +32,7 @@
   }
   rd <- get0("tfl_rows_read", envir = asNamespace("tflspec"), inherits = FALSE)
   rows <- if (is.function(rd)) tryCatch(rd(value, ser), error = function(e) NULL)
-  if (is.null(rows)) return(list(value = value, false = FALSE))
+  if (is.null(rows)) return(list(value = tflspec::tfl_r(.arg_to_r(value)), false = FALSE))
   list(value = rows, false = isTRUE(attr(rows, "false", exact = TRUE)))
 }
 
