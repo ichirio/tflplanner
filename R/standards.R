@@ -170,8 +170,8 @@
         "a table's normalization when it has none: after table_data",
         "a figure's plot before it is written (a stop() follows it)",
         "the setup code every report of a new study runs first (blank: none)")),
-    # the code every study's programs/study_setup.R starts with (its part
-    # 1, copied when the study is made): one line of R a row
+    # a new study's programs/company_setup.R (copied when the study is made;
+    # every program runs it first): one line of R a row
     # (no tflspec: the programs call the study's programs/study_helpers.R)
     setup_code = .df(
       code = c("library(cards)", "library(dplyr)", "library(rtfreporter)",
@@ -353,14 +353,14 @@
         "the figure palettes: a named palette colours the values it names (response: CR, PR ...); one with value blank is used in order (treatment): the order of its rows is the arms' colour order (the first row colours the first arm), so reorder the rows to reorder the colours",
         "the figure markers: event markers by label (Death, Discontinued ...) and the figures' symbols (censor, assessment)",
         "the code written where a report says none: table_data (its rows of the study ARD), table_process (normalize, rework), figure_plot, setup; {OUTPUT_ID} {ARD} {ARD_PROGRAM} {PROGRAM} {STUDY_ID} are filled in",
-        "the code every study's programs/study_setup.R starts with, copied when the study is made: one line of R a row (column code; note optional), indentation kept; {STUDY_ID} is filled in. The programs need cards, rtfreporter and tflspec attached",
+        "the code every program of a new study runs first, copied to its programs/company_setup.R when the study is made: one line of R a row (column code; note optional), indentation kept; {STUDY_ID} is filled in. The programs need cards, rtfreporter and tflspec attached",
         "the listing types a listing may use (rtfreporter's)",
         "a TOC in the company's layout: for each rule set (blank: standard) and item (output_id, type, title, population, footnote, program, file, note, section, datasets, label; phase, topline, sap_no, std_shell, reference, shell, number), the column names it may have, | between them; an item with no column in a TOC is skipped",
         "the TOC rule sets, a row a set (blank: the default): sheet_names and topline_sheet_names (the TOC's and the Topline sheet's names, * a wildcard), header_rows (rows scanned for the header), phase_values (both=1,2 | ph1=1 | ph2=2), phase_blank (none / all / a value), number_suffix and title_suffix (a phase's, | between), title_line (1, 2, last), topline_values, topline_batch, shell_phase_suffix (-1 | -2), id_rule (column / normalised / type_number / title; blank: the one that gives unique IDs), id_pattern ({type}.{number}, {TYPE}-{number-}), type_from (column / id / title)",
         "the company's words for the ARD form's function search, added to tflplanner's: fn (cards::ard_tabulate, cardx::ard_stats_t_test, a method keyword), lang (en / ja / sas / r), keyword, rank (1 the function for the word, 2 related, 3 near: say why in the notes), note_ja, note_en, args (the arguments the word means, which the form can start from: method = \"glm\", exponentiate = TRUE); empty by default",
-        "the populations (population flags) the company may use, its own too: id, dataset, condition, label (note); a new study gets them all, and a report's set chosen (the TOC's, in the Analysis data step) makes its analysis data (adsl_<set>)",
+        "the populations (population flags) the company may use, its own too: id, dataset, condition, label (note); a new study gets them all, and a report's set chosen (the TOC's, in the data step) makes its analysis data (adsl_<set>)",
         "the data catalog a new study starts with: ADaM and SDTM datasets and their files",
-        "the company's code lists, one row a value: set (the list's name; blank: the variable), variable, value, label (what it prints as), order, under (a nested count's inner value: the value one level out it sits under), note; a report copies the ones it needs (Copy... where its data is made: the Analysis data step's column definitions, a listing's or a figure's data)",
+        "the company's code lists, one row a value: set (the list's name; blank: the variable), variable, value, label (what it prints as), order, under (a nested count's inner value: the value one level out it sits under), note; a report copies the ones it needs (Copy... where its data is made: the data step's column definitions, a listing's or a figure's data)",
         "the study-default rows a new study starts with, one sheet per definition sheet (default_header, default_footer, default_cells ...); {STUDY_ID} becomes the study's id"),
       ja = c(
         "\u6a19\u6e96\u306e\u7ba1\u7406\u8005\u30fb\u7248",
@@ -376,7 +376,7 @@
         "\u56f3\u306e\u30d1\u30ec\u30c3\u30c8\uff1a\u5024\u306e\u540d\u524d\u4ed8\u304d\uff08response\uff1aCR\u3001PR \u306a\u3069\uff09\u306f\u305d\u306e\u5024\u306e\u8272\u3001value \u7a7a\u6b04\uff08treatment\uff09\u306f\u9806\u756a\u306b\u4f7f\u3046\u3002treatment \u306e\u884c\u306e\u9806\u756a\u304c\u7fa4\u306e\u8272\u306e\u9806\u756a\uff081 \u884c\u76ee\u304c 1 \u756a\u76ee\u306e\u7fa4\uff09\u3002\u8272\u306e\u9806\u3092\u5909\u3048\u308b\u306b\u306f\u884c\u3092\u4e26\u3079\u66ff\u3048\u308b",
         "\u56f3\u306e\u8a18\u53f7\uff1a\u30e9\u30d9\u30eb\u3054\u3068\u306e\u30a4\u30d9\u30f3\u30c8\u8a18\u53f7\uff08Death\u3001Discontinued \u306a\u3069\uff09\u3068\u56f3\u306e\u8a18\u53f7\uff08censor\u3001assessment\uff09",
         "\u5e33\u7968\u304c\u4f55\u3082\u66f8\u304b\u306a\u3044\u3068\u304d\u306e\u30b3\u30fc\u30c9\uff1atable_data\uff08ARD \u304b\u3089\u306e\u53d6\u5f97\uff09\u3001table_process\uff08normalize\u30fb\u52a0\u5de5\uff09\u3001figure_plot\u3001setup",
-        "\u5404\u8a66\u9a13\u306e programs/study_setup.R \u306e\u5148\u982d\u306b\u5199\u3059\u30b3\u30fc\u30c9\uff08\u8a66\u9a13\u4f5c\u6210\u6642\u306b\u30b3\u30d4\u30fc\uff09\u30021 \u884c = R \u306e 1 \u884c\uff08code \u5217\u3001note \u306f\u4efb\u610f\uff09\u3002\u30a4\u30f3\u30c7\u30f3\u30c8\u306f\u4fdd\u305f\u308c\u3001{STUDY_ID} \u306f\u8a66\u9a13 ID \u306b\u7f6e\u304d\u63db\u308f\u308b\u3002cards\u3001rtfreporter\u3001tflspec \u306e library() \u304c\u5fc5\u8981",
+        "\u65b0\u3057\u3044\u8a66\u9a13\u306e\u3069\u306e\u30d7\u30ed\u30b0\u30e9\u30e0\u3082\u6700\u521d\u306b\u52d5\u304b\u3059\u30b3\u30fc\u30c9\uff08\u8a66\u9a13\u4f5c\u6210\u6642\u306b programs/company_setup.R \u3078\u30b3\u30d4\u30fc\uff09\u30021 \u884c = R \u306e 1 \u884c\uff08code \u5217\u3001note \u306f\u4efb\u610f\uff09\u3002\u30a4\u30f3\u30c7\u30f3\u30c8\u306f\u4fdd\u305f\u308c\u3001{STUDY_ID} \u306f\u8a66\u9a13 ID \u306b\u7f6e\u304d\u63db\u308f\u308b\u3002cards\u3001rtfreporter\u3001tflspec \u306e library() \u304c\u5fc5\u8981",
         "Listing \u306e\u7a2e\u985e\uff08rtfreporter \u306e\u3082\u306e\uff09",
         "\u81ea\u793e\u69d8\u5f0f\u306e TOC\uff1a\u30eb\u30fc\u30eb\u30bb\u30c3\u30c8\uff08\u7a7a\u6b04\u306f standard\uff09\u3068\u9805\u76ee\uff08output_id\u3001type\u3001title\u3001population\u3001footnote\u3001program\u3001file\u3001note\u3001section\u3001datasets\u3001label\u3001phase\u3001topline\u3001sap_no\u3001std_shell\u3001reference\u3001shell\u3001number\uff09\u3054\u3068\u306e\u5217\u540d\u306e\u5019\u88dc\uff08| \u533a\u5207\u308a\uff09\u3002TOC \u306b\u5217\u306e\u306a\u3044\u9805\u76ee\u306f\u4f7f\u308f\u306a\u3044",
         "TOC \u306e\u30eb\u30fc\u30eb\u30bb\u30c3\u30c8\uff081 \u884c 1 \u30bb\u30c3\u30c8\u3001\u7a7a\u6b04\u306f\u65e2\u5b9a\u5024\uff09\uff1asheet_names \u3068 topline_sheet_names\uff08TOC \u3068 Topline \u30b7\u30fc\u30c8\u306e\u540d\u524d\u3001* \u306f\u30ef\u30a4\u30eb\u30c9\u30ab\u30fc\u30c9\uff09\u3001header_rows\uff08\u898b\u51fa\u3057\u884c\u3092\u63a2\u3059\u884c\u6570\uff09\u3001phase_values\uff08both=1,2 | ph1=1 | ph2=2\uff09\u3001phase_blank\uff08none / all / \u5024\uff09\u3001number_suffix \u3068 title_suffix\uff08\u76f8\u3054\u3068\u3001| \u533a\u5207\u308a\uff09\u3001title_line\uff081\u30012\u3001last\uff09\u3001topline_values\u3001topline_batch\u3001shell_phase_suffix\uff08-1 | -2\uff09\u3001id_rule\uff08column / normalised / type_number / title\u3001\u7a7a\u6b04\u306f ID \u304c\u4e00\u610f\u306b\u306a\u308b\u3082\u306e\uff09\u3001id_pattern\uff08{type}.{number}\u3001{TYPE}-{number-}\uff09\u3001type_from\uff08column / id / title\uff09",
@@ -428,6 +428,13 @@ standards_template <- function(path, from = c("builtin", "current")) {
 read_standards <- function(path) {
   b <- .builtin_standards()
   have <- readxl::excel_sheets(path)
+  # a sheet name that is not a standard (a misspelling) is said, not ignored
+  unknown <- setdiff(have[!startsWith(have, "_")], names(b))
+  if (length(unknown)) {
+    warning("Unknown sheet(s) in the standards workbook, not used: ",
+            paste(unknown, collapse = ", "), ". Known sheets: ",
+            paste(names(b), collapse = ", "), ".", call. = FALSE)
+  }
   out <- lapply(names(b), function(s) {
     if (!s %in% have) return(b[[s]])
     if (s == "setup_code") return(.read_setup_code(path, b[[s]]))
@@ -491,6 +498,150 @@ read_standards <- function(path) {
 
 .standards_file <- function(home = tflplanner_home()) {
   file.path(home, "standards", "company_standards.xlsx")
+}
+
+# Writing the company workbook safely.  `write_fun(path)` writes a workbook
+# to a temp file in the same folder; it must exist and read before it
+# replaces the file.  The file it replaces is kept as one `.prev`.  Any
+# failed step stops with a message and leaves the current file in place.
+.write_standards_safely <- function(write_fun, f) {
+  dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+  tmp <- tempfile(".std-", dirname(f), ".xlsx")
+  on.exit(unlink(tmp), add = TRUE)
+  tryCatch(write_fun(tmp), error = function(e)
+    stop("The standards were not written (nothing changed): ",
+         conditionMessage(e), call. = FALSE))
+  if (!file.exists(tmp)) {
+    stop("The standards were not written (nothing changed): no file was made.",
+         call. = FALSE)
+  }
+  tryCatch(read_standards(tmp), error = function(e)
+    stop("The new standards do not read (nothing changed): ",
+         conditionMessage(e), call. = FALSE))
+  prev <- paste0(f, ".prev")
+  old <- NULL
+  if (file.exists(f)) {
+    # the current file steps aside first: a file open in Excel fails here,
+    # before anything is lost
+    old <- tempfile(".std-old-", dirname(f), ".xlsx")
+    if (!isTRUE(file.rename(f, old))) {
+      stop("The current standards file could not be moved aside (is it open in Excel?): ",
+           f, " (nothing changed).", call. = FALSE)
+    }
+  }
+  if (!isTRUE(file.rename(tmp, f))) {
+    if (!is.null(old)) file.rename(old, f)
+    stop("The new standards could not be put in place: ", f,
+         " (the old file is kept).", call. = FALSE)
+  }
+  if (!is.null(old)) .keep_replaced_standards(old, f)
+  invisible(f)
+}
+
+# Install a workbook file (setup_tflplanner(standards = <file>)).
+.install_standards_file <- function(src, f) {
+  .write_standards_safely(function(p) {
+    if (!isTRUE(file.copy(src, p, overwrite = TRUE))) {
+      stop("could not copy ", src, call. = FALSE)
+    }
+  }, f)
+}
+
+# Does the workbook read (warnings are not failures)?
+.standards_reads <- function(path) {
+  tryCatch({
+    suppressWarnings(read_standards(path))
+    TRUE
+  }, error = function(e) FALSE)
+}
+
+# The file that was replaced (now at `old`): kept as `<f>.prev` when it
+# reads.  When it does not read, the `.prev` stays as it is and the broken
+# file is kept as `<f>.broken` (an older .broken is replaced).
+.keep_replaced_standards <- function(old, f) {
+  prev <- paste0(f, ".prev")
+  if (.standards_reads(old)) {
+    unlink(prev)
+    if (!isTRUE(file.rename(old, prev))) {
+      warning("The previous standards could not be kept as ", prev, call. = FALSE)
+    }
+    return(invisible(TRUE))
+  }
+  broken <- paste0(f, ".broken")
+  unlink(broken)
+  if (isTRUE(file.rename(old, broken))) {
+    warning("The standards file that was replaced did not read; it is kept as ",
+            broken, " and the earlier .prev is unchanged.", call. = FALSE)
+  } else {
+    warning("The standards file that was replaced did not read and could not be kept (",
+            old, "); the earlier .prev is unchanged.", call. = FALSE)
+  }
+  invisible(FALSE)
+}
+
+# Back to the built-in: the file is moved to `.prev` (to `.broken` when it
+# does not read, the `.prev` kept), not deleted.  The old `.prev` is removed
+# only after the file has stepped aside.
+.standards_to_builtin <- function(f) {
+  if (!file.exists(f)) return(invisible(f))
+  prev <- paste0(f, ".prev")
+  old <- tempfile(".std-old-", dirname(f), ".xlsx")
+  if (!isTRUE(file.rename(f, old))) {
+    stop("The standards file could not be moved aside (is it open in Excel?): ",
+         f, call. = FALSE)
+  }
+  if (!.standards_reads(old)) {
+    .keep_replaced_standards(old, f)
+    return(invisible(paste0(f, ".broken")))
+  }
+  unlink(prev)
+  if (!isTRUE(file.rename(old, prev))) {
+    file.rename(old, f)
+    stop("The standards file could not be moved to ", prev, " (it is kept).",
+         call. = FALSE)
+  }
+  invisible(prev)
+}
+
+# What tflplanner would drop if it rewrote the workbook `f` from what
+# read_standards() keeps: sheets that are not standard sheets (or _README),
+# and columns of standard sheets that are not standard columns.  Empty
+# when nothing would be lost.
+.standards_would_lose <- function(f) {
+  b <- .builtin_standards()
+  have <- readxl::excel_sheets(f)
+  out <- character()
+  extra <- setdiff(have, c(names(b), "_README"))
+  if (length(extra)) out <- paste0("sheet `", extra, "`")
+  for (s in intersect(names(b), have)) {
+    cols <- names(readxl::read_excel(f, sheet = s, n_max = 0))
+    x <- setdiff(cols, names(b[[s]]))
+    if (length(x)) {
+      out <- c(out, paste0("column(s) ", paste(x, collapse = ", "),
+                           " in sheet `", s, "`"))
+    }
+  }
+  out
+}
+
+# Put the previous workbook back; the one in use becomes the `.prev`.
+restore_previous_standards <- function(home = tflplanner_home()) {
+  f <- .standards_file(home)
+  prev <- paste0(f, ".prev")
+  if (!file.exists(prev)) stop("There is no previous standards file.", call. = FALSE)
+  .install_standards_file(prev, f)
+}
+
+# What the settings block says about the workbook in use; an error when
+# it no longer reads
+.standards_in_use <- function(home = tflplanner_home()) {
+  f <- .standards_file(home)
+  if (!file.exists(f)) return(list(text = NULL, error = NULL))
+  tryCatch({
+    a <- company_standards(home)$about
+    list(text = sprintf("%s %s (%s)", a$value[a$key == "name"],
+                        a$value[a$key == "version"], f), error = NULL)
+  }, error = function(e) list(text = NULL, error = conditionMessage(e)))
 }
 
 .std_cache <- new.env()

@@ -37,35 +37,20 @@
   if (length(lines)) lines[[1L]] else if (!is.na(d)) d else ""
 }
 
-# Each report's run, from its files only (the list's mark, for 200 reports
-# at a glance): "error" (its last preview's log failed after its RTF), "not
-# run" (no RTF), "outdated" (its program, or a file it sources, changed
-# after the RTF, or it was made with another study setup), "ok".
-# study_status() says more (a program edited by hand, a definition not
-# saved yet) by writing every program again, which takes a while for a big
-# study.
+# Each report's state from the latest official run, from its files only
+# (the list's mark, for 200 reports at a glance): "error" (the latest run of
+# it failed, later than its last good run), "not run" (no run made it),
+# "outdated" (its program, or a file it sources, is not the run's, or it was
+# made with another study setup, or the ARD it prints changed), "ok".  The
+# same reader as study_status() (.report_run_state()); study_status() says
+# more (a program edited by hand, a definition not saved yet) by writing
+# every program again, which takes a while for a big study.  `preview_error`:
+# the last preview failed (a design aid's fact, shown in the tooltip only).
 .report_run_light <- function(study) {
-  p <- study$planner
-  lay <- study_layout()
-  ids <- p$outputs$output_id
-  setup <- .report_setup_recorded(study$path, ids)
-  now <- .report_setup_hash(study$path)
-  # (as study_status(): a figure printing an ARD's numbers turns with it)
-  ard_why <- .fig_ard_why(study, ids)
-  st <- vapply(ids, function(id) {
-    info <- report_info(p, id)
-    prog <- file.path(study$path, lay[["programs_tfl"]], info$program)
-    t_rtf <- .mtime(file.path(study$path, info$file))
-    log <- file.path(study$path, lay[["logs_preview"]],
-                     sub("\\.[Rr]$", ".log", info$program))
-    t_log <- .mtime(log)
-    failed <- !is.na(t_log) && (is.na(t_rtf) || t_log > t_rtf) && .log_failed(log)
-    if (failed) "error" else if (is.na(t_rtf)) "not run" else
-      if (isTRUE(.program_time(prog, study$path) > t_rtf) ||
-          .report_setup_changed(setup[match(id, ids)], study$path, now) ||
-          nzchar(ard_why[[id]])) "outdated" else "ok"
-  }, "")
-  data.frame(output_id = ids, status = unname(st), stringsAsFactors = FALSE)
+  ids <- study$planner$outputs$output_id
+  d <- .report_run_state(study, ids)
+  data.frame(output_id = ids, status = d$state, preview_error = .preview_failed(study, ids),
+             stringsAsFactors = FALSE)
 }
 
 # sections in the TOC's order: by their numbers (14.2 before 14.10; a
@@ -94,15 +79,16 @@
 }
 
 # The rows of the list: `output_id`, `title`, `type`, `section`,
-# `population`, `datasets`, `state`; `ard` ard_status(), `run`
-# study_status() (either may be NULL)
+# `population`, `datasets`, `state`, `preview_error`; `ard` ard_status(), `run`
+# study_status() or .report_run_light() (either may be NULL).  The screens
+# pass the ARD of the latest official run (`ard_status(from = "run")`).
 .report_rows <- function(x, ard = NULL, run = NULL) {
   ids <- x$outputs$output_id
   if (!length(ids)) {
     return(data.frame(output_id = character(), title = character(), type = character(),
                       section = character(), population = character(),
                       datasets = character(), state = character(),
-                      stringsAsFactors = FALSE))
+                      preview_error = logical(), stringsAsFactors = FALSE))
   }
   type <- vapply(ids, function(id) report_info(x, id)$type, "")
   # the report's analysis set (the report list's, the TOC's); else those
@@ -133,6 +119,9 @@
              type = unname(type),
              section = .report_section(ids, unname(type), x$outputs$section),
              population = pop, datasets = ds, state = st,
+             preview_error = if (!is.null(run) && "preview_error" %in% names(run))
+               run$preview_error[match(ids, run$output_id)] %in% TRUE else
+                 rep(FALSE, length(ids)),
              stringsAsFactors = FALSE, row.names = NULL)
 }
 
@@ -190,6 +179,9 @@
                          `not built` = "text-muted", error = "text-danger")
 .report_state_words <- c(ok = "Made", outdated = "To make again",
                          `not built` = "Not made yet", error = "Error")
+# (added to a report's tooltip: a preview is a design aid, apart from the
+# state, which is the latest official run's)
+.preview_error_words <- "The last preview failed (see Preview)."
 
 # a search box for a table of reports (the report list, the runs)
 report_search_ui <- function(id, lang = "en") {
@@ -351,10 +343,14 @@ report_picker_server <- function(id, rows, now, pick, fixed, lang = "en",
         shiny::span(class = if (n[2L]) "text-warning" else "text-muted", txt[2L]), "/",
         shiny::span(class = "text-muted", txt[3L]))
     }
-    item <- function(value, label, title = "", state = NA, now_v = "", cn = NULL) {
+    item <- function(value, label, title = "", state = NA, now_v = "", cn = NULL,
+                     preview_error = FALSE) {
       mark <- if (!is.na(state)) shiny::span(
         class = paste("rp-mark", .report_state_class[[state]]),
-        title = t(.report_state_words[[state]]), .report_state_marks[[state]])
+        title = paste(c(t(.report_state_words[[state]]),
+                        if (isTRUE(preview_error)) t(.preview_error_words)),
+                      collapse = "\n"),
+        .report_state_marks[[state]])
       shiny::tags$button(
         type = "button", class = paste("rp-item", if (identical(value, now_v)) "rp-now"),
         `data-id` = value, title = if (nzchar(title)) paste(label, title) else label,
@@ -391,7 +387,8 @@ report_picker_server <- function(id, rows, now, pick, fixed, lang = "en",
               open = NA,
               shiny::tags$summary(sprintf("%s (%d)", t(s), nrow(g))),
               lapply(seq_len(nrow(g)), function(i)
-                item(g$output_id[i], g$output_id[i], g$title[i], g$state[i], now_v, cn)))
+                item(g$output_id[i], g$output_id[i], g$title[i], g$state[i], now_v, cn,
+                     g$preview_error[i])))
           })),
         if (searching) shiny::p(class = "small text-muted mt-1",
                                 sprintf(t("%d of %d reports"), nrow(f), nrow(d))))
@@ -434,27 +431,27 @@ report_picker_server <- function(id, rows, now, pick, fixed, lang = "en",
   })
 }
 
-# What a run leaves in a study folder, by modification time, in three
-# parts: `ard`, the study ARD's status (each ARD program writes it); `out`,
-# the reports' files (each report program writes its own, once); `runs`, the
-# batches' run.csv (written once, when a batch ends).  Not the logs: they
-# change all through a run, and a change of them says nothing new.
+# What a finished run leaves in a study folder, by modification time, in two
+# parts: `runs`, the batches' run.csv, and `done`, their batch.txt (written
+# last, once, when a batch ends: the runs the screens read count from it).
+# Not the working output/ (previews and hand runs: the screens read the
+# runs), not the logs (they change all through a run, and a change of them
+# says nothing new).
 .run_files_stamp <- function(path) {
-  lay <- study_layout()
   one <- function(f) {
     f <- f[file.exists(f)]
     if (!length(f)) return("")
     paste(length(f), format(max(file.mtime(f)), "%Y%m%d%H%M%OS3"))
   }
-  c(ard = one(file.path(path, lay[["ard"]], "ard_status.csv")),
-    out = one(list.files(file.path(path, lay[["tfl"]]), full.names = TRUE)),
-    runs = one(Sys.glob(file.path(path, "runs", "*", "run.csv"))))
+  c(runs = one(Sys.glob(file.path(path, "runs", "*", "run.csv"))),
+    done = one(Sys.glob(file.path(path, "runs", "*", "batch.txt"))))
 }
 
 # The marks of the report list as `.report_rows()` makes them, by output id
-# (a run's result read without a reactive: the poll's)
+# (a run's result read without a reactive: the poll's), from the latest
+# official runs
 .report_marks <- function(p, study) {
-  d <- .report_rows(p, tryCatch(ard_status(study), error = function(e) NULL),
+  d <- .report_rows(p, tryCatch(ard_status(study, from = "run"), error = function(e) NULL),
                     tryCatch(.report_run_light(study), error = function(e) NULL))
   stats::setNames(d$state, d$output_id)
 }

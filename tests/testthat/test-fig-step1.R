@@ -1,5 +1,5 @@
-# A figure's steps (#293, #514): "1 Analysis data", its data steps (list and
-# form); "2 ARD", the numbers from an ARD (optional); "3 Content", the
+# A figure's steps (#293, #514): "1 data", its data steps (list and
+# form); "2 analysis", the numbers from an ARD (optional); "3 content", the
 # settings and the layers, laid out Design | Edit | Preview.
 
 # (slow: its tests write study folders or start the app -- run on CI
@@ -7,7 +7,7 @@
 skip_on_cran()
 
 test_that("every kind has the same steps; only a listing's ARD is idle", {
-  expect_identical(unname(.step_labels[c("data", "ard")]), c("1 Analysis data", "2 ARD"))
+  expect_identical(unname(.step_labels[c("data", "ard")]), c("1 data", "2 analysis"))
   expect_false("ard" %in% .type_idle_tabs$figure)
   expect_true("ard" %in% .type_idle_tabs$listing)
 })
@@ -54,21 +54,21 @@ test_that("a figure without a design: step 1 says where to start it", {
   create_study("S1", planner = p)
   shiny::testServer(server_for("S1"), {
     session$setInputs(target = "F1", nav = "make", step = "data")
-    expect_match(output$pd_data_body$html, "start it in step 3 (Content)", fixed = TRUE)
+    expect_match(output$pd_data_body$html, "start it in step 3 (content)", fixed = TRUE)
   })
 })
 
 test_that("what the steps make: kept short by the preview, shown in step 1 on demand", {
   local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE))
+  s <- suppressMessages(sample_study_copy())
   r <- preview_figure(s, "F-14-2-3", max_px = 600)
   # (its ARD not made yet: the steps before the ARD's still there)
-  expect_identical(names(r$objects)[1:2], c("adtte_ttskin", "fit"))
-  expect_identical(r$objects$adtte_ttskin$class, "data frame")
-  expect_true(r$objects$adtte_ttskin$rows > 0L)
-  expect_lte(nrow(r$objects$adtte_ttskin$head), 6L)
+  expect_identical(names(r$objects)[1:2], c("adtte_sub", "fit"))
+  expect_identical(r$objects$adtte_sub$class, "data frame")
+  expect_true(r$objects$adtte_sub$rows > 0L)
+  expect_lte(nrow(r$objects$adtte_sub$head), 6L)
   expect_true(length(r$objects$fit$text) > 0L)
-  expect_identical(.fig_design_objects(fig_design(s$planner, "F-14-2-4"))[1:2], c("adtte_ttskin", "est"))
+  expect_identical(.fig_design_objects(fig_design(s$planner, "F-14-2-4"))[1:2], c("adtte_sub", "est"))
   shiny::testServer(server_for("SAMPLE-01"), {
     session$setInputs(target = "F-14-2-3", nav = "make", step = "ard")
     expect_match(output$pd_objects$html, "Not made yet", fixed = TRUE)

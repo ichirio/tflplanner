@@ -112,7 +112,7 @@
 # The study's spec as a program reads it: study.yml without the study's
 # description fields and the save's stamps.  tflspec writes a report's code
 # from study.yml's settings: (spec_report.R, spec_setup.R, table_spec.R,
-# template defaults settings.<key>), series_settings:, tokens: and the rest
+# template defaults settings.<key>), tokens: and the rest
 # of the spec (defaults, styles, patterns, data); none of these fields.
 # Their values reach a page through the tokens sheet's study rows
 # (.meta_tokens()), which the key keeps.

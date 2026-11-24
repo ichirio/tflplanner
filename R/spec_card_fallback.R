@@ -1,44 +1,8 @@
-# What the card generator (R/spec_card.R) needs and tflspec's
-# definitions -- tfl_schema(fn), tfl_arg_defs(fn = ) -- do not say yet.
-# Each entry goes when tflspec says the same; where tflspec says a value
-# (the labels, the defaults, the input forms), tflspec's is used.
-# Nothing else in tflplanner says how a card's field is drawn.
-
-# plan_cell_style()'s looks: a choice of TRUE / FALSE with a blank (left
-# alone: not written), not a check (an unticked check would say FALSE)
-.spec_cell_look <- "enum[TRUE|FALSE]|logical"
-
-.spec_fallback <- list(
-  # The type a field is drawn by where tflspec's input form has no field
-  # here yet: "r" a value typed as R -- a list of text or of whole numbers
-  # typed in one box (input: text), a map whose value is a list or a text
-  # (input: table); "widths" a number a column (the part
-  # .spec_parts$widths); plan_cell_style()'s looks the schema's type drawn
-  # as an enum (tfl_arg_defs() gives a union's enum no values).  The
-  # definition's input form is not used for these.
-  type = list(
-    normalize_ard = c(drop_contexts = "r", stack = "r", combine = "r"),
-    plan_cell_style = c(bold = .spec_cell_look, italic = .spec_cell_look),
-    plan_columns = c(widths = "widths", column_widths_twips = "r"),
-    plan_titles = c(pages = "r"),
-    plan_footnotes = c(pages = "r")),
-  # The arguments tflspec gives no type whose value is R only (a function
-  # or a list of them, a header object): typed "r", an R field as before
-  # (tflspec's own definition reads them as text)
-  r = list(
-    plan_columns = "cell_format",
-    plan_paginate_cols = "col_header"))
-
-# the definitions with the fallback's types (the field the type says, not
-# the definition's input form)
-.spec_fallback_types <- function(sch, fn) {
-  ty <- .spec_fallback$type[[fn]]
-  for (a in intersect(names(ty), names(sch$args))) sch <- .spec_drawn_as(sch, a, ty[[a]])
-  for (a in intersect(.spec_fallback$r[[fn]], names(sch$args))) {
-    if (is.null(sch$args[[a]]$type)) sch$args[[a]]$type <- "r"
-  }
-  sch
-}
+# How a field is drawn where its definition's input form is not drawn by
+# arg_field() as it is: an `r` input on a type that is not R only is an R
+# field showing the value as R source.  The rule is on the definition's
+# (input, type), not on a function's name: nothing in tflplanner says how
+# one function's field is drawn.
 
 # an argument drawn by another type than its definition's: the type the
 # field is drawn by, the definition's own kept as `def_type` (whether the

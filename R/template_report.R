@@ -114,11 +114,48 @@
 }
 
 # A series template's argument definitions ("<series>/<template>": a
-# name with a series), NULL for a template of no series or no file yet
+# name with a series), NULL for a template of no series or no file yet.
+# Read from the open study's copy when it has one (a study reads only its
+# copies, canon 2026-11-19; a template copied under a name of its own has
+# no other), else from the series folders (a template not added yet).
 .tpl_defs <- function(name) {
   if (!is.character(name) || length(name) != 1L || !grepl("^[^/]+/[^/]+$", name)) return(NULL)
-  d <- .arg_defs(template = name)
+  dir <- .tpl_study_dir()
+  d <- if (!is.null(dir) && file.exists(.tpl_copy_file(dir, name))) {
+    .arg_defs(template = name, study_dir = dir)
+  } else {
+    .arg_defs(template = name)
+  }
   if (is.data.frame(d) && nrow(d)) d
+}
+
+# The open study's folder, which the template cards read the study's
+# copies from: set by the app (`dir`), NULL when none is open
+.tpl_ctx <- new.env(parent = emptyenv())
+.tpl_study_dir <- function(dir) {
+  if (missing(dir)) return(.tpl_ctx$dir)
+  .tpl_ctx$dir <- if (length(dir) && !is.na(dir[1L]) && dir.exists(dir[1L])) dir[1L]
+  invisible(.tpl_ctx$dir)
+}
+
+# A study's copy of a template "<series>/<name>"
+# (<study>/spec/series/<series>/templates/<name>.yml)
+.tpl_copy_file <- function(dir, name) {
+  file.path(.series_copy_root(dir), sub("/.*$", "", name), "templates",
+            paste0(sub("^[^/]*/", "", name), ".yml"))
+}
+
+# A series template copied into the study before a report uses it
+# (tflspec::tfl_copy_templates(); a copy the study has is left as it is):
+# the message saying so, NULL when it was there already or the template
+# is of no series.  tflspec's error as it is.
+.tpl_copy_into_study <- function(dir, name, t = identity) {
+  if (is.null(dir) || !is.character(name) || !grepl("^[^/]+/[^/]+$", name)) return(NULL)
+  d <- tflspec::tfl_copy_templates(dir, name)
+  new <- d[d$status == "copied", , drop = FALSE]
+  if (!nrow(new)) return(NULL)
+  sprintf(t("Copied the template %s into this study (%s): the study reads its own copy from now on; the series screen lists it."),
+          name, file.path(study_layout()[["spec"]], "series", sub("/.*$", "", name)))
 }
 
 # A parameter marked "key" (tflspec's tier: a default that stays on top of
@@ -153,7 +190,125 @@
 .tpl_of <- function(p, output_id) {
   o <- p$spec$outputs[[output_id]]
   if (is.null(o) || !is.list(o$template) || is.null(o$template$name)) return(NULL)
-  list(name = as.character(o$template$name), args = o$template$args %||% list())
+  list(name = as.character(o$template$name), args = .tpl_args_of(o$template))
+}
+
+# The places a report may write its template's arguments, as tflspec reads
+# them (#751 item 1).  A series template (`<series>/<name>`, tflspec's
+# tfl_template_resolve() -> .tr_given()): the flat `args:`, the step
+# sections `data:`, `analysis:`, `content:`, `page:` (a map, not one of the
+# template's own parameters), and any other key directly under `template:`
+# -- all read as one map in the file's order, a later one winning.  A
+# built-in template (tflspec's .tpl_spec_args()): `args:` and the two parts
+# `ard:` and `content:` (a name in two places stops there; here the first
+# is kept).
+.tpl_arg_steps <- c("data", "analysis", "content", "page")
+.tpl_builtin_parts <- c("ard", "content")
+.tpl_is_series <- function(name) grepl("/", as.character(name)[1L], fixed = TRUE)
+.tpl_secs_for <- function(name) if (.tpl_is_series(name)) .tpl_arg_steps else .tpl_builtin_parts
+.tpl_is_map <- function(v) is.list(v) && !is.null(names(v))
+
+# A report's template arguments as one map (`t`: its `template:`)
+.tpl_args_of <- function(t) {
+  name <- as.character(t$name)[1L]
+  own <- tryCatch(names(.tpl_params(name)), error = function(e) character())
+  if (!.tpl_is_series(name)) {
+    args <- as.list(t$args %||% list())
+    for (k in .tpl_builtin_parts) {
+      v <- t[[k]]
+      if (!.tpl_is_map(v)) next
+      for (a in setdiff(names(v), names(args))) args[a] <- list(v[[a]])
+    }
+    return(args)
+  }
+  out <- list()
+  for (k in setdiff(names(t), "name")) {
+    v <- t[[k]]
+    if (k %in% c("args", .tpl_arg_steps) && !k %in% own && .tpl_is_map(v)) {
+      for (a in names(v)) out[a] <- list(v[[a]])
+    } else {
+      out[k] <- list(v)
+    }
+  }
+  out
+}
+
+# The step sections a report's `template:` has (maps, not one of the
+# template's own parameters), in the file's order
+.tpl_step_secs <- function(t) {
+  name <- as.character(t$name)[1L]
+  own <- tryCatch(names(.tpl_params(name)), error = function(e) character())
+  ks <- setdiff(intersect(names(t), .tpl_secs_for(name)), own)
+  ks[vapply(ks, function(k) .tpl_is_map(t[[k]]), NA)]
+}
+
+# The arguments a series template's report writes directly under
+# `template:` (no section), in the file's order
+.tpl_bare_args <- function(t) {
+  if (!.tpl_is_series(t$name)) return(character())
+  setdiff(names(t), c("name", "args", .tpl_step_secs(t)))
+}
+
+# A report's `template:` with its arguments written in the form the file
+# already uses: flat stays flat (`args:`); by step stays by step, an
+# argument in the section (or the flat `args:`, or directly under
+# `template:`) it was in, a new one in the section of its `step:`
+# (tfl_arg_defs(template =)), else flat.  `by_step`: write a report with no
+# arguments yet by step (a new report, the canon's form).  An emptied
+# section is dropped (tflspec reads `analysis: {}` as an argument).
+.tpl_write_args <- function(t, args, by_step = FALSE) {
+  secs <- .tpl_step_secs(t)
+  bare_old <- .tpl_bare_args(t)
+  if (!length(secs) && !length(bare_old) && !(by_step && !length(t$args))) {
+    t$args <- args
+    return(t)
+  }
+  name <- as.character(t$name)[1L]
+  old <- lapply(stats::setNames(secs, secs), function(k) t[[k]])
+  flat_old <- names(t$args %||% list())
+  out <- old
+  out[] <- list(list())
+  flat <- list()
+  bare <- list()
+  for (a in names(args)) {
+    k <- if (a %in% bare_old) "" else if (a %in% flat_old) NA_character_ else {
+      w <- secs[vapply(secs, function(k) a %in% names(old[[k]]), NA)]
+      if (length(w)) w[[length(w)]] else .tpl_arg_step(name, a, secs)
+    }
+    if (identical(k, "")) {
+      bare[a] <- list(args[[a]])
+    } else if (is.na(k)) {
+      flat[a] <- list(args[[a]])
+    } else {
+      out[[k]][a] <- list(args[[a]])
+    }
+  }
+  # (the file's order kept, a new argument after it)
+  keep_order <- function(x, was) x[c(intersect(was, names(x)), setdiff(names(x), was))]
+  for (a in setdiff(bare_old, names(bare))) t[[a]] <- NULL
+  for (a in names(bare)) t[a] <- list(bare[[a]])
+  for (k in secs) {
+    out[[k]] <- keep_order(out[[k]], names(old[[k]]))
+    t[[k]] <- NULL
+  }
+  t$args <- if (length(flat)) keep_order(flat, flat_old)
+  for (k in names(out)) if (length(out[[k]])) t[[k]] <- out[[k]]
+  t
+}
+
+# The section a new argument of a report by step goes to: its `step:` as
+# the template's form names it (a built-in template's analysis step is its
+# `ard:` part); NA (flat) when the template does not say, or the step is no
+# section of that form
+.tpl_arg_step <- function(name, arg, secs = character()) {
+  st <- as.character(.arg_def(.tpl_defs(name), arg)$step %||% NA_character_)[1L]
+  if (is.na(st)) return(NA_character_)
+  if (.tpl_is_series(name)) {
+    if (identical(st, "ard")) st <- "analysis"
+  } else if (identical(st, "analysis")) {
+    st <- "ard"
+  }
+  if (st %in% .tpl_secs_for(name)) st else NA_character_
 }
 
 # The study's datasets, by dataset (upper case), read once a study folder:
@@ -725,17 +880,24 @@
   out[!duplicated(out$id), , drop = FALSE]
 }
 
-# The value a `!series K` default takes (canon 2026-11-16: the study's
-# series_settings.<series>.K, else the series' values.K) -- NULL for a
-# param whose default is no series value, a template of no series, or a
-# tflspec that cannot say.  `study`: the study spec (rv$p$spec$study, its
-# study.yml in $study), as .tpl_study_value() takes it
+# The value a `!series K` default takes (canon 2026-11-19: the series'
+# values.K in the study's copy of the series, else in its source) -- NULL
+# for a param whose default is no series value, a template of no series,
+# or a tflspec that cannot say.  `study`: the study spec (rv$p$spec$study,
+# its folder in $dir)
 .tpl_series_value <- function(study, name, prm) {
   key <- as.character(prm$series %||% "")[1L]
   if (is.na(key) || !nzchar(key) || !is.character(name) || !grepl("/", name, fixed = TRUE)) return(NULL)
-  yml <- if (is.list(study$study)) study$study else list()
-  v <- tryCatch(tflspec::tfl_series_settings(yml, sub("/.*$", "", name)),
-                error = function(e) NULL)
+  s <- sub("/.*$", "", name)
+  dir <- if (is.list(study) && is.character(study$dir)) study$dir
+  v <- tryCatch({
+    x <- if (.series_copied(dir, s)) {
+      tflspec::tfl_series_read(s, dir = .series_copy_root(dir))
+    } else {
+      tflspec::tfl_series_read(s)
+    }
+    x$values
+  }, error = function(e) NULL)
   if (is.list(v)) v[[key]]
 }
 
@@ -793,7 +955,9 @@
 # A template report's required values still empty, as its card says them:
 # .tpl_missing()'s, and "population" first when the template takes the
 # report's population (demog) and the report has none (character(): none,
-# or not a template report)
+# or not a template report).  With none of those, the required arguments
+# tflspec finds empty (.tpl_rule_missing(): demog's `continuous` or
+# `categorical`), with that error as the attribute `rule`.
 .tpl_missing_report <- function(p, output_id) {
   tp <- .tpl_of(p, output_id)
   if (is.null(tp)) return(character())
@@ -802,7 +966,96 @@
     pid <- as.character(p$spec$outputs[[output_id]]$common$population %||% "")[1L]
     if (is.na(pid) || !nzchar(pid)) miss <- c("population", miss)
   }
+  if (!length(miss)) {
+    rule <- .tpl_rule_missing(p, output_id)
+    if (!is.null(rule)) miss <- structure(rule$args, rule = rule)
+  }
   miss
+}
+
+# The required arguments tflspec finds empty when it resolves a template
+# report: a rule the card's own marks do not hold (demog: `continuous` or
+# `categorical`).  Read from tflspec's condition
+# (tflspec_template_args_missing: its template, arguments and whether one
+# of them is enough), never from its message.  NULL: none, or another
+# error (said where the report is run).  The last answer is kept per
+# report: the preview asks at each edit.
+.tpl_rule_cache <- new.env(parent = emptyenv())
+.tpl_rule_missing <- function(p, output_id) {
+  o <- p$spec$outputs[[output_id]]
+  if (is.null(o)) return(NULL)
+  key <- list(o, p$spec$study)
+  hit <- .tpl_rule_cache[[output_id]]
+  if (!is.null(hit) && identical(hit$key, key)) return(hit$value)
+  # (only its error is read: what else it says is the run's to say)
+  value <- tryCatch({
+    suppressWarnings(suppressMessages(tflspec::tfl_resolve_output(o, p$spec$study)))
+    NULL
+  }, tflspec_template_args_missing = .tpl_args_missing_of, error = function(e) NULL)
+  assign(output_id, list(key = key, value = value), envir = .tpl_rule_cache)
+  value
+}
+
+# tflspec's required-argument error as data
+.tpl_args_missing_of <- function(e) {
+  list(template = as.character(e$template)[1L], args = as.character(e$args),
+       any = isTRUE(e$any))
+}
+
+# An argument's heading, as its card shows it: "meaning (name)" (the
+# meaning from .tpl_arg_labels, or .tpl_doc_labels by its doc; the doc
+# itself when it has neither; the name alone when it has no doc)
+.tpl_arg_heading <- function(prm, t = identity) {
+  doc <- prm$doc %||% ""
+  # (the report's population a template hides (demog): the tip the other
+  # templates' population has, not tflspec's note that it is no parameter)
+  if (identical(prm$name, "population") && isTRUE(prm$hidden)) doc <- "the analysis set's id (SAF)"
+  short <- if (doc %in% names(.tpl_doc_labels)) .tpl_doc_labels[[doc]] else .tpl_arg_labels[prm$name]
+  head <- if (!is.na(short)) t(short) else if (nzchar(doc)) t(doc) else ""
+  if (nzchar(head)) sprintf(t("%s (%s)"), head, prm$name) else prm$name
+}
+
+# The required arguments to fill in, as the app says it (#752): each by its
+# card's heading, joined by "or" when one of them is enough, and the step
+# it is filled in -- "Fill in Continuous variables (continuous) or
+# Categorical variables (categorical) in 2 analysis."
+.tpl_args_missing_text <- function(template, args, any = FALSE, t = identity) {
+  prm <- .tpl_params(template)
+  heads <- vapply(args, function(a) .tpl_arg_heading(prm[[a]] %||% list(name = a), t), "")
+  secs <- vapply(args, function(a) {
+    if (identical(a, "population") && .tpl_pop_of_report(prm)) "data" else .tpl_arg_section(template, a)
+  }, "")
+  join <- if (isTRUE(any)) t("%s or %s") else t("%s and %s")
+  what <- Reduce(function(x, y) sprintf(join, x, y), unname(heads))
+  steps <- paste(unique(vapply(secs, function(s) t(.step_labels[[s]]), "")), collapse = ", ")
+  sprintf(t("Fill in %s in %s."), what, steps)
+}
+
+# What a template report's empty required arguments say where its preview
+# waits for them: tflspec's rule as .tpl_args_missing_text() says it, else
+# the names
+.tpl_missing_say <- function(miss, t = identity) {
+  rule <- attr(miss, "rule")
+  if (!is.null(rule)) return(.tpl_args_missing_text(rule$template, rule$args, rule$any, t))
+  sprintf(t("Required arguments are empty: %s. The preview waits for them."),
+          paste(miss, collapse = ", "))
+}
+
+# The note a required-argument error is shown in: one, replaced by the next
+# (a save and an Update preview say it once); NULL for any other error
+.tpl_args_note <- "tpl_args_missing"
+.error_note_id <- function(e) {
+  if (inherits(e, "tflspec_template_args_missing")) .tpl_args_note
+}
+
+# An error's text on screen: tflspec's required-argument error as
+# .tpl_args_missing_text() says it, any other as .error_view() does
+.error_text <- function(e, t = identity) {
+  if (inherits(e, "tflspec_template_args_missing")) {
+    r <- .tpl_args_missing_of(e)
+    return(.tpl_args_missing_text(r$template, r$args, r$any, t))
+  }
+  .error_view(conditionMessage(e), t)
 }
 
 # The editor step a template's argument is drawn in (#514): "data" (the
@@ -837,7 +1090,7 @@
   tab <- .tpl_section_table()
   i <- which(tab$template == template & tab$argument == argument)
   if (length(i)) return(tab$section[i[1L]])
-  if (argument %in% c("population", "subset", "where", "data", "param", "paramcd")) return("data")
+  if (argument %in% c("population", "subset", "where", "data", "data_id", "param", "paramcd")) return("data")
   if (argument %in% c("title", "page_by", "page_heading")) return("page")
   if (argument %in% c("labels", "heading", "order", "sort", "formats") ||
         grepl("_(label|order)$", argument)) return("content")
@@ -955,7 +1208,7 @@
   # (a template whose analysis set is the report's population (demog) holds
   # it in `common:`, not in its arguments)
   if (.tpl_pop_of_report(prm)) args$population <- NULL
-  o$template$args <- args
+  o$template <- .tpl_write_args(o$template, args)
   o
 }
 
@@ -976,16 +1229,17 @@
 }
 
 # ---- the page: a template report's steps -----------------------------------------
-# A template report is made in three steps -- "1 Analysis data", "2 Template"
-# (the content step, the ARD step hidden: its ARD and content arguments) and
-# "3 Page and output" -- a code SPEC report in four; never by its kind.  The server
-# says which at once when the report changes (rp-tpl-mode, a custom
-# message: sent before the flush that draws the report), and the page
-# shows "Loading ..." over the steps until that flush is done
-# (rp-report-ready): the report before it, or the code SPEC's builder, is
-# never seen in its place.  `.rp-tpl-only` / `.rp-code-only` are shown by
-# the mode.
-.tpl_step_labels <- c(data = "1 Analysis data", content = "2 Template", page = "3 Page and output")
+# A template report is made in the four steps of a code SPEC report (data,
+# analysis, content, page: .step_labels); each step's card has the
+# arguments whose `step:` is that step, and the template's own card is
+# above the steps.  The server says at once whether the report is a
+# template report when it changes (rp-tpl-mode, a custom message: sent
+# before the flush that draws the report), and the page shows "Loading ..."
+# over the steps until that flush is done (rp-report-ready): the report
+# before it, or the code SPEC's builder, is never seen in its place.
+# `.rp-tpl-only` / `.rp-code-only` are shown by the mode.
+# (a step's word in its card's heading: the step's name without its number)
+.tpl_step_word <- c(data = "data", ard = "analysis", content = "content", page = "page")
 
 .tpl_css <- "
 body:not(.rp-tpl) .rp-tpl-only, body.rp-tpl .rp-code-only { display: none !important; }
@@ -994,7 +1248,8 @@ body.rp-adding::before { content: attr(data-loading); position: fixed; inset: 0;
   background: var(--bs-body-bg, #fff); color: #6c757d; padding: 6rem 2rem; font-size: .95rem; }
 
 body.rp-switching .rp-report-loading { display: block; }
-body.rp-switching #step ~ .tab-content, body.rp-switching #report_head, #report_head.rp-stale {
+body.rp-switching #step ~ .tab-content, body.rp-switching #report_head, #report_head.rp-stale,
+body.rp-switching #tpl_head {
   visibility: hidden; }
 /* an argument at its default reads like any other: its tag says so, no fading;
    only a choice left empty ('(default)', '(not chosen)': no value) stays light */
@@ -1013,6 +1268,9 @@ body.rp-switching #step ~ .tab-content, body.rp-switching #report_head, #report_
 .rp-card.rp-card-flash { outline: 3px solid rgba(13,110,253,0); outline-offset: 2px;
   animation: rp-card-flash 1.8s ease-out 1; }
 .rp-add-menu .dropdown-menu { max-height: 60vh; overflow-y: auto; }
+/* the analysis step of a template report: its card only (the code SPEC's
+   definition, its own R program and Update preview are a code report's) */
+body.rp-tpl #step_ard > :not(.rp-tpl-only) { display: none !important; }
 /* room below the last card: a card added at the end can come to the top */
 .rp-builder-cards { padding-bottom: 45vh; }
 /* the right pane (SPEC | Code | Result, ARD): it does not scroll itself --
@@ -1066,9 +1324,10 @@ $(document).on('shiny:connected', function() {
     $('#report_head').toggleClass('rp-stale', !!want && h.length > 0 && h.attr('data-rp-head') !== want);
   }
   $(document).on('shiny:value', function(e) { if (e.name === 'report_head') setTimeout(headCheck, 0); });
-  // (a card the server says is as drawn: left as it is, with the focus in it)
+  // (a card the server says is as drawn: left as it is, with the focus in it --
+  // a template's, or the analysis form after its own edit was applied)
   $(document).on('shiny:value', function(e) {
-    if (/^tpl_card/.test(e.name) && e.value && /rp-keep/.test(e.value.html || '')) e.preventDefault();
+    if (/^(tpl_card|ard_stat_ui$)/.test(e.name) && e.value && /rp-keep/.test(e.value.html || '')) e.preventDefault();
   });
   document.body.setAttribute('data-loading', $('.rp-report-loading').first().text() || 'Loading ...');
   // the two ARD tabs of a template report: greyed out and not selectable
@@ -1094,19 +1353,6 @@ $(document).on('shiny:connected', function() {
     if (x.id) document.body.setAttribute('data-rp-id', x.id);
     headCheck();
     $('body').toggleClass('rp-tpl', !!x.tpl);
-    // (the ARD step: a template report's is in its step 1)
-    var ard = $('#step a[data-value=\"ard\"]');
-    ard.parent().toggleClass('d-none', !!x.tpl);
-    if (x.tpl && ard.hasClass('active')) {
-      $('#step a[data-value=\"content\"]').tab('show');
-      Shiny.setInputValue('step', 'content');
-    }
-    if (x.names) {
-      $('.rp-step-name').each(function() {
-        var k = $(this).attr('data-step');
-        if (x.names[k]) $(this).text(x.names[k]);
-      });
-    }
     // (the right pane's ARD tabs: a template report's; rp-ard-tabs says
     // whether it makes an ARD once the report is known)
     if (!x.tpl) rpArdTabs(false);
@@ -1268,15 +1514,86 @@ $(document).on('shiny:connected', function() {
                              if (is.na(cls)) "default" else cls), txt)
 }
 
+# The value a report's card draws for an argument (`prm`, its parameter;
+# `args`, the report's): its own, else the study's as the card says it
+# (.tpl_arg_origin(): what tflspec filled from the study first), else the
+# template's default.  A field's value coming back as drawn is no edit: a
+# value of the study standard is never written into the report's args by
+# the drawing alone (#751 item 2: it would stop following the standard).
+.tpl_drawn_value <- function(p, output_id, args, prm) {
+  if (prm$name %in% names(args)) return(args[[prm$name]])
+  sv <- .tpl_study_value(p$spec$study, prm)
+  if (is.null(sv)) {
+    og <- .tpl_arg_origin(p$spec$study, prm, args, .tpl_filled(p, output_id))
+    if (identical(og$from, "study")) sv <- og$study
+  }
+  sv %||% prm$default
+}
+
+# A template report as tflspec resolves it (tfl_resolve_output(); NULL when
+# it cannot be).  The last report's kept while it, the study and the
+# study's copies of the templates are the same (a card's fields each ask it
+# as they come back: .tpl_drawn_value()).
+.tpl_resolved_cache <- new.env(parent = emptyenv())
+.tpl_resolved <- function(p, output_id) {
+  o <- p$spec$outputs[[output_id]]
+  if (is.null(o)) return(NULL)
+  k <- .tpl_resolved_cache
+  # (the study's copies of the templates read too: a copy again is a change)
+  dir <- p$spec$study$dir
+  cp <- if (is.character(dir) && length(dir) == 1L) {
+    list.files(.series_copy_root(dir), recursive = TRUE, full.names = TRUE)
+  }
+  key <- list(o, p$spec$study, cp, file.mtime(cp))
+  if (isTRUE(k$has) && identical(k$key, key)) return(k$out)
+  out <- tryCatch(tflspec::tfl_resolve_output(o, p$spec$study), error = function(e) NULL)
+  k$key <- key
+  k$out <- out
+  k$has <- TRUE
+  out
+}
+
 # What tflspec filled in from the study for a template report: the
 # template attribute of its resolved output (NULL: none, or an older
 # tflspec)
 .tpl_filled <- function(p, output_id) {
-  o <- p$spec$outputs[[output_id]]
-  if (is.null(o)) return(NULL)
-  r <- tryCatch(tflspec::tfl_resolve_output(o, p$spec$study), error = function(e) NULL)
-  a <- attr(r, "template")
+  a <- attr(.tpl_resolved(p, output_id), "template")
   if (is.null(a$study)) NULL else a
+}
+
+# A template report's analysis set, for its data step (#751 item 6): the
+# report's own (`common: population`) and the analysis data the template
+# makes with the population each has as tflspec resolves it (a template
+# row's own, else the report's) -- a data frame id, from, population; NULL
+# rows when it cannot be resolved
+.tpl_pop_view <- function(p, output_id) {
+  pid <- as.character(p$spec$outputs[[output_id]]$common$population %||% NA_character_)[1L]
+  ad <- .tpl_resolved(p, output_id)$ard$analysis_data
+  rows <- if (length(ad)) data.frame(
+    id = vapply(ad, function(x) as.character(x$id %||% NA_character_)[1L], ""),
+    from = vapply(ad, function(x) as.character(x$from %||% NA_character_)[1L], ""),
+    population = vapply(ad, function(x) as.character(x$population %||% pid)[1L], ""),
+    stringsAsFactors = FALSE)
+  list(population = pid, rows = rows)
+}
+
+# .tpl_pop_view() drawn in the data step: the report's analysis set and the
+# analysis data the template makes, each with its analysis set
+.tpl_pop_view_ui <- function(pv, t = identity) {
+  pop <- if (is.na(pv$population) || !nzchar(pv$population)) t("(none)") else pv$population
+  shiny::div(
+    class = "small mb-2",
+    shiny::div(class = "mb-1",
+               with_tip(shiny::span(shiny::strong(t("Analysis set (population)")), ": ", shiny::code(pop)),
+                        t("The report's analysis set (common: population), set on the report list. The template's analysis data read it unless their own row names one."))),
+    if (NROW(pv$rows)) shiny::tags$table(
+      class = "table table-sm small mb-0",
+      shiny::tags$thead(shiny::tags$tr(
+        shiny::tags$th(t("Analysis data (id)")), shiny::tags$th(t("Dataset (from)")),
+        shiny::tags$th(t("Analysis set (population)")))),
+      shiny::tags$tbody(lapply(seq_len(nrow(pv$rows)), function(i) shiny::tags$tr(
+        shiny::tags$td(shiny::code(pv$rows$id[i])), shiny::tags$td(pv$rows$from[i]),
+        shiny::tags$td(if (is.na(pv$rows$population[i])) t("(none)") else pv$rows$population[i]))))))
 }
 
 # A new report written straight into the spec: its line in spec/toc.yml
@@ -1391,12 +1708,16 @@ $(document).on('shiny:connected', function() {
   if (is.list(t) && !is.null(t$name)) t$name else NULL
 }
 
-# A template's call as its program has it: tfl_tpl() (a template with no
-# call of its own -- a figure's -- tfl_template(<name>))
+# The function that makes a template's report, as one name whatever the
+# template (#751 item 7; the template's own name is in the card beside it):
+# a built-in template's call in its program (tfl_tpl()); a series template
+# (`<series>/<name>`), whose program is the code tflspec resolves it to,
+# tfl_template_resolve()
 .tpl_call_name <- function(name) {
+  if (.tpl_is_series(name)) return("tfl_template_resolve()")
   x <- tryCatch(tflspec::tfl_templates(), error = function(e) NULL)
   call <- if (!is.null(x) && "call" %in% names(x)) x$call[match(name, x$name)] else NA
-  if (length(call) && !is.na(call) && nzchar(call)) paste0(call, "()") else sprintf("tfl_template(%s)", name)
+  paste0(if (length(call) && !is.na(call) && nzchar(call)) call else "tfl_tpl", "()")
 }
 
 # A template report made a code one (the template card's "Convert to

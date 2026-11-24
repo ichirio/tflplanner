@@ -18,6 +18,8 @@ gc717_study <- function(home, id, args) {
   }
   invisible(tflspec::tfl_ai_study_init(d, adam = "adam", study_id = id))
   s <- suppressMessages(open_study(d, home = home))
+  # (copied into the study first, as the Add dialog does)
+  invisible(tflspec::tfl_copy_templates(d, "tflspec_v1/demog"))
   o <- tflspec::tfl_output("T-717-1", "table", template = list(name = "tflspec_v1/demog", args = args))
   s$planner <- suppressWarnings(.spec_add_output(s$planner, o))
   suppressMessages(save_study(s))
@@ -45,7 +47,7 @@ test_that("a template card's switch with no default is drawn off: its first FALS
   shiny::testServer(server_for(id), {
     rv <- session$userData$rv
     session$setInputs(target = "T-717-1", nav = "make", step = "content", content_nav = "content")
-    expect_match(paste(as.character(output$tpl_card$html), collapse = ""), "tpl_tflspec_v1_demog__total", fixed = TRUE)
+    expect_match(tpl_cards_html(output), "tpl_tflspec_v1_demog__total", fixed = TRUE)
     before <- .tpl_of(rv$p, "T-717-1")$args
     session$setInputs(`tpl_tflspec_v1_demog__total` = FALSE)
     expect_identical(.tpl_of(rv$p, "T-717-1")$args, before)
@@ -75,27 +77,5 @@ test_that("the ARD result kept for one report is not shown under another", {
     expect_match(info(), "Update preview to see the ARD", fixed = TRUE)
     session$setInputs(target = "T1")
     expect_match(info(), "T1: [0-9]+ rows", perl = TRUE)
-  })
-})
-
-test_that("making a report's ARD reads it again for the builder and the content step", {
-  local_home()
-  p <- add_output(new_planner(), "DM")
-  p$ard$datasets <- data.frame(dataset = "ADSL", path = "data/adam/adsl.rds")
-  p$ard$analyses <- data.frame(output_id = "DM", analysis_id = "A1",
-                               method = "cards::ard_summary", variables = "AGE")
-  for (s in names(p$ard)) p$ard[[s]] <- .normalize_ard_sheet(p$ard[[s]], s)
-  create_study("GC5", planner = p)
-  # (the program's run and the rows are the ones of the ARD made; its meta is there already)
-  local_mocked_bindings(
-    update_study_ard = function(...) list(ok = TRUE, output = "made"),
-    study_ard_rows = function(...) data.frame(analysis_id = "A1", stat = 1),
-    ard_preview_state = function(...) "current")
-  shiny::testServer(server_for("GC5"), {
-    rv <- session$userData$rv
-    session$setInputs(nav = "make", step = "ard", target = "DM")
-    v <- rv$ard_ver
-    session$setInputs(ard_make_study = 1)
-    expect_gt(rv$ard_ver, v)
   })
 })

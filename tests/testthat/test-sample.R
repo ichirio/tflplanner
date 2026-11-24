@@ -101,7 +101,7 @@ test_that("the sample study makes its ARD and reports", {
   r <- reload_from_spec("SAMPLE-01")
   expect_identical(r$spec$status, "same")
   expect_equal(unique(study_status(s)$status), "ok")
-  expect_equal(unique(ard_status(s)$state), "built")
+  expect_equal(unique(ard_status(s, "run")$state), "built")
   b <- list_batches(s)
   expect_equal(nrow(b), 1L)
   expect_equal(b$errors, 0L)

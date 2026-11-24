@@ -341,6 +341,112 @@ update_tflplanner <- function(channel = NULL, from = NULL,
   out
 }
 
+# The versions this process runs, as data: one row per package.
+#   version  the loaded one (getNamespaceVersion), not the DESCRIPTION on
+#            disk: an update installed while the app runs does not change it
+#   kind     where it was installed from, by the DESCRIPTION's Remote fields:
+#            "dev" a branch of GitHub (RemoteRef a branch, or HEAD) -- `ref`
+#              and the first 8 characters of the commit (`sha`) are given;
+#            "tag" a release tag of GitHub (RemoteRef like v0.9.0) -- `ref`;
+#            "local" an install of a folder (RemoteType local) -- `built`,
+#              the date it was built;
+#            NA CRAN, a release, a standard install (pak writes RemoteType
+#              standard, with the version as RemoteSha): no mark.
+# `desc(p)` is the package's DESCRIPTION as a list; `running(p)` its loaded
+# version.  Returns list(packages, r).
+.running_versions <- function(pkgs = c("rtfreporter", "tflspec", "tflplanner"),
+                              desc = .running_description,
+                              running = .running_version,
+                              r = as.character(getRversion())) {
+  rows <- lapply(pkgs, function(p) {
+    d <- desc(p)
+    one <- function(k) {
+      x <- if (is.list(d)) d[[k]] else NULL
+      if (is.null(x) || length(x) != 1L || is.na(x) || !nzchar(x)) NA_character_ else as.character(x)
+    }
+    sha <- one("RemoteSha")
+    ref <- one("RemoteRef")
+    type <- one("RemoteType")
+    # an install by commit (owner/repo@<sha>): RemoteRef is the commit id
+    # itself; only the 8 characters of `sha` are shown
+    by_commit <- !is.na(ref) && !is.na(sha) && grepl("^[0-9a-f]{7,40}$", ref) &&
+      startsWith(sha, ref)
+    if (by_commit) ref <- NA_character_
+    kind <- if (identical(type, "local")) {
+      "local"
+    } else if (is.na(sha) || identical(type, "standard")) {
+      NA_character_
+    } else if (by_commit) {
+      "dev"
+    } else if (!is.na(ref) && grepl("^v?[0-9]+([.-][0-9A-Za-z]+)*$", ref)) {
+      "tag"
+    } else "dev"
+    ver <- running(p)
+    data.frame(package = p,
+               version = if (is.null(ver) || is.na(ver)) one("Version") else as.character(ver),
+               kind = kind,
+               ref = if (kind %in% c("dev", "tag")) ref else NA_character_,
+               sha = if (identical(kind, "dev")) substr(sha, 1L, 8L) else NA_character_,
+               built = if (identical(kind, "local")) .built_date(one("Built")) else NA_character_,
+               stringsAsFactors = FALSE)
+  })
+  list(packages = do.call(rbind, rows), r = r)
+}
+
+# "2026-11-20" from the DESCRIPTION's Built ("R 4.6.1; ; 2026-11-20 12:00:00 UTC; windows").
+.built_date <- function(built) {
+  if (is.na(built)) return(NA_character_)
+  d <- trimws(strsplit(built, ";", fixed = TRUE)[[1L]])
+  d <- if (length(d) >= 3L) substr(d[[3L]], 1L, 10L) else NA_character_
+  if (grepl("^[0-9]{4}-[0-9]{2}-[0-9]{2}$", d)) d else NA_character_
+}
+
+# The DESCRIPTION of the package this process has loaded: the file in the
+# folder the namespace came from (a load_all of a source folder too).
+.running_description <- function(p) {
+  path <- tryCatch(getNamespaceInfo(p, "path"), error = function(e) NULL)
+  f <- if (!is.null(path)) file.path(path, "DESCRIPTION") else system.file("DESCRIPTION", package = p)
+  if (!file.exists(f)) return(NULL)
+  d <- tryCatch(read.dcf(f), error = function(e) NULL)
+  if (is.null(d)) NULL else as.list(d[1L, ])
+}
+
+.running_version <- function(p) {
+  if (p %in% loadedNamespaces()) as.character(getNamespaceVersion(p)) else .installed_version(p)
+}
+
+# Read once, when the app starts (planner_app()): what the process runs does
+# not change, whatever is installed over it afterwards.
+.run <- new.env()
+.running_versions_once <- function() {
+  if (is.null(.run$v)) .run$v <- .running_versions()
+  .run$v
+}
+
+# The versions in a line: "rtfreporter 0.9.0, tflspec 0.9.1 (development
+# version: main 01234567), tflplanner 0.9.2 (installed from a folder, 2026-11-20), R 4.6.1".
+# A tag shows the tag; CRAN or a release, nothing.  `dev` and `local` are the
+# words (translated by the caller).
+.running_versions_text <- function(...) paste(.running_versions_lines(...), collapse = ", ")
+
+# The same, one entry per element: each package, then "R 4.6.1".
+.running_versions_lines <- function(v = .running_versions_once(),
+                                    dev = "development version",
+                                    local = "installed from a folder") {
+  p <- v$packages
+  pk <- vapply(seq_len(nrow(p)), function(i) {
+    mark <- switch(
+      if (is.na(p$kind[i])) "none" else p$kind[i],
+      dev = paste0(dev, ": ", if (!is.na(p$ref[i])) paste0(p$ref[i], " "), p$sha[i]),
+      tag = p$ref[i],
+      local = paste0(local, if (!is.na(p$built[i])) paste0(", ", p$built[i])),
+      NULL)
+    paste0(p$package[i], " ", if (is.na(p$version[i])) "?" else p$version[i],
+           if (!is.null(mark)) paste0(" (", mark, ")"))
+  }, "")
+  c(pk, paste("R", v$r))
+}
+
 .update_check_result <- function() {
   if (!is.null(.upd$result)) return(.upd$result)
   p <- .upd$proc

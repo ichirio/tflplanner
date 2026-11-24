@@ -34,7 +34,7 @@ test_that("a study of many reports, in sections, its states mixed", {
   skip_on_cran()
   home <- local_home()
   s <- .make_big_study(60L, root = file.path(home, "ws"), home = home)
-  r <- .report_rows(s$planner, ard_status(s), .report_run_light(s))
+  r <- .report_rows(s$planner, ard_status(s, "run"), .report_run_light(s))
   expect_identical(nrow(r), 60L)
   # (the sample's reports and their sections, 14.0 the study information's)
   expect_identical(length(unique(r$section)), 11L)
@@ -47,7 +47,7 @@ test_that("a study of many reports, in sections, its states mixed", {
   expect_identical(light$status[same], full$status[same])
   # the same each time
   s2 <- .make_big_study(60L, root = file.path(home, "ws2"), home = home, study_id = "BIG-B")
-  expect_identical(ard_status(s2)$state, ard_status(s)$state)
+  expect_identical(ard_status(s2, "run")$state, ard_status(s, "run")$state)
 })
 
 test_that("the list chooses the report; the tables search the same way", {

@@ -54,7 +54,7 @@
           message("tflplanner: the output of what failed:\n",
                   paste(e$detail, collapse = "\n"))
         }
-        notify(.error_view(conditionMessage(e), t), "error", note_id, duration)
+        notify(.error_text(e, t), "error", note_id %||% .error_note_id(e), duration)
         NULL
       })
   }
@@ -226,6 +226,12 @@
                                       paste(paste0(dp$output_id, ": ", dp$where), collapse = ", ")),
                               type = "warning", duration = NULL)
     }
+    # an old study's ADaM levels (#742): codelists or none taken away (not
+    # set is none), and said once when its levels were or may have been
+    # applied before
+    lv <- .adam_levels_drop_old(rv$p)
+    if (!identical(lv$p, rv$p)) rv$p <- lv$p
+    if (lv$notice) shiny::showNotification(t(.adam_levels_dropped_msg), type = "warning", duration = NULL)
     rv$meta <- rv$saved_meta <- s$meta[.study_fields]
     rv$want <- output_ids(s$planner)[1L]
     bump()
@@ -601,7 +607,7 @@
                     NULL
                   },
                   error = function(e) {
-                    notify(.error_view(conditionMessage(e), t), "error")
+                    notify(.error_text(e, t), "error", .error_note_id(e))
                     NULL
                   })
     if (is.null(s)) return(FALSE)
@@ -609,6 +615,8 @@
     bnew$ids <- character()
     rv$study <- s
     rv$p <- rv$saved <- s$planner
+    # (the forms' Undo: back to the study as saved from now on)
+    forms_rebase()
     # (the widths the save gave reports: drawn, but not others' changes)
     merged <- !.same_planner(.study_spec_keys(mine), s$planner_saved %||% s$planner)
     if (merged || !.same_planner(.study_spec_keys(mine), s$planner)) bump()
@@ -620,6 +628,12 @@
     n <- sum(s$files$status %in% c("written", "rewritten"))
     re <- sum(s$files$status == "rewritten")
     notify(sprintf(t("Saved (%d files written)"), n))
+    # an old study_setup.R: split into the three files, or kept as it was
+    if (any(s$files$status == "split")) notify(t(
+      "programs/study_setup.R was split: the company's code is now in programs/company_setup.R and yours in programs/study_user.R; tflplanner writes study_setup.R. The old file is in programs/.edited/."))
+    if (!is.null(s$setup_note)) notify(paste(
+      t("programs/study_setup.R was not split, so it stays as it was and still runs (a copy is in programs/.edited/). Put the company's lines in programs/company_setup.R and yours in programs/study_user.R, delete study_setup.R, and save again. Why:"),
+      t(s$setup_note)), "warning")
     if (!is.null(s$ard_problem)) notify(paste(
       t("The ARD definition does not hold, so no ARD program was written (the rest is saved). See the Review tab."),
       s$ard_problem), "error")
@@ -747,16 +761,23 @@
   })
   shiny::observeEvent(input$discard_ok, {
     shiny::removeModal()
+    discard_now()
+  })
+  discard_now <- function() {
     held$p <- held$before <- NULL
     rv$p <- rv$saved
     rv$meta <- rv$saved_meta
+    # (the screens that keep a field of their own draw it again: #742)
+    rv$discard_ver <- (rv$discard_ver %||% 0L) + 1L
+    # (the forms' Undo: back to the study as saved from now on)
+    forms_rebase(discarded = TRUE)
     guarded(.drop_draft(rv$study$meta$study_id))
     # (the screens drawn again from it: the cards, the code, the preview)
     rv$bver <- rv$bver + 1L
     rv$ard_ver <- rv$ard_ver + 1L
     bump()
     notify(t("The changes were discarded: the study is as it was last saved."))
-  })
+  }
   # [Close]: tflplanner stops -- where it runs on this computer only (an
   # app on a server is not one user's to stop).  Unsaved changes are asked
   # about first: save and close, close without saving, or cancel.  The same
@@ -859,27 +880,48 @@
     shiny::invalidateLater(60000)
     .stale_versions()
   })
+  # The "tflplanner" brand (top left) opens this: the versions this window runs -- rtfreporter,
+  # tflspec, tflplanner (the branch and commit of a development install) and
+  # R -- in the words of the note above.  Noted once, when the app started.
+  shiny::observeEvent(input$about_app, {
+    shiny::showModal(shiny::modalDialog(
+      title = t("About this version"), easyClose = TRUE, size = "l",
+      shiny::p(shiny::strong(paste0(t("Versions this window runs"), ":"))),
+      # one line each, never broken inside an entry
+      lapply(.running_versions_lines(dev = t("development version"),
+                                     local = t("installed from a folder")),
+             shiny::tags$div, style = "white-space: nowrap;"),
+      footer = shiny::modalButton(t("Close"))))
+  })
+  # a shortcut made before the R version was in its name keeps the old
+  # launcher: it does not follow tflplanner's updates any more
+  old_launcher_note <- function() {
+    if (!isTRUE(tryCatch(.legacy_only(), error = function(e) FALSE))) return(NULL)
+    shiny::div(
+      class = "alert alert-info small py-2 mb-2",
+      t("The shortcut you start tflplanner from was made by an older tflplanner. Run add_shortcut() in the R you use: it makes \"tflplanner (R x.y)\" and removes the old one."))
+  }
   output$update_note <- shiny::renderUI({
     s <- stale()
     if (length(s)) {
-      return(shiny::div(
+      return(shiny::tagList(old_launcher_note(), shiny::div(
         class = "alert alert-warning small py-2 mb-2",
         shiny::strong(t("A newer version is installed:")), " ",
         paste(vapply(names(s), function(p) sprintf("%s %s (%s %s)", p, s[[p]][["installed"]],
                                                       t("this window runs"), s[[p]][["running"]]), ""),
               collapse = ", "), ". ",
-        t("Save, then Close (top right) and start tflplanner again: until then this window runs the old version.")))
+        t("Save, then Close (top right) and start tflplanner again: until then this window runs the old version."))))
     }
     r <- update_found()
-    if (!length(r) || isTRUE(input$update_note_hide)) return(NULL)
-    shiny::div(
+    if (!length(r) || isTRUE(input$update_note_hide)) return(old_launcher_note())
+    shiny::tagList(old_launcher_note(), shiny::div(
       class = "alert alert-info alert-dismissible small py-2 mb-2",
       shiny::strong(t("A newer version is out:")), " ",
       paste(names(r), r, collapse = ", "), ". ",
       t("To update: close tflplanner and start it from the \"update and launch\" shortcut, or run update_tflplanner() in R."),
       shiny::tags$button(
         type = "button", class = "btn-close",
-        onclick = "Shiny.setInputValue('update_note_hide', true);"))
+        onclick = "Shiny.setInputValue('update_note_hide', true);")))
   })
   # a home inside the study folders (set before 0.0.2.9200, #359): said,
   # nothing moved -- the user moves it
@@ -930,6 +972,7 @@
   })
   output$settings <- shiny::renderUI({
     rv$studies_ver
+    std <- .standards_in_use()
     shiny::tagList(
       shiny::p(t("tflplanner keeps the studies here (the master copy):"),
                shiny::br(), shiny::code(tflplanner_home())),
@@ -959,11 +1002,12 @@
       shiny::p(shiny::strong(with_tip(t("Company standards"),
                                       t("Dropdowns, presets, statistics, ARD methods, listing types, and the defaults a new study starts with."))),
                shiny::br(),
-               if (file.exists(.standards_file())) {
-                 a <- company_standards()$about
-                 sprintf("%s %s (%s)", a$value[a$key == "name"],
-                         a$value[a$key == "version"], .standards_file())
-               } else t("the built-in draft")),
+               if (!is.null(std$error)) {
+                 shiny::span(class = "text-danger",
+                             t("The company standards file does not read:"),
+                             std$error)
+               } else if (!is.null(std$text)) std$text
+               else t("the built-in draft")),
       shiny::div(
         class = "d-flex flex-wrap gap-2",
         shiny::downloadButton("std_current", t("Download the standards in use"),
@@ -971,7 +1015,11 @@
         shiny::downloadButton("std_draft", t("Download the built-in draft"),
                               class = "btn-sm"),
         .btn("std_builtin", t("Back to the built-in draft"),
-             class = "btn-sm btn-outline-secondary")),
+             class = "btn-sm btn-outline-secondary"),
+        if (file.exists(paste0(.standards_file(), ".prev"))) {
+          .btn("std_previous", t("Restore the previous standards"),
+               class = "btn-sm btn-outline-secondary")
+        }),
       shiny::fileInput("std_upload", t("Install company standards (Excel)"),
                        accept = ".xlsx", width = "100%",
                        buttonLabel = t("Browse..."), placeholder = t("No file selected")))
@@ -1001,10 +1049,18 @@
     notify(t("Company standards installed. They apply to what is offered from now on, and to new studies."))
   })
   shiny::observeEvent(input$std_builtin, {
-    suppressMessages(setup_tflplanner(standards = "builtin"))
+    ok <- guarded(suppressMessages(setup_tflplanner(standards = "builtin")))
+    if (is.null(ok)) return()
     rv$studies_ver <- rv$studies_ver + 1L
     bump()
     notify(t("Back to the built-in draft."))
+  })
+  shiny::observeEvent(input$std_previous, {
+    ok <- guarded(restore_previous_standards())
+    if (is.null(ok)) return()
+    rv$studies_ver <- rv$studies_ver + 1L
+    bump()
+    notify(t("The previous standards are back."))
   })
   shiny::observeEvent(input$save_settings, {
     r <- trimws(input$studies_root)
@@ -1316,7 +1372,7 @@
                              "steps_table", t("Open it")),
         step(t("ARD: where the numbers come from (cards / cardx). A click on a row shows the analysis as a form."),
              "steps_ard", t("Go to ARD")),
-        step(t("Runs: preview every report and open its RTF."),
+        step(t("Runs: make the ARD and the reports in an official run."),
              "steps_runs", t("Go to Runs"))))
   })
   shiny::observeEvent(input$steps_close, {
@@ -1417,16 +1473,6 @@
           choices = unique(c("", now, adsl)), selected = now,
           options = list(create = TRUE, placeholder = "TRT01A"))
       }),
-      # (the study's code lists' levels on the ADaM: study$adam with them, or
-      # without -- canon 32449ac; not set: codelists)
-      shiny::selectInput(
-        "study_adam_levels",
-        with_tip(t("ADaM levels (settings.adam_levels)"),
-                 t("Whether study$adam gets the levels of the study's ADaM metadata (codelists: defaults.yml adam_meta:) or not (none). Either way a blank is NA, and study$adam_org is the file as it is. With none, a report's own levels: / labels: still apply.")),
-        stats::setNames(c("codelists", "none"),
-                        t(c("codelists: apply the levels of adam_meta to the ADaM",
-                            "none: do not apply them"))),
-        selected = .study_adam_levels(shiny::isolate(rv$p))),
       shiny::h6(with_tip(t("Every report's header"),
                          t("The study's words in every report's header: {COMPANY}, {ANALYSIS_TYPE}; {STUDY_ID} is the Study ID above. Set once here (the tokens sheet's study rows); each report gives only its own (its label, title, population)."))),
       shiny::div(class = "d-flex flex-wrap gap-2",
@@ -1571,14 +1617,6 @@
     v <- if (nzchar(input$rounding)) input$rounding else NA_character_
     if (!identical(unname(rv$p$study[["rounding"]]), v)) {
       rv$p$study[["rounding"]] <- v
-    }
-  }, ignoreInit = TRUE)
-  # the ADaM levels: study.yml's settings: adam_levels: (codelists, the
-  # default, is not written)
-  shiny::observeEvent(input$study_adam_levels, {
-    v <- if (identical(input$study_adam_levels, "none")) "none" else NA_character_
-    if (!identical(.study_setting(rv$p, "adam_levels"), v)) {
-      rv$p$study[["adam_levels"]] <- v
     }
   }, ignoreInit = TRUE)
   # the treatment variable: study.yml's settings: treatment: (blank: none)

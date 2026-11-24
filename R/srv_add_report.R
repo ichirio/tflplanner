@@ -35,15 +35,12 @@
   tpl_data <- function() .tpl_data_cols(rv$study$path, rv$p)
   tpl_all_cols <- function() unique(unlist(lapply(tpl_data(), names)))
   # an argument's heading: "meaning (name)", its doc in the (i)
-  # (.tpl_arg_labels; the doc itself when it has none)
+  # (.tpl_arg_heading(): .tpl_arg_labels; the doc itself when it has none)
   tpl_label <- function(prm, key = NULL) {
     doc <- prm$doc %||% ""
-    # (the report's population a template hides (demog): the tip the other
-    # templates' population has, not tflspec's note that it is no parameter)
     if (identical(prm$name, "population") && isTRUE(prm$hidden)) doc <- "the analysis set's id (SAF)"
     short <- if (doc %in% names(.tpl_doc_labels)) .tpl_doc_labels[[doc]] else .tpl_arg_labels[prm$name]
-    head <- if (!is.na(short)) t(short) else if (nzchar(doc)) t(doc) else ""
-    lab <- if (nzchar(head)) sprintf(t("%s (%s)"), head, prm$name) else prm$name
+    lab <- .tpl_arg_heading(prm, t)
     shiny::span(lab, if (isTRUE(prm$required)) shiny::span(class = "text-danger", " *"),
                 if (!is.null(key)) help_tip(.tpl_info_text(if (nzchar(doc)) doc else "", key, t)) else
                   if (!is.na(short) && nzchar(doc)) help_tip(t(doc)))
@@ -505,17 +502,11 @@
   })
   # the page told at once that a report is being opened, and whether it is
   # a template report (.tpl_js): its steps hidden until drawn
-  tpl_names <- function(tpl, kind) {
-    nm <- .step_labels
-    if (isTRUE(tpl)) nm[names(.tpl_step_labels)] <- .tpl_step_labels
-    stats::setNames(as.list(t(unname(nm))), names(nm))
-  }
   # (`ready`: "Loading ..." taken away after this flush; a report being
   # added waits for its own -- tpl_pending)
   tpl_pending <- new.env()
   tpl_mode_send <- function(tpl, kind = "", loading = TRUE, ready = loading, id = NULL) {
-    session$sendCustomMessage("rp-tpl-mode", list(tpl = isTRUE(tpl), loading = loading,
-                                                  names = tpl_names(tpl, kind), id = id))
+    session$sendCustomMessage("rp-tpl-mode", list(tpl = isTRUE(tpl), loading = loading, id = id))
     if (loading && !isTRUE(shiny::isolate(review_hold()))) review_hold(TRUE)
     if (ready) tpl_ready_send()
   }
@@ -556,12 +547,27 @@
     tpl_ready$id <- if (tpl) id
     tpl_mode_send(tpl, kind, loading = !is.null(id), ready = !is.null(id) && !tpl, id = id)
   }, ignoreNULL = FALSE, priority = 99)
+  # A series template copied into the open study (tflspec's
+  # tfl_copy_templates(); said when it is a new copy): FALSE when it
+  # could not be, tflspec's error said
+  tpl_copy <- function(name) {
+    msg <- tryCatch(.tpl_copy_into_study(rv$study$path, name, t), error = function(e) {
+      notify(conditionMessage(e), "error")
+      FALSE
+    })
+    if (isFALSE(msg)) return(FALSE)
+    if (!is.null(msg)) {
+      notify(msg, "message")
+      tpl_copies_ver(tpl_copies_ver() + 1L)
+    }
+    TRUE
+  }
   add_template_report <- function(id, desc) {
     .tpl_trace("OK", start = TRUE)
     # (not made: the page's "Loading ..." taken away again)
     fail <- function(msg, type) {
       session$sendCustomMessage("rp-report-ready", TRUE)
-      notify(msg, type)
+      if (!is.null(msg)) notify(msg, type)
     }
     nm <- tpl_chosen()
     if (is.null(nm)) return(fail(t("Choose a template"), "warning"))
@@ -572,6 +578,8 @@
     if (is.null(rv$p$spec)) {
       return(fail(t("A template report needs the study's YAML spec (save the study first)."), "error"))
     }
+    # (the study reads only its own copy of a template: copied first)
+    if (!tpl_copy(nm)) return(fail(NULL, NULL))
     kind <- input$modal_type
     sec <- trimws(input$modal_section %||% "")
     # (the page shows the new report's steps from its first draw)
@@ -584,7 +592,7 @@
     attr(args, "population") <- NULL
     o <- tflspec::tfl_output(id, kind, label = if (is.na(desc)) NA_character_ else desc,
                              common = if (!is.na(pop)) list(population = pop) else list(),
-                             template = list(name = nm, args = args),
+                             template = .tpl_write_args(list(name = nm), args, by_step = TRUE),
                              data = if (length(dat$steps)) list(steps = dat$steps))
     # (straight into the spec: its toc line and its file, the view of
     # that report alone -- .spec_add_output())
@@ -601,11 +609,12 @@
   }
   # The template's cards: the required arguments and those the report gives
   # above, the others (their defaults, greyed) folded below; each with
-  # where its value comes from.  An argument is drawn once, in the step of
-  # its section (.tpl_arg_section): the Template step's card (tpl_card,
-  # tpl_card_lf, tpl_card_fig) has the template's choice and the ARD and
-  # content arguments, the Analysis data step's (tpl_card_data) and the Page
-  # and output step's (tpl_card_page) their own.  Whatever step it is put in.
+  # where its value comes from.  An argument is drawn once, in the step its
+  # `step:` names (.tpl_arg_section): data (tpl_card_data), analysis
+  # (tpl_card_ard), content (tpl_card, tpl_card_lf, tpl_card_fig) and page
+  # (tpl_card_page).  The template itself -- its name, another one, Convert
+  # to code -- is the report's, not a step's: one card above the steps
+  # (tpl_head), seen from every step.
   tpl_ver <- shiny::reactiveVal(0L)
   # (a write the page shows already, tpl_write(redraw = FALSE): the card is
   # left as it is while this flush is drawn -- it stands for "drawn as it was",
@@ -644,7 +653,8 @@
     if (is.null(tp) || !identical(tp$name, name)) return()
     prm <- .tpl_params(name)[[a]]
     type <- .tpl_type(prm, tpl_all_cols())
-    shown <- tp$args[[a]] %||% .tpl_study_value(rv$p$spec$study, prm) %||% prm$default
+    # (what the card drew: an echo of it is no edit -- #751 item 2)
+    shown <- .tpl_drawn_value(rv$p, id, tp$args, prm)
     # (a switch with no default -- a series template's, from the series -- is drawn
     # off: its first FALSE is what it showed, no edit)
     if (is.null(shown) && identical(type, "flag")) shown <- FALSE
@@ -662,7 +672,7 @@
     }
     if (identical(type, "text") && is.character(v) && length(v) == 1L) {
       # (the text as it was shown: no edit; YAML that does not parse: said, and the value stays)
-      sh <- tp$args[[a]] %||% .tpl_study_value(rv$p$spec$study, prm) %||% prm$default
+      sh <- .tpl_drawn_value(rv$p, id, tp$args, prm)
       if (!is.null(sh) && identical(trimws(v), .tpl_show(sh))) return()
       bad <- tryCatch({ .tpl_text_parse(trimws(v)); NULL }, error = function(e) conditionMessage(e))
       if (!is.null(bad)) {
@@ -800,6 +810,7 @@
     tp <- .tpl_of(rv$p, id %||% "")
     to <- input$tpl_switch
     if (is.null(tp) || is.null(to)) return()
+    if (!tpl_copy(to)) return(tpl_ver(tpl_ver() + 1L))
     to_prm <- .tpl_params(to)
     args <- tp$args[intersect(names(tp$args), names(.tpl_shown(to_prm)))]
     # (back from a template that takes the report's population: the
@@ -845,7 +856,7 @@
   tpl_card_ui <- function() {
     id <- current()
     shiny::req(id)
-    card <- tpl_card_draw(id)
+    card <- tpl_card_draw(id, "content")
     tpl_card_drawn(id)
     card
   }
@@ -892,8 +903,11 @@
                            pop$population_id, pop$dataset, pop$where %||% "")),
       if (nzchar(f$dataset) && .tpl_join_stale(f, pop)) shiny::div(
         class = "alert alert-warning py-1 small",
-        t("The analysis set changed: Apply writes the new join.")),
-      .btn("tpl_data_apply", t("Apply"), class = "btn-sm btn-outline-primary"),
+        t("The analysis set changed: Match the analysis set writes the new join.")),
+      # (an action, not a save: the data: steps written from these fields,
+      # the join as the analysis set says it now -- #754)
+      .btn("tpl_data_apply", t("Match the analysis set"), class = "btn-sm btn-outline-primary",
+           title = t("Writes the report's data: steps from these fields, with the join of the analysis set as the study defines it now.")),
       if (length(steps)) shiny::tags$details(
         class = "mt-1",
         shiny::tags$summary(class = "small", t("The steps written")),
@@ -993,7 +1007,7 @@
     tpl_ver(tpl_ver() + 1L)
     bump()
   }, ignoreInit = TRUE)
-  tpl_card_draw <- function(id, part = c("template", "data", "page")) {
+  tpl_card_draw <- function(id, part = c("content", "data", "ard", "page", "head")) {
     part <- match.arg(part)
     tpl_ver()
     rv$ver
@@ -1014,15 +1028,19 @@
     sec_of <- vapply(names(prm), function(a) .tpl_arg_section(tp$name, a), "")
     miss <- .tpl_missing(tp$name, args, p$spec$study)
     # (the required arguments empty, said in the step they are drawn in)
-    miss <- miss[vapply(miss, function(a) .tpl_arg_section(tp$name, a), "") %in%
-                   switch(part, data = "data", page = "page", c("ard", "content"))]
+    miss_all <- miss
+    miss <- miss[vapply(miss, function(a) .tpl_arg_section(tp$name, a), "") %in% part]
     # (a template whose analysis set is the report's population: chosen in
     # the data step, written as the report's `population:`)
-    pop_of_report <- part == "data" && .tpl_pop_of_report(prm_all)
+    pop_of_report <- part %in% c("data", "head") && .tpl_pop_of_report(prm_all)
     if (pop_of_report) {
       pid <- as.character(p$spec$outputs[[id]]$common$population %||% "")[1L]
       if (is.na(pid)) pid <- ""
-      if (!nzchar(pid)) miss <- c("population", miss)
+      if (!nzchar(pid)) {
+        miss <- c("population", miss)
+        miss_all <- c("population", miss_all)
+      }
+      pop_of_report <- part == "data"
     }
     kind <- report_info(p, id)$type
     study <- p$spec$study
@@ -1106,31 +1124,51 @@
       class = "alert alert-danger py-1 small",
       sprintf(t("Required arguments are empty: %s. The preview waits for them."),
               paste(miss, collapse = ", ")))
-    if (part != "template") {
+    if (part != "head") {
       none <- !any(sec_of %in% part) && !(part == "data" && own_data)
       # (a template with no page arguments: no card, the step is the page's)
       if (none && part == "page") return(NULL)
       return(bslib::card(
         class = "mb-2 border-primary",
-        bslib::card_header(shiny::strong(t(if (part == "data") "Analysis data" else "Template arguments (page)"))),
+        bslib::card_header(shiny::strong(sprintf(t("Template arguments: %s"), .tpl_step_word[[part]]))),
         bslib::card_body(
           missing_alert,
           if (part == "data" && own_data) tpl_data_block(id, steps),
+          # (the analysis set of a template that takes it from the report:
+          # shown, #751 item 6)
+          if (part == "data" && !own_data && !pop_of_report) .tpl_pop_view_ui(.tpl_pop_view(p, id), t),
           if (pop_of_report) shiny::selectInput("tpl_report_pop", tpl_label(prm_all$population),
                                                 pop_choices(pid),
                                                 selected = pid, width = "100%"),
           block(part),
           if (none) shiny::p(class = "small text-muted mb-0", t("This template has no arguments in this step.")))))
     }
+    # (the head: the required arguments empty in any step, with the step's name)
+    head_missing <- if (length(miss_all)) shiny::div(
+      class = "alert alert-danger py-1 small mb-0 w-100",
+      sprintf(t("Required arguments are empty: %s. The preview waits for them."),
+              paste(vapply(miss_all, function(a) {
+                sec <- if (identical(a, "population") && .tpl_pop_of_report(prm_all)) "data" else
+                  .tpl_arg_section(tp$name, a)
+                sprintf("%s (%s)", a, t(.step_labels[[sec]]))
+              }, ""), collapse = ", ")))
     others <- .tpl_list(kind)$name
+    # (what the report's template: holds that is no argument of the
+    # template: kept as written and shown, tflspec stops on it -- #751)
+    extra <- setdiff(names(args), names(prm_all))
+    head_extra <- if (length(extra)) shiny::div(
+      class = "alert alert-warning py-1 small mb-0 w-100",
+      sprintf(t("Not arguments of this template, kept as written (the run stops on them): %s"),
+              paste(extra, collapse = ", ")),
+      shiny::tags$pre(class = "small mb-0", yaml::as.yaml(args[extra])))
     bslib::card(
       class = "mb-2 border-primary",
       bslib::card_header(shiny::div(
         class = "d-flex flex-wrap gap-2 align-items-center",
-        shiny::strong(t("Template")),
+        # (the name once, in the choice of template: #751 item 7)
+        with_tip(shiny::strong(t("Template")),
+                 sprintf(t("Saved in spec/outputs/%s.yml as template: name and its args only."), id)),
         shiny::code(.tpl_call_name(tp$name)),
-        shiny::span(class = "badge text-bg-light border", paste0("template:", tp$name),
-                    title = sprintf(t("Saved in spec/outputs/%s.yml as template: name and its args only."), id)),
         # (another template: chosen here, confirmed in a dialog)
         shiny::tags$select(
           class = "form-select form-select-sm ms-auto", style = "width: auto",
@@ -1138,10 +1176,8 @@
           onchange = "Shiny.setInputValue('tpl_switch', this.value, {priority: 'event'})",
           lapply(others, function(n) shiny::tags$option(
             value = n, selected = if (identical(n, tp$name)) NA, n))),
-        # (one way: the template's items written into the report as code)
-        # (a plain button, not an input: the card is drawn in one of three
-        # outputs, and two of them hold one for a moment while the report
-        # kind changes -- a duplicate input id)
+        # (one way: the template's items written into the report as code;
+        # a plain button, not an input)
         shiny::tags$button(
           type = "button", class = "btn btn-sm btn-outline-primary",
           onclick = "Shiny.setInputValue('tpl_to_code', Math.random(), {priority: 'event'})",
@@ -1158,11 +1194,8 @@
             shiny::tags$li(shiny::tags$a(class = "dropdown-item disabled", href = "#",
                                          t("Make a variant ..."))))),
         if (nzchar(.tpl_desc_of(tp$name))) shiny::div(class = "small text-muted w-100",
-                                                      t(.tpl_desc_of(tp$name))))),
-      bslib::card_body(
-        missing_alert,
-        block("ard", t("Analysis (ARD)")),
-        block("content", t("Content"))))
+                                                      t(.tpl_desc_of(tp$name))),
+        head_missing, head_extra)))
   }
   # a template figure: drawn here from the template's items
   # (tflspec::tfl_content_run(), the figure as its program makes it), the
@@ -1276,8 +1309,9 @@
     if (!identical(report_kind(), "figure")) return(NULL)
     tpl_card_ui()
   })
-  # the other steps' arguments (any kind of template report)
-  for (part in c("data", "page")) {
+  # the other steps' arguments (any kind of template report), and the
+  # template's own card above the steps
+  for (part in c("data", "ard", "page", "head")) {
     local({
       part <- part
       output[[paste0("tpl_card_", part)]] <- shiny::renderUI({
@@ -1288,7 +1322,8 @@
     })
   }
   # (drawn on any step: its draw ends "Loading ...")
-  for (o in c("tpl_card", "tpl_card_lf", "tpl_card_fig", "tpl_card_data", "tpl_card_page")) {
+  for (o in c("tpl_card", "tpl_card_lf", "tpl_card_fig", "tpl_card_data", "tpl_card_ard", "tpl_card_page",
+              "tpl_card_head")) {
     shiny::outputOptions(output, o, suspendWhenHidden = FALSE)
   }
   # The right of a template table: the ARD its template makes is made in
@@ -1339,7 +1374,7 @@
       id <- tpl_now()
       shiny::req(id)
       rv$ard_ver
-      out <- .ard_study_value(rv$p$ard, "output", "output/ard/ard.rds")
+      out <- .study_ard_rel(rv$p$ard)
       run <- shiny::p(class = "small text-muted mb-1",
                       sprintf(t("A run saves it in the study's ARD (%s)."), out))
       # no ARD made yet: Update preview makes it

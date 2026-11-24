@@ -15,8 +15,9 @@
 #
 # A cell's kind: "text" (a text field, the choices offered as it is typed),
 # "pick" (a select of the choices), "r" (R, monospace, the columns offered),
-# "number_text" (a number, else text), "list" (several values, one a line,
-# in order; a select beside it adds one of the choices).
+# "number_text" (a number, else text), "list" (several values in order: a
+# select of several, the choices offered and a value typed -- its state one
+# value a line).
 
 # ---- the type -> the table's columns -------------------------------------------
 
@@ -30,7 +31,9 @@
 .tbl_type <- function(type) {
   if (is.null(type) || length(type) != 1L || is.na(type)) return(NULL)
   alts <- trimws(.type_split(trimws(type), "|"))
-  ty <- alts[grepl("^(rows|map)<.*>$|^list<map<.*>>$", alts)][1L]
+  # (a vec<K,V> -- a named vector: plan_columns(widths = ) -- is a map from
+  # K to V)
+  ty <- alts[grepl("^(rows|map)<.*>$|^list<map<.*>>$|^vec<[^,<>]+,.+>$", alts)][1L]
   if (is.na(ty)) return(NULL)
   shape <- "map"
   # (a list<map<..>>: its maps in order, a rows<map<..>>'s table)
@@ -44,8 +47,8 @@
       return(list(shape = "rows", key = "string", value = "string|r", fields = f))
     }
   }
-  if (!grepl("^map<.*>$", ty)) return(NULL)
-  kv <- .type_split(sub("^map<(.*)>$", "\\1", ty), ",")
+  if (!grepl("^(map|vec)<.*>$", ty)) return(NULL)
+  kv <- .type_split(sub("^(map|vec)<(.*)>$", "\\2", ty), ",")
   if (length(kv) != 2L) return(NULL)
   # (a map of maps, map<K,map<K2,V>>: a row an inner entry, its two keys
   # and its value -- tflspec_summary's nest and value_labels)
@@ -83,6 +86,29 @@
   tryCatch(.choice_values(sources, ctx, lang, values = values), error = function(e) character())
 }
 
+# A column's heading from its definition (tfl_arg_defs()'s `columns`: a
+# map's `key` and `value`, each with label_en / label_ja): the label in the
+# language (the English one translated by the app's texts when there is no
+# Japanese one); NULL when it has none -- the generic heading is then used
+.tbl_col_label <- function(cd, lang = "en") {
+  if (!is.list(cd)) return(NULL)
+  ok <- function(x) is.character(x) && length(x) == 1L && !is.na(x) && nzchar(x)
+  lb <- if (is.list(cd$label)) cd$label else list()
+  ja <- cd$label_ja %||% lb$ja
+  en <- cd$label_en %||% lb$en
+  if (identical(lang, "ja") && ok(ja)) return(ja)
+  if (ok(en)) return(tr(en, lang))
+  NULL
+}
+
+# a new row's cells: the def's `new_row` (column: value) where it names a
+# column, else blank
+.tbl_new_row <- function(nr, cols, kinds) {
+  vapply(seq_along(cols), function(j) {
+    .tbl_cell_text(if (is.list(nr)) nr[[cols[[j]]]], kinds[[j]])
+  }, "")
+}
+
 # The table's columns: `cols` their names, `heads` their headings, `kinds`
 # their cells' kinds, `choices` each one's choices, `ordered` whether rows
 # move.  A map: the key (picked from the def's choices -- typed when the
@@ -101,27 +127,47 @@
     key_kind <- function(k) if (grepl("^column", k) && length(choices) && !isTRUE(def$free)) "pick" else "text"
     key_ch <- function(k) if (grepl("^column", k)) choices else character()
     vk <- .tbl_cell_kind(tt$value)
+    # (the def's `columns`: the outer key's label, and the inner map's own
+    # `columns` -- its key and value -- for the second and third)
+    dc <- if (is.list(def$columns)) def$columns else list()
+    ic <- if (is.list(dc$value$columns)) dc$value$columns else list()
+    heads <- c(.tbl_col_label(dc$key, lang) %||% tr(if (grepl("^column", tt$key)) "Column" else "Key", lang),
+               .tbl_col_label(ic$key, lang) %||% tr(if (grepl("^column", tt$key2)) "Second column" else "Key", lang),
+               .tbl_col_label(ic$value, lang) %||% tr(if (identical(vk, "list")) "Values" else "Value", lang))
+    kinds <- c(key_kind(tt$key), key_kind(tt$key2), vk)
+    # (a new row's key: the def's `new_row`, the outer table's `key`)
     return(list(shape = "map2", cols = c("key", "key2", "value"),
-                heads = c(tr(if (grepl("^column", tt$key)) "Column" else "Key", lang),
-                          tr(if (grepl("^column", tt$key2)) "Second column" else "Key", lang),
-                          tr(if (identical(vk, "list")) "Values" else "Value", lang)),
-                kinds = c(key_kind(tt$key), key_kind(tt$key2), vk),
+                heads = heads, kinds = kinds,
                 choices = list(key_ch(tt$key), key_ch(tt$key2), character()),
-                ordered = isTRUE(def$ordered)))
+                ordered = isTRUE(def$ordered),
+                new = .tbl_new_row(def$new_row[intersect(names(def$new_row), "key")], c("key", "key2", "value"),
+                                   kinds)))
   }
   if (identical(tt$shape, "map")) {
     vk <- .tbl_cell_kind(tt$value)
     to_value <- identical(vk, "r")
-    kk <- if (!to_value && length(choices)) (if (isTRUE(def$free)) "text" else "pick") else "text"
+    # (the choices the value's where the key is a name and the value a list
+    # of columns: normalize_ard(stack = ) a name, its layers picked)
+    val_ch <- to_value || (!grepl("^column", tt$key) && identical(vk, "list") &&
+                             .type_has_column(tt$value))
+    kk <- if (!val_ch && length(choices)) (if (isTRUE(def$free)) "text" else "pick") else "text"
     key_head <- if (to_value && grepl("^column", tt$key)) "New column" else
       if (grepl("^column", tt$key)) "Column" else "Key"
     val_head <- switch(vk, r = "R", list = "Values", "Value")
-    return(list(shape = "map", cols = c("key", "value"),
-                heads = c(tr(key_head, lang), if (identical(val_head, "R")) "R" else tr(val_head, lang)),
-                kinds = c(kk, vk),
-                choices = list(if (!to_value) choices else character(),
-                               if (to_value) choices else character()),
-                ordered = isTRUE(def$ordered)))
+    heads <- c(tr(key_head, lang), if (identical(val_head, "R")) "R" else tr(val_head, lang))
+    # (the def's `columns`, key and value, each its label in the language)
+    # (named key / value, else the def's two columns in order)
+    dc <- if (is.list(def$columns)) def$columns else list()
+    if (is.null(dc$key) && is.null(dc$value) && length(dc) == 2L) dc <- stats::setNames(dc, c("key", "value"))
+    heads <- c(.tbl_col_label(dc$key, lang) %||% heads[[1L]], .tbl_col_label(dc$value, lang) %||% heads[[2L]])
+    kinds <- c(kk, vk)
+    return(list(shape = "map", cols = c("key", "value"), heads = heads,
+                kinds = kinds,
+                choices = list(if (!val_ch) choices else character(),
+                               if (val_ch) choices else character()),
+                ordered = isTRUE(def$ordered),
+                # (a new row's values: the def's `new_row`, else blank)
+                new = .tbl_new_row(def$new_row, c("key", "value"), kinds)))
   }
   vk <- .tbl_cell_kind(tt$value)
   cdefs <- def$columns
@@ -182,14 +228,54 @@
   ks <- lapply(cols, kind_of)
   # (the optional columns not shown, in the columns' order, each with its kind)
   extra <- lapply(intersect(all_cols, hidden), function(k) c(list(col = k), kind_of(k)))
-  list(shape = "rows", cols = cols, heads = cols,
-       kinds = vapply(ks, function(x) x$kind, ""), choices = lapply(ks, function(x) x$choices),
-       ordered = TRUE, extra = extra)
+  kinds <- vapply(ks, function(x) x$kind, "")
+  # (the headings: each column's label from the def's `columns` in the
+  # language, else its field name)
+  heads <- vapply(cols, function(k) .tbl_col_label(cd[[k]], lang) %||% k, "")
+  list(shape = "rows", cols = cols, heads = unname(heads),
+       kinds = kinds, choices = lapply(ks, function(x) x$choices),
+       ordered = TRUE, extra = extra,
+       # (a new row's values: the def's `new_row`, a column by name)
+       new = .tbl_new_row(def$new_row, cols, kinds))
 }
 
 # ---- the value <-> the state -------------------------------------------------------
 
 # a value as its cell's text
+# Can a cell of `kind` show the value as it is -- a text or number one
+# plain value, a list's cell plain values (one a line), R anything -- so
+# that it reads back the same?  (normalize_ard(stack = )'s cross layer,
+# list("ALL", c("AGEGR1", "SEX")), cannot be lines: it is shown as R)
+.tbl_cell_holds <- function(v, kind) {
+  if (is.null(v) || inherits(v, c("tfl_r", "tfl_unset")) || identical(kind, "r")) return(TRUE)
+  plain <- function(x) is.atomic(x) && length(x) == 1L
+  if (identical(kind, "list")) {
+    return((is.atomic(v) && is.null(names(v))) ||
+             (is.list(v) && is.null(names(v)) && all(vapply(v, plain, NA))))
+  }
+  plain(v)
+}
+
+# does the table show the whole value as it is?  (else the field is R)
+.tbl_holds <- function(spec, value) {
+  if (is.null(value) || inherits(value, c("tfl_r", "tfl_unset"))) return(TRUE)
+  if (identical(spec$shape, "map")) {
+    return(all(vapply(as.list(value), .tbl_cell_holds, NA, kind = spec$kinds[[2L]])))
+  }
+  if (identical(spec$shape, "map2")) {
+    return(all(vapply(as.list(value), function(inner) {
+      is.list(inner) && all(vapply(inner, .tbl_cell_holds, NA, kind = spec$kinds[[3L]]))
+    }, NA)))
+  }
+  recs <- .tbl_records(value)
+  if (!is.list(recs)) return(FALSE)
+  all(vapply(recs, function(r) {
+    is.list(r) && all(vapply(seq_along(spec$cols), function(j) {
+      .tbl_cell_holds(r[[spec$cols[[j]]]], spec$kinds[[j]])
+    }, NA))
+  }, NA))
+}
+
 .tbl_cell_text <- function(v, kind) {
   if (is.null(v) || inherits(v, "tfl_unset")) return("")
   if (inherits(v, "tfl_r")) return(as.character(unclass(v)))
@@ -219,8 +305,10 @@
     return(out)
   }
   if (identical(spec$shape, "map")) {
-    nm <- names(value)
-    if (is.null(nm)) return(list())
+    # (values with no names -- plan_columns(widths = c(2, 1, 1)), a
+    # vec<K,V>|list<V> -- are rows with a blank key, in their order)
+    nm <- names(value) %||% rep("", length(value))
+    nm[is.na(nm)] <- ""
     value <- as.list(value)
     return(lapply(seq_along(value), function(i) {
       c(nm[[i]], .tbl_cell_text(value[[i]], spec$kinds[[2L]]))
@@ -283,11 +371,22 @@
   }
   if (identical(shape, "map")) {
     out <- list()
+    blank <- list()
     for (r in rows) {
       k <- trimws(r[1L] %||% "")
       v <- .tbl_cell_value(if (length(r) >= 2L) r[[2L]] else "", kinds[[2L]])
-      if (is.na(k) || !nzchar(k) || is.null(v)) next
+      if (is.null(v)) next
+      if (is.na(k) || !nzchar(k)) {
+        blank[[length(blank) + 1L]] <- v
+        next
+      }
       out[[k]] <- v
+    }
+    # (rows with no key and none with one: the values with no names, in
+    # their order -- a vector where each is one plain value)
+    if (!length(out) && length(blank)) {
+      one <- vapply(blank, function(x) is.atomic(x) && length(x) == 1L, NA)
+      return(if (all(one)) unlist(blank) else blank)
     }
     return(if (length(out)) out)
   }
@@ -349,6 +448,36 @@
   shiny::tagList(shiny::tags$option(value = "", blank), items, keep)
 }
 
+# a list cell's text (one value a line) as its values, in order
+.tbl_list_values <- function(text) {
+  v <- trimws(strsplit(paste(text, collapse = "\n"), "\n", fixed = TRUE)[[1L]])
+  unique(v[nzchar(v)])
+}
+
+# A list cell's options: its values first, selected, in their order (the
+# select keeps them so; a value the choices lack is one of them, as typed),
+# then the other choices (groups as optgroups)
+.tbl_multi_options <- function(choices, selected = character()) {
+  opt <- function(v, lab, sel = FALSE) shiny::tags$option(value = v, selected = if (sel) NA, lab)
+  grouped <- is.list(choices) && !is.null(names(choices))
+  labs <- if (grouped) do.call(c, unname(lapply(choices, .choice_vec))) else .choice_vec(choices)
+  rest <- function(x) {
+    x <- .choice_vec(x)
+    x <- x[!x %in% selected]
+    Map(opt, unname(x), names(x))
+  }
+  shiny::tagList(
+    lapply(selected, function(v) {
+      i <- match(v, labs)
+      opt(v, if (is.na(i)) v else names(labs)[[i]], sel = TRUE)
+    }),
+    if (grouped) {
+      lapply(names(choices), function(g) shiny::tags$optgroup(label = g, rest(choices[[g]])))
+    } else {
+      rest(choices)
+    })
+}
+
 # one cell's control (no id: the table is the one input); `ph` a light
 # candidate shown while it is blank (a series value, .field_table())
 .tbl_cell <- function(kind, text, dl = NULL, choices = NULL, lang = "en", ph = NULL) {
@@ -360,13 +489,9 @@
                               .tbl_options(choices, text)),
     r = shiny::tags$input(type = "text", class = paste(base, "rp-mono rp-tbl-r"), value = text,
                           placeholder = ph %||% "R", spellcheck = "false", list = dl),
-    list = shiny::tagList(
-      shiny::tags$textarea(class = paste(base, "rp-tbl-list"), rows = "2",
-                           placeholder = ph %||% tr("One per line", lang), spellcheck = "false", text),
-      if (length(choices)) {
-        shiny::tags$select(class = "form-select form-select-sm rp-tbl-add", title = tr("Add a value", lang),
-                           .tbl_options(choices, "", blank = paste0("+ ", tr("Add a value", lang))))
-      }),
+    list = shiny::tags$select(class = "form-select form-select-sm rp-tbl-cell rp-tbl-multi", multiple = NA,
+                              `data-placeholder` = ph %||% tr("Add a value", lang),
+                              .tbl_multi_options(choices, .tbl_list_values(text))),
     number_text = shiny::tags$input(type = "text", class = paste(base, "rp-tbl-num"), value = text,
                                     inputmode = "decimal", placeholder = ph),
     shiny::tags$input(type = "text", class = base, value = text, list = dl, placeholder = ph))
@@ -460,7 +585,9 @@
                                                      t("From the template"))))
     }))
   st <- .tbl_state(spec, value)
-  shiny::div(
+  # (a list cell is a selectize the page's script makes: its script and style)
+  deps <- if ("list" %in% c(spec$kinds, vapply(spec$extra, function(x) x$kind, ""))) .tbl_selectize_deps()
+  out <- shiny::div(
     class = paste("rp-tbl", paste0("rp-tbl-", spec$shape)), id = fid,
     `data-shape` = spec$shape,
     `data-cols` = as.character(jsonlite::toJSON(spec$cols)),
@@ -471,7 +598,8 @@
       class = "table table-sm rp-tbl-table",
       shiny::tags$thead(shiny::tags$tr(
         lapply(seq_len(n), function(j) {
-          shiny::tags$th(class = if (identical(spec$shape, "rows") || identical(spec$kinds[[j]], "r")) "rp-mono",
+          shiny::tags$th(class = if ((identical(spec$shape, "rows") && identical(spec$heads[[j]], spec$cols[[j]])) ||
+                                       identical(spec$kinds[[j]], "r")) "rp-mono",
                          spec$heads[[j]])
         }),
         shiny::tags$th(class = "rp-tbl-tools"))),
@@ -480,7 +608,7 @@
                         if (!length(body)) .tbl_empty_row(n, lang),
                         lapply(body, function(r) .tbl_row(spec, r$cells, dls, lang, ph = r$ph, cand = r$cand))),
       fixed_body(after)),
-    shiny::tags$template(class = "rp-tbl-tpl", .tbl_row(spec, rep("", n), dls, lang)),
+    shiny::tags$template(class = "rp-tbl-tpl", .tbl_row(spec, spec$new %||% rep("", n), dls, lang)),
     lists,
     shiny::tags$button(type = "button", class = "btn btn-link btn-sm rp-tbl-addrow",
                        paste0("+ ", t("Add a row"))),
@@ -499,4 +627,10 @@
                            `data-col` = x$col, `data-kind` = x$kind,
                            paste0("+ ", t("Add the column:"), " ", x$col)))
     }))
+  if (length(deps)) htmltools::attachDependencies(out, deps, append = TRUE) else out
+}
+
+# selectize's script and style, as shiny's selectizeInput() brings them
+.tbl_selectize_deps <- function() {
+  htmltools::findDependencies(shiny::selectizeInput("rp_tbl_dep", NULL, character()))
 }

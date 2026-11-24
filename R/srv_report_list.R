@@ -7,6 +7,23 @@
   # place: the list is not drawn again for them; `seq` says which is newer)
   mark_clock <- new.env()
   mark_clock$n <- 0
+  # the ARD's state from the latest official runs: worked out again when
+  # the ARD's definition, the study's files or the runs changed, not at each
+  # edit of a title or a listing (the list is drawn again for those).  Not a
+  # reactive: a run ending must not draw the list again (#9184), but a list
+  # drawn for another reason has the runs as they are.
+  run_ard_memo <- new.env()
+  run_ard_state <- function() {
+    s <- shiny::isolate(current_study())
+    p <- shiny::isolate(rv$p)
+    key <- list(s$path, .run_index_stamp(s$path), shiny::isolate(rv$status_ver),
+                p$ard, p$sheets$codelists, p$setup, p$study)
+    if (!is.null(run_ard_memo$key) && identical(run_ard_memo$key, key)) return(run_ard_memo$st)
+    st <- tryCatch(ard_status(s, from = "run"), error = function(e) NULL)
+    run_ard_memo$key <- key
+    run_ard_memo$st <- st
+    st
+  }
   picker_rows <- shiny::reactive({
     rv$ver
     rv$status_ver
@@ -14,9 +31,10 @@
     p_list()
     p <- shiny::isolate(rv$p)
     if (is.null(p) || !has_study()) return(.report_rows(new_planner()))
-    # the ARD's state as the ARD step has it; the runs' from their files
+    # the ARD's state and the runs' from the latest official runs, read from
+    # their files
     # (study_status() writes every program again: slow for a big study)
-    d <- .report_rows(p, tryCatch(shiny::isolate(ard_state()), error = function(e) NULL),
+    d <- .report_rows(p, run_ard_state(),
                       tryCatch(.report_run_light(shiny::isolate(current_study())),
                                error = function(e) NULL))
     mark_clock$n <- mark_clock$n + 1
@@ -173,7 +191,62 @@
   # edit invalidated everything drawn for the report -- the table builder's
   # form among them, redrawn (closed, the text lost) while being typed in.
   current <- shiny::reactiveVal(NULL)
-  shiny::observe(current(current_now()), priority = 100)
+  # (for shiny::testServer())
+  session$userData$current <- current
+  shiny::observe({
+    v <- current_now()
+    if (!switch_ask(v)) current(v)
+  }, priority = 100)
+  # Another report chosen while the study has unsaved changes: asked first
+  # -- Save (then open it), Discard (every unsaved change, then open it) or
+  # Cancel (stay on this one).  The forms apply their edits at once, so the
+  # changes are the study's, not the report's form's; they are kept while
+  # moving between reports only when the question is answered so.  Not
+  # asked when the server chose the report (added, copied) or the report
+  # went away.
+  switch_to <- new.env(parent = emptyenv())
+  switch_ask <- function(v) {
+    old <- shiny::isolate(current())
+    if (is.null(old) || is.null(v) || identical(v, old)) return(FALSE)
+    if (!isTRUE(shiny::isolate(dirty())) || !is.null(tgt_pick())) return(FALSE)
+    if (!identical(shiny::isolate(target()), v)) return(FALSE)
+    # (asked already: the question stays until it is answered)
+    if (identical(switch_to$v, v)) return(TRUE)
+    switch_to$v <- v
+    switch_to$from <- old
+    shiny::showModal(shiny::modalDialog(
+      title = sprintf(t("%s has changes that are not saved"), shiny::isolate(rv$study$meta$study_id)),
+      shiny::p(sprintf(t("Save them before opening %s, or discard them (every unsaved change of the study goes)."), v)),
+      footer = shiny::tagList(
+        .btn("switch_cancel", t("Cancel"), class = "btn-default"),
+        .btn("switch_discard", t("Discard changes"), class = "btn-outline-danger"),
+        .btn("switch_save", t("Save"), class = "btn-primary")),
+      easyClose = FALSE))
+    TRUE
+  }
+  switch_done <- function(go_on) {
+    v <- switch_to$v
+    from <- switch_to$from
+    switch_to$v <- switch_to$from <- NULL
+    if (is.null(v)) return()
+    if (go_on) return(current(v))
+    shiny::updateSelectInput(session, "target", selected = from)
+  }
+  shiny::observeEvent(input$switch_cancel, {
+    shiny::removeModal()
+    switch_done(FALSE)
+  })
+  shiny::observeEvent(input$switch_discard, {
+    shiny::removeModal()
+    discard_now()
+    switch_done(TRUE)
+  })
+  # (a save that could not be made says why in its own dialog: the report
+  # stays)
+  shiny::observeEvent(input$switch_save, {
+    shiny::removeModal()
+    switch_done(isTRUE(do_save()))
+  })
   # (another report chosen: a new table only drawn, nothing changed, is
   # put back as it was)
   shiny::observeEvent(current(), {
@@ -234,25 +307,21 @@
         t(moves[[to]]))))
   })
   shiny::observeEvent(input$report_move, go(input$report_move))
-  # the steps' names: the kind's own (a figure's "1 Data", "2 Figure")
-  shiny::observe({
-    k <- report_kind()
-    # (a template report's two steps: R/template_report.R)
-    id <- current()
-    tpl <- !is.null(id) && !is.null(.tpl_of(rv$p, id))
-    session$sendCustomMessage("rp-step-names", tpl_names(tpl, k))
-  })
   # the tabs this kind of report has nothing on, faded (still clickable)
   shiny::observe({
     k <- report_kind()
     idle <- .type_idle_tabs[[k]] %||% character()
     src <- if (identical(k, "figure") && !is.null(current())) .fig_ard_source(rv$p, current())
     if (!is.null(src) && src$kind != "none") idle <- setdiff(idle, "ard")
+    # (a template listing: its analysis step has the template's arguments)
+    tpl <- !is.null(current()) && !is.null(.tpl_of(rv$p, current()))
+    if (tpl) idle <- setdiff(idle, "ard")
     session$sendCustomMessage("rp-idle-tabs", as.list(idle))
-    # a listing has no ARD: its tab is shut, and says why
+    # a code SPEC listing has no ARD: its tab is shut, and says why
+    shut <- identical(k, "listing") && !tpl
     session$sendCustomMessage("rp-step-disable", list(
-      step = "ard", disabled = identical(k, "listing"),
-      title = if (identical(k, "listing")) t("A listing has no ARD") else ""))
+      step = "ard", disabled = shut,
+      title = if (shut) t("A listing has no ARD") else ""))
     # the ARD definition: a figure's only when it has its own analyses
     session$sendCustomMessage("rp-ard-def", !identical(k, "figure") ||
                                 identical(src$kind, "own"))

@@ -12,15 +12,15 @@ bs_home <- function(env = parent.frame()) {
 }
 
 # two reports with an ARD each, and a listing (no ARD program)
-bs_planner <- function() {
-  p <- add_output(new_planner(), "DM")
-  p <- add_output(p, "VS")
+bs_planner <- function(ids = c("DM", "VS")) {
+  p <- add_output(new_planner(), ids[1])
+  p <- add_output(p, ids[2])
   p <- add_output(p, "L1", type = "listing", at = "end")
   p$ard$datasets <- data.frame(dataset = "ADSL", path = "data/adam/adsl.rds")
   p$ard$populations <- data.frame(population_id = "SAF", dataset = "ADSL",
                                   where = "SAFFL == \"Y\"")
   p$ard$analyses <- data.frame(
-    output_id = c("DM", "VS"), analysis_id = c("AGE", "AGE"),
+    output_id = ids, analysis_id = c("AGE", "AGE"),
     method = "continuous", population_id = "SAF", by = "TRT01A",
     variables = "AGE")
   for (s in names(p$ard)) p$ard[[s]] <- .normalize_ard_sheet(p$ard[[s]], s)
@@ -59,16 +59,6 @@ test_that("left out of a run: a report's ARD and report programs; who reads them
   p <- bs_planner()
   expect_setequal(.batch_exclude(p, "DM"), c("DM.R", report_info(p, "DM")$program))
   expect_identical(.batch_exclude(p, "other.R"), "other.R")
-  # a report whose own code reads another report's rows of the study ARD
-  p <- set_step_code(p, "L1", "data",
-    "data <- readRDS(file.path(path_ard, \"ard.rds\")) |> filter(output_id == \"DM\")")
-  reads <- .batch_ard_reads(p)
-  expect_identical(reads$DM, "DM")
-  expect_identical(reads$L1, "DM")
-  need <- .batch_excluded_needs(p, "DM")
-  expect_identical(need$report, "L1")
-  expect_identical(need$needs, "DM")
-  expect_equal(nrow(.batch_excluded_needs(p, "VS")), 0L)
 })
 
 test_that("an official run of a named batch, or leaving reports out", {
@@ -117,6 +107,64 @@ test_that("an official run of a named batch, or leaving reports out", {
 
   # a name the study does not have
   expect_error(run_batch(o, "ard", batch = "Nope"), "No batch named")
+})
+
+test_that("the runner takes an output id as a program name, and --exclude too", {
+  skip_on_cran()
+  bs_home()
+  # DM's report has a program name of its own (t_dm), so the id is not a file name
+  p <- bs_planner(c("DM", "VS"))
+  p$sheets$report <- rbind(p$sheets$report, NA)
+  p$sheets$report[nrow(p$sheets$report), c("output_id", "program")] <- c("DM", "t_dm")
+  s <- create_study("BN", planner = p)
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  o <- open_study("BN")
+  progs <- function(b) basename(b$result$program)
+  expect_identical(report_info(o$planner, "DM")$program, "t_dm.R")
+
+  # an id: the ARD program (DM.R) and the report program (t_dm.R) of the report
+  b <- run_batch(o, c("ard", "tfl"), only = "DM")
+  expect_identical(progs(b), c("DM.R", "t_dm.R"))
+  Sys.sleep(1.1)
+  # a file name still works, with or without .R (an official run makes the
+  # ARD first, so the ARD program is named too)
+  expect_identical(progs(run_batch(o, c("ard", "tfl"), only = c("DM.R", "t_dm"))),
+                   c("DM.R", "t_dm.R"))
+  Sys.sleep(1.1)
+  expect_identical(progs(run_batch(o, "ard", only = "VS.R")), "VS.R")
+  Sys.sleep(1.1)
+  # the runner's own rule: Rscript programs/autoexec_all.R --exclude=<id>
+  old <- setwd(s$path)
+  out <- system2(file.path(R.home("bin"), "Rscript"),
+                 c("programs/autoexec_all.R", "--exclude=DM"),
+                 stdout = TRUE, stderr = TRUE)
+  setwd(old)
+  left <- grep("^Left out: ", out, value = TRUE)
+  expect_length(left, 1L)
+  expect_match(left, "DM.R", fixed = TRUE)
+  expect_match(left, "t_dm.R", fixed = TRUE)
+  Sys.sleep(1.1)
+  # a name that matches nothing (a typing slip) stops, naming it, in --only
+  # and in --exclude alike
+  b <- run_batch(o, "ard", only = "NOPE")
+  expect_false(b$ok)
+  expect_true(any(grepl("The name 'NOPE' stands for no output.", b$output, fixed = TRUE)))
+  Sys.sleep(1.1)
+  b <- run_batch(o, c("ard", "tfl"), exclude = "DMX")
+  expect_false(b$ok)
+  expect_true(any(grepl("The name 'DMX' stands for no output.", b$output, fixed = TRUE)))
+})
+
+test_that("a report with no program of its own does not break batch.R", {
+  skip_on_cran()
+  p <- bs_planner(c("DM", "VS"))
+  # VS's figure reads an ARD with no source, and it has no program
+  reads <- data.frame(report = c("VS", "ZZ"), reads = c(NA, NA), kind = "source",
+                      reason = c("no source", "no source"), stringsAsFactors = FALSE)
+  testthat::local_mocked_bindings(.batch_report_reads = function(x) reads)
+  code <- batch_code(p)
+  expect_no_error(parse(text = code))
+  expect_false(any(grepl("`NA`", code, fixed = TRUE)))
 })
 
 test_that("the batches column survives the SPEC round trip", {
@@ -354,7 +402,7 @@ test_that("two official runs of the sample compared after a data fix", {
   home <- withr_tempdir()
   withr::local_options(tflplanner.home = home)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  s <- suppressMessages(create_sample_study(run = FALSE))
+  s <- suppressMessages(sample_study_copy())
   b1 <- run_batch(s, c("ard", "tfl"), data = TRUE, only = "T-14-1-1")
   expect_true(file.exists(file.path(b1$batch, "code", "programs", "study_helpers.R")))
   expect_true(file.exists(file.path(b1$batch, "output", "tfl", "report_status.csv")))
@@ -384,4 +432,57 @@ test_that("the runs list of a study with no run yet is drawn (no run, no row)", 
     session$setInputs(nav = "outputs", target = "VS")
     expect_no_error(output$batches)
   })
+})
+
+test_that("the Runs tab has no preview buttons: an official run is the one way to run", {
+  html <- as.character(app_ui("en"))
+  expect_false(grepl("id=\"run_selected\"", html, fixed = TRUE))
+  expect_false(grepl("id=\"run_all\"", html, fixed = TRUE))
+  expect_false(grepl("Preview selected", html, fixed = TRUE))
+  expect_true(grepl("id=\"batch_run\"", html, fixed = TRUE))
+})
+
+test_that("only declared reads are needs: a quoted id in a report's code is not", {
+  p <- bs_planner()
+  # L1's code names DM's rows of the study ARD: not found out at the start
+  p <- set_step_code(p, "L1", "data",
+    "data <- readRDS(file.path(path_ard, \"ard.rds\")) |> filter(output_id == \"DM\")")
+  n <- .batch_report_needs(p)
+  # a report's own ARD (it has analyses); a listing with none reads none
+  expect_identical(n, list(DM = "DM", VS = "VS"))
+  expect_false("L1" %in% names(n))
+  # a selected L1 without DM is not refused
+  expect_identical(nrow(.batch_missing_needs(n, c("L1", "VS"))), 0L)
+})
+
+test_that("batch.R keeps the study's own analysis functions (key source) with the ARD's code", {
+  skip_on_cran()
+  bs_home()
+  p <- bs_planner()
+  # a fictional function file, named by the study key `source`
+  p$ard$study <- rbind(p$ard$study, data.frame(
+    key = "source", value = "programs/ard/functions/ard_mine.R"))
+  s <- create_study("BSRC", planner = p)
+  fdir <- file.path(s$path, "programs", "ard", "functions")
+  dir.create(fdir, recursive = TRUE, showWarnings = FALSE)
+  writeLines("ard_mine <- function(data, ...) NULL", file.path(fdir, "ard_mine.R"))
+  # read back from study.yml
+  o <- open_study("BSRC")
+  expect_identical(.split_bar(.study_value(o$planner$ard, "source", NA)),
+                   "programs/ard/functions/ard_mine.R")
+  support_of <- function(code) {
+    ex <- parse(text = code, keep.source = FALSE)
+    hit <- vapply(ex, function(e) is.call(e) && identical(e[[1L]], as.name("<-")) &&
+                    identical(e[[2L]], as.name(".batch_support")), NA)
+    eval(ex[[which(hit)]][[3L]], baseenv())
+  }
+  sup <- support_of(batch_code(o$planner, root = o$path))
+  expect_true("programs/ard/functions/ard_mine.R" %in% sup$ard)
+  expect_false("programs/ard/functions/ard_mine.R" %in% sup$tfl)
+  # the batch.R written in the study folder says the same
+  sup <- support_of(readLines(file.path(s$path, "programs", "batch.R")))
+  expect_true("programs/ard/functions/ard_mine.R" %in% sup$ard)
+  # without the key: nothing more
+  sup <- support_of(batch_code(bs_planner()))
+  expect_false(any(grepl("functions/", sup$ard, fixed = TRUE)))
 })

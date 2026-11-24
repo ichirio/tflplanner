@@ -10,7 +10,7 @@ run_saved_program <- function(s, id, dir = "tfl") {
 test_that("a pk_conc report's program makes its records and runs: the subjects on top, the ARD summary under them", {
   skip_on_cran()
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(sample_study_copy(home))
   # a small fictional ADPC: 12 safety-set subjects at 4 nominal times
   set.seed(1)
   adsl <- readRDS(file.path(s$path, "data/adam/adsl.rds"))

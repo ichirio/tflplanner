@@ -167,10 +167,18 @@ test_that("each input form draws its field", {
   h <- html(arg_field("c", "conditions", "rows<map<string,string|r>>", def = list(input = "table")))
   expect_identical(h, html(arg_field("c", "conditions", "rows<map<string,string|r>>")))
   # text: as the type says, the same as without a def
-  for (ty in c("string", "number", "r", "template", "list<string>")) {
+  for (ty in c("string", "number", "r", "template")) {
     expect_identical(html(arg_field("c", "a", ty, value = NULL, def = list(input = "text"))),
                      html(arg_field("c", "a", ty)), info = ty)
   }
+  # (a list of text typed: the same select of several, but a value not among
+  # the choices may be typed -- normalize_ard(drop_contexts = ); without a
+  # def, or with another form, it cannot)
+  h_text <- html(arg_field("c", "a", "list<string>", value = NULL, def = list(input = "text")))
+  h_plain <- html(arg_field("c", "a", "list<string>"))
+  expect_match(h_text, "\"create\":true", fixed = TRUE)
+  expect_false(grepl("\"create\"", h_plain, fixed = TRUE))
+  expect_identical(sub("\"create\":true,", "", h_text, fixed = TRUE), h_plain)
 })
 
 test_that("without a def a field is today's", {

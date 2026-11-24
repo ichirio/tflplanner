@@ -11,14 +11,12 @@
 # code".  The names the builder has used for the generator's parts:
 .plan_form_schema <- function(fn) spec_card_defs(fn)
 .plan_form_main <- function(fn) spec_card_defs(fn)$visible
-.plan_form_body <- function(cid, fn, it, choices = NULL, lang = "en", cols = NULL,
+.plan_form_body <- function(cid, fn, it, choices = NULL, lang = "en",
                             ard = list(), fixed_link = NULL) {
   spec_card(cid, fn, it, lang = lang,
-            ctx = list(choices = choices, cols = cols, ard = ard, fixed_link = fixed_link))
+            ctx = list(choices = choices, ard = ard, fixed_link = fixed_link))
 }
-.plan_form_read <- function(input, cid, fn, cols = NULL) {
-  spec_card_read(input, cid, fn, ctx = list(cols = cols))
-}
+.plan_form_read <- function(input, cid, fn) spec_card_read(input, cid, fn)
 .plan_form_args <- function(read, it, fn) spec_card_args(read, it, fn)
 
 # The cards of a form of their own (table_plan()'s roles, plan_cells()'
@@ -111,75 +109,6 @@
     return(as.integer(v))
   }
   v
-}
-
-# ---- plan_columns(widths = ): a number a column ---------------------------------
-
-# the columns a widths field offers: those the widths name, then the
-# columns printed (the row label column, .values -- every value column --
-# and the value columns by name)
-.widths_cols <- function(widths = NULL, choices = NULL) {
-  nm <- if (is.list(widths) || is.numeric(widths)) names(widths) else NULL
-  unique(c(nm[!is.na(nm) & nzchar(nm)], as.character(unname(choices))))
-}
-
-# A widths field: a small table, a column a row and its relative width (a
-# number; blank: rtfreporter's), its `R` switch where `r_ok`
-.widths_field <- function(id, arg, cols, value = NULL, label = NULL, from = "own", own = NULL,
-                          help = NULL, lang = "en", r_ok = TRUE) {
-  t <- function(x) tr(x, lang)
-  fid <- paste0(id, "__", arg)
-  is_r <- inherits(value, "tfl_r")
-  # (its R switch as every field's: where the type takes R, or the value is R)
-  r_ok <- r_ok || is_r
-  r_text <- if (is_r) as.character(unclass(value)) else ""
-  w <- if (!is_r && (is.list(value) || is.numeric(value))) value else list()
-  rows <- lapply(seq_along(cols), function(i) {
-    v <- if (!is.null(names(w)) && cols[[i]] %in% names(w)) w[[cols[[i]]]]
-    shiny::tags$tr(
-      shiny::tags$td(shiny::tags$code(cols[[i]])),
-      shiny::tags$td(shiny::tags$input(
-        type = "number", id = paste0(fid, "__", i), class = "form-control form-control-sm rp-number",
-        value = if (!is.null(v) && length(v) && !is.na(v[[1L]])) as.character(v[[1L]]),
-        step = "any", min = "0", inputmode = "decimal", style = "width: 7em;")))
-  })
-  shiny::div(
-    class = paste("rp-field rp-field-widths", if (is_r) "rp-field-r",
-                  if (length(w) || nzchar(r_text)) "rp-has-value"),
-    `data-arg` = arg, `data-field` = fid,
-    shiny::tags$label(class = "rp-field-label",
-                      builder_label(label, arg, "arg", lang),
-                      from_badge(from, lang, own = own), help_tip(help)),
-    shiny::div(class = "rp-field-row",
-               shiny::div(class = "rp-form-input",
-                          shiny::tags$table(class = "rp-widths",
-                                            shiny::tags$thead(shiny::tags$tr(
-                                              shiny::tags$th(t("Column")),
-                                              shiny::tags$th(t("Relative width")))),
-                                            shiny::tags$tbody(rows)),
-                          shiny::div(class = "small text-muted",
-                                     t("Blank: rtfreporter's width. .values: every value column."))),
-               if (r_ok) shiny::tags$input(type = "text", id = paste0(fid, "__r"),
-                                           class = "form-control form-control-sm rp-mono rp-r-input",
-                                           value = r_text, placeholder = "R", spellcheck = "false"),
-               if (r_ok) shiny::tags$label(class = "rp-r-toggle", title = t("As R"),
-                                 shiny::tags$input(type = "checkbox", id = paste0(fid, "__isr"),
-                                                   class = "rp-isr",
-                                                   checked = if (is_r) NA else NULL),
-                                 shiny::tags$span("R"))))
-}
-
-# ... read back: the columns given a number, in the field's order (a named
-# list, as the sheets give widths); none: NULL
-.widths_read <- function(input, fid, cols) {
-  out <- list()
-  for (i in seq_along(cols)) {
-    v <- .input_value(input, paste0(fid, "__", i))
-    if (is.null(v) || !length(v)) next
-    n <- suppressWarnings(as.numeric(v[[1L]]))
-    if (length(n) == 1L && !is.na(n)) out[[cols[[i]]]] <- n
-  }
-  if (length(out)) out else NULL
 }
 
 # two values the same (a number as a number: 30 and 30L; a check's FALSE

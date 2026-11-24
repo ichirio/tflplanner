@@ -189,12 +189,15 @@ page_answers <- function(p) {
   any(grepl("<title>tflplanner</title>", get_lines(app_url(p), wait = 15), fixed = TRUE))
 }
 # what a tflplanner app says of itself (R/app.R .serve_health(); an app
-# older than this launcher says nothing): list(version, pid), or NULL
+# older than this launcher says nothing): list(version, xy, pid), or NULL;
+# xy is the R x.y it runs in (NA from an app that does not say)
 health <- function(p) {
   h <- get_lines(paste0(app_url(p), "tflplanner-health/health.txt"))
   v <- sub("^tflplanner ", "", grep("^tflplanner ", h, value = TRUE))
   pid <- suppressWarnings(as.integer(sub("^pid ", "", grep("^pid ", h, value = TRUE))))
-  if (length(v)) list(version = v[[1L]], pid = if (length(pid)) pid[[1L]] else NA_integer_)
+  r <- sub("^r ", "", grep("^r ", h, value = TRUE))
+  if (length(v)) list(version = v[[1L]], xy = if (length(r)) r[[1L]] else NA_character_,
+                      pid = if (length(pid)) pid[[1L]] else NA_integer_)
 }
 # Can an app listen on the port (127.0.0.1, as shiny does)?
 port_free <- function(p) {
@@ -258,11 +261,17 @@ next_port <- function() {
 
 installed <- tryCatch(utils::packageDescription("tflplanner")$Version,
                       error = function(e) NA_character_)
+# the R x.y this launcher runs in; an app in another x.y is another version
+# (two icons, one per x.y, share the port)
+my_xy <- paste0(R.version$major, ".", sub("\\..*$", "", R.version$minor))
+same_build <- function(h) {
+  identical(h$version, installed) && (is.na(h$xy) || identical(h$xy, my_xy))
+}
 if (!port_free(port)) {
   h <- health(port)
   answers <- page_answers(port)
   pid <- if (!is.null(h) && !is.na(h$pid)) h$pid else port_owner(port)
-  if (!is.null(h) && identical(h$version, installed) && answers) {
+  if (!is.null(h) && same_build(h) && answers) {
     # 1. this version, answering: open it (the usual double click)
     say("already running (same version ", installed, "): ", app_url(port))
     utils::browseURL(app_url(port))
@@ -277,12 +286,13 @@ if (!port_free(port)) {
     # 2. a launcher's tflplanner, another version or not answering: stop
     # it on yes
     say("tflplanner on port ", port, ": ",
-        if (is.null(h)) "an older version (no health)" else paste("version", h$version),
+        if (is.null(h)) "an older version (no health)" else
+          paste("version", h$version, if (!is.na(h$xy)) paste0("(R ", h$xy, ")")),
         if (answers) ", answering" else ", not answering", ", process ", pid,
         "; installed ", installed)
     runs <- live_runs()
     text <- paste(c(
-      if (!answers && !is.null(h) && identical(h$version, installed))
+      if (!answers && !is.null(h) && same_build(h))
         msg("tflplanner is running but does not answer. Stop it and start again?",
             "tflplanner が動いていますが応答しません。止めて起動し直しますか？") else
         msg("An older tflplanner is running. Stop it and start again?",

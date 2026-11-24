@@ -21,11 +21,13 @@
     } else {
       design <- fig_design(p, id)
       if (!is.null(design)) {
-        key <- list(design, sz, id)
+        s <- rv$study
+        s$planner <- p
+        # (its ARD made again first when outdated, as the designer's drawing)
+        pa <- tryCatch(.fig_preview_ard(s, id, design), error = function(e) NULL)
+        key <- list(design, sz, id, pa$print)
         if (!identical(page_fig_memo$key, key)) {
-          s <- rv$study
-          s$planner <- p
-          r <- tryCatch(preview_figure(s, id, design, max_px = 1000), error = function(e) NULL)
+          r <- tryCatch(.preview_figure(s, id, design, max_px = 1000, ard = pa), error = function(e) NULL)
           page_fig_memo$key <- key
           page_fig_memo$png <- if (!is.null(r$png) && file.exists(r$png))
             readBin(r$png, "raw", file.size(r$png))
