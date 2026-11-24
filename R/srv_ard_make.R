@@ -971,7 +971,7 @@
       if (length(top)) cols2(top),
       if (length(rest)) shiny::tags$details(
         class = "mb-2", open = if (!length(top)) NA,
-        shiny::tags$summary(class = "small", sprintf(t("%d more, at their defaults"), length(rest))),
+        shiny::tags$summary(class = "small", sprintf("%s (%d)", t("More settings"), length(rest))),
         cols2(rest)),
       shiny::tags$details(
         class = "mb-2", open = if (nzchar(other)) NA,

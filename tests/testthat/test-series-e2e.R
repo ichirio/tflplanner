@@ -1,4 +1,7 @@
-# The seven series templates of tflspec_v1 (tflspec#823, #824) end to end,
+# The series templates of tflspec_v1 (tflspec#823, #824) end to end -- the
+# basic ones (tflspec_summary, tflspec_hierarchy, tflspec_shift,
+# tflspec_listing) and the figures with no basic one yet (forest_hr,
+# km_simple); the purpose templates left the series (canon 2026-11-24) --
 # as the app takes them: a study of fictional ADaM data (tflspec's), a
 # report added as the Add dialog adds it (`template: {name: tflspec_v1/<t>,
 # args: ...}`), its cards' params and their inputs, its ARD program (as the
@@ -14,8 +17,8 @@
 #   in the report's place, so the program and the ARD are the app's from there;
 # - an ARD program tflspec cannot write or run yet.
 
-series_templates <- c("ae_soc_pt", "demog", "forest_hr", "km_simple", "lab_tox_shift",
-                      "listing", "orr_subgroup")
+series_templates <- c("forest_hr", "km_simple", "tflspec_hierarchy", "tflspec_listing",
+                      "tflspec_shift", "tflspec_summary")
 
 # tflspec with the series templates (not on its `next` before tflspec#824)
 series_skip <- function() {
@@ -28,25 +31,19 @@ series_skip <- function() {
   have <- need %in% getNamespaceExports("tflspec")
   skip_if_not(all(have), paste0("this tflspec has no ", paste(need[!have], collapse = ", "),
                                 " (tflspec#824)"))
-  ok <- tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/demog")),
+  ok <- tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/tflspec_summary")),
                  error = function(e) FALSE)
-  skip_if_not(ok, "this tflspec has no series templates (tflspec#824)")
+  skip_if_not(ok, "this tflspec has no basic series templates (tflspec#824)")
 }
 
-# A study of tflspec's fictional ADaM data in the home `home`: ADLB with
-# the grade columns lab_tox_shift reads (by direction, from its ATOXGR /
-# BTOXGR); the template `t` copied into it, as the Add dialog copies it;
-# the series' efficacy set (FAS) the study's ITT, in its copy of the series
+# A study of tflspec's fictional ADaM data in the home `home`; the
+# template `t` copied into it, as the Add dialog copies it; the series'
+# efficacy set (FAS) the study's ITT, in its copy of the series
 series_study <- function(home, id, t) {
   d <- file.path(studies_root(home), id)
   dir.create(file.path(d, "adam"), recursive = TRUE)
   for (x in c("adsl", "adae", "adtte", "adlb", "adrs")) {
-    df <- getExportedValue("tflspec", x)
-    if (identical(x, "adlb")) {
-      df$ATOXGRL <- df$ATOXGRH <- df$ATOXGR
-      df$BTOXGRL <- df$BTOXGRH <- df$BTOXGR
-    }
-    saveRDS(df, file.path(d, "adam", paste0(x, ".rds")))
+    saveRDS(getExportedValue("tflspec", x), file.path(d, "adam", paste0(x, ".rds")))
   }
   invisible(tflspec::tfl_ai_study_init(d, adam = "adam", study_id = id))
   tflspec::tfl_copy_templates(d, paste0("tflspec_v1/", t))
@@ -54,8 +51,10 @@ series_study <- function(home, id, t) {
   suppressMessages(open_study(d, home = home))
 }
 
-# The input a def's card gets (.tpl_type()), from the def alone
-series_card_type <- function(input, type, choices = NULL) {
+# The input a def's card gets (.tpl_type()), from the def alone (the
+# analysis set, `population`, its own field)
+series_card_type <- function(name, input, type, choices = NULL) {
+  if (identical(name, "population")) return("population")
   if (identical(input, "table")) return("table")
   # a condition, or any R: the R field
   if (identical(input, "condition") || identical(type, "r")) return("r")
@@ -78,8 +77,11 @@ series_file <- function(p, id) paste(p$spec$text[[p$spec$where[[id]]]], collapse
 # texts its programs have (a changed argument's); the checks made, and
 # what could not be checked yet (the skip's message).  `gap`: a known
 # tflspec gap -- a missing text or id skips with that reason before its
-# message (remove when tflspec is fixed).
-series_e2e <- function(t, kind, args, ids, in_code = character(), home, gap = NULL) {
+# message (remove when tflspec is fixed).  `ard = FALSE`: a template with
+# no analysis step (a listing counts nothing, canon 2026-11-15), the
+# report and its cards only.
+series_e2e <- function(t, kind, args, ids, in_code = character(), home, gap = NULL,
+                       ard = TRUE) {
   name <- paste0("tflspec_v1/", t)
   later <- character()
   s <- series_study(home, paste0("SER-", toupper(gsub("_", "", t))), t)
@@ -109,9 +111,14 @@ series_e2e <- function(t, kind, args, ids, in_code = character(), home, gap = NU
   } else {
     expect_identical(names(prm), defs$name)
     got <- vapply(prm, function(x) .tpl_type(x), "")
-    want <- stats::setNames(mapply(series_card_type, defs$input, defs$type, defs$choices), defs$name)
+    want <- stats::setNames(mapply(series_card_type, defs$name, defs$input, defs$type, defs$choices),
+                            defs$name)
     expect_identical(got, want)
     expect_true(all(got[defs$input == "table"] == "table"))
+  }
+  if (!ard) {
+    if (length(later)) skip(paste(c(paste0(t, ":"), later), collapse = "\n  "))
+    return(invisible(NULL))
   }
 
   # 4. the ARD program.  The app's path: the report's analyses in the
@@ -204,17 +211,18 @@ test_that("the series templates are all there, each with its definitions", {
   }
 })
 
-test_that("ae_soc_pt: a template report to its ARD (BIGN, AE_ANY, AE_L1, AE_L2)", {
+test_that("tflspec_hierarchy: a template report to its ARD (BIGN, ANY, L1, L2)", {
   series_skip()
   home <- local_home()
-  series_e2e("ae_soc_pt", "table", list(by = "TRT01A", min_pct = 5),
-             ids = c("BIGN", "AE_ANY", "AE_L1", "AE_L2"), in_code = "keep_min_pct(5", home = home)
+  series_e2e("tflspec_hierarchy", "table",
+             list(from = "ADAE", by = "TRT01A", hierarchy = c("AEBODSYS", "AEDECOD"), min_pct = 5),
+             ids = c("BIGN", "ANY", "L1", "L2"), in_code = "keep_min_pct(5", home = home)
 })
 
-test_that("demog: a template report to its ARD (BIGN and a variable each)", {
+test_that("tflspec_summary: a template report to its ARD (BIGN and a variable each)", {
   series_skip()
   home <- local_home()
-  series_e2e("demog", "table",
+  series_e2e("tflspec_summary", "table",
              list(by = "TRT01A", continuous = "AGE", categorical = c("SEX", "RACE"),
                   analysis_ids = list(AGE = "AGE_STATS")),
              ids = c("BIGN", "AGE_STATS", "SEX", "RACE"), in_code = "AGE_STATS", home = home)
@@ -244,31 +252,20 @@ test_that("km_simple: a template report to its ARD (BIGN), the unit days", {
              gap = series_gap)
 })
 
-test_that("lab_tox_shift: a template report to its ARD (BIGN, ALT_HIGH, HGB_LOW)", {
+test_that("tflspec_shift: a template report to its ARD (BIGN, an id a parameter)", {
   series_skip()
   home <- local_home()
-  series_e2e("lab_tox_shift", "table",
+  series_e2e("tflspec_shift", "table",
              list(by = "TRT01A", formats = list(n = 0, p = "xx.xx%"),
-                  conditions = list(list(tox_dir = "High", param = "Alanine Aminotransferase (U/L)"),
-                                    list(tox_dir = "Low", param = "Hemoglobin (g/L)"))),
-             ids = c("BIGN", "ALT_HIGH", "HGB_LOW"), in_code = "Hemoglobin (g/L)", home = home)
+                  analysis_ids = list(ALT = "ALT_SHIFT")),
+             ids = c("BIGN", "ALT_SHIFT", "HGB"), in_code = "ALT_SHIFT", home = home)
 })
 
-test_that("listing: a template report to its ARD (BIGN, the total N)", {
+test_that("tflspec_listing: a template report and its cards (a listing has no ARD)", {
   series_skip()
   home <- local_home()
-  series_e2e("listing", "listing", list(from = "ADAE", columns = c("USUBJID", "AEDECOD"), by = "TRT01A"),
-             ids = "BIGN", in_code = "ard_total_n", home = home)
-})
-
-test_that("orr_subgroup: a template report to its ARD (BIGN, ORR), a subgroup row", {
-  series_skip()
-  skip_if_not_installed("cardx")
-  home <- local_home()
-  series_e2e("orr_subgroup", "table",
-             list(by = "TRT01A", category = "AVALC", responder = "CR", conf_level = 0.9,
-                  subgroup_vars = "SEX",
-                  conditions = list(list(subgroup = "SEX", subgroup_lvl = "F",
-                                         where = tflspec::tfl_r("SEX == \"F\"")))),
-             ids = c("BIGN", "ORR"), in_code = "conf.level = 0.9", home = home)
+  series_e2e("tflspec_listing", "listing",
+             list(from = "ADAE", columns = list(list(vars = "USUBJID", label = "Subject"),
+                                                list(vars = "AEDECOD"))),
+             ids = character(), home = home, ard = FALSE)
 })

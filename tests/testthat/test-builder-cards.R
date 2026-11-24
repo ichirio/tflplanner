@@ -179,8 +179,8 @@ test_that("a group puts its fields on one row; the folded arguments are the rest
                              "inherit.aes", "width", "orientation"),
                  args = list(na.rm = list(type = "logical", description = "Drop missing values?")))
   h <- html(arg_more("c1", "geom_errorbar", used = "mapping", schema = schema))
-  expect_match(h, "Other arguments", fixed = TRUE)
-  expect_match(h, "Other arguments (6)", fixed = TRUE)
+  expect_match(h, "More settings", fixed = TRUE)
+  expect_match(h, "More settings (6)", fixed = TRUE)
   expect_match(h, 'id="c1__more_q"', fixed = TRUE)
   for (a in c("data", "inherit.aes", "na.rm", "orientation", "show.legend", "stat")) {
     expect_match(h, paste0('data-arg="', a, '"'), fixed = TRUE, info = a)
@@ -552,7 +552,7 @@ test_that("the ARD preview, the form as drawn and its other arguments leave the 
       bf <- session$userData$bform
       n <- bf$n
       b <- function(x) paste0("b", n, "_", x)
-      # the form as the page draws it: the cards (their "Other arguments"
+      # the form as the page draws it: the cards (their "More settings"
       # among them: drawn folded, there all the same), the column header,
       # the decimals ... (some drawn once the form's first values come)
       drawn <- function() {

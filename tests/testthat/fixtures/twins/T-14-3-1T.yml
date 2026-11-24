@@ -1,19 +1,43 @@
 id: T-14-3-1T
 kind: table
-label: TEAEs by SOC / PT (a template SPEC, tflspec_v1/ae_soc_pt; the twin of T-14-3-1C)
+label: TEAEs by SOC / PT (a template SPEC, tflspec_v1/tflspec_hierarchy; the twin of T-14-3-1C)
 common:
   population: SAF
 codelists:
   TRT01A:
     - value: Drug X
     - value: Control
+data:
+  - id: rec_sub
+    where: !r TRTEMFL == "Y"
 template:
-  name: tflspec_v1/ae_soc_pt
+  name: tflspec_v1/tflspec_hierarchy
+  data:
+    from: ADAE
   analysis:
     by:
       - TRT01A
+    hierarchy:
+      - AEBODSYS
+      - AEDECOD
+    analysis_ids:
+      ANY: AE_ANY
+      L1: AE_L1
+      L2: AE_L2
   content:
+    any_row_label: Any TEAE
+    heading:
+      - System Organ Class
+      - '   Preferred Term'
     max_rows: 22
+content:
+  - plan_sort:
+      keys:
+        - .overall
+        - group1
+        - .depth
+        - -n
+        - label
 page:
   footer:
     '1':
@@ -25,4 +49,3 @@ page:
     OUTPUT_POPULATION: Safety Analysis Set
 style: compact
 note: TEAE by SOC / PT, frequency descending
-

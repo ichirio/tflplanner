@@ -37,13 +37,18 @@
   # an argument's heading: "meaning (name)", its doc in the (i)
   # (.tpl_arg_heading(): .tpl_arg_labels; the doc itself when it has none)
   tpl_label <- function(prm, key = NULL) {
+    if (identical(prm$name, "population") && isTRUE(prm$hidden)) {
+      prm$doc <- "the analysis set's id (SAF)"
+      prm$doc_ja <- NULL
+    }
     doc <- prm$doc %||% ""
-    if (identical(prm$name, "population") && isTRUE(prm$hidden)) doc <- "the analysis set's id (SAF)"
     short <- if (doc %in% names(.tpl_doc_labels)) .tpl_doc_labels[[doc]] else .tpl_arg_labels[prm$name]
     lab <- .tpl_arg_heading(prm, t)
+    # (the help: tflspec's Japanese when it gives one, .tpl_doc_shown())
+    help <- .tpl_doc_shown(prm, t, lang)
     shiny::span(lab, if (isTRUE(prm$required)) shiny::span(class = "text-danger", " *"),
-                if (!is.null(key)) help_tip(.tpl_info_text(if (nzchar(doc)) doc else "", key, t)) else
-                  if (!is.na(short) && nzchar(doc)) help_tip(t(doc)))
+                if (!is.null(key)) help_tip(.tpl_info_text(help, key, t)) else
+                  if (!is.na(short) && nzchar(help)) help_tip(help))
   }
   # the input of an argument, by its type (.tpl_type(): tflspec's
   # tfl_param(type = ), guessed only when it declares none).  `params`,
@@ -1117,7 +1122,7 @@
         if (length(low)) shiny::tags$details(
           class = "mt-1", open = if (isTRUE(shiny::isolate(input[[key]]))) NA,
           ontoggle = sprintf("Shiny.setInputValue('%s', this.open)", key),
-          shiny::tags$summary(class = "small", sprintf(t("Arguments with defaults (%d)"), length(low))),
+          shiny::tags$summary(class = "small", sprintf("%s (%d)", t("More settings"), length(low))),
           shiny::div(class = "mt-2", lapply(low, row, upper = FALSE))))
     }
     missing_alert <- if (length(miss)) shiny::div(
