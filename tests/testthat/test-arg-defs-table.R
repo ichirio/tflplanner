@@ -3,7 +3,9 @@
 # offers its choices, shows the fixed rows read only, and reads back as the
 # type says; without a def the field and its reading are today's.
 
-html <- function(...) as.character(htmltools::tagList(...))
+# (the markup's indentation dropped: a tag on a line of its own, so the
+# expectations below name the tags one after another)
+html <- function(...) gsub("\n[ \t]+", "\n", as.character(htmltools::tagList(...)))
 
 # the state a drawn table field carries (data-state), as its input sends it
 tbl_state_of <- function(h) {
@@ -60,7 +62,7 @@ test_that("a map<column,r> (derive): a new column's name = R, the columns offere
                "c__derive__isr", fixed = TRUE)
 })
 
-test_that("a map<column,list<level>> (levels): a column picked, its values one a line", {
+test_that("a map<column,list<level>> (levels): a column picked, its values a select of several", {
   d <- list(input = "table", choices = "vars(from_args(data))")
   h <- html(arg_field("c", "levels", "map<column,list<level>>", def = d, ctx = ctx,
                       value = list(SEX = c("M", "F"))))
@@ -68,8 +70,10 @@ test_that("a map<column,list<level>> (levels): a column picked, its values one a
   expect_match(h, "<th>Values</th>", fixed = TRUE)
   expect_match(h, "<select class=\"form-select form-select-sm rp-tbl-cell\">", fixed = TRUE)
   expect_match(h, "<option value=\"SEX\" selected>SEX</option>", fixed = TRUE)
-  expect_match(h, "rp-tbl-list\" rows=\"2\" placeholder=\"One per line\" spellcheck=\"false\">M\nF</textarea>",
+  expect_match(h, "<select class=\"form-select form-select-sm rp-tbl-cell rp-tbl-multi\" multiple data-placeholder=\"Add a value\">",
                fixed = TRUE)
+  expect_match(h, "<option value=\"M\" selected>M</option>\n<option value=\"F\" selected>F</option>", fixed = TRUE)
+  expect_identical(jsonlite::fromJSON(tbl_state_of(h))$rows[1L, ], c("SEX", "M\nF"))
   # (free: the key typed, the columns offered)
   h <- html(arg_field("c", "levels", "map<column,list<level>>", def = c(d, free = TRUE), ctx = ctx))
   expect_false(grepl("<select class=\"form-select form-select-sm rp-tbl-cell\"", h, fixed = TRUE))
@@ -99,10 +103,125 @@ test_that("a map<string, list<column>|string> (stack): the key typed, the value 
   h <- html(arg_field("c", "stack", "map<string, list<column>|string>", def = list(input = "table"),
                       value = list(subgroup = c("SEX", "AGEGR1"))))
   expect_match(h, "<th>Key</th>", fixed = TRUE)
+  expect_match(h, "<th>Values</th>", fixed = TRUE)
   expect_match(h, "value=\"subgroup\"", fixed = TRUE)
-  expect_match(h, ">SEX\nAGEGR1</textarea>", fixed = TRUE)
-  # (no choices: no Add a value)
-  expect_false(grepl("rp-tbl-add\"", h, fixed = TRUE))
+  expect_match(h, "<option value=\"SEX\" selected>SEX</option>\n<option value=\"AGEGR1\" selected>AGEGR1</option>",
+               fixed = TRUE)
+  # (selectize's script and style come with it)
+  deps <- htmltools::findDependencies(arg_field("c", "stack", "map<string, list<column>|string>",
+                                                def = list(input = "table")))
+  expect_true("selectize" %in% vapply(deps, function(x) x$name, ""))
+  # the choices offered to the value (a key that is a name, a value of
+  # columns), a value they lack kept, in its order; the key typed
+  h <- html(arg_field("c", "stack", "map<string, list<column>|string>", def = list(input = "table"),
+                      choices = c("ALL", "SEX", "AGEGR1", "group2"),
+                      value = list(subgroup = c("AGEGR1 * SEX", "ALL"))))
+  expect_false(grepl("<select class=\"form-select form-select-sm rp-tbl-cell\">", h, fixed = TRUE))
+  expect_match(h, paste0("<option value=\"AGEGR1 * SEX\" selected>AGEGR1 * SEX</option>\n",
+                         "<option value=\"ALL\" selected>ALL</option>\n",
+                         "<option value=\"SEX\">SEX</option>"), fixed = TRUE)
+  expect_match(h, "<option value=\"group2\">group2</option>", fixed = TRUE)
+  # (the def's `columns`, as tfl_arg_defs() gives them: the headings in the
+  # language, and `new_row` a new row's values)
+  cols <- list(key = list(label_en = "Name", label_ja = "名前"),
+               value = list(label_en = "Layers", label_ja = "レイヤー"))
+  d <- list(input = "table", columns = cols, new_row = list(key = "subgroup"))
+  h <- html(arg_field("c", "stack", "map<string, list<column>|string>", def = d))
+  expect_match(h, "<th>Name</th>
+<th>Layers</th>", fixed = TRUE)
+  tpl <- regmatches(h, regexpr("<template class=\"rp-tbl-tpl\">.*?</template>", h))
+  expect_match(tpl, "value=\"subgroup\"", fixed = TRUE)
+  expect_identical(.tbl_spec("map<string, list<column>|string>", def = d)$new, c("subgroup", ""))
+  hj <- html(arg_field("c", "stack", "map<string, list<column>|string>", lang = "ja", def = d))
+  expect_match(hj, "<th>名前</th>
+<th>レイヤー</th>", fixed = TRUE)
+  # (no Japanese label: the English one through the app's texts, as it is in en)
+  d2 <- d
+  d2$columns$key$label_ja <- NA_character_
+  expect_identical(.tbl_spec("map<string, list<column>|string>", def = d2, lang = "ja")$heads[[1L]],
+                   tr("Name", "ja"))
+  # (no `columns` and no `new_row`: the generic headings, a blank new row)
+  sp <- .tbl_spec("map<string, list<column>|string>", def = list(input = "table"))
+  expect_identical(sp$heads, c("Key", "Values"))
+  expect_identical(sp$new, c("", ""))
+  # (a column with a label of one side only: the other keeps its generic heading)
+  sp <- .tbl_spec("map<string,string>", def = list(columns = list(value = list(label_en = "Format"))))
+  expect_identical(sp$heads, c("Key", "Format"))
+  # (the labels of a map whose value is R: its own label, not "R")
+  sp <- .tbl_spec("map<column,r>", def = list(columns = list(key = list(label_en = "Variable"),
+                                                              value = list(label_en = "Value labels"))))
+  expect_identical(sp$heads, c("Variable", "Value labels"))
+  # (a `new_row` naming a value too)
+  sp <- .tbl_spec("map<string,string>", def = list(new_row = list(key = "a", value = "b")))
+  expect_identical(sp$new, c("a", "b"))
+})
+
+test_that("a map of maps: the headings from the outer and the inner `columns`, the outer key's new row", {
+  lab <- function(en, ja) list(label_en = en, label_ja = ja)
+  cols <- list(key = lab("Nested variable", "入れ子の変数"),
+               value = c(lab("Parent", "親"),
+                         list(columns = list(key = lab("Variable", "変数"),
+                                             value = lab("Value", "値")))))
+  d <- list(input = "table", columns = cols, new_row = list(key = "AGE"))
+  ty <- "map<column,map<column,string>>"
+  sp <- .tbl_spec(ty, def = d)
+  expect_identical(sp$shape, "map2")
+  expect_identical(sp$heads, c("Nested variable", "Variable", "Value"))
+  expect_identical(sp$new, c("AGE", "", ""))
+  sp <- .tbl_spec(ty, def = d, lang = "ja")
+  expect_identical(sp$heads, c("入れ子の変数", "変数", "値"))
+  # (the outer value's own label is not a column here: three columns, three headings)
+  expect_length(sp$heads, 3L)
+  # (no `columns`: the generic headings)
+  expect_identical(.tbl_spec(ty, def = list(input = "table"))$heads, c("Column", "Second column", "Value"))
+  # (the inner map only partly labelled)
+  sp <- .tbl_spec(ty, def = list(columns = list(key = lab("Nested variable", "x"),
+                                                value = list(columns = list(value = lab("Level", "y"))))))
+  expect_identical(sp$heads, c("Nested variable", "Second column", "Level"))
+})
+
+test_that("a rows<...> table's headings: the columns' labels by field name, else the field name", {
+  cd <- list(vars = list(label_en = "Variables", label_ja = "変数", type = "list<column>"),
+             label = list(label_en = "Label", label_ja = "ラベル", type = "string"),
+             width = list(type = "number"))
+  ty <- "rows<vars,label,width>"
+  sp <- .tbl_spec(ty, def = list(input = "table", columns = cd))
+  expect_identical(sp$cols, c("vars", "label", "width"))
+  expect_identical(sp$heads, c("Variables", "Label", "width"))
+  sp <- .tbl_spec(ty, def = list(input = "table", columns = cd), lang = "ja")
+  expect_identical(sp$heads, c("変数", "ラベル", "width"))
+  # (the label drawn as it is; a field with none keeps its name, monospace)
+  h <- html(arg_field("c", "a", ty, lang = "ja", def = list(input = "table", columns = cd)))
+  expect_match(h, "<th>変数</th>", fixed = TRUE)
+  expect_match(h, "<th class=\"rp-mono\">width</th>", fixed = TRUE)
+  # (no labels at all: the field names, as before)
+  expect_identical(.tbl_spec("rows<a, b>", def = list(input = "table"))$heads, c("a", "b"))
+})
+
+test_that("a rows<...> table's new row from the def's `new_row`", {
+  sp <- .tbl_spec("rows<a, b>", def = list(input = "table", new_row = list(b = "x")))
+  expect_identical(sp$new, c("", "x"))
+  h <- html(arg_field("c", "r", "rows<a, b>", def = list(input = "table", new_row = list(b = "x"))))
+  tpl <- regmatches(h, regexpr("<template class=\"rp-tbl-tpl\">.*?</template>", h))
+  expect_match(tpl, "value=\"x\"", fixed = TRUE)
+  expect_identical(.tbl_spec("rows<a, b>", def = list(input = "table"))$new, c("", ""))
+})
+
+test_that("a list cell reads back a list a row, one value kept a text (stack, combine)", {
+  ty <- "map<string, list<column>|string>"
+  v <- list(subgroup = c("ALL", "SEX", "AGEGR1", "AGEGR1 * SEX"), sub2 = "group2, group3")
+  expect_identical(round_trip(ty, list(input = "table"), v), v)
+  v <- list(worst_gr = c("ATOXGRL", "ATOXGRH"), base_gr = c("BTOXGRL", "BTOXGRH"))
+  expect_identical(round_trip("map<string, list<column>>", list(input = "table"), v), v)
+  # (a list read from the YAML, a list of texts: the same values)
+  expect_identical(round_trip(ty, list(input = "table"), list(subgroup = list("ALL", "SEX"))),
+                   list(subgroup = c("ALL", "SEX")))
+  # the page's state: one value a line, a comma kept in its value
+  st <- list(shape = "map", cols = list("key", "value"), kinds = list("text", "list"),
+             rows = list(list("subgroup", "ALL\nAGEGR1 * SEX"), list("sub2", "group2, group3"),
+                         list("", "SEX"), list("empty", "")))
+  expect_identical(.tbl_read(as.character(jsonlite::toJSON(st, auto_unbox = TRUE))),
+                   list(subgroup = c("ALL", "AGEGR1 * SEX"), sub2 = "group2, group3"))
 })
 
 test_that("a rows<map<string,string|r>> (conditions): the params as columns, where as R, the ALL row read only", {
@@ -227,9 +346,9 @@ test_that("a rows<map<string,list<column>>> (ards): each column's own def, its c
                       value = list(list(by = "TRT01A", variables = c("AGE", "SEX")))))
   expect_match(h, "<th class=\"rp-mono\">by</th>", fixed = TRUE)
   expect_match(h, "<th class=\"rp-mono\">variables</th>", fixed = TRUE)
-  expect_match(h, ">AGE\nSEX</textarea>", fixed = TRUE)
-  expect_match(h, "rp-tbl-add", fixed = TRUE)
-  expect_match(h, "+ Add a value", fixed = TRUE)
+  expect_match(h, "<option value=\"AGE\" selected>AGE</option>\n<option value=\"SEX\" selected>SEX</option>",
+               fixed = TRUE)
+  expect_match(h, "rp-tbl-multi", fixed = TRUE)
   expect_match(h, "<option value=\"TRT01A\">TRT01A</option>", fixed = TRUE)
 })
 
@@ -241,7 +360,8 @@ test_that("the table's words in Japanese", {
   h <- html(arg_field("c", "ards", "rows<map<string,list<column>>>", lang = "ja",
                       def = list(input = "table", columns = list(by = list(type = "list<column>"))),
                       fixed_rows = list(list(by = "X"))))
-  expect_match(h, "1 行に 1 つ", fixed = TRUE)
+  # (a list column is a select of several: its placeholder in the language)
+  expect_match(h, sprintf("data-placeholder=\"%s\"", tr("Add a value", "ja")), fixed = TRUE)
   expect_match(h, "テンプレートから", fixed = TRUE)
 })
 

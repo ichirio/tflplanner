@@ -165,6 +165,11 @@ details.ard-fn[open] .ard-fn-closed, details.ard-fn:not([open]) .ard-fn-open { d
 .rp-split.rp-lay-one.rp-show-def > :nth-child(2),
 .rp-split.rp-lay-one.rp-show-out > :nth-child(1) { display: none !important; }
 .rhandsontable.html-widget { overflow: hidden; }
+/* step 1's Result: the analysis data's first rows, a cell on one line;
+   the pane scrolls down, the table sideways */
+.rp-adata-preview { overflow-x: auto; }
+.rp-adata-preview table { margin-bottom: 0; }
+.rp-adata-preview th, .rp-adata-preview td { white-space: nowrap; }
 .rp-grip { height: 8px; margin: 2px 0 4px; cursor: ns-resize;
   border-radius: 4px; background: var(--bs-tertiary-bg, #eef0f3);
   background-image: linear-gradient(90deg, transparent 45%, #9ca3af 45%,
@@ -398,16 +403,16 @@ app_ui <- function(lang = "en") {
                  " ", t(.report_state_words[[k]]))))))
 
   # -- the steps of making a report ----------------------------------------
-  # Analysis data (#514): which records -- a code table's analysis data
+  # The data step (#514): which records -- a code table's analysis data
   # (its form, SPEC | Result beside it), a figure's data steps, a template
   # report's "data" arguments (.tpl_arg_section).  A step's own R program is
-  # the ARD step's (its switch is there).
+  # the analysis step's (its switch is there).
   step_data <- shiny::div(
     class = "mt-2",
     shiny::conditionalPanel(
       "output.data_is_code == 'yes'",
       shiny::p(class = "alert alert-info py-1 small",
-               sprintf(t("This report's step %s is its own R program: it is on the ARD tab."), .step_no("ard")))),
+               sprintf(t("This report's step %s is its own R program: it is on the analysis tab."), .step_no("ard")))),
     shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_card_data")),
     shiny::div(
       class = "rp-code-only",
@@ -428,12 +433,12 @@ app_ui <- function(lang = "en") {
           shiny::conditionalPanel(
             "output.content_is_code == 'yes'",
             shiny::p(class = "text-muted small",
-                     t("This listing is its own R program: it reads its data in the Content step.")))),
+                     t("This listing is its own R program: it reads its data in the content step.")))),
         # a figure's own code: no data step of the definition
         shiny::conditionalPanel(
           "output.report_kind == 'figure' && output.content_is_code == 'yes'",
           shiny::p(class = "text-muted small",
-                   t("This figure is its own R program: it reads its data in the Content step."))),
+                   t("This figure is its own R program: it reads its data in the content step."))),
         shiny::conditionalPanel(
           "output.report_kind == 'table'",
           shiny::div(
@@ -452,8 +457,16 @@ app_ui <- function(lang = "en") {
                   shiny::div(
                     class = "pt-2",
                     shiny::p(class = "small text-muted mb-1",
-                             t("The rows of analysis_data this report reads, every column, as in the workbook: what the form does not show is written here. A new data's row comes when it is saved.")),
+                             t("The rows of analysis_data this report reads, every column, as in the workbook: what the form does not show is written here. A new data's row comes at its first edit.")),
                     rhandsontable::rHandsontableOutput("hot_adata_report"))),
+                # the program's lines that make the data (the form as it is)
+                bslib::nav_panel(
+                  t("Code"), value = "code",
+                  shiny::div(
+                    class = "pt-2",
+                    shiny::p(class = "small text-muted mb-1",
+                             t("The R the report's program makes this analysis data with (the form as it is now, not saved yet): the datasets and analysis sets it reads, then it.")),
+                    code_view("adata_code_view", lang))),
                 bslib::nav_panel(
                   t("Result"), value = "result",
                   shiny::div(
@@ -469,6 +482,8 @@ app_ui <- function(lang = "en") {
   # -- rp-step-disable)
   step_ard <- shiny::div(
     id = "step_ard", class = "mt-2",
+    # (a template report's "analysis" arguments: its only child shown then)
+    shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_card_ard")),
     # the definition or the report's own code (R/step_code.R)
     shiny::uiOutput("data_mode_bar"),
     # what a step of its own code reads: its datasets, its ARD
@@ -492,12 +507,12 @@ app_ui <- function(lang = "en") {
         lay_btn("data-lay" = "one", t("One pane"))),
       shiny::div(
         id = "ard_pane", class = "btn-group btn-group-sm", role = "group",
-        lay_btn("data-pane" = "def", t("ARD definition")),
+        lay_btn("data-pane" = "def", t("The analyses")),
         lay_btn("data-pane" = "out", "SPEC | Code | Result"))),
     shiny::div(
       id = "ard_split", class = "rp-split rp-lay-side rp-show-def",
       bslib::card(
-        bslib::card_header(with_tip(t("ARD definition"), t("This report's analyses (the ARD): the analysis data, and the analyses that read them."))),
+        bslib::card_header(with_tip(t("The analyses"), t("This report's analyses: what is computed from the analysis data of step 1. Their results are the ARD."))),
         # the analyses (the analysis data are the first step's)
         shiny::uiOutput("ard_2_2_head"),
         # the outline first: a click shows the analysis as a form below; the
@@ -662,7 +677,7 @@ app_ui <- function(lang = "en") {
     class = "mt-2",
     # (a template report's "page" arguments)
     shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_card_page")),
-    pane_head(t("This report's page"), t("The page of the report chosen on the left: its titles, footnotes, its own header or footer, and tokens of your own ({STUDY} ...). Study defaults = every report's.")),
+    pane_head(t("This report's page"), t("The page of the report chosen on the left: its titles, footnotes, its own header or footer, and values of your own to insert ({STUDY} ...). Study defaults = every report's.")),
     shiny::tags$style(shiny::HTML(.page_form_css)),
     shiny::tags$script(shiny::HTML(.page_form_js)),
     # its page pattern (Standard, Compact ...): what it inherits
@@ -723,7 +738,10 @@ app_ui <- function(lang = "en") {
 
   bslib::page_navbar(
     id = "nav",
-    title = "tflplanner",
+    title = shiny::actionLink("about_app", "tflplanner", class = "p-0",
+                              style = "cursor: pointer; text-decoration: none; color: inherit;",
+                              title = t("About this version"),
+                              `aria-label` = t("About this version")),
     # pages scroll: a grid squeezed to fit the window would be 0 px high
     fillable = FALSE,
     lang = lang,
@@ -822,7 +840,7 @@ app_ui <- function(lang = "en") {
           shiny::uiOutput("study_actions"))),
       # the template series and the open study's values for them (R/srv_series.R)
       bslib::card(
-        bslib::card_header(with_tip(t("Template series"), t("tflspec's template series: their shared values (series.yml), this study's own values for them (study.yml series_settings) and the pins (spec/series.lock)."))),
+        bslib::card_header(with_tip(t("Template series"), t("tflspec's template series: their shared values (series.yml), and this study's own copies of the series and templates it uses (spec/series/): its values, and each copy against its source."))),
         shiny::uiOutput("series_card")),
       bslib::card(
           bslib::card_header(with_tip(t("Own ARD functions"), t("Your own ARD functions: the company's (every study) and this study's (programs/ard/functions/; it wins over the company's). They are R files, edited outside the app; try one after a change."))),
@@ -875,9 +893,33 @@ app_ui <- function(lang = "en") {
               shiny::p(class = "small text-muted mt-2",
                        t("ARDs made elsewhere are in \"ARDs taken in\" (input/ard/)."))),
             bslib::card(
-              bslib::card_header(t("Preview")),
+              bslib::card_header(shiny::textOutput("data_preview_head", inline = TRUE)),
               shiny::uiOutput("data_dim"),
               DT::DTOutput("data_head")))),
+        # ADaM pre-processing: blanks to NA, and the one file whose levels study$adam gets (#742)
+        bslib::nav_panel(
+          t("ADaM pre-processing"), value = "adam_levels",
+          bslib::layout_columns(
+            col_widths = bslib::breakpoints(sm = 12, lg = 8),
+            bslib::card(
+              bslib::card_header(with_tip(
+                paste0(t("ADaM pre-processing"), " (settings.adam_levels)"),
+                t("A define.xml or a Define Spec workbook chosen and applied: study$adam gets the levels of its code lists (a blank is NA either way, and study$adam_org is the file as it is). Nothing applied: no levels. A report's own levels: / labels: apply either way."))),
+              shiny::uiOutput("adam_levels_status"),
+              shiny::p(class = "small text-muted mb-2",
+                       t("The study setup applies this to the ADaM once; each ARD, figure and listing program reads that ADaM.")),
+              shiny::div(
+                class = "d-flex gap-2 align-items-end",
+                shiny::div(class = "flex-grow-1",
+                           shiny::textInput("adam_levels_path",
+                                            with_tip(paste0(t("File"), " (settings.adam_levels_file)"),
+                                                     t("A define.xml, or a Define Spec .xls / .xlsx.")),
+                                            width = "100%")),
+                if (.ai_dialog_ok()) {
+                  shiny::div(class = "mb-3",
+                             .btn("adam_levels_browse", t("Browse..."), class = "btn-outline-secondary"))
+                }),
+              shiny::uiOutput("adam_levels_actions")))),
         bslib::nav_item(shiny::div(class = "small text-muted fw-bold mt-3 px-2", "ARD")),
         bslib::nav_panel(
           shiny::span(t("Study ARD"), shiny::uiOutput("ard_cond_badge", inline = TRUE)),
@@ -949,6 +991,9 @@ app_ui <- function(lang = "en") {
         fillable = FALSE,
         report_picker_compact_ui("rp", lang),
         shiny::uiOutput("report_head"),
+        # (a template report: its template, above the steps -- the template's
+        # arguments are in the steps their `step:` names)
+        shiny::div(id = "tpl_head", class = "rp-tpl-only", shiny::uiOutput("tpl_card_head")),
         shiny::conditionalPanel(
           "output.report_kind == ''",
           shiny::p(class = "text-muted mt-3",
@@ -974,13 +1019,7 @@ app_ui <- function(lang = "en") {
         bslib::card_header(t("Reports")),
         shiny::div(
           class = "d-flex flex-wrap gap-2",
-          .btn("run_selected", t("Preview selected"),
-               class = "btn-sm btn-primary"),
-          .btn("run_all", t("Preview all"), class = "btn-sm btn-primary"),
-          .btn("status_refresh", t("Refresh")),
-          .btn("tfl_open", t("Open output/tfl")),
-          shiny::downloadButton("rtf_download", t("Download the RTF"),
-                                class = "btn-sm")),
+          .btn("status_refresh", t("Refresh"))),
         shiny::uiOutput("job"),
         report_search_ui("status_q", lang),
         # a study of many reports takes seconds to read: said so in the
@@ -991,13 +1030,13 @@ app_ui <- function(lang = "en") {
         DT::DTOutput("status"),
         shiny::tags$script(shiny::HTML(.status_loading_js))),
       bslib::card(
-        bslib::card_header(with_tip(t("Official runs (run folders)"), t("An official run makes a run folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs), the R and package versions (session_info.txt) and, if kept, the programs and definition workbooks it ran and the data they read."))),
+        bslib::card_header(with_tip(t("Official runs (run folders)"), t("An official run makes a run folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs), the R and package versions (session_info.txt) and, if kept, the programs and definition workbooks it ran and the data they read. Every run makes a new run folder; the earlier ones are never deleted. The reports are made from the ARD the same run makes. A row's Download (ZIP): Output is output/, logs/, run.csv and batch.txt; All files is the whole run folder, made in the background as runs/<folder>.zip when it is over zip_download_limit_mb (config.yml, 500 MB)."))),
         shiny::div(
           class = "d-flex flex-wrap gap-3 align-items-center",
           shiny::radioButtons(
             "batch_parts", NULL, inline = TRUE,
-            stats::setNames(c("ard", "tfl", "all"),
-                            t(c("ARD", "Reports", "ARD, then reports")))),
+            stats::setNames(c("ard", "all"),
+                            t(c("ARD", "ARD, then reports")))),
           shiny::checkboxInput("batch_code",
                                t("keep the code in the run folder"),
                                value = TRUE),
@@ -1014,7 +1053,14 @@ app_ui <- function(lang = "en") {
         # the reports the run takes: all, unless some are left out
         shiny::uiOutput("batch_reports_ui"),
         # as tall as its rows (a fill table left a card of empty space)
-        DT::DTOutput("batches", height = "auto", fill = FALSE)),
+        DT::DTOutput("batches", height = "auto", fill = FALSE),
+        # a row's ZIP link: the server names the ZIP, then clicks this
+        shiny::div(style = "display: none;",
+                   shiny::downloadButton("batch_zip_dl", "", class = "btn-sm")),
+        shiny::tags$script(shiny::HTML(
+          "Shiny.addCustomMessageHandler('rp-batch-zip', function(id) {",
+          "  var a = document.getElementById(id); if (a) a.click();",
+          "});"))),
       # (the definition's check, as the programs read it, is the Review
       # tab's now)
       bslib::card(

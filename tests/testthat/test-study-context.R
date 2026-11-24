@@ -19,7 +19,7 @@ ctx_planner <- function() {
 ctx_studies <- function() {
   a <- create_study("CTX-A", planner = ctx_planner())
   b <- create_study("CTX-B", planner = ctx_planner())
-  f <- file.path(b$path, "programs", "study_setup.R")
+  f <- file.path(b$path, .company_setup_path())
   txt <- readLines(f)
   writeLines(txt[txt != "library(dplyr)"], f)
   list(a = a, b = b)

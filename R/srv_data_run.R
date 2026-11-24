@@ -46,6 +46,13 @@
                   options = list(dom = "tip", pageLength = 50L, scrollX = TRUE,
                                  scrollY = "420px"))
   })
+  # the card's header: "Preview", with the dataset's name once one is chosen
+  output$data_preview_head <- shiny::renderText({
+    r <- input$hot_ard_datasets_select$select$r
+    d <- ds_sub()
+    nm <- if (length(r) == 1L && !is.na(r) && r >= 1L && r <= nrow(d)) d$dataset[r]
+    .data_preview_title(nm)
+  })
   output$data_dim <- shiny::renderUI({
     # nothing chosen yet: say how to see one (a blank card looked broken)
     if (length(input$hot_ard_datasets_select$select$r) != 1L) {
@@ -129,29 +136,6 @@
     paste(utils::tail(readLines(f, warn = FALSE, encoding = "UTF-8"), 300L),
           collapse = "\n")
   })
-  output$rtf_download <- shiny::downloadHandler(
-    filename = function() {
-      d <- selected_status()
-      if (nrow(d)) basename(d$rtf_path[1L]) else "none.rtf"
-    },
-    content = function(file) {
-      d <- selected_status()
-      if (!nrow(d) || !file.exists(d$rtf_path[1L])) stop("No RTF")
-      file.copy(d$rtf_path[1L], file)
-    })
-  shiny::observeEvent(input$tfl_open, .open_folder(
-    file.path(rv$study$path, study_layout()[["tfl"]])))
-
-  start_run <- function(ids, what) {
-    if (!is.null(rv$job)) return(notify(t("A run is going on"), "warning"))
-    if (dirty() && !do_save()) return()
-    px <- guarded(run_study(rv$study, ids, wait = FALSE))
-    if (is.null(px)) return()
-    rv$job <- px
-    rv$job_kind <- "preview"
-    rv$job_what <- what
-    rv$job_study <- rv$study$meta$study_id
-  }
   # a new copy of the sample: its official run (the ARD and the reports)
   # in the background, as the Runs tab starts one; the app stays usable and
   # the study list says it is running
@@ -173,7 +157,6 @@
     notify(sprintf(t("%s is copied; its ARD and reports are being made in the background (a few minutes). You can use the app meanwhile."),
                    s$meta$study_id))
   }
-  shiny::observeEvent(input$run_all, start_run(NULL, t("every report")))
   start_batch <- function(parts, code, exclude = NULL, set = NULL, data = FALSE) {
     if (!is.null(rv$job)) return(notify(t("A run is going on"), "warning"))
     if (dirty() && !do_save()) return()
@@ -194,11 +177,12 @@
     rv$job <- px
     rv$job_kind <- "official"
     rv$job_study <- rv$study$meta$study_id
-    rv$job_what <- paste(t("the official run:"),
-                         paste(t(c(ard = "ARD", tfl = "Reports")[parts]),
-                               collapse = ", "),
-                         if (length(set)) sprintf(t("(the report set %s)"), set),
-                         if (length(exclude)) sprintf(t("(%d left out)"), length(exclude)))
+    # (the parts that are there only: no blank where none is)
+    what <- c(t("the official run:"),
+              paste(t(c(ard = "ARD", tfl = "Reports")[parts]), collapse = ", "),
+              if (length(set) && nzchar(set)) sprintf(t("(the report set %s)"), set),
+              if (length(exclude)) sprintf(t("(%d left out)"), length(exclude)))
+    rv$job_what <- paste(what[nzchar(what)], collapse = " ")
   }
   # the reports of the run: every report, ticked; a report unticked is left
   # out (its ARD program and its report program)
@@ -404,25 +388,55 @@
     if (length(exclude) == length(ids)) {
       return(notify(t("Choose at least one report for the run."), "warning"))
     }
-    # a report the run makes that reads the ARD of one it leaves out:
-    # said before the run (its rows are as an earlier run left them)
-    need <- if (identical(parts, "all")) .batch_excluded_needs(rv$p, exclude)
-    if (!is.null(need) && nrow(need)) {
-      return(shiny::showModal(shiny::modalDialog(
-        title = t("A report the run makes reads an ARD it leaves out"),
-        shiny::p(t("These reports read the study ARD's rows of a report left out of the run. Its ARD program does not run, so they use those rows as an earlier run left them (or none):")),
-        shiny::tags$ul(lapply(seq_len(nrow(need)), function(i) shiny::tags$li(
-          sprintf(t("%s reads the ARD of %s"), need$report[i], need$needs[i])))),
-        footer = shiny::tagList(
-          .btn("batch_need_cancel", t("Cancel"), class = "btn-outline-secondary"),
-          .btn("batch_need_go", t("Run anyway"), class = "btn-primary")))))
+    # the ARD is made for the selected reports only (#790): a selected report
+    # whose own ARD, or whose figure's table, is not selected: nothing starts,
+    # the missing reports are named (and can be ticked).  Any other ARD a
+    # program reads stops that program when it runs.
+    if (!identical(parts, "ard")) {
+      # (a read that cannot be worked out stops the run, for a selected
+      # report only; a lookup that fails is that report's reason)
+      reads <- tryCatch(.batch_report_reads(rv$p), error = function(e) {
+        notify(sprintf(t("The ARD the reports read could not be checked: %s"),
+                       conditionMessage(e)), "error")
+        NULL
+      })
+      if (is.null(reads)) return(invisible())
+      chosen <- setdiff(ids, exclude)
+      unres <- .batch_reads_unresolved(reads)
+      unres <- unres[names(unres) %in% chosen]
+      if (length(unres)) {
+        return(shiny::showModal(shiny::modalDialog(
+          title = t("The run did not start"),
+          shiny::p(t("The ARD a selected report reads cannot be worked out. Fix it, or leave the report out.")),
+          shiny::tags$ul(lapply(names(unres), function(r) shiny::tags$li(
+            sprintf("%s: %s", r, unres[[r]])))),
+          footer = shiny::modalButton(t("Close")))))
+      }
+      miss <- .batch_missing_needs(.batch_reads_needs(reads), chosen)
+      if (nrow(miss)) {
+        return(shiny::showModal(shiny::modalDialog(
+          title = t("The run did not start"),
+          shiny::p(t("The ARD is made only for the reports you select. A selected report reads the ARD of a report you have not selected.")),
+          shiny::tags$ul(lapply(unique(miss$report), function(r) shiny::tags$li(
+            sprintf(t("%s reads the ARD of: %s"), r,
+                    paste(miss$need[miss$report == r], collapse = ", "))))),
+          footer = shiny::tagList(
+            .btn("batch_needs_cancel", t("Cancel"), class = "btn-outline-secondary"),
+            .btn("batch_needs_tick", t("Select the missing reports"), class = "btn-primary")))))
+      }
     }
     batch_go_ai()
   })
-  shiny::observeEvent(input$batch_need_cancel, shiny::removeModal())
-  shiny::observeEvent(input$batch_need_go, {
+  shiny::observeEvent(input$batch_needs_cancel, shiny::removeModal())
+  # the missing reports ticked; the run is started again by the user
+  shiny::observeEvent(input$batch_needs_tick, {
     shiny::removeModal()
-    batch_go_ai()
+    ids <- batch_ids()
+    ticks <- intersect(input$batch_reports %||% ids, ids)
+    miss <- .batch_missing_needs(.batch_reads_needs(.batch_report_reads(rv$p)), ticks)
+    shiny::updateCheckboxGroupInput(session, "batch_reports",
+                                    selected = intersect(ids, c(ticks, miss$need)))
+    notify(t("The missing reports are selected; start the run again."))
   })
   # the AI's reports in the run whose draft changed since they were
   # adopted, or with places the AI left to confirm: said before the run (it
@@ -500,10 +514,11 @@
                       else paste(x, collapse = ", ")
                     }, ""),
                     h = esc(d$set),
+                    z = .batch_zip_links(d$batch, t),
                     stringsAsFactors = FALSE)
     v$g <- esc(v$g)
     names(v) <- t(c("Run folder", "Started", "Runs", "State",
-                    "Code", "Data", "Left out", "Report set"))
+                    "Code", "Data", "Left out", "Report set", "Download (ZIP)"))
     # the row chosen stays chosen while a running one's time is drawn again
     sel <- shiny::isolate(input$batches_rows_selected)
     DT::datatable(v, rownames = FALSE, escape = FALSE,
@@ -523,6 +538,86 @@
     ok <- !is.null(guarded(.open_folder(d$path[i])))
     if (ok) notify(sprintf(t("Opened the folder %s (a window behind the browser? see the taskbar)."),
                            d$batch[i]))
+  })
+  # a row's ZIPs (#790, Q-C6): the output ZIP downloaded at once; the
+  # all-files ZIP too at or under the limit (zip_download_limit_mb), over it
+  # made in the background as runs/<folder>.zip and said when it is ready.
+  # The link names the folder; the hidden download button gives its ZIP.
+  zip_pick <- shiny::reactiveVal(NULL)
+  zip_mine <- shiny::reactiveVal(character())
+  shiny::observeEvent(input$batch_zip_row, {
+    x <- input$batch_zip_row
+    d <- batches()
+    i <- match(x$batch %||% "", d$batch)
+    what <- x$what %||% ""
+    if (is.na(i) || !what %in% c("output", "all")) return()
+    if (identical(d$state[i], "running")) {
+      return(notify(sprintf(t("%s is still running: download its ZIP when it has ended."),
+                            d$batch[i]), "warning"))
+    }
+    if (identical(what, "all")) {
+      mb <- .dir_size_mb(d$path[i])
+      lim <- .zip_limit_mb()
+      if (mb > lim) {
+        if (.batch_zip_busy(d$path[i])) {
+          return(notify(sprintf(t("The ZIP of %s is being made already."), d$batch[i]),
+                        "warning"))
+        }
+        px <- guarded(.batch_zip_bg(d$path[i]))
+        if (is.null(px)) return()
+        zip_mine(union(zip_mine(), d$path[i]))
+        return(notify(sprintf(
+          t("%s is %s, over %s: its ZIP is being made in the background as %s. You will be told when it is ready."),
+          d$batch[i], .mb_text(mb), .mb_text(lim),
+          file.path(study_layout()[["runs"]], paste0(d$batch[i], ".zip")))))
+      }
+    }
+    zip_pick(list(path = d$path[i], what = what))
+    session$sendCustomMessage("rp-batch-zip", "batch_zip_dl")
+  })
+  output$batch_zip_dl <- shiny::downloadHandler(
+    filename = function() {
+      z <- zip_pick()
+      if (is.null(z)) return("none.zip")
+      paste0(basename(z$path), if (identical(z$what, "output")) "_output", ".zip")
+    },
+    content = function(file) {
+      z <- zip_pick()
+      if (is.null(z) || !dir.exists(z$path)) stop("No run folder")
+      if (identical(z$what, "all") && .dir_size_mb(z$path) > .zip_limit_mb()) {
+        stop("Over the ZIP download limit")
+      }
+      .batch_zip(file, z$path, z$what)
+    },
+    contentType = "application/zip")
+  shiny::outputOptions(output, "batch_zip_dl", suspendWhenHidden = FALSE)
+  # the ZIPs this session started: said when each is ready (or failed)
+  shiny::observe({
+    mine <- zip_mine()
+    if (!length(mine)) return()
+    left <- character()
+    for (dir in mine) {
+      px <- .zip_jobs[[normalizePath(dir, "/", mustWork = FALSE)]]
+      if (!is.null(px) && px$is_alive()) {
+        left <- c(left, dir)
+        next
+      }
+      .batch_zip_bg_done(dir)
+      out <- paste0(dir, ".zip")
+      if (!is.null(px) && identical(px$get_exit_status(), 0L) && file.exists(out)) {
+        # (it stays until closed: the user may be elsewhere by now)
+        shiny::showNotification(sprintf(t("The ZIP of %s is ready: %s"), basename(dir),
+                                        normalizePath(out, "/", mustWork = FALSE)),
+                                type = "message", duration = NULL)
+      } else {
+        unlink(file.path(dirname(dir), paste0(".", basename(dir), ".zip.part")))
+        err <- if (!is.null(px)) tryCatch(px$read_all_error(), error = function(e) "")
+        notify(sprintf(t("The ZIP of %s could not be made: %s"), basename(dir),
+                       trimws(paste(err, collapse = " "))), "error")
+      }
+    }
+    shiny::isolate(zip_mine(left))
+    if (length(left)) shiny::invalidateLater(1000)
   })
   # two official runs compared: the one chosen (else the newest) with the
   # run of the same kind before it, or any two; what changed only
@@ -623,17 +718,13 @@
       .open_folder(file.path(rv$study$path, study_layout()[["runs"]]))
     } else .open_folder(d$path[i])
   })
-  shiny::observeEvent(input$run_selected, {
-    d <- selected_status()
-    if (!nrow(d)) return(notify(t("Choose a report"), "warning"))
-    start_run(d$output_id, paste(d$output_id, collapse = ", "))
-  })
   # A run this session did not start, or lost (the app restarted, another
-  # session, R): what it writes -- the study ARD's status, a batch's
-  # run.csv -- is watched, and only what changed follows it, without a
-  # reload and without drawing the page again (#9184): the report list's
-  # marks in place, the ARD's state when the study ARD's status changed
-  # (the builder reads a table's ARD then), the Runs tab when a batch ended
+  # session, R): what it writes when it ends -- a batch's run.csv and
+  # batch.txt -- is watched (the screens read the latest runs, not the
+  # working output/), and only what changed follows it, without a reload and
+  # without drawing the page again (#9184): the report list's marks in
+  # place, the ARD's state (the builder reads a table's ARD then), the Runs
+  # tab, when a batch ended
   runs_ver <- shiny::reactiveVal(0L)
   run_files <- shiny::reactivePoll(3000, session, checkFunc = function() {
     s <- shiny::isolate(rv$study)
@@ -654,11 +745,10 @@
     # the first look at a study is no change
     if (is.null(before) || identical(before, stamp)) return()
     shiny::isolate({
-      # the ARD's state again: while a run goes on, only when the report
-      # chosen has its ARD made or changed (its builder reads it then);
-      # every report's once, when the run has ended
-      ended <- !identical(before[["runs"]], stamp[["runs"]])
-      if (!identical(before[["ard"]], stamp[["ard"]]) || ended) {
+      # the ARD's state again, every report's, once when a run has ended
+      ended <- !identical(before[["runs"]], stamp[["runs"]]) ||
+        !identical(before[["done"]], stamp[["done"]])
+      if (ended) {
         st <- tryCatch(ard_status(current_study()), error = function(e) NULL)
         now <- if (!is.null(st)) stats::setNames(paste(st$state, st$built), st$output_id)
         was <- run_files_seen[[paste0(key, "|ard")]]
@@ -745,4 +835,11 @@
         px$is_alive()) px$kill()
   })
   .srv_keep(environment())
+}
+
+# the Data tab's preview header: "Preview", or "Preview: ADSL" with the name
+.data_preview_title <- function(name = NULL) {
+  name <- trimws(as.character(name))
+  if (length(name) != 1L || is.na(name) || !nzchar(name)) return(t("Preview"))
+  sprintf(t("Preview: %s"), name)
 }

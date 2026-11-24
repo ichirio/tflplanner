@@ -2,54 +2,73 @@
 % Please edit documentation in R/study_setup.R
 \name{study_setup_code}
 \alias{study_setup_code}
-\title{The study's setup program}
+\alias{company_setup_code}
+\title{The study's setup programs}
 \usage{
-study_setup_code(
-  meta,
-  date = Sys.Date(),
-  standards = company_standards(),
-  study = NULL
-)
+study_setup_code(meta, date = Sys.Date(), study = NULL)
+
+company_setup_code(meta, date = Sys.Date(), standards = company_standards())
 }
 \arguments{
 \item{meta}{The study's fields (\code{study_id}, \code{title}, ...), as an
 \code{rtfstudy}'s \code{meta}.}
 
-\item{date}{The date the marker of part 1 says it was copied.}
-
-\item{standards}{The standards to copy part 1 from.}
+\item{date}{The date the banner says it was generated (or, for the
+company's code, copied).}
 
 \item{study}{The study's spec (\code{\link[tflspec:tfl_read_study_spec]{tflspec::tfl_read_study_spec()}}), or a
-table / report spec of the sheets, whose rounding part 2 sets; \code{NULL}
-(the default): none.}
+table / report spec of the sheets, whose rounding and data
+\code{study_setup.R} sets; \code{NULL} (the default): none.}
+
+\item{standards}{The standards to copy the company's code from.}
 }
 \value{
 The program, one element per line.
 }
 \description{
-\code{study_setup_code()} is a new study's \code{programs/study_setup.R}, which
-\code{programs/ard/ard_setup.R}, \code{programs/tfl/report_setup.R} and
-\code{programs/tfl/fig_setup.R} each source first, so every ARD, report and
-figure program runs it.  It is one file of three marked parts, run in
-this order:
+Every ARD, report and figure program of a study starts with its setup
+(\code{programs/ard/ard_setup.R}, \code{programs/tfl/report_setup.R} and
+\code{programs/tfl/fig_setup.R} each source \code{programs/study_setup.R} first).
+The study's setup is three files, run in this order:
 }
 \details{
 \enumerate{
-\item the company standard: \code{\link[=setup_code]{setup_code()}}, copied when the study is made
-(its marker line says when, and which standards); tflplanner does
-not change it after.
-\item the study: its folders (\code{\link[=study_layout]{study_layout()}}: \code{path_adam}, \code{path_sdtm}
-...) and what it is (\code{study_id}, \code{study_title}, \code{study_short_title}, \code{study_compound},
-\code{study_phase}, \code{study_description} from \code{study.yml}), and the study's
-rounding (\code{options(rtfreporter.rounding = , cards.round_type = )},
-\code{\link[tflspec:tfl_study_setup_code]{tflspec::tfl_study_setup_code()}}), which the ARD and report setups
-then do not repeat.  tflplanner writes it again on every save.
-\item the study's own code: tflplanner never touches it.
+\item \code{programs/company_setup.R}, the company's code: \code{\link[=setup_code]{setup_code()}},
+copied when the study is made (\code{company_setup_code()}; its first
+line says when, and which standards).  It is the study's after that:
+tflplanner never writes it again.
+\item \code{programs/study_setup.R} (\code{study_setup_code()}), written by
+tflplanner on every save -- do not edit it: the study's folders
+(\code{\link[=study_layout]{study_layout()}}: \code{path_adam}, \code{path_sdtm} ...), what it is
+(\code{study_id}, \code{study_title}, \code{study_short_title}, \code{study_compound},
+\code{study_phase}, \code{study_description} from \code{study.yml}), its rounding
+and data (\code{\link[tflspec:tfl_study_setup_code]{tflspec::tfl_study_setup_code()}}), and the helpers
+(\code{\link[=study_helpers_code]{study_helpers_code()}}).  It runs the other two: the company's
+first, the user's last.
+\item \code{programs/study_user.R}, the study's own code; tflplanner never
+writes it again.
 }
 
-Saving a study rewrites part 2 only, and parts 1 and 3 stay byte for
-byte.  A part 2 edited by hand (its checksum no longer matches) is
-written again too, the edited file first put in \verb{programs/.edited/}.
+\code{study_setup.R} runs once per program run: every ARD and report program
+sets the option \code{tflplanner.run} (a token of this run) when it starts and
+clears it at its end, and a figure report, which sources the study's
+setup twice (through \code{report_setup.R} and \code{fig_setup.R}), runs it once,
+so the company's code and the user's run once and what the user's sets
+stays.  The program run again (in the same R or not) runs it again, as
+does another study folder; the setup sourced without a program's run (by
+hand, the Plot Designer) runs each time.  \code{rm(.tfl_free_ran)} runs it
+again by hand.  A \code{study_setup.R} edited
+by hand is written again on the next save, the edited one first put in
+\code{programs/.edited/}.
+
+A study made before has one \code{study_setup.R} of three marked parts.  Its
+first save splits it: part 1 to \code{company_setup.R} and part 3 to
+\code{study_user.R}, byte for byte, and \code{study_setup.R} is written new (the
+old one kept in \code{programs/.edited/}).  When its marker lines are missing
+or repeated, its part 2 was edited, or \code{company_setup.R} or
+\code{study_user.R} is there already with other content, nothing is
+converted: the old file stays as it is and runs, a copy goes to
+\code{programs/.edited/}, and the save says why.
 }
 \examples{
 # a home in the temporary folder: used in this R session only, nothing
@@ -57,6 +76,7 @@ written again too, the edited file first put in \verb{programs/.edited/}.
 old <- options(tflplanner.home = NULL)
 setup_tflplanner(home = tempfile("tflplanner-home"))
 meta <- list(study_id = "ABC-1", title = "A study of Drug X")
-head(study_setup_code(meta), 8)
+head(study_setup_code(meta), 12)
+company_setup_code(meta)
 options(old)
 }

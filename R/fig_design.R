@@ -381,6 +381,13 @@ set_fig_design <- function(x, output_id, design) {
 preview_figure <- function(study, output_id,
                            design = fig_design(study$planner, output_id),
                            max_px = NULL) {
+  .preview_figure(study, output_id, design, max_px)
+}
+
+# preview_figure(), with the ARD to print from given: `ard` is
+# .fig_preview_ard()'s (the app's previews: an outdated ARD made again
+# first); NULL reads the study ARD's rows as they are (.fig_ard_rows())
+.preview_figure <- function(study, output_id, design, max_px = NULL, ard = NULL) {
   if (is.null(design)) stop("The figure has no design.", call. = FALSE)
   saved <- design
   # its size on the page (step 3)
@@ -408,9 +415,12 @@ preview_figure <- function(study, output_id,
   # its ARD (#293): the rows of its source, in `ard`; their problems
   reads_ard <- isTRUE(attr(tflspec::tfl_fig_design_code(saved, output_id, setup = TRUE,
                                                          save = FALSE), "ard"))
-  ard <- if (reads_ard) .fig_ard_rows(study, output_id)
+  ard_given <- ard
+  ard <- if (reads_ard) {
+    if (!is.null(ard_given)) ard_given$rows else .fig_ard_rows(study, output_id)
+  }
   if (reads_ard) {
-    ap <- .fig_ard_problems(study, output_id, saved)
+    ap <- .fig_ard_problems(study, output_id, saved, ard = ard)
     if (nrow(ap)) problems <- rbind(problems, ap[c("part", "field", "problem")])
   }
   advice <- tryCatch(tflspec::tfl_fig_advice(saved, data), error = function(e) NULL)
@@ -426,7 +436,9 @@ preview_figure <- function(study, output_id,
   if (!is.null(ard)) assign("ard", ard, envir = e)
   # an ARD the figure reads that has no rows yet (not made, or a run that
   # stopped half way): said so, not as the first statistic it misses
-  no_ard <- if (reads_ard && (is.null(ard) || !NROW(ard))) {
+  no_ard <- if (reads_ard && !is.null(ard_given$error)) {
+    paste(tr("The preview's ARD could not be made:"), ard_given$error)
+  } else if (reads_ard && (is.null(ard) || !NROW(ard))) {
     src <- .fig_ard_source(study$planner, output_id)
     if (src$kind %in% c("own", "table")) {
       sprintf(tr("The ARD of %s has no rows yet: make it (step %s, or an official run in Runs)."),
@@ -474,8 +486,19 @@ preview_figure <- function(study, output_id,
        objects = .fig_objects_glance(e, .fig_design_objects(saved)))
 }
 
+# What an app's drawing of a figure is made from: its design, the
+# definition, the data files' and the study ARD's times, and what its ARD
+# was made from (.fig_preview_ard()'s `print`: an ARD made again redraws)
+.fig_draw_key <- function(study, design, ard = NULL) {
+  data_at <- file.info(list.files(file.path(study$path, "data"), recursive = TRUE,
+                                  full.names = TRUE))$mtime
+  # (the study ARD's too: a figure may print a table's numbers)
+  ard_at <- file.info(.study_ard_file(study))$mtime
+  list(.fig_norm(unclass(design)), study$planner, data_at, ard_at, ard$print)
+}
+
 # The objects a design's data steps leave, in their order: the figure's
-# data (by the name the program gives it, adtte_ttde, else df), then each
+# data (by the name the program gives it, adtte_sub, else df), then each
 # step's own (a KM fit, summary statistics, the ARD's statistics ...)
 .fig_design_objects <- function(design) {
   own <- unlist(lapply(design$data, function(p) {

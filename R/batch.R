@@ -1,15 +1,22 @@
 # Official runs and previews.
 #
 # A program run on its own -- from the app, or opened in RStudio -- is a
-# preview: it writes the study's working output (output/ard/ard.rds,
-# output/tfl/) so the next step can go on, and keeps no log.
+# preview or a hand run: it writes the study's working output
+# (output/ard/ard.rds, output/tfl/) so the next step can go on, and keeps no
+# log.  That is a design aid's output: the builder and the figure designer
+# read it.  What the screens show as a report's result (its state, its RTF,
+# the report list's marks) is the latest official run's, read from runs/.
 #
 # An official run goes through an autoexec program, which makes a batch
-# folder stamped with the date and time (runs/20260927_143000_all/) and
-# keeps in it everything of the run: each program's log (logrx), what it
-# made (the study ARD, the RTFs), and -- unless asked not to -- the programs
-# and definition workbooks it ran; asked, the data files its programs read
-# (by the data catalog), with their md5 -- a run that can be made again.
+# folder stamped with the date and time (runs/20260927_143000_all/), copies
+# the study into it (programs/, spec/, input/, study.yml, renv.lock; with
+# --data the data folders) and runs the programs THERE: each program's log
+# (logrx), what it made (the study ARD, the RTFs) and the end record land in
+# the folder, never in the study's output/.  The folder is the code: its own
+# autoexec_*.R (and run_paths.R, which says where the data are) run it again
+# elsewhere (--data-root=).  A run that would read or write outside its folder
+# stops before any folder is made.  The study's output/ is the working output
+# of previews and hand runs only.
 #
 #   programs/batch.R               the runner every autoexec sources
 #   programs/ard/autoexec_ard.R    official run of the ARD programs
@@ -20,6 +27,18 @@
 .fig_setup_file <- "fig_setup.R"
 .report_setup_file <- "report_setup.R"
 .autoexec_all_file <- "autoexec_all.R"
+.autoexec_report_file <- "autoexec_report.R"
+
+# Every file name tflplanner writes under programs/ (any folder: programs/,
+# programs/ard/, programs/tfl/).  A report's program, or an ARD program's
+# name (from its output ID), must not be one of them: the save writes the
+# report's program and then this file over it.  A new generated file is added here --
+# test-program-names.R fails when a save writes one that is not.
+.generated_program_files <- function() {
+  c(.ard_setup_file, .ard_autoexec_file, .batch_file, .fig_setup_file,
+    .report_setup_file, .autoexec_all_file, .autoexec_report_file,
+    .study_setup_file, .study_helpers_file, .company_setup_file, .study_user_file)
+}
 
 #' The official-run programs of a study
 #'
@@ -31,8 +50,8 @@
 #'
 #' @param x A `tflplanner`.
 #' @param date The date stamped in the banner.
-#' @param root The study folder (the definitions' fingerprints read the
-#'   files the ARD programs name from it).
+#' @param root The study folder (the definition files it keeps with the
+#'   code of a run are listed from it).
 #' @return The program, one element per line.
 #' @examples
 #' x <- add_output(new_planner(), "T-14-1-1", type = "table")
@@ -50,43 +69,65 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
                          vapply(infos, `[[`, "", "program"))
   made <- lapply(infos, function(info) info$file)
   ard_out <- .study_value(spec, "output", "output/ard/ard.rds")
-  # the figures printing an ARD's numbers (#293)
-  need <- vapply(out_ids, function(id)
-    tryCatch(.fig_ard_need(x, id), error = function(e) NA_character_), "")
-  need_progs <- tfl_progs[!is.na(need)]
-  need_ids <- unname(need[!is.na(need)])
-  need_hash <- vapply(unique(need_ids), function(id) tryCatch(
-    tflspec::tfl_ard_spec_hash(structure(spec, class = "tfl_ard_spec"), id, dir = root,
-                               codelists = .study_codelists(x)),
-    error = function(e) ""), "")
+  # the ARD each report declares it reads (#293, #790): see
+  # .batch_report_reads(); a run that selects a report but not the reports it
+  # declares does not start, nor one that selects a report whose read cannot
+  # be worked out.  (A lookup that fails is that report's reason, not an error.)
+  reads <- .batch_report_reads(x)
+  need <- .batch_reads_needs(reads)
+  names(need) <- tfl_progs[match(names(need), out_ids)]
+  unresolved <- .batch_reads_unresolved(reads)
+  names(unresolved) <- tfl_progs[match(names(unresolved), out_ids)]
+  # a report with no program of its own (none is written for it) is in no
+  # run: its rows go (an NA name would make batch.R fail to parse)
+  need <- need[!is.na(names(need))]
+  unresolved <- unresolved[!is.na(names(unresolved))]
   # (the definition: the YAML spec's files)
   spec_files <- setdiff(.spec_files_yaml(root), .study_file)
+  # (the study's own analysis functions, study key `source`: every ARD
+  # program sources them, by their path from the study folder; #792)
+  own_src <- .split_bar(.study_value(spec, "source", NA))
   support <- list(
     ard = c(file.path(lay[["programs_ard"]], c(.ard_setup_file,
                                                .ard_autoexec_file)),
-            spec_files),
-    tfl = c(file.path(lay[["programs_tfl"]], c("autoexec_report.R",
+            own_src, spec_files),
+    tfl = c(file.path(lay[["programs_tfl"]], c(.autoexec_report_file,
                                                .fig_setup_file,
                                                .report_setup_file)),
             spec_files),
     all = c(file.path("programs", c(.batch_file, .autoexec_all_file,
                                     .study_helpers_file)),
-            .study_setup_path(), .study_file))
-  vec <- function(v, names = NULL, indent = "  ") {
-    if (!length(v)) return("character()")
-    q <- encodeString(v, quote = "\"")
-    if (!is.null(names)) q <- paste(encodeString(names, quote = "`"), "=", q)
-    paste0("c(\n", paste0(indent, q, collapse = ",\n"), ")")
+            .study_setup_files(), .study_file))
+  # the study's id (study.yml's; a study folder is named by its id): each
+  # run records it, and only its own runs count (tflspec::tfl_run_index())
+  sf <- file.path(root, .study_file)
+  sid <- if (file.exists(sf)) tryCatch(.read_meta(root)$study_id,
+                                       error = function(e) NA_character_)
+  if (!length(sid) || is.na(sid)) {
+    sid <- basename(normalizePath(root, winslash = "/", mustWork = FALSE))
   }
-  # a list of vectors, its elements indented as the list's
-  vlist <- function(...) {
-    v <- list(...)
-    paste0("list(\n", paste0("  ", names(v), " = ",
-                             vapply(v, vec, "", indent = "    "), collapse = ",\n"),
-           "\n)")
-  }
-  runner <- readLines(system.file("batch", "runner.R", package = "tflplanner"),
-                      warn = FALSE, encoding = "UTF-8")
+  made <- stats::setNames(lapply(made, as.character), tfl_progs)
+  dat <- lapply(.batch_data_files(x), as.character)
+  # the runner is tflspec's: the lists of the study's programs (the
+  # manifest), then its lines
+  manifest <- list(
+    root = lay[["runs"]], ard = ard_out, study = sid, spec = lay[["spec"]],
+    programs = list(ard = ard_progs, tfl = tfl_progs),
+    ard_outputs = stats::setNames(as.character(ids), basename(ard_progs)),
+    report_ids = stats::setNames(as.character(out_ids), tfl_progs),
+    needs = lapply(need, as.character),
+    unresolved = stats::setNames(as.character(unresolved), names(unresolved)),
+    sets = lapply(batch_sets(x), as.character),
+    outputs = made,
+    support = list(ard = as.character(support$ard),
+                   tfl = as.character(support$tfl),
+                   all = as.character(support$all)),
+    data = dat,
+    data_vars = .batch_data_vars(dat),
+    data_dirs = lay[c("adam", "sdtm", "other")],
+    sources = own_src[!is.na(own_src) & nzchar(own_src)],
+    check_code = .batch_check_code(root),
+    kind = "run", paths = list())
   c(.banner(
       paste("Program    :", file.path("programs", .batch_file)),
       "The runner of the study's official runs: programs/ard/autoexec_ard.R,",
@@ -96,44 +137,37 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
       paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
              ", ", format(date, "%Y-%m-%d"))),
     "",
-    "# ---- the study's programs, in the order they run ---------------------------",
-    paste0(".batch_root <- ", encodeString(lay[["runs"]], quote = "\"")),
-    paste0(".batch_ard  <- ", encodeString(ard_out, quote = "\"")),
-    paste0(".batch_programs <- ", vlist(ard = ard_progs, tfl = tfl_progs)),
-    "# the output each ARD program makes",
-    paste0(".batch_ard_outputs <- ", vec(ids, basename(ard_progs))),
-    "# the output each report program makes",
-    paste0(".batch_report_ids <- ", vec(out_ids, tfl_progs)),
-    "# a figure printing an ARD's numbers: the report whose ARD it reads, and",
-    "# the fingerprint of that ARD's definition when this file was written",
-    "# (made again first when the ARD is not made from it)",
-    paste0(".batch_needs <- ", vec(need_ids, need_progs)),
-    paste0(".batch_needs_hash <- ", vec(need_hash, names(need_hash))),
-    "# the named batches (the report list's `batches`): name -> outputs",
-    paste0(".batch_sets <- ", if (length(sets <- batch_sets(x)))
-      paste0("list(\n", paste0("  ", encodeString(names(sets), quote = "`"), " = ",
-                               vapply(sets, function(v) paste0("c(", paste(
-                                 encodeString(v, quote = "\""), collapse = ", "), ")"), ""),
-                               collapse = ",\n"), ")") else "list()"),
-    "# what each report program makes",
-    paste0(".batch_outputs <- list(\n",
-           paste0("  ", encodeString(tfl_progs, quote = "`"), " = ",
-                  vapply(made, function(m) paste0("c(", paste(
-                    encodeString(m, quote = "\""), collapse = ", "), ")"), ""),
-                  collapse = ",\n"), ")"),
-    "# kept with the code of a run",
-    paste0(".batch_support <- ", vlist(ard = support$ard, tfl = support$tfl,
-                                       all = support$all)),
-    "# the data files each program reads (the data catalog's; --data keeps them)",
-    paste0(".batch_data <- ", if (length(dat <- .batch_data_files(x))) paste0(
-      "list(\n", paste0("  ", encodeString(names(dat), quote = "`"), " = ",
-                        vapply(dat, function(v) if (length(v)) paste0("c(", paste(
-                          encodeString(v, quote = "\""), collapse = ", "), ")") else
-                            "character()", ""),
-                        collapse = ",\n"), ")") else "list()"),
-    "",
-    runner,
+    tflspec::tfl_runner_code(manifest),
     "")
+}
+
+# The data-folder variable (path_adam, path_sdtm, path_other) the generated
+# code reads each data catalog path through: tflspec's own rule
+# (.path_code(): backslashes are slashes, a leading ./ goes), with the
+# study's folders (option tflspec.paths).  "" when no data folder holds the
+# path.  A named character vector, path -> variable.
+.batch_data_vars <- function(dat) {
+  paths <- unique(unlist(dat, use.names = FALSE))
+  if (!length(paths)) return(character())
+  path_code <- utils::getFromNamespace(".path_code", "tflspec")
+  old <- options(tflspec.paths = .study_path_vars())
+  on.exit(options(old), add = TRUE)
+  vars <- vapply(paths, function(p) {
+    code <- path_code(p)
+    hit <- regmatches(code, regexec("^file[.]path[(](path_[A-Za-z_]+), ", code))[[1L]]
+    v <- if (length(hit)) hit[2L] else code
+    if (v %in% c("path_adam", "path_sdtm", "path_other")) v else ""
+  }, "")
+  stats::setNames(unname(vars), paths)
+}
+
+# The study's own code the runner scans for paths outside the batch folder:
+# the company's and the user's setup (not the generated study_helpers.R: the
+# user cannot fix it) and the study's own ARD functions
+.batch_check_code <- function(root) {
+  fun <- list.files(file.path(root, .study_fun_dir), pattern = "[.][Rr]$")
+  c(.company_setup_path(), .study_user_path(),
+    if (length(fun)) file.path(.study_fun_dir, sort(fun)))
 }
 
 # programs/tfl/fig_setup.R: the study's setup, the packages the figures'
@@ -178,9 +212,11 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
     paste("  Rscript", file, "--no-code        the batch folder without the code"),
     paste("  Rscript", file, "--data           with the data files the programs read"),
     "Run it from the study folder.  It makes a batch folder",
-    "runs/<date>_<time>_<what>/: each program's log (logrx), what the run",
-    "made, the programs and definition workbooks it ran, the R and package",
-    "versions (session_info.txt) and, with --data, the data it read.",
+    "runs/<date>_<time>_<what>/, copies the study into it and runs the",
+    "programs there: each program's log (logrx), what the run made, the",
+    "programs and definition workbooks it ran, the R and package versions",
+    "(session_info.txt) and, with --data, the data it read.  The study's",
+    "output/ is not touched.  The folder's own autoexec_*.R run it again.",
     paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
            ", ", format(date, "%Y-%m-%d")))
 }
@@ -301,7 +337,8 @@ batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
   # (the same reports, ARD and definition files: the same program -- a
   # save after a table's card edit writes none again, #417)
   key <- list(p$ard, p$outputs, p$study, p$sheets$report, p$sheets$codelists, p$fig_designs,
-              p$lf, .spec_files_yaml(root), root, Sys.Date(), .code_context$opts)
+              p$lf, .spec_files_yaml(root), root, Sys.Date(), .code_context$opts,
+              .batch_check_code(root))
   if (!identical(.batch_cache$key, key)) {
     .batch_cache$code <- batch_code(p, root = root)
     .batch_cache$key <- key
@@ -312,7 +349,7 @@ batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
   put(.fig_setup_code(p), file.path(lay[["programs_tfl"]], .fig_setup_file))
   put(report_setup_code(p), file.path(lay[["programs_tfl"]], .report_setup_file))
   put(autoexec_all_code(), file.path("programs", .autoexec_all_file))
-  put(autoexec_code(p), file.path(lay[["programs_tfl"]], "autoexec_report.R"))
+  put(autoexec_code(p), file.path(lay[["programs_tfl"]], .autoexec_report_file))
   out
 }
 
@@ -324,7 +361,8 @@ batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
 #' -- which makes a batch folder `runs/<date>_<time>_<what>/` with each
 #' program's log, what the run made, the R and package versions
 #' (`session_info.txt`, and the study's `renv.lock` when it has one), with
-#' `code = TRUE` the programs and definition workbooks it ran, and with
+#' the study's programs and definition files copied in (the folder is the
+#' code: `code` is accepted and does nothing), and with
 #' `data = TRUE` the data files its programs read.  `list_batches()` lists
 #' a study's batch folders.
 #'
@@ -340,7 +378,9 @@ batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
 #' The programs are the saved ones: save the study first.
 #'
 #' @param study An `rtfstudy`.
-#' @param parts `"ard"`, `"tfl"` or both.
+#' @param parts `"ard"` (the ARD only) or `c("ard", "tfl")` (the ARD,
+#'   then the reports from it).  There is no run of the reports alone:
+#'   the reports of a run are made from the ARD the same run makes.
 #' @param code Keep the code in the batch folder.
 #' @param data Keep the data files the programs read in the batch folder.
 #' @param only Programs or outputs to run; `NULL` for all.
@@ -369,7 +409,7 @@ batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
 #' # (needs the sample data and rtfreporter; the run is in child R processes)
 #' s <- create_sample_study(run = FALSE)
 #' id <- s$planner$outputs$output_id[1]  # one report
-#' b <- run_batch(s, parts = "tfl", only = id)
+#' b <- run_batch(s, only = id)  # its ARD, then the report
 #' b$ok
 #' list_batches(s)[, c("batch", "state")]
 #' }
@@ -377,6 +417,14 @@ batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
 #' @export
 run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE, data = FALSE,
                       only = NULL, exclude = NULL, batch = NULL, wait = TRUE) {
+  # the ARD only, or the ARD then the reports: the reports are made from
+  # the ARD the same run makes, never from one an earlier run left (#790)
+  parts <- match.arg(parts, c("ard", "tfl"), several.ok = TRUE)
+  if (identical(parts, "tfl")) {
+    stop("An official run is the ARD only (parts = \"ard\") or the ARD, ",
+         "then the reports (parts = c(\"ard\", \"tfl\")): the reports are ",
+         "made from the ARD the same run makes.", call. = FALSE)
+  }
   # one official run at a time in a study, whoever started it
   live <- .live_run(study$meta$study_id)
   if (!is.null(live)) {
@@ -384,10 +432,8 @@ run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE, data = FALSE,
          live$started, "): wait until it has finished.", call. = FALSE)
   }
   lay <- study_layout()
-  parts <- match.arg(parts, c("ard", "tfl"), several.ok = TRUE)
   prog <- if (length(parts) == 2L) file.path("programs", .autoexec_all_file) else
-    if (parts == "ard") file.path(lay[["programs_ard"]], .ard_autoexec_file) else
-      file.path(lay[["programs_tfl"]], "autoexec_report.R")
+    file.path(lay[["programs_ard"]], .ard_autoexec_file)
   if (!file.exists(file.path(study$path, prog))) {
     stop("The study has no ", prog, " yet: save it first (an ARD definition ",
          "that does not hold writes no ARD program; see the Review tab).",
@@ -420,10 +466,16 @@ run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE, data = FALSE,
   # home so an app opened later finds it (live_runs.R)
   px <- processx::process$new(
     file.path(R.home("bin"), "Rscript"),
-    c(prog, if (!code) "--no-code", if (isTRUE(data)) "--data", only,
+    # the run's R reads neither the user's .Rprofile nor .Renviron (B2, the
+    # user's decision 2026-11-24): its library paths are this R's (R_LIBS)
+    c("--no-init-file", "--no-environ", prog,
+      if (!code) "--no-code", if (isTRUE(data)) "--data", only,
       if (length(exclude)) paste0("--exclude=", .batch_exclude(study$planner, exclude)),
       if (length(batch)) c("--batch", batch)),
     wd = study$path,
+    # the run's own R finds the packages this R does: its library paths, the
+    # rest of the environment as it is ("current")
+    env = c("current", R_LIBS = paste(.libPaths(), collapse = .Platform$path.sep)),
     stdout = out, stderr = "2>&1", cleanup = FALSE)
   rec <- tryCatch(.record_run(px, study, paste(parts, collapse = "+"), before),
                   error = function(e) NULL)
@@ -440,6 +492,87 @@ run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE, data = FALSE,
        output = txt)
 }
 
+# The ARD each report reads, by the rules of the code a figure's program runs
+# (.fig_ard_lines()): a report's own ARD (its id has analyses); a figure whose
+# ARD source is its own or a table's reads that id, whether or not its design
+# uses it.  What a report's code reads of another report's ARD is not found
+# out here: that read stops the run when it happens.  A data.frame, one row
+# per read:
+#   report  the output id
+#   reads   the id whose ARD it reads; NA when that cannot be worked out
+#   kind    "own" (its own analyses) or "source" (a figure's own/table source)
+#   reason  NA when resolved, else "no source" (the design reads an ARD, no
+#           source chosen), "source not in analyses", "source report not
+#           found", or "lookup failed: <message>"
+# A report that reads none has no row; a lookup that fails is that report's
+# row, not an error.  A run must not start on a read not known.
+.batch_report_reads <- function(x) {
+  spec <- x$ard %||% .empty_ard_spec()
+  ids <- unique(stats::na.omit(spec$analyses$output_id))
+  out_ids <- x$outputs$output_id
+  row <- function(report, reads, kind, reason = NA_character_) {
+    data.frame(report = report, reads = reads, kind = kind, reason = reason,
+               stringsAsFactors = FALSE)
+  }
+  one <- function(id) {
+    got <- if (id %in% ids) row(id, id, "own")
+    if (identical(report_info(x, id)$type, "figure")) {
+      src <- .fig_ard_source(x, id)
+      if (src$kind %in% c("own", "table")) {
+        if (src$id %in% ids) {
+          if (!src$id %in% got$reads) got <- rbind(got, row(id, src$id, "source"))
+        } else {
+          why <- if (src$id %in% out_ids) "source not in analyses" else
+            "source report not found"
+          got <- rbind(got, row(id, NA_character_, "source", why))
+        }
+      } else if (identical(src$kind, "none") &&
+                 .fig_reads_ard(fig_design(x, id), id)) {
+        got <- rbind(got, row(id, NA_character_, "source", "no source"))
+      }
+    }
+    got
+  }
+  got <- lapply(out_ids, function(id) tryCatch(one(id), error = function(e) {
+    row(id, NA_character_, "source", paste0("lookup failed: ", conditionMessage(e)))
+  }))
+  out <- do.call(rbind, c(list(row(character(), character(), character(), character())), got))
+  rownames(out) <- NULL
+  out
+}
+
+# the needs of .batch_report_reads(): a named list, output id -> the ids whose
+# ARD it reads (a report that reads none is not in it)
+.batch_reads_needs <- function(reads) {
+  r <- reads[!is.na(reads$reads), , drop = FALSE]
+  lapply(split(r$reads, factor(r$report, unique(r$report))), unique)
+}
+
+# its unresolved: a named character, output id -> the reasons, joined with "; "
+.batch_reads_unresolved <- function(reads) {
+  r <- reads[!is.na(reads$reason), , drop = FALSE]
+  vapply(split(r$reason, factor(r$report, unique(r$report))),
+         function(v) paste(unique(v), collapse = "; "), "")
+}
+
+# (the needs only: a named list, output id -> output ids)
+.batch_report_needs <- function(x) .batch_reads_needs(.batch_report_reads(x))
+
+# The selected reports that read the ARD of a report that is not selected:
+# a run builds the ARD of the selected reports only (#790).  `needs`: report
+# -> the reports whose ARD it reads (.batch_report_needs()); `selected`: the
+# reports of the run.  A data.frame, one row per pair: report, need.
+.batch_missing_needs <- function(needs, selected) {
+  report <- character()
+  need <- character()
+  for (r in intersect(names(needs), selected)) {
+    m <- setdiff(needs[[r]], selected)
+    report <- c(report, rep(r, length(m)))
+    need <- c(need, m)
+  }
+  data.frame(report = report, need = need, stringsAsFactors = FALSE)
+}
+
 # The programs a report left out of a run is: its ARD program and its report
 # program (an output id), or the program named
 .batch_exclude <- function(x, exclude) {
@@ -451,40 +584,6 @@ run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE, data = FALSE,
   unique(progs[!is.na(progs) & nzchar(progs)])
 }
 
-# For each report, the reports whose rows of the study ARD it reads: its own
-# when it has analyses, a figure's ARD source's table, and any other report
-# with analyses its own code (its steps') names in quotes ("T-14-1-1").  A
-# named list: output id -> output ids.
-.batch_ard_reads <- function(x) {
-  a <- x$ard$analyses
-  has <- unique(stats::na.omit(a$output_id))
-  ids <- x$outputs$output_id
-  code <- vapply(ids, function(id) {
-    v <- stats::na.omit(c(step_code(x, id, "data"), step_code(x, id, "content")))
-    if (length(v)) paste(v, collapse = "\n") else NA_character_
-  }, "", USE.NAMES = FALSE)
-  stats::setNames(lapply(seq_along(ids), function(i) {
-    q <- if (!is.na(code[i])) {
-      unlist(regmatches(code[i], gregexpr('"[^"]+"', code[i])))
-    }
-    q <- gsub('"', "", q)
-    unique(c(if (ids[i] %in% has) ids[i], intersect(setdiff(q, ids[i]), has)))
-  }), ids)
-}
-
-# The reports of a run that read an ARD the run leaves out: data frame
-# report (kept) / needs (left out)
-.batch_excluded_needs <- function(x, exclude) {
-  reads <- .batch_ard_reads(x)
-  keep <- setdiff(names(reads), exclude)
-  rows <- lapply(keep, function(k) {
-    n <- intersect(reads[[k]], exclude)
-    if (length(n)) data.frame(report = k, needs = n, stringsAsFactors = FALSE)
-  })
-  out <- do.call(rbind, rows)
-  if (is.null(out)) data.frame(report = character(), needs = character()) else out
-}
-
 #' @rdname run_batch
 #' @export
 list_batches <- function(study) {
@@ -492,6 +591,9 @@ list_batches <- function(study) {
   dirs <- if (dir.exists(root)) sort(list.dirs(root, full.names = FALSE,
                                                recursive = FALSE),
                                      decreasing = TRUE) else character()
+  # only real batch folders: a folder starting with "." (.lock ...) is the
+  # runner's own
+  dirs <- dirs[!startsWith(dirs, ".")]
   rows <- lapply(dirs, function(d) {
     csv <- file.path(root, d, "run.csv")
     r <- if (file.exists(csv)) tryCatch(
@@ -502,8 +604,16 @@ list_batches <- function(study) {
     ex <- if (file.exists(bt)) sub("^Excluded :\\s*", "", grep("^Excluded :",
       readLines(bt, warn = FALSE), value = TRUE))
     ex <- if (length(ex) && !identical(ex[1L], "none")) ex[1L] else ""
+    # (the folder's name gives when and what; the set is batch.txt's, below:
+    # a name's _2, _3 is the suffix of a run started in the same second as
+    # another, not a set)
     m <- regmatches(d, regexec("^([0-9]{8})_([0-9]{6})_(ard|report|all)(?:_(.*))?$",
                                d, perl = TRUE))[[1L]]
+    # how it ran: batch.txt's "Kind :" (a preview), "Re-run :" (made again
+    # elsewhere); only a run with `Verified : yes` is official
+    btxt <- if (file.exists(bt)) readLines(bt, warn = FALSE) else character()
+    kind <- if (any(grepl("^Kind +: *preview", btxt))) "preview" else
+      if (any(grepl("^Re-run +:", btxt))) "rerun" else "run"
     # the named batch: batch.txt's "Batch set :" (the folder carries it too)
     set <- if (file.exists(bt <- file.path(root, d, "batch.txt"))) sub(
       "^Batch set :\\s*", "", grep("^Batch set :", readLines(bt, warn = FALSE),
@@ -528,7 +638,8 @@ list_batches <- function(study) {
       state = if (is.na(fin) || is.null(r)) "incomplete" else
         if (errs > 0L) "failed" else "done",
       finished = fin,
-      code = dir.exists(file.path(root, d, "code")),
+      kind = kind,
+      code = dir.exists(file.path(root, d, "programs")),
       data = dir.exists(file.path(root, d, "data")),
       excluded = ex,
       path = file.path(root, d), stringsAsFactors = FALSE)
@@ -536,7 +647,8 @@ list_batches <- function(study) {
   out <- do.call(rbind, c(list(data.frame(
     batch = character(), started = character(), what = character(),
     set = character(), programs = integer(), errors = integer(),
-    state = character(), finished = character(), code = logical(),
+    state = character(), finished = character(), kind = character(),
+    code = logical(),
     data = logical(),
     excluded = character(), path = character())), rows))
   rownames(out) <- NULL
@@ -556,7 +668,7 @@ list_batches <- function(study) {
 #'
 #' What changed between two batch folders of a study ([list_batches()]):
 #' their inputs -- the data, by the md5 `data_manifest.csv` records, and
-#' the code, by the md5 of the files of `code/`, where both runs kept them
+#' the code, by the md5 of the files `snapshot.csv` records, where both runs kept them
 #' -- and their results (`output/`).  After a fix to the data or the
 #' programs, it says whether only what was fixed changed.
 #'
@@ -628,10 +740,13 @@ compare_batches <- function(study, batch, against = NULL) {
     stats::setNames(m$md5, m$path)
   }
   code_md5 <- function(dir) {
-    d <- file.path(dir, "code")
-    if (!dir.exists(d)) return(NULL)
-    f <- list.files(d, recursive = TRUE)
-    stats::setNames(unname(tools::md5sum(file.path(d, f))), f)
+    # the whole folder is the code: snapshot.csv records the md5 of the
+    # study's files it copied (programs/, spec/, input/ ...)
+    f <- file.path(dir, "snapshot.csv")
+    if (!file.exists(f)) return(NULL)
+    m <- utils::read.csv(f, colClasses = "character")
+    m <- m[!startsWith(m$path, "data/"), , drop = FALSE]
+    stats::setNames(m$md5, m$path)
   }
   outs <- sort(union(list.files(file.path(a, "output"), recursive = TRUE),
                      list.files(file.path(b, "output"), recursive = TRUE)))

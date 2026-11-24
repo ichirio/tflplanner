@@ -23,7 +23,7 @@
 # The titles' and the footnotes' style (rtf_titles(), rtf_footnotes()): the
 # size first, as their cards show it
 .pgs_band_fields <- list(
-  list(arg = "font_size_half_points", label = "Size (pt)", kind = "pt"),
+  list(arg = "font_size_half_points", label = "Font size (pt)", kind = "pt"),
   list(arg = "row_height_twips", label = "Row height (twips)", kind = "number"),
   list(arg = "markup", label = "Markup", kind = "choice",
        choices = c("script", "relational", "all", "none")),
@@ -31,8 +31,8 @@
   list(arg = "align", label = "Alignment", kind = "choice", choices = c("left", "center", "right")))
 
 # One card a function; its fields in the function's order (formals).  kind:
-# choice, number, pt (half points shown as points), text, logical.  `arg`
-# is the YAML key.
+# choice, number, pt (half points shown as points), text, logical, inches
+# (twips shown as inches, or fit).  `arg` is the YAML key.
 .pgs_fields <- list(
   rtf_page = list(
     list(arg = "paper_size", label = "Paper", kind = "choice",
@@ -51,7 +51,7 @@
   # fields: kept as the YAML says them)
   rtf_style = list(
     list(arg = "font", label = "Font family", kind = "text", choices = c("Courier", "Courier New")),
-    list(arg = "font_size_half_points", label = "Size (pt)", kind = "pt"),
+    list(arg = "font_size_half_points", label = "Font size (pt)", kind = "pt"),
     list(arg = "row_height_twips", label = "Row height (twips)", kind = "number"),
     list(arg = "cell_padding_left_twips", label = "Cell padding, left (twips)", kind = "number"),
     list(arg = "cell_padding_right_twips", label = "Cell padding, right (twips)", kind = "number"),
@@ -79,20 +79,23 @@
     list(arg = "auto_title", label = "Title from the table's name", kind = "logical"),
     list(arg = "title_label_align", label = "Title's alignment", kind = "choice",
          choices = c("left", "center", "right"))),
-  # (a figure's size, alignment, dpi and PNG device are no page setting:
-  # its content's tfl_image, the content step's card -- tflspec#874)
+  rtf_figures = list(
+    list(arg = "width_twips", label = "Width (in)", kind = "inches"),
+    list(arg = "height_twips", label = "Height (in)", kind = "inches"),
+    list(arg = "align", label = "Alignment", kind = "choice", choices = c("left", "center", "right"))),
   rtf_titles = .pgs_band_fields,
   rtf_footnotes = .pgs_band_fields)
 
 # a card's meaning, its title "meaning (function())"
 .pgs_cards <- c(rtf_page = "Paper and margins", rtf_style = "Text defaults",
-                rtf_document = "Document", rtf_tables = "Table on the page")
+                rtf_document = "Document", rtf_tables = "Table on the page",
+                rtf_figures = "Figure size")
 
 # the call each card is in the program (tflspec writes rtf_page()'s
 # arguments as rtf_document(page = list(...)))
 .pgs_call_names <- c(rtf_page = "(rtf_document(page =))", rtf_style = "(rtf_document(style = rtf_style()))",
                      rtf_document = "(rtf_document())", rtf_tables = "(rtf_tables())",
-                     rtf_titles = "(rtf_titles())",
+                     rtf_figures = "(rtf_figures())", rtf_titles = "(rtf_titles())",
                      rtf_footnotes = "(rtf_footnotes())")
 
 .pgs_field <- function(fn, arg) {
@@ -314,6 +317,10 @@
   }
   if (identical(kind, "slots")) return(.slots_show(v))
   if (identical(kind, "pt")) return(.points(as.character(v)))
+  if (identical(kind, "inches")) {
+    n <- suppressWarnings(as.numeric(v))
+    return(if (is.na(n)) as.character(v) else format(round(n / 1440, 3)))
+  }
   if (is.logical(v)) return(if (isTRUE(v)) "TRUE" else "FALSE")
   as.character(v)[1L]
 }
@@ -332,6 +339,12 @@
     hp <- .half_points(v)
     if (is.na(hp)) stop("The size is a number of points (9, 10 ...).", call. = FALSE)
     return(as.integer(hp))
+  }
+  if (identical(kind, "inches")) {
+    if (identical(tolower(v), "fit")) return("fit")
+    n <- suppressWarnings(as.numeric(v))
+    if (is.na(n) || n <= 0) stop("A size is inches (5.5) or fit.", call. = FALSE)
+    return(as.integer(round(n * 1440)))
   }
   if (v %in% c("TRUE", "FALSE")) return(identical(v, "TRUE"))
   n <- suppressWarnings(as.numeric(v))
@@ -540,10 +553,12 @@ $", "", yaml::as.yaml(list(tokens = tokens))), "
 }
 
 # A study part's file text, as tflspec writes it from the study's spec.
-# `old`: the file's text before, whose study-level `codelists:` and
-# `adam_meta:` blocks of defaults.yml are kept as they were when the writer
-# does not give them (tfl_write_study_part() writes the layer and the styles
-# only; the app has no editor for either block yet).
+# `old`: the file's text before. For defaults.yml, every top-level block of
+# `old` the writer does not write is kept as it was, with its comment lines
+# (tfl_write_study_part() writes the layer and the styles only; the others,
+# `codelists:`, `adam_meta:`, `figure_style:`, `options:`, `ai:` ..., are read
+# by tflspec or written by hand, by tflspec or the AI kit), see
+# .keep_study_blocks(). A block the writer writes replaces the old one.
 .study_part_lines <- function(study, part, name = NULL, old = NULL) {
   f <- tempfile("tflplanner-part", fileext = ".yml")
   on.exit(unlink(f), add = TRUE)
@@ -553,26 +568,37 @@ $", "", yaml::as.yaml(list(tokens = tokens))), "
   lines
 }
 
-# `lines` with the top-level blocks `codelists:` and `adam_meta:` of `old`
-# (the key's line to the next top-level key, the comment lines above the key
-# included) added where `lines` has no such key
+# `lines` (the writer's text) with every top-level block of `old` whose key
+# `lines` has not: the key's line to the next top-level key, the comment
+# lines just above the key included (those just above the next key belong to
+# that one). The writer's own keys (content, page, data, styles) are not
+# kept: the writer leaves one out when it is empty, so the old one is gone.
+# A block `lines` has replaces the old one. The kept blocks keep their old
+# order and their place relative to `styles:`: those before the old
+# `styles:` (all, when it has none) go just before the new `styles:` (at the
+# end when there is none), those after it at the end.
 .keep_study_blocks <- function(lines, old) {
-  top <- grepl("^[A-Za-z_][A-Za-z0-9_]*:", old)
-  for (k in c("codelists", "adam_meta")) {
-    if (any(grepl(paste0("^", k, ":"), lines))) next
-    i <- which(grepl(paste0("^", k, ":"), old))[1L]
-    if (is.na(i)) next
+  is_key <- function(x) grepl("^[A-Za-z_][A-Za-z0-9_]*:", x)
+  key_of <- function(x) sub(":.*$", "", x)
+  top <- is_key(old)
+  keys <- ifelse(top, key_of(old), NA_character_)
+  skip <- c(key_of(lines[is_key(lines)]), "content", "page", "data", "styles")
+  st <- which(keys %in% "styles")[1L]
+  before <- character()
+  after <- character()
+  for (i in which(top)) {
+    if (keys[i] %in% skip) next
+    skip <- c(skip, keys[i])
     nxt <- which(top & seq_along(old) > i)
     j <- if (length(nxt)) nxt[1L] - 1L else length(old)
-    # (the comment lines just above the next key belong to it)
     while (j > i && grepl("^#", old[j])) j <- j - 1L
     from <- i
     while (from > 1L && grepl("^#", old[from - 1L])) from <- from - 1L
-    # (before `styles:`, as the sample's file has them)
-    at <- which(grepl("^styles:", lines))[1L]
-    lines <- if (is.na(at)) c(lines, old[from:j]) else append(lines, old[from:j], after = at - 1L)
+    if (!is.na(st) && i > st) after <- c(after, old[from:j]) else before <- c(before, old[from:j])
   }
-  lines
+  at <- which(grepl("^styles:", lines))[1L]
+  lines <- if (is.na(at)) c(lines, before) else append(lines, before, after = at - 1L)
+  c(lines, after)
 }
 
 # The view's study rows of the report sheets (the study's default page

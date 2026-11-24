@@ -42,7 +42,8 @@
 .none-note.none-on { display: inline; }
 .none-row:has(.none-note.none-on) > .none-btn { display: none; }
 .rp-none-toggle { margin: 0; cursor: pointer; font-size: 11px; font-family: Consolas, 'Courier New', monospace;
-  color: #9ca3af; border: 1px solid #e5e7eb; border-radius: .25rem; padding: 0 .3rem; line-height: 1.5; }
+  color: #9ca3af; border: 1px solid #e5e7eb; border-radius: .25rem; padding: 0 .3rem; line-height: 1.5;
+  white-space: nowrap; flex-shrink: 0; }
 .rp-none-toggle input { display: none; }
 .rp-field.rp-field-none .rp-none-toggle { color: #fff; background: var(--bs-primary, #0d6efd);
   border-color: var(--bs-primary, #0d6efd); }

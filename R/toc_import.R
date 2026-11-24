@@ -711,7 +711,8 @@ toc_populations <- function(x, path, id_col = "output_id", pop_col = "population
 # workbook is written there, from the standards in use, when there is none):
 # the columns into the rule set's toc_map rows, and with `sheet` /
 # `topline_sheet` / `header_row` / `id_rule` what the import found or was
-# told, into its toc_rules row
+# told, into its toc_rules row.  The write is safe: temp file, checked,
+# the old file kept as .prev.
 remember_toc_map <- function(map, home = tflplanner_home(), rule_set = NULL,
                              sheet = NULL, topline_sheet = NULL, header_row = NULL,
                              id_rule = NULL) {
@@ -723,8 +724,16 @@ remember_toc_map <- function(map, home = tflplanner_home(), rule_set = NULL,
                                     header_row, id_rule)
   }
   f <- .standards_file(home)
-  dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
-  writexl::write_xlsx(c(list(`_README` = .standards_readme()), s), f)
+  lose <- if (file.exists(f)) .standards_would_lose(f) else character()
+  if (length(lose)) {
+    stop("The TOC is taken in, but the mapping was not remembered: the company ",
+         "standards workbook has content tflplanner would drop when it rewrites it (",
+         paste(lose, collapse = "; "), "). Add the mapping to the workbook by hand, ",
+         "or remove that content.", call. = FALSE)
+  }
+  .write_standards_safely(function(p) {
+    writexl::write_xlsx(c(list(`_README` = .standards_readme()), s), p)
+  }, f)
   invisible(f)
 }
 

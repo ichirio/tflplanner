@@ -123,7 +123,7 @@ test_that("the workbooks of an earlier tflplanner are converted on import", {
 test_that("a filter that is not R stops the import at its report", {
   skip_on_cran()
   home <- local_home()
-  suppressMessages(create_sample_study(run = FALSE))
+  suppressMessages(sample_study_copy())
   out <- file.path(home, "copy")
   export_spec_files("SAMPLE-01", out)
   x <- file.path(out, "spec", "outputs", "T-14-1-1.yml")

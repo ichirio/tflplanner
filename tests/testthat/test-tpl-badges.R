@@ -65,11 +65,11 @@ test_that("the badge is a small pill with the kind's class and text", {
   expect_match(h(list(kind = "fallback")), "rp-tpl-badge-fallback")
   expect_match(h(list(kind = "fallback", key = "plan_blanks.max_rows")),
                "Default when the study standard (plan_blanks.max_rows) is undefined", fixed = TRUE)
-  expect_match(h(list(kind = "fallback", key = "a.b"), tr_ja), "試験標準（a.b）未定義の時の既定値")
+  expect_match(h(list(kind = "fallback", key = "a.b"), tr_ja), "\u8A66\u9A13\u6A19\u6E96\uFF08a.b\uFF09\u672A\u5B9A\u7FA9\u306E\u6642\u306E\u30C7\u30D5\u30A9\u30EB\u30C8\u5024")
   expect_match(h(list(kind = "fallback"), tr_en), "Default when the study standard is undefined", fixed = TRUE)
   expect_match(h(list(kind = "default")), "rp-tpl-badge-default")
   expect_match(h(list(kind = "default")), "Template default")
-  expect_match(h(list(kind = "default"), tr_ja), "\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8\u306e\u65e2\u5b9a\u5024")
+  expect_match(h(list(kind = "default"), tr_ja), "\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8\u306e\u30c7\u30d5\u30a9\u30eb\u30c8\u5024")
   expect_match(h(list(kind = "report"), tr_ja), "\u3053\u306e\u5e33\u7968\u306e\u89e3\u6790\u5bfe\u8c61\u96c6\u56e3")
 })
 

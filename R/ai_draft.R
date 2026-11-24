@@ -654,21 +654,26 @@
   .ai_chosen(out)
 }
 
-# The ADaM spec chosen in the dialog: a P21 Spec workbook or a define.xml
-.ai_choose_adam_spec <- function(default = "") {
+# The ADaM spec chosen in the dialog: a P21 Spec workbook or a define.xml.
+# `caption` the dialog's title (translated by the caller); `xls` TRUE: an
+# .xls workbook may be chosen too ([Data] -> ADaM levels reads one)
+.ai_choose_adam_spec <- function(default = "", caption = "ADaM spec (P21 Spec workbook or define.xml)",
+                                 xls = FALSE) {
   f <- getOption("tflplanner.choose_file")
-  cap <- "ADaM spec (P21 Spec workbook or define.xml)"
+  ext <- c(if (xls) "xls", "xlsx", "xml")
+  pat <- paste0("*.", ext, collapse = ";")
   out <- if (is.function(f)) f(default) else if (.Platform$OS.type == "windows") {
-    filters <- rbind(c("ADaM spec (*.xlsx, *.xml)", "*.xlsx;*.xml"), c("All files (*.*)", "*.*"))
-    .ps_dialog("file", default, cap,
-               filter = "ADaM spec (*.xlsx;*.xml)|*.xlsx;*.xml|All files (*.*)|*.*") %||%
+    filters <- rbind(c(sprintf("%s (%s)", caption, gsub(";", ", ", pat, fixed = TRUE)), pat),
+                     c("All files (*.*)", "*.*"))
+    .ps_dialog("file", default, caption,
+               filter = sprintf("%s (%s)|%s|All files (*.*)|*.*", caption, pat, pat)) %||%
       .ai_dialog_try(getExportedValue("utils", "choose.files")(default = .ai_file_default(default),
-                                                               caption = cap, multi = FALSE,
+                                                               caption = caption, multi = FALSE,
                                                                filters = filters))
   } else {
-    tcltk::tk_choose.files(default = .ai_file_default(default), caption = cap, multi = FALSE,
-                           filters = matrix(c("Excel workbook", ".xlsx", "define.xml", ".xml"),
-                                            ncol = 2, byrow = TRUE))
+    tcltk::tk_choose.files(default = .ai_file_default(default), caption = caption, multi = FALSE,
+                           filters = matrix(c(rep("ADaM spec", length(ext)), paste0(".", ext)),
+                                            ncol = 2))
   }
   .ai_chosen(out)
 }
@@ -829,19 +834,16 @@
   out
 }
 
-# The levels written into study.yml's ai: review (the three kinds), the rest
-# of the file as it is.  `levels`: figure, table, listing as the select's text.
+# The levels written into study.yml's ai: review (the three kinds), every
+# other line of the file as it is (.yml_set_key(): its tags and comments
+# kept).  `levels`: figure, table, listing as the select's text.
 .ai_review_write <- function(path, levels) {
   f <- file.path(path, "study.yml")
-  y <- yaml::read_yaml(f)
-  if (is.null(y)) y <- list()
-  if (!is.list(y$ai)) y$ai <- list()
-  y$ai$review <- stats::setNames(lapply(.ai_review_kinds, function(k) {
+  review <- stats::setNames(lapply(.ai_review_kinds, function(k) {
     v <- levels[[k]]
     if (identical(v, "none")) "none" else as.integer(v)
   }), .ai_review_kinds)
-  yaml::write_yaml(y, f, fileEncoding = "UTF-8")
-  invisible(f)
+  .study_yml_write(.yml_set_key(.study_yml_lines(f), "review", review, under = "ai"), f)
 }
 
 # The agent's AGENTS.md written again with the study's settings now:
@@ -900,15 +902,11 @@
   out
 }
 
-# The value written into study.yml's ai: run, the rest of the file as it is
+# The value written into study.yml's ai: run, every other line of the file
+# as it is (.yml_set_key(): its tags and comments kept)
 .ai_run_write <- function(path, value) {
   f <- file.path(path, "study.yml")
-  y <- yaml::read_yaml(f)
-  if (is.null(y)) y <- list()
-  if (!is.list(y$ai)) y$ai <- list()
-  y$ai$run <- value
-  yaml::write_yaml(y, f, fileEncoding = "UTF-8")
-  invisible(f)
+  .study_yml_write(.yml_set_key(.study_yml_lines(f), "run", value, under = "ai"), f)
 }
 
 # The value set for a study: written into study.yml, the agent's files made

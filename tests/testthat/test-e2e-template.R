@@ -121,7 +121,7 @@ test_that("a template report in the browser: add, empty card, no veil, OK, this 
   check("dialog OK in view (1280x900)", inview, paste(c(unlist(dims), "ok", unlist(okr)), collapse = " "))
   t0 <- Sys.time()
   click("#add_ok")
-  made <- wait_for(sprintf("$('#target option').map((i, e) => e.value).get().includes('%s') && $('#tpl_card').text().length > 0 && !document.body.classList.contains('rp-switching')", id), 30)
+  made <- wait_for(sprintf("$('#target option').map((i, e) => e.value).get().includes('%s') && $('#tpl_card').text().length > 0 && $('#tpl_card_head').text().length > 0 && !document.body.classList.contains('rp-switching')", id), 30)
   check("(d) the first OK makes the report", made,
         sprintf("%.1f s to its card", as.numeric(difftime(Sys.time(), t0, units = "secs"))))
 
@@ -152,7 +152,7 @@ test_that("a template report in the browser: add, empty card, no veil, OK, this 
   # the preview (ARD and table) made by itself: the template's card and the
   # builder's "+ Add a card"; no other card till one is overridden (the
   # template writes no study-standard line of its own)
-  cards <- wait_for("$('#tpl_card').text().includes('tfl_tpl()') && $('.rp-builder-cards .rp-add-menu').length > 0", 60)
+  cards <- wait_for("$('#tpl_card_head').text().includes('tfl_tpl()') && $('.rp-builder-cards .rp-add-menu').length > 0", 60)
   idle()
   shown <- js("$('.rp-builder-cards .rp-card').map((i, e) => e.dataset.fn).get().join(' ')")
   check("the template card and + Add a card after the preview", cards)
@@ -172,8 +172,11 @@ test_that("a template report in the browser: add, empty card, no veil, OK, this 
   check("the template card and the added card only", identical(shown, "plan_hide"), shown)
 
   # (c) an argument changed (x on a chip): the page is not veiled
-  if (isTRUE(js("!document.querySelector('#tpl_card details').open"))) click("#tpl_card details > summary")
-  wait_for("document.querySelector('#tpl_card details').open && $('#tpl_demog__categorical').parent().find('.selectize-input .item .remove').filter((i, e) => e.offsetParent !== null).length > 0", 20)
+  # (categorical is an analysis argument: the analysis step's card)
+  click("#step a[data-value='ard']")
+  wait_for("$('#tpl_card_ard details').filter((i, e) => e.offsetParent !== null).length > 0", 20)
+  if (isTRUE(js("!document.querySelector('#tpl_card_ard details').open"))) click("#tpl_card_ard details > summary")
+  wait_for("document.querySelector('#tpl_card_ard details').open && $('#tpl_demog__categorical').parent().find('.selectize-input .item .remove').filter((i, e) => e.offsetParent !== null).length > 0", 20)
   idle()
   watch()
   sel <- js("(() => { const i = $('#tpl_demog__categorical');
@@ -191,6 +194,8 @@ test_that("a template report in the browser: add, empty card, no veil, OK, this 
     check("(c) no veil (rp-user-busy) on an argument change", n == 0, sprintf("veiled %d samples", n))
   } else check("(c) no veil on an argument change", FALSE, "no chip to remove")
 
+  click("#step a[data-value='content']")
+  idle()
   # (e) a study standard's field edited: the card is this table's.  The
   # template writes no plan_cells(): its card, added, shows the study
   # standard's values till one is changed.

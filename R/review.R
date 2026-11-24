@@ -134,6 +134,9 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
 # list's own
 .review_planner <- function(p, facts = NULL) {
   st <- p$study[!is.na(p$study)]
+  # the app's own settings are not study-sheet keys: tflspec reads only
+  # adam_levels of them, so the rest never reach its review
+  st <- st[!names(st) %in% .study_app_only_settings]
   spec <- c(.review_page_unset(p$sheets), list(study = if (length(st)) st))
   spec$study <- spec$study %||% NULL
   r <- tflspec::tfl_review_spec(spec = spec, ard = p$ard, listings = p$lf,
@@ -312,12 +315,10 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
   ad_all <- .adata_rows(p)
   tok <- p$sheets$tokens
   files <- character()
-  progs <- character()
   for (id in ids) {
     info <- tryCatch(report_info(p, id), error = function(e) NULL)
     type <- info$type %||% "table"
     files[id] <- info$file %||% NA
-    progs[id] <- info$program %||% NA
     # R01: no title -- no line of the titles (its own, the defaults), no
     # OUTPUT_TITLE of its own
     own_title <- tok$value[!is.na(tok$output_id) & tok$output_id == id &
@@ -360,13 +361,16 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
     }
   }
   # R07: two reports writing one file or one program
-  for (what in c("file", "program")) {
-    v <- if (identical(what, "file")) files else progs
-    v <- v[!is.na(v)]
-    for (x in unique(v[duplicated(v)])) {
-      who <- names(v)[v == x]
-      add("R07", who[2L], "report", who[2L], what, args = c(who[1L], who[2L], what, x))
-    }
+  v <- files[!is.na(files)]
+  for (x in unique(v[duplicated(v)])) {
+    who <- names(v)[v == x]
+    add("R07", who[2L], "report", who[2L], "file", args = c(who[1L], who[2L], "file", x))
+  }
+  # ... and a program: the same file in lower case too, or a file tflplanner
+  # writes itself (the save stops on these: .program_name_problems())
+  for (x in .program_name_problems(p)) {
+    add("R07", x$id, x$sheet, x$id, x$field, args = x$args, level = "error",
+        template = .program_name_templates[[x$kind]])
   }
   .review_bind(out)
 }
@@ -724,8 +728,7 @@ review_facts <- function(study, refresh = FALSE, read = TRUE,
 # in), kept in the store while the files do not change
 .review_ard_facts <- function(study, home = tflplanner_home()) {
   p <- study$planner
-  out <- .ard_study_value(p$ard, "output", "output/ard/ard.rds")
-  f <- file.path(study$path, out)
+  f <- .study_ard_file(study)
   if (!file.exists(f)) return(list())
   i <- file.info(f)
   key <- list(path = normalizePath(f, "/"), mtime = as.numeric(i$mtime), size = i$size,

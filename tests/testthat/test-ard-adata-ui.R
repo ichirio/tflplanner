@@ -4,6 +4,7 @@
 # (slow: its tests write study folders or start the app -- run on CI
 # and locally with NOT_CRAN=true, not in CRAN's check)
 skip_on_cran()
+skip_if_quick()  # slow: not in the quick check of a PR into next (helper.R)
 
 adata_planner <- function() {
   p <- add_output(new_planner(), "DM")
@@ -91,7 +92,6 @@ test_that("the ARD tab shows a report's analysis data and makes one", {
                       adata_id = "adsl_saf")
     session$setInputs(adata_preview = 1)
     expect_match(output$adata_preview_out$html, "subjects", fixed = TRUE)
-    session$setInputs(adata_save = 1)
     rv <- session$userData$rv
     expect_identical(rv$p$ard$analyses$data, c("adsl_saf", "adsl_saf"))
     h <- output$ard_adata$html
@@ -188,9 +188,10 @@ test_that("1-1: one list, a new analysis data, kept to another's subjects", {
     # a new analysis data: the name first; an analysis set's condition put in
     session$setInputs(ard_adata_new = 1)
     f <- output$adata_detail$html
-    # what it is made from and its analysis set first, the name after them
+    # the name first (the program assigns to it), then what it is made
+    # from and its analysis set
+    expect_lt(regexpr("adata_id", f), regexpr("adata_from", f))
     expect_lt(regexpr("adata_from", f), regexpr("adata_pop", f))
-    expect_lt(regexpr("adata_pop", f), regexpr("adata_id", f))
     expect_match(f, "adata_cond", fixed = TRUE)
     # the words: a filter; the condition as R, the whole data as R
     expect_match(f, "Filter (a condition)", fixed = TRUE)
@@ -209,7 +210,6 @@ test_that("1-1: one list, a new analysis data, kept to another's subjects", {
     cond$key(shiny::isolate(cond$key()) + 1L)
     session$flushReact()
     session$setInputs(adata_id = "adsl_saf")
-    session$setInputs(adata_save = 1)
     rv <- session$userData$rv
     ad <- .adata_rows(rv$p, "DM")
     expect_identical(ad$data_id, "adsl_saf")
@@ -221,11 +221,9 @@ test_that("1-1: one list, a new analysis data, kept to another's subjects", {
     session$setInputs(adata_id = "adsl_old", adata_from = "ADSL",
                       adata_subj_on = TRUE, adata_add = NULL,
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL)
-    session$setInputs(adata_save = 2)
     ad <- .adata_rows(rv$p, "DM")
     expect_identical(ad$subjects_in[ad$data_id == "adsl_old"], "adsl_saf")
-    # a click marks it, and the buttons name it
-    session$setInputs(ard_adata_pick = "adsl_old")
+    # made, it is the one marked, and the buttons name it
     h <- output$ard_adata$html
     expect_match(h, "Copy adsl_old", fixed = TRUE)
     expect_match(h, "aria-selected=\"true\"", fixed = TRUE)
@@ -270,7 +268,10 @@ test_that("1-1's sheet: the report's rows replaced as a whole; a `from` the form
     # (adata_right); the ARD step's right pane stays 1-2's
     expect_match(as.character(app_ui()), "hot_adata_report", fixed = TRUE)
     expect_match(output$ard_spec_pane$html, "hot_ard_analyses", fixed = TRUE)
-    session$setInputs(adata_close = 1)
+    # (a second click on it closes it: the form has no Close of its own)
+    session$setInputs(ard_adata_pick = "none")
+    session$setInputs(ard_adata_pick = "adsl_saf")
+    expect_false(grepl("adata_id", paste(output$adata_detail$html, collapse = ""), fixed = TRUE))
     expect_match(output$ard_spec_pane$html, "hot_ard_analyses", fixed = TRUE)
     expect_match(output$ard_result_pane$html, "ard_preview", fixed = TRUE)
   })
@@ -304,7 +305,6 @@ test_that("a data written as R: the code the program has as a start; saved, the 
     session$setInputs(adata_id = "adae_teae", adata_from = "ADAE", adata_add = NULL,
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL,
                       adata_code = "dplyr::filter(adae, AESER == \"Y\")")
-    session$setInputs(adata_save = 1)
     rv <- session$userData$rv
     ad <- .adata_rows(rv$p, "DM")
     r <- ad[ad$data_id == "adae_teae", ]
@@ -383,20 +383,10 @@ test_that("the names tflplanner gives: <dataset>_<population>[_<PARAMCD>], one r
   expect_identical(.adata_suggest(p, "DM", "ADAE", NA, 'AESER == "Y"'), "adae")
 })
 
-test_that("1-1's analysis set: the condition's first row, from the study's sets and the data's flags", {
+test_that("1-1's analysis set: the Population field, from the study's sets and the data's flags", {
   expect_identical(.population_id_for("PPROTFL"), "PP")
   expect_identical(.population_id_for("SAFFL", "SAF"), "SAF2")
   expect_identical(.adata_name_from("ADAE", NA, pop = "SAF"), "adae_saf")
-  # the first term: put in, replaced (an analysis set's), taken out
-  known <- c('SAFFL == "Y"', 'PPROTFL == "Y"')
-  expect_identical(.cond_set_first(NA, 'SAFFL == "Y"', known), 'SAFFL == "Y"')
-  expect_identical(.cond_set_first('SAFFL == "Y" & AGE >= 65', 'PPROTFL == "Y"', known),
-                   'PPROTFL == "Y" & AGE >= 65')
-  expect_identical(.cond_set_first('AGE >= 65', 'SAFFL == "Y"', known), 'SAFFL == "Y" & AGE >= 65')
-  expect_identical(.cond_set_first('SAFFL == "Y" & (A == 1 | B == 2)', NA, known), "(A == 1 | B == 2)")
-  expect_true(is.na(.cond_set_first('SAFFL == "Y"', NA, known)))
-  expect_identical(.cond_set_first("not R (", 'SAFFL == "Y"', known), "not R (")
-  expect_identical(.cond_first('SAFFL == "Y" & AGE >= 65'), 'SAFFL == "Y"')
   local_home()
   p <- adata_planner()
   s <- create_study("PO", planner = p)
@@ -407,20 +397,20 @@ test_that("1-1's analysis set: the condition's first row, from the study's sets 
     session$setInputs(nav = "make", step = "ard", target = "DM")
     session$setInputs(ard_adata_new = 1)
     f <- output$adata_detail$html
-    # a new data: the study's first analysis set, as the condition's first row
+    # a new data: the study's first analysis set, in the Population field
+    # only -- the filter field does not repeat its condition
     expect_match(f, "<option value=\"pop:SAF\" selected>", fixed = TRUE)
     cond <- session$userData$adata_cond
-    expect_identical(shiny::isolate(cond$value()), 'SAFFL == "Y"')
+    expect_true(is.na(shiny::isolate(cond$value())))
     # the data's flags that are no analysis set: offered as well
     expect_match(f, "flag:PPROTFL", fixed = TRUE)
     expect_false(grepl("flag:\"", f, fixed = TRUE))
     session$setInputs(adata_from = "ADSL", adata_pop = "flag:PPROTFL")
-    expect_identical(shiny::isolate(cond$value()), 'PPROTFL == "Y"')
+    expect_true(is.na(shiny::isolate(cond$value())))
     # saved: the condition, no population_id
     session$setInputs(adata_id = "adsl_pp", adata_subj = "", adata_add = NULL,
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL, adata_code = "")
     session$flushReact()
-    session$setInputs(adata_save = 1)
     ad <- .adata_rows(session$userData$rv$p, "DM")
     r <- ad[ad$data_id == "adsl_pp", ]
     expect_identical(r$where, 'PPROTFL == "Y"')
@@ -434,7 +424,6 @@ test_that("1-1's analysis set: the condition's first row, from the study's sets 
     session$setInputs(adata_id = "adsl_65", adata_subj = "", adata_add = NULL,
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL, adata_code = "")
     session$flushReact()
-    session$setInputs(adata_save = 2)
     r <- .adata_rows(session$userData$rv$p, "DM")
     r <- r[r$data_id == "adsl_65", ]
     expect_identical(r$population_id, "SAF")
@@ -447,12 +436,13 @@ test_that("1-1's analysis set: the condition's first row, from the study's sets 
                       adata_keep = NULL, adata_distinct = NULL, adata_code = "")
     session$flushReact()
     expect_match(output$adata_same$html, "adsl_65, already there", fixed = TRUE)
-    # the row changed ("!="): a condition like the others, no population_id
+    # no analysis set, and the flag's other value: a condition like the
+    # others, no population_id
+    session$setInputs(adata_pop = ".none")
     cond$value('SAFFL != "Y"')
     cond$key(shiny::isolate(cond$key()) + 1L)
     session$setInputs(adata_id = "adsl_notsaf")
     session$flushReact()
-    session$setInputs(adata_save = 3)
     r <- .adata_rows(session$userData$rv$p, "DM")
     r <- r[r$data_id == "adsl_notsaf", ]
     expect_match(r$where, "SAFFL", fixed = TRUE)
@@ -474,6 +464,19 @@ test_that("an analysis set's condition taken out of a condition, and put in", {
   expect_identical(.cond_put_pop(NA, 'SAFFL == "Y"'), 'SAFFL == "Y"')
   expect_true(is.na(.cond_put_pop("not R (", 'SAFFL == "Y"')))
   expect_true(is.na(.cond_put_pop("AGE >= 65", NA)))
+  # the filter field without the set's rows, and the whole condition again
+  expect_true(.cond_leads('SAFFL == "Y" & AGE >= 65', 'SAFFL == "Y"'))
+  expect_false(.cond_leads('AGE >= 65 & SAFFL == "Y"', 'SAFFL == "Y"'))
+  expect_false(.cond_leads(NA, 'SAFFL == "Y"'))
+  expect_identical(.cond_drop_lead('SAFFL == "Y" & AGE >= 65', 'SAFFL == "Y"'), "AGE >= 65")
+  expect_true(is.na(.cond_drop_lead('SAFFL == "Y"', 'SAFFL == "Y"')))
+  expect_identical(.cond_drop_lead("AGE >= 65", 'SAFFL == "Y"'), "AGE >= 65")
+  expect_identical(.cond_with_pop("AGE >= 65", 'SAFFL == "Y"'), 'SAFFL == "Y" & AGE >= 65')
+  expect_identical(.cond_with_pop(NA, 'SAFFL == "Y"'), 'SAFFL == "Y"')
+  # (the set's row written in the filter too: not twice)
+  expect_identical(.cond_with_pop('SAFFL == "Y" & AGE >= 65', 'SAFFL == "Y"'), 'SAFFL == "Y" & AGE >= 65')
+  expect_identical(.cond_with_pop("AGE >= 65", NA), "AGE >= 65")
+  expect_identical(.cond_with_pop("not R (", 'SAFFL == "Y"'), 'SAFFL == "Y" & (not R ()')
   ad <- data.frame(data_id = c("adsl_saf", "adsl_x"), from = "ADSL", population_id = c("SAF", "SAF"),
                    subjects_in = NA, where = c(NA, "AGE>=65"), add = c(NA, "TRT01A"))
   expect_identical(.adata_same_as(ad, "ADSL", "SAF", NA, NA), "adsl_saf")
@@ -493,11 +496,11 @@ test_that("1-1: a population_id the sheet has is the condition's first row", {
     session$setInputs(nav = "make", step = "ard", target = "DM")
     session$setInputs(ard_adata_pick = "adsl_old")
     expect_false(grepl("Also kept to the population", output$adata_detail$html, fixed = TRUE))
-    expect_identical(shiny::isolate(session$userData$adata_cond$value()), 'SAFFL == "Y" & AGE >= 65')
+    # (the set's condition is the Population field's: the filter has the rest)
+    expect_identical(shiny::isolate(session$userData$adata_cond$value()), "AGE >= 65")
     session$setInputs(adata_id = "adsl_old", adata_from = "ADSL", adata_subj = "",
                       adata_add = NULL, adata_derive = "", adata_keep = NULL, adata_distinct = NULL,
                       adata_code = "")
-    session$setInputs(adata_save = 1)
     ad <- .adata_rows(session$userData$rv$p, "DM")
     expect_identical(ad$population_id[ad$data_id == "adsl_old"], "SAF")
     expect_identical(ad$where[ad$data_id == "adsl_old"], "AGE >= 65")
@@ -507,7 +510,7 @@ test_that("1-1: a population_id the sheet has is the condition's first row", {
 
 test_that("1-1 lists only the analysis data the report's analyses read (every sample report)", {
   home <- local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE))
+  s <- suppressMessages(sample_study_copy())
   p <- s$planner
   ad <- .adata_rows(p)$data_id
   tabs <- unique(p$ard$analyses$output_id)
@@ -565,16 +568,309 @@ test_that("an analysis data form does not stay open on another report", {
     session$setInputs(nav = "make", step = "ard", target = "DM")
     session$setInputs(ard_adata_name = "|SAF")
     expect_match(output$adata_detail$html, "adata_id", fixed = TRUE)
-    # another report is open: the form of the one before is gone, and a Save
-    # (a click left on the page) writes nothing
+    # another report is open: the form of the one before is gone, and its
+    # fields (values left on the page) write nothing
     session$setInputs(target = "AE")
     expect_false(grepl("adata_id", paste(output$adata_detail$html, collapse = ""), fixed = TRUE))
     before <- rv$p$ard
-    session$setInputs(adata_id = "adsl_saf", adata_from = "ADSL", adata_pop = "SAF", adata_save = 1)
+    session$setInputs(adata_id = "adsl_saf", adata_from = "ADSL", adata_pop = "SAF")
     expect_identical(rv$p$ard, before)
     # (back on the first: a form of its own opens again)
     session$setInputs(target = "DM")
     session$setInputs(ard_adata_name = "|SAF")
     expect_match(output$adata_detail$html, "adata_id", fixed = TRUE)
+  })
+})
+
+test_that("step 1 of the sample's T-14-1-1: the set once, the name first, its code shown", {
+  home <- local_home()
+  s <- suppressMessages(sample_study_copy())
+  shiny::testServer(server_for(s$meta$study_id), {
+    session$setInputs(nav = "make", step = "ard", target = "T-14-1-1")
+    session$setInputs(ard_adata_pick = "adsl_saf")
+    f <- output$adata_detail$html
+    expect_lt(regexpr("adata_id", f), regexpr("adata_from", f))
+    # the analysis set SAF in the Population field; the filter has no
+    # SAFFL == "Y" of its own
+    expect_match(f, "<option value=\"pop:SAF\" selected>", fixed = TRUE)
+    expect_true(is.na(shiny::isolate(session$userData$adata_cond$value())))
+    session$setInputs(adata_id = "adsl_saf", adata_from = "ADSL", adata_subj = "",
+                      adata_add = NULL, adata_derive = "", adata_keep = NULL,
+                      adata_distinct = NULL, adata_code = "")
+    code <- output$adata_code_view
+    expect_match(code, "adsl_saf <- ", fixed = TRUE)
+    # the report's own id, not the placeholder the program is written with
+    expect_match(code, "^report_id <- \"T-14-1-1\"")
+    expect_no_match(code, ".try", fixed = TRUE)
+    # saved as it was: the set, no condition
+    ad <- .adata_rows(session$userData$rv$p, "T-14-1-1")
+    expect_identical(ad$population_id[ad$data_id == "adsl_saf"], "SAF")
+    expect_true(is.na(ad$where[ad$data_id == "adsl_saf"]))
+  })
+})
+
+test_that("a form's edits put back as they were: only the parts it changed", {
+  p0 <- list(ard = list(analyses = data.frame(a = 1), analysis_data = data.frame(d = 1)),
+             spec = list(x = 1))
+  mine <- p0
+  mine$ard$analysis_data <- data.frame(d = 2)
+  mine$ard$new <- "made"
+  now <- mine
+  # (another change meanwhile, elsewhere: kept)
+  now$spec$x <- 9
+  out <- .form_restore(now, p0, mine)
+  expect_identical(out$ard$analysis_data, data.frame(d = 1))
+  expect_null(out$ard$new)
+  expect_identical(out$spec$x, 9)
+  # nothing written: as it is
+  expect_identical(.form_restore(now, p0, NULL), now)
+})
+
+test_that("one Save: the data form applies its edits at once, Undo, and another report asks first", {
+  local_home()
+  p <- add_output(adata_planner(), "AE")
+  p <- set_analysis_data(p, "DM", "adsl_old", from = "ADSL", population_id = "SAF", where = "AGE >= 65")
+  s <- create_study("OS", planner = p)
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  shiny::testServer(server_for("OS"), {
+    rv <- session$userData$rv
+    dirty <- session$userData$dirty
+    session$setInputs(nav = "make", step = "ard", target = "DM")
+    session$setInputs(ard_adata_pick = "adsl_old")
+    f <- output$adata_detail$html
+    # no Save or Close of its own: Undo only
+    expect_false(grepl("adata_save", f, fixed = TRUE))
+    expect_false(grepl("adata_close", f, fixed = TRUE))
+    expect_match(f, "adata_revert", fixed = TRUE)
+    # opened (the fields come back as drawn): nothing written
+    session$setInputs(adata_id = "adsl_old", adata_from = "ADSL", adata_subj = "",
+                      adata_add = NULL, adata_keep = NULL, adata_distinct = NULL,
+                      adata_code = "")
+    expect_false(shiny::isolate(dirty()))
+    # an edit: in the study at once, unsaved
+    session$setInputs(adata_keep = c("USUBJID", "AGE"))
+    ad <- .adata_rows(rv$p, "DM")
+    expect_identical(ad$keep[ad$data_id == "adsl_old"], "USUBJID | AGE")
+    expect_true(shiny::isolate(dirty()))
+    # a value that cannot be: said in the form, not applied
+    session$setInputs(adata_id = "")
+    expect_match(output$adata_problem$html, "alert", fixed = TRUE)
+    expect_true("adsl_old" %in% .adata_rows(rv$p, "DM")$data_id)
+    # Undo: as it was when opened
+    session$setInputs(adata_revert = 1)
+    expect_true(is.na(.adata_rows(rv$p, "DM")$keep[1L]))
+    expect_false(shiny::isolate(dirty()))
+    # another report with unsaved changes: asked; Cancel stays
+    session$setInputs(adata_id = "adsl_old", adata_keep = "USUBJID")
+    expect_true(shiny::isolate(dirty()))
+    session$setInputs(target = "AE")
+    expect_identical(shiny::isolate(session$userData$current()), "DM")
+    session$setInputs(switch_cancel = 1)
+    session$setInputs(target = "DM")
+    expect_identical(shiny::isolate(session$userData$current()), "DM")
+    expect_true(shiny::isolate(dirty()))
+    # Discard: every unsaved change goes, the other report opens
+    session$setInputs(target = "AE")
+    session$setInputs(switch_discard = 1)
+    expect_identical(shiny::isolate(session$userData$current()), "AE")
+    expect_false(shiny::isolate(dirty()))
+    expect_true(is.na(.adata_rows(rv$p, "DM")$keep[1L]))
+  })
+})
+
+test_that("one Save: the analysis form applies its edits at once and has Undo", {
+  local_home()
+  s <- create_study("OA", planner = adata_planner())
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  shiny::testServer(server_for("OA"), {
+    rv <- session$userData$rv
+    session$setInputs(nav = "make", step = "ard", target = "DM")
+    session$setInputs(ard_ol_pick = "AGE")
+    h <- output$ard_stat_ui$html
+    expect_false(grepl("ard_stat_apply", h, fixed = TRUE))
+    expect_match(h, "ard_an_revert", fixed = TRUE)
+    n <- session$userData$st_env$n
+    do.call(session$setInputs, stats::setNames(list("Age"), paste0("st", n, "_label")))
+    a <- ard_rows(rv$p, "analyses", "DM")
+    expect_identical(a$label[a$analysis_id == "AGE"], "Age")
+    # the form is not drawn again for its own edit
+    expect_identical(session$userData$st_env$n, n)
+    # a subset that is not R: said, not applied
+    do.call(session$setInputs, stats::setNames(list("AGE >="), paste0("st", n, "_where")))
+    expect_match(output$ard_stat_problem$html, "not an R condition", fixed = TRUE)
+    a <- ard_rows(rv$p, "analyses", "DM")
+    expect_identical(a$where[a$analysis_id == "AGE"], "AGE >= 18")
+    session$setInputs(ard_an_revert = 1)
+    a <- ard_rows(rv$p, "analyses", "DM")
+    expect_true(is.na(a$label[a$analysis_id == "AGE"]))
+    expect_false(shiny::isolate(session$userData$dirty()))
+  })
+})
+
+test_that("one Save: behind the question about unsaved changes the page stays on its report, and Cancel keeps Undo", {
+  local_home()
+  s <- create_study("OC", planner = add_output(adata_planner(), "AE"))
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  shiny::testServer(server_for("OC"), {
+    rv <- session$userData$rv
+    session$setInputs(nav = "make", step = "ard", target = "DM")
+    session$setInputs(ard_ol_pick = "AGE")
+    n <- session$userData$st_env$n
+    do.call(session$setInputs, stats::setNames(list("Age"), paste0("st", n, "_label")))
+    expect_true(shiny::isolate(session$userData$dirty()))
+    code <- output$ard_code
+    expect_false(grepl("AE has no analyses", code, fixed = TRUE))
+    # another report chosen: asked, and the page behind the question is
+    # still DM's (its code, its analysis form)
+    session$setInputs(target = "AE")
+    expect_identical(shiny::isolate(session$userData$current()), "DM")
+    expect_identical(output$ard_code, code)
+    # Cancel: the form as it was, its Undo too
+    session$setInputs(switch_cancel = 1)
+    session$setInputs(target = "DM")
+    expect_identical(session$userData$st_env$n, n)
+    session$setInputs(ard_an_revert = 1)
+    a <- ard_rows(rv$p, "analyses", "DM")
+    expect_true(is.na(a$label[a$analysis_id == "AGE"]))
+    expect_false(shiny::isolate(session$userData$dirty()))
+  })
+})
+
+test_that("one Save: after a discard or a save, the analysis form's Undo goes back to the study as it is then", {
+  local_home()
+  s <- create_study("OD", planner = adata_planner())
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  shiny::testServer(server_for("OD"), {
+    rv <- session$userData$rv
+    lab <- function() {
+      a <- ard_rows(rv$p, "analyses", "DM")
+      a$label[a$analysis_id == "AGE"]
+    }
+    set_in <- function(...) {
+      v <- list(...)
+      n <- session$userData$st_env$n
+      do.call(session$setInputs, stats::setNames(v, paste0("st", n, "_", names(v))))
+    }
+    session$setInputs(nav = "make", step = "ard", target = "DM")
+    session$setInputs(ard_ol_pick = "AGE")
+    set_in(label = "Age")
+    # opened again with the change unsaved, then discarded: Undo does not
+    # bring the discarded value back
+    session$setInputs(ard_ol_pick = "BIGN")
+    session$setInputs(ard_ol_pick = "AGE")
+    session$setInputs(discard = 1)
+    session$setInputs(discard_ok = 1)
+    expect_true(is.na(lab()))
+    set_in(label = "Years")
+    expect_identical(lab(), "Years")
+    session$setInputs(ard_an_revert = 1)
+    expect_true(is.na(lab()))
+    # saved: Undo goes back to what was saved
+    set_in(label = "Age")
+    session$setInputs(save = 1)
+    expect_false(shiny::isolate(session$userData$dirty()))
+    set_in(label = "Years")
+    expect_identical(lab(), "Years")
+    session$setInputs(ard_an_revert = 1)
+    expect_identical(lab(), "Age")
+    # a format that is not one: said with the value typed, the field marked
+    n <- session$userData$st_env$n
+    set_in(pick = "mean", f_mean = "abc")
+    h <- output$ard_stat_problem$html
+    expect_match(h, "mean: the format \"abc\" is not one (e.g. xx.x)", fixed = TRUE)
+    expect_match(h, sprintf("[id=\"st%d_f_mean\"]", n), fixed = TRUE)
+    a <- ard_rows(rv$p, "analyses", "DM")
+    expect_false(isTRUE(grepl("abc", a$formats[a$analysis_id == "AGE"], fixed = TRUE)))
+  })
+  k <- "%s: the format \"%s\" is not one (e.g. xx.x)"
+  expect_identical(sprintf(tr(k, "ja"), "mean", "abc"),
+                   "mean の書式 \"abc\" は使えません（例: xx.x）")
+})
+
+test_that("one Save: the data form keeps its Undo through a cancelled switch, starts it again after a discard, and says a bad name in the app's words", {
+  local_home()
+  p <- add_output(adata_planner(), "AE")
+  p <- set_analysis_data(p, "DM", "adsl_old", from = "ADSL", population_id = "SAF", where = "AGE >= 65")
+  s <- create_study("OE", planner = p)
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  shiny::testServer(server_for("OE"), {
+    rv <- session$userData$rv
+    keep <- function() .adata_rows(rv$p, "DM")$keep[1L]
+    session$setInputs(nav = "make", step = "ard", target = "DM")
+    session$setInputs(ard_adata_pick = "adsl_old")
+    # (the title: the name is the field right under it)
+    expect_false(grepl("Analysis data adsl_old", output$adata_detail$html, fixed = TRUE))
+    session$setInputs(adata_id = "adsl_old", adata_from = "ADSL", adata_subj = "",
+                      adata_add = NULL, adata_keep = NULL, adata_distinct = NULL,
+                      adata_code = "")
+    session$setInputs(adata_keep = c("USUBJID", "AGE"))
+    expect_identical(keep(), "USUBJID | AGE")
+    # another report chosen: asked, the form stays open behind the question
+    session$setInputs(target = "AE")
+    expect_match(output$adata_detail$html, "adata_revert", fixed = TRUE)
+    session$setInputs(switch_cancel = 1)
+    session$setInputs(target = "DM")
+    session$setInputs(adata_revert = 1)
+    expect_true(is.na(keep()))
+    # opened again with a change unsaved, then discarded: Undo goes back to
+    # the study as saved, not to the discarded value
+    session$setInputs(adata_keep = "USUBJID")
+    expect_identical(keep(), "USUBJID")
+    session$setInputs(ard_adata_pick = "adsl_old")
+    session$setInputs(ard_adata_pick = "adsl_old")
+    session$setInputs(discard = 1)
+    session$setInputs(discard_ok = 1)
+    expect_true(is.na(keep()))
+    session$setInputs(adata_keep = "AGE")
+    expect_identical(keep(), "AGE")
+    session$setInputs(adata_revert = 1)
+    expect_true(is.na(keep()))
+    # a name the definition refuses: said in the app's words, not applied
+    session$setInputs(adata_id = "Adsl old")
+    expect_match(output$adata_problem$html, "starts with a lower-case letter", fixed = TRUE)
+    expect_identical(.adata_rows(rv$p, "DM")$data_id, "adsl_old")
+    session$setInputs(adata_id = "adsl")
+    expect_match(output$adata_problem$html, "another object of the ARD program", fixed = TRUE)
+    expect_identical(.adata_rows(rv$p, "DM")$data_id, "adsl_old")
+  })
+})
+
+test_that("a data's name is checked by the definition's own rule, in words the app translates", {
+  p <- set_analysis_data(adata_planner(), "DM", "adsl_old", from = "ADSL", population_id = "SAF")
+  chk <- function(id, old = NULL) .adata_name_problem(p, "DM", id, old)
+  expect_null(chk("adsl_saf.2"))
+  expect_null(chk("adsl_old", old = "adsl_old"))
+  expect_identical(chk(""), "Give the analysis data a name.")
+  for (id in c("Adsl_saf", "adsl saf", "_x", "1x", "adsl-saf")) expect_match(chk(id), "lower-case letter", info = id)
+  expect_match(chk("if"), "keeps for itself")
+  for (id in c("adsl", "pop_saf", "data", "ard")) expect_match(chk(id), "another object", info = id)
+  expect_match(chk("adsl_old"), "already")
+  # the definition agrees: a name passed holds, one refused is refused
+  holds <- function(id) !inherits(try(suppressWarnings(.ard_spec(
+    set_analysis_data(p, "DM", id, from = "ADSL", population_id = "SAF")$ard)), silent = TRUE), "try-error")
+  expect_true(holds("adsl_saf.2"))
+  for (id in c("Adsl_saf", "if", "adsl", "pop_saf")) expect_false(holds(id), info = id)
+  # each in Japanese
+  ks <- c("Give the analysis data a name.",
+          "%s: a name starts with a lower-case letter and holds only lower-case letters, digits, _ and .",
+          "%s is a word R keeps for itself: give another name.",
+          "%s is the name of another object of the ARD program (a dataset, pop_<population>, data, population, ard ...): give another name.",
+          "%s: this report has an analysis data of that name already.")
+  for (k in ks) expect_false(identical(tr(k, "ja"), k), info = k)
+  expect_match(sprintf(tr(ks[2L], "ja"), "Adsl"), "英小文字で始め", fixed = TRUE)
+})
+
+test_that("the forms' labels name their SPEC column", {
+  local_home()
+  p <- set_analysis_data(adata_planner(), "DM", "adsl_old", from = "ADSL", population_id = "SAF")
+  s <- create_study("OL", planner = p)
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  shiny::testServer(server_for("OL"), {
+    session$setInputs(nav = "make", step = "ard", target = "DM")
+    session$setInputs(ard_ol_pick = "AGE")
+    h <- output$ard_stat_ui$html
+    for (x in c("(analysis_id)", "(label)", "(data)")) expect_match(h, x, fixed = TRUE)
+    session$setInputs(ard_adata_pick = "adsl_old")
+    expect_match(output$adata_detail$html, "(population_id)", fixed = TRUE)
   })
 })

@@ -4,7 +4,7 @@
 # report, its pattern, the study's defaults.  It writes only the target's
 # own layer, the key changed.  One card an rtfreporter function (its label
 # "meaning (function())"), its arguments with a value first, the others
-# below ("Not in the code"), in the function's order.  Inputs and buttons
+# below ("More settings", as the content cards), in the function's order.  Inputs and buttons
 # carry what they edit in data- attributes and say it with one input each
 # (pg_edit, pg_act), so the form is drawn again as it is, not observed field
 # by field.
@@ -33,7 +33,7 @@
   name <- sub("^[^:]*:", "", from %||% "")
   switch(kind,
          own = .pg_own_word(id, t),
-         defaults = t("Study default"),
+         defaults = t("Study standard"),
          pattern = sprintf(t("Page configuration: %s"), name),
          style = sprintf(t("Page configuration: %s"), name),
          "")
@@ -148,11 +148,16 @@ $(document).on('shiny:value', function(e) {
 .pg-info input[readonly] { background: var(--bs-secondary-bg, #e9ecef); }
 "
 
-# a field's label: its meaning, then (its argument) -- with the unit the
-# code has when the field shows another (points as half points)
-.pg_label <- function(text, arg, kind = "") {
-  conv <- switch(kind, pt = " = pt x 2", "")
-  shiny::tags$label(text, " ", shiny::span(class = "pg-fn", paste0("(", arg, conv, ")")))
+# a field's label: its meaning, then (its argument); when the field shows
+# another unit than the code's (points as half points, inches as twips),
+# the conversion is in its (i), not the label
+.pg_label <- function(text, arg, kind = "", t = identity) {
+  conv <- switch(kind,
+                 pt = sprintf(t("The code writes half points: %s = pt x 2 (9 pt is 18)."), arg),
+                 inches = sprintf(t("The code writes twips: %s = in x 1440 (1 in is 1440)."), arg),
+                 NULL)
+  shiny::tags$label(text, " ", shiny::span(class = "pg-fn", paste0("(", arg, ")")),
+                    if (!is.null(conv)) help_tip(conv))
 }
 
 # rtfreporter's own default of an argument (what the code leaves to it), as
@@ -202,7 +207,7 @@ $(document).on('shiny:value', function(e) {
   }
   shiny::div(
     class = "pg-field",
-    .pg_label(t(f$label), f$arg, f$kind),
+    .pg_label(t(f$label), f$arg, f$kind, t),
     input,
     shiny::div(
       class = "d-flex flex-wrap align-items-center gap-1 mt-1",
@@ -231,7 +236,7 @@ $(document).on('shiny:value', function(e) {
     if (any(said)) ui(fields[said]),
     if (any(!said)) shiny::tags$details(
       class = "pg-lower",
-      shiny::tags$summary(sprintf("%s (%d)", t("Not in the code"), sum(!said))),
+      shiny::tags$summary(sprintf("%s (%d)", t(.spec_more_label), sum(!said))),
       ui(fields[!said])),
     extra)
 }
@@ -279,7 +284,7 @@ $(document).on('shiny:value', function(e) {
     grid(up[[3L]]),
     if (length(low)) shiny::tags$details(
       class = "pg-lower",
-      shiny::tags$summary(sprintf("%s (%d)", t("Not in the code"), length(low))),
+      shiny::tags$summary(sprintf("%s (%d)", t(.spec_more_label), length(low))),
       grid(low)))
 }
 
@@ -334,12 +339,21 @@ $(document).on('shiny:value', function(e) {
       shiny::tags$thead(shiny::tags$tr(lapply(c("#", t("Left"), t("Center"), t("Right")),
                                               shiny::tags$th))),
       shiny::tags$tbody(rows))
-    else shiny::p(class = "small text-muted mb-1", t("(no lines)")),
+    # (the lines of every layer are listed above, the study standard's
+    # too: none here is none anywhere)
+    else shiny::p(class = "small text-muted mb-1",
+                  if (is.na(id) || .is_pattern_id(id)) t("(no lines)") else
+                    t("(No lines: none of this report's own and none from the study standard)")),
     shiny::tags$button(type = "button", class = "pg-act btn btn-sm btn-outline-secondary py-0",
                        `data-act` = "addline", `data-band` = band,
                        if (is.na(id)) t("Add a line") else if (.is_pattern_id(id))
-                         t("Add a line to this page configuration") else t("Add a line for this report")))
+                         t("Add a line to this page configuration") else t(.pg_add_own_line[[band]])))
 }
+# a report's own line, the button naming its part
+.pg_add_own_line <- c(titles = "+ Add a title line for this report only",
+                      footnotes = "+ Add a footnote line for this report only",
+                      header = "+ Add a header line for this report only",
+                      footer = "+ Add a footer line for this report only")
 
 # The tokens a page says but does not set: the report list's (its ID and
 # label, its title, analysis set and section -- each changed where it comes
@@ -349,8 +363,8 @@ $(document).on('shiny:value', function(e) {
 .pg_token_taken <- function(name) name %in% c(.pg_report_tokens, .pg_builtin_names())
 .pg_token_taken_msg <- function(name, t) {
   sprintf(if (name %in% .pg_builtin_names())
-    t("{%s} is rtfreporter's, filled as the RTF is written: give your token another name.")
-    else t("{%s} is the report list's: change it where it comes from (the list below says where), or give your token another name."),
+    t("{%s} is rtfreporter's, filled as the RTF is written: give your value to insert another name.")
+    else t("{%s} is the report list's: change it where it comes from (the list below says where), or give your value to insert another name."),
     name)
 }
 
@@ -362,7 +376,7 @@ $(document).on('shiny:value', function(e) {
   shiny::tagList(
     if (length(rows)) shiny::tags$table(class = "table table-sm pg-lines pg-tokens mb-1",
                                         shiny::tags$tbody(rows))
-    else shiny::p(class = "small text-muted mb-1", t("(no tokens)")),
+    else shiny::p(class = "small text-muted mb-1", t("(no values of your own to insert yet)")),
     shiny::p(class = "small text-muted mb-1",
              t("Edited for the whole study (study.yml tokens:), not for each page configuration.")))
 }
@@ -386,7 +400,7 @@ $(document).on('shiny:value', function(e) {
       shiny::tags$td(class = "text-nowrap", .pg_badge(r$from, id, t, kind)),
       shiny::tags$td(class = "text-nowrap",
         if (own) btn("token_reset", r$name,
-                     if (!is.na(below$from)) t("Revert") else t("Remove the token"),
+                     if (!is.na(below$from)) t("Revert") else t("Remove the value to insert"),
                      .pg_back_word(id, t))
         else shiny::tagList(btn("token_own", r$name, t("Change here")),
                             btn("token_omit", r$name, t("Leave out here"), "!unset"))))
@@ -394,7 +408,7 @@ $(document).on('shiny:value', function(e) {
   shiny::tagList(
     if (length(rows)) shiny::tags$table(class = "table table-sm pg-lines pg-tokens mb-1",
                                         shiny::tags$tbody(rows))
-    else shiny::p(class = "small text-muted mb-1", t("(no tokens)")),
+    else shiny::p(class = "small text-muted mb-1", t("(no values of your own to insert yet)")),
     # a token of one's own: its name (upper case) and its text
     shiny::div(
       class = "d-flex gap-1 align-items-center pg-add-token",
@@ -531,7 +545,7 @@ $(document).on('shiny:value', function(e) {
   shiny::tags$details(
     class = "mt-2",
     shiny::tags$summary(class = "small fw-semibold",
-                        sprintf(t("rtfreporter's tokens (%d), filled as the RTF is written"), nrow(d))),
+                        sprintf(t("rtfreporter's values to insert (%d), filled as the RTF is written"), nrow(d))),
     shiny::tags$table(class = "table table-sm pg-lines mb-1", shiny::tags$tbody(
       lapply(seq_len(nrow(d)), function(i) shiny::tags$tr(
         shiny::tags$td(shiny::code(paste0("{", d$name[i], "}"))),
@@ -549,10 +563,10 @@ $(document).on('shiny:value', function(e) {
     class = "small mt-1 d-flex flex-wrap align-items-center gap-1",
     shiny::tags$select(
       class = "pg-ins-sel form-select form-select-sm", style = "max-width: 16rem",
-      title = t("Insert (into the field last clicked):"),
-      shiny::tags$option(value = "", t("(a token)")),
+      title = t("Insert (into the field last clicked)"),
+      shiny::tags$option(value = "", t("(Choose a value to insert: report number, page number, ...)")),
       lapply(toks, function(k) shiny::tags$option(value = paste0("{", k, "}"), paste0("{", k, "}")))),
-    help_tip(t("Insert (into the field last clicked):")))
+    help_tip(t("Insert (into the field last clicked)")))
 }
 
 # The Titles card's note: the title the header prints, edited in the card
@@ -562,7 +576,7 @@ $(document).on('shiny:value', function(e) {
   if (!"OUTPUT_TITLE" %in% .page_said(sp, id)) return(NULL)
   tk <- .pgs_tokens(sp, id)
   v <- tk$value[match("OUTPUT_TITLE", tk$name)]
-  help_tip(sprintf(t("The header prints {OUTPUT_TITLE}: %s (changed in \"Report information and tokens\", above)."),
+  help_tip(sprintf(t("The header prints {OUTPUT_TITLE}: %s (changed in \"Report information and values to insert\", above)."),
                    if (is.na(v) || !nzchar(v)) t("(empty)") else v))
 }
 
@@ -576,6 +590,9 @@ $(document).on('shiny:value', function(e) {
   card <- function(title, call = NULL, ...) shiny::div(
     class = "pg-card",
     shiny::h6(title, if (!is.null(call)) shiny::tagList(" ", shiny::span(class = "pg-fn", call))), ...)
+  fig <- lapply(c("width_twips", "height_twips"), function(a) .pgs_arg(sp, id, "rtf_figures", a))
+  fig_said <- vapply(fig, function(a) tolower(as.character(a$value %||% "")), "")
+  fig_own <- vapply(fig, function(a) identical(a$from, "own"), NA)
   # the band's size, then its other style the page says; the rest folded
   size <- function(fn) {
     fs <- .pgs_fields[[fn]]
@@ -588,19 +605,19 @@ $(document).on('shiny:value', function(e) {
       shiny::div(class = "pg-grid mb-1", ui(fs[[1L]]), lapply(fs[-1L][said], ui)),
       if (any(!said)) shiny::tags$details(
         class = "pg-lower mb-1",
-        shiny::tags$summary(sprintf("%s (%d)", t("Not in the code"), sum(!said))),
+        shiny::tags$summary(sprintf("%s (%d)", t(.spec_more_label), sum(!said))),
         shiny::div(class = "pg-grid", lapply(fs[-1L][!said], ui))))
   }
   shiny::div(
     `data-pg-target` = .pg_target(id),
     # every token the page can say, in one place: the report's information
     # (the TOC's, edited here), its own tokens, rtfreporter's
-    if (report) card(t("Report information and tokens"), "(rtf_document(tokens =))",
+    if (report) card(t("Report information and values to insert"), "(rtf_document(tokens =))",
       .page_report_info_ui(x, sp, id, t),
-      shiny::div(class = "small fw-semibold mt-2", t("This report's own tokens")),
+      shiny::div(class = "small fw-semibold mt-2", t("This report's own values to insert")),
       .page_tokens_ui(sp, id, t, kind),
       .page_builtins_ui(t))
-    else card(t("Tokens"), "(rtf_document(tokens =))", .page_study_tokens_ui(sp, t), .page_builtins_ui(t)),
+    else card(t("Values to insert"), "(rtf_document(tokens =))", .page_study_tokens_ui(sp, t), .page_builtins_ui(t)),
     .page_paper_ui(sp, id, t, kind),
     .page_fn_ui(sp, id, "rtf_style", t, kind,
                 fields = Filter(function(f) !f$arg %in% .page_paper_moved$rtf_style,
@@ -608,11 +625,17 @@ $(document).on('shiny:value', function(e) {
     .page_fn_ui(sp, id, "rtf_document", t, kind,
                 fields = Filter(function(f) !f$arg %in% .page_paper_moved$rtf_document,
                                 .pgs_fields$rtf_document)),
-    # the content's call: rtf_tables() for a table or a listing (a pattern's
-    # or Standard's too).  A figure's own settings -- its size, alignment,
-    # dpi, PNG device -- are its content's tfl_image: the content step's
-    # card (tflspec#874); what tables and figures share stays the page's.
+    # the content's call: rtf_tables() for a table or a listing, rtf_figures()
+    # for a figure (a pattern's or Standard's: both)
     if (!identical(kind, "figure")) .page_fn_ui(sp, id, "rtf_tables", t, kind),
+    if (!report || identical(kind, "figure")) .page_fn_ui(
+      sp, id, "rtf_figures", t, kind,
+      extra = shiny::div(class = "d-flex flex-wrap gap-2 align-items-center",
+        if (report) shiny::span(class = "pg-from", sprintf(t("(its own: %s)"),
+          paste(format(.fig_native_size(x, id)), collapse = " x "))),
+        if (!all(fig_said == "fit")) .pg_btn("fig_fit", t("Fit to the page")),
+        if (any(fig_own)) .pg_btn("fig_native", t("Its own size")),
+        help_tip(t("Blank: the figure's own size (the company's figure style for its kind; a figure of your own code, 6.5 x 4.5 in), as rtfreporter places an image. A number: that size in inches. fit: the page's body (its width; its height less the titles and footnotes). The figure is drawn at this size, its text as its theme says; the dpi (step 2) changes only its pixels.")))),
     card(t("Header"), "(rtf_section(header =))", .page_lines_ui(sp, id, "header", t, kind)),
     card(shiny::tagList(t("Titles"), " ", .page_heading_ui(sp, id, t)), "(rtf_titles())",
          size("rtf_titles"), .page_lines_ui(sp, id, "titles", t, kind), .page_insert_ui(sp, id, t)),

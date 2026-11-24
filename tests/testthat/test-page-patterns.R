@@ -2,6 +2,8 @@
 # pattern; step 3's form shows each value with where it comes from and
 # writes only the report's own rows.
 
+skip_if_quick()  # slow: not in the quick check of a PR into next (helper.R)
+
 pat_planner <- function() {
   p <- add_output(add_output(new_planner(), "T1"), "T2")
   p$sheets$header <- .normalize_sheet(data.frame(
@@ -251,12 +253,12 @@ test_that("the user's notes: Standard under a pattern, the tokens card, the head
   p <- set_page_token(p, "T1", "OUTPUT_TITLE", "Demographics")
   h <- as.character(.page_form_ui(p, "T1", identity))
   # Standard's line 1 under Compact: the study default's
-  expect_match(h, "Study default", fixed = TRUE)
+  expect_match(h, "Study standard", fixed = TRUE)
   # the Titles card: the title the header prints, changed in the card above
   expect_match(h, "The header prints {OUTPUT_TITLE}: Demographics", fixed = TRUE)
   # one card first: the report's information (a field each), its own
   # tokens, rtfreporter's
-  expect_lt(regexpr("Report information and tokens", h, fixed = TRUE),
+  expect_lt(regexpr("Report information and values to insert", h, fixed = TRUE),
             regexpr("Paper and margins", h, fixed = TRUE))
   for (k in .pg_info_items) expect_match(h, sprintf('data-kind="info" data-name="%s"', k), fixed = TRUE)
   # no reset buttons (a TOC taken in again overwrites); an empty label is
@@ -371,7 +373,7 @@ ext_sample <- function(env = parent.frame()) {
   old <- options(tflplanner.home = home)
   do.call(on.exit, list(substitute(options(old)), add = TRUE), envir = env)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  p <- suppressMessages(create_sample_study(run = FALSE, home = home))$planner
+  p <- suppressMessages(sample_study_copy(home))$planner
   # (the sheets' patterns: the rows of output_id @<name>)
   for (nm in c("Compact", "Wide", "Third")) p <- add_page_pattern(p, nm)
   p
@@ -383,7 +385,7 @@ cfg_sample <- function(env = parent.frame()) {
   old <- options(tflplanner.home = home)
   do.call(on.exit, list(substitute(options(old)), add = TRUE), envir = env)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  p <- suppressMessages(create_sample_study(run = FALSE, home = home))$planner
+  p <- suppressMessages(sample_study_copy(home))$planner
   .pgs_add_pattern(.pgs_add_pattern(p, "Wide"), "Third")
 }
 

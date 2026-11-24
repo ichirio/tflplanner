@@ -4,22 +4,30 @@
 #   programs/tfl/<id>.R  -> programs/tfl/report_setup.R -> programs/study_setup.R
 #   figure programs      -> programs/tfl/fig_setup.R    -> programs/study_setup.R
 #
-# One file, three parts, run in this order (a later part wins):
+# Three files, run in this order (a later one wins):
 #
-#   1  the company standard  copied from the standards (sheet setup_code)
-#                            when the file is made; never rewritten after
-#   2  the study             written by tflplanner on every save: the
-#                            study's folders (study_layout()) and what the
-#                            study is (study.yml)
-#   3  the user's            the study's own code; never touched
+#   programs/company_setup.R  the company's code: copied from the standards
+#                             (sheet setup_code) when the study is made; the
+#                             study's own after that -- tflplanner never
+#                             writes it again
+#   programs/study_setup.R    generated on every save: the study's folders
+#                             (study_layout()), what the study is
+#                             (study.yml), its rounding and data, the
+#                             helpers.  It runs the other two: the company's
+#                             first, the user's last, once per program
+#   programs/study_user.R     the user's code; tflplanner never writes it
+#                             again
 #
-# A marker line opens each part.  Saving rewrites part 2 only, so parts 1
-# and 3 stay byte for byte.  Part 2 carries a checksum, as a generated
-# program does: one edited by hand is put in programs/.edited/ before
-# part 2 is written again.
+# A study made before (#910) has one study_setup.R of three marked parts.
+# Its first save splits it (.split_old_setup()): part 1 to
+# company_setup.R and part 3 to study_user.R, byte for byte.  When it
+# cannot be split cleanly, nothing is converted: the old file stays as it
+# is and runs, a copy goes to programs/.edited/ and the save says why.
 
 .study_setup_file <- "study_setup.R"
 .study_helpers_file <- "study_helpers.R"
+.company_setup_file <- "company_setup.R"
+.study_user_file <- "study_user.R"
 
 # programs/study_helpers.R, relative to the study folder: next to the setup
 # that sources it
@@ -35,7 +43,10 @@
 #' labels; a value not listed stops the program), `tag_ard()`, `fmt_ard()`,
 #' `fmt_pvalue()`, `keep_stats()` and `save_ard()` -- as tflspec gives them
 #' ([tflspec::tfl_helpers_code()]).  The study's setup sources it, so its
-#' programs run without tflspec.  Saving the study writes it again when
+#' programs do not call tflspec for these.  They still need tflspec to run
+#' in some cases: a report that reads an imported ARD calls
+#' `tflspec::tfl_read_ard()`, and a KM curve or forest plot calls tflspec's
+#' `km_curves()` or `forest_hr()`.  Saving the study writes it again when
 #' tflspec's have changed (one edited by hand is copied to
 #' `programs/.edited/` first).
 #'
@@ -69,6 +80,34 @@ study_helpers_code <- function(date = Sys.Date()) {
 # folders of the ARD and report programs
 .study_setup_path <- function() {
   file.path(dirname(study_layout()[["programs_ard"]]), .study_setup_file)
+}
+
+# programs/company_setup.R and programs/study_user.R, relative to the study
+# folder: next to the setup that runs them
+.company_setup_path <- function() file.path(dirname(.study_setup_path()), .company_setup_file)
+.study_user_path <- function() file.path(dirname(.study_setup_path()), .study_user_file)
+
+# The study's setup files in the order a program runs them, relative to the
+# study folder: the company's, the generated one, the user's
+.study_setup_files <- function() {
+  c(company = .company_setup_path(), setup = .study_setup_path(), user = .study_user_path())
+}
+
+# Those of them that are in `root`, in that order (a study made before
+# #910 has study_setup.R alone): the study setup's fingerprint, as the
+# programs record it (every file that is there)
+.study_setup_present <- function(root) {
+  f <- file.path(root, .study_setup_files())
+  names(f) <- names(.study_setup_files())
+  f[file.exists(f)]
+}
+
+# Those a program runs: an old study_setup.R kept as it was runs neither
+# of the other two (what the readers of the setup's code read)
+.study_setup_run <- function(root) {
+  f <- .study_setup_present(root)
+  if ("setup" %in% names(f) && .is_old_setup(f[["setup"]])) return(f["setup"])
+  f
 }
 
 # the line a setup file starts with
@@ -147,9 +186,12 @@ setup_code <- function(study_id = NA, standards = company_standards()) {
   invisible(code)
 }
 
-# part 2: the study's folders and what the study is, as R variables, and
-# the study's rounding (tflspec writes it: tflspec#791)
-.study_setup_part2 <- function(meta, study = NULL) {
+# The generated lines of study_setup.R: the study's folders and what the
+# study is, as R variables, the study's rounding and data (tflspec writes
+# them: tflspec#791) and the helpers
+.study_data_keys <- c("adam", "sdtm", "other")
+
+.study_setup_body <- function(meta, study = NULL) {
   lay <- study_layout()
   val <- function(v) {
     v <- as.character(v %||% NA_character_)
@@ -159,12 +201,16 @@ setup_code <- function(study_id = NA, standards = company_standards()) {
   nm <- function(x) formatC(x, width = -max(nchar(x)))
   paths <- paste0("path_", names(lay))
   ids <- paste0("study_", sub("^study_", "", .study_fields))
-  code <- c(
-    "# The study's folders, relative to the study folder (the programs run",
-    "# from it), and what the study is (study.yml).  tflplanner writes this",
-    "# part again on every save: change the study in the app, and put code",
-    "# of your own in the part below.",
-    paste(nm(paths), "<-", vapply(lay, val, "")),
+  c("# ---- the study: its folders, relative to the study folder (the programs",
+    "#      run from it), and what it is (study.yml)",
+    "# the data root: an official run copies the programs into its batch folder",
+    "# and reads the data where run_paths.R says (the study's data folders);",
+    "# anywhere else it is the study folder.  company_setup.R runs before these",
+    "# lines: company code cannot use path_adam, path_sdtm or path_other.",
+    ".tfl_data_root <- if (file.exists(\"run_paths.R\")) { source(\"run_paths.R\"); .tfl_data_root } else \".\"",
+    paste(nm(paths), "<-", ifelse(names(lay) %in% .study_data_keys,
+      sprintf("file.path(.tfl_data_root, %s)", vapply(lay, val, "")),
+      vapply(lay, val, ""))),
     "",
     paste(nm(ids), "<-", vapply(.study_fields, function(k) val(meta[[k]]), "")),
     "",
@@ -172,18 +218,15 @@ setup_code <- function(study_id = NA, standards = company_standards()) {
     "# the functions the programs call (tflplanner writes them)",
     sprintf("source(%s)", encodeString(.study_helpers_path(), quote = "\"")),
     "")
-  c(.setup_marker_study,
-    paste("#  Checksum   :", .body_hash(code)),
-    code)
 }
 
-# The study's rounding as part 2 sets it: tflspec's lines, from the study's
+# The study's rounding as study_setup.R sets it: tflspec's lines, from the study's
 # spec or the sheets' (none: NULL, or a study that says no rounding).  The
 # ARD and report setups then leave it out (option tflspec.study_setup).
 .study_rounding_lines <- function(study) {
   if (is.null(study)) return(character())
-  # part 2 is written outside .with_study_code(): the data lines name the
-  # folders through the variables part 2 defines above them
+  # study_setup.R is written outside .with_study_code(): the data lines
+  # name the folders through the variables it defines above them
   old <- options(tflspec.paths = .study_path_vars())
   on.exit(options(old), add = TRUE)
   tflspec::tfl_study_setup_code(study)
@@ -285,36 +328,57 @@ setup_code <- function(study_id = NA, standards = company_standards()) {
   length(chk) == 1L && identical(chk, .body_hash(lines))
 }
 
-#' The study's setup program
+#' The study's setup programs
 #'
-#' `study_setup_code()` is a new study's `programs/study_setup.R`, which
-#' `programs/ard/ard_setup.R`, `programs/tfl/report_setup.R` and
-#' `programs/tfl/fig_setup.R` each source first, so every ARD, report and
-#' figure program runs it.  It is one file of three marked parts, run in
-#' this order:
+#' Every ARD, report and figure program of a study starts with its setup
+#' (`programs/ard/ard_setup.R`, `programs/tfl/report_setup.R` and
+#' `programs/tfl/fig_setup.R` each source `programs/study_setup.R` first).
+#' The study's setup is three files, run in this order:
 #'
-#' 1. the company standard: [setup_code()], copied when the study is made
-#'    (its marker line says when, and which standards); tflplanner does
-#'    not change it after.
-#' 2. the study: its folders ([study_layout()]: `path_adam`, `path_sdtm`
-#'    ...) and what it is (`study_id`, `study_title`, `study_short_title`, `study_compound`,
-#'    `study_phase`, `study_description` from `study.yml`), and the study's
-#'    rounding (`options(rtfreporter.rounding = , cards.round_type = )`,
-#'    [tflspec::tfl_study_setup_code()]), which the ARD and report setups
-#'    then do not repeat.  tflplanner writes it again on every save.
-#' 3. the study's own code: tflplanner never touches it.
+#' 1. `programs/company_setup.R`, the company's code: [setup_code()],
+#'    copied when the study is made (`company_setup_code()`; its first
+#'    line says when, and which standards).  It is the study's after that:
+#'    tflplanner never writes it again.
+#' 2. `programs/study_setup.R` (`study_setup_code()`), written by
+#'    tflplanner on every save -- do not edit it: the study's folders
+#'    ([study_layout()]: `path_adam`, `path_sdtm` ...), what it is
+#'    (`study_id`, `study_title`, `study_short_title`, `study_compound`,
+#'    `study_phase`, `study_description` from `study.yml`), its rounding
+#'    and data ([tflspec::tfl_study_setup_code()]), and the helpers
+#'    ([study_helpers_code()]).  It runs the other two: the company's
+#'    first, the user's last.
+#' 3. `programs/study_user.R`, the study's own code; tflplanner never
+#'    writes it again.
 #'
-#' Saving a study rewrites part 2 only, and parts 1 and 3 stay byte for
-#' byte.  A part 2 edited by hand (its checksum no longer matches) is
-#' written again too, the edited file first put in `programs/.edited/`.
+#' `study_setup.R` runs once per program run: every ARD and report program
+#' sets the option `tflplanner.run` (a token of this run) when it starts and
+#' clears it at its end, and a figure report, which sources the study's
+#' setup twice (through `report_setup.R` and `fig_setup.R`), runs it once,
+#' so the company's code and the user's run once and what the user's sets
+#' stays.  The program run again (in the same R or not) runs it again, as
+#' does another study folder; the setup sourced without a program's run (by
+#' hand, the Plot Designer) runs each time.  `rm(.tfl_free_ran)` runs it
+#' again by hand.  A `study_setup.R` edited
+#' by hand is written again on the next save, the edited one first put in
+#' `programs/.edited/`.
+#'
+#' A study made before has one `study_setup.R` of three marked parts.  Its
+#' first save splits it: part 1 to `company_setup.R` and part 3 to
+#' `study_user.R`, byte for byte, and `study_setup.R` is written new (the
+#' old one kept in `programs/.edited/`).  When its marker lines are missing
+#' or repeated, its part 2 was edited, or `company_setup.R` or
+#' `study_user.R` is there already with other content, nothing is
+#' converted: the old file stays as it is and runs, a copy goes to
+#' `programs/.edited/`, and the save says why.
 #'
 #' @param meta The study's fields (`study_id`, `title`, ...), as an
 #'   `rtfstudy`'s `meta`.
-#' @param date The date the marker of part 1 says it was copied.
-#' @param standards The standards to copy part 1 from.
+#' @param date The date the banner says it was generated (or, for the
+#'   company's code, copied).
 #' @param study The study's spec ([tflspec::tfl_read_study_spec()]), or a
-#'   table / report spec of the sheets, whose rounding part 2 sets; `NULL`
-#'   (the default): none.
+#'   table / report spec of the sheets, whose rounding and data
+#'   `study_setup.R` sets; `NULL` (the default): none.
+#' @param standards The standards to copy the company's code from.
 #' @return The program, one element per line.
 #' @examples
 #' # a home in the temporary folder: used in this R session only, nothing
@@ -322,53 +386,209 @@ setup_code <- function(study_id = NA, standards = company_standards()) {
 #' old <- options(tflplanner.home = NULL)
 #' setup_tflplanner(home = tempfile("tflplanner-home"))
 #' meta <- list(study_id = "ABC-1", title = "A study of Drug X")
-#' head(study_setup_code(meta), 8)
+#' head(study_setup_code(meta), 12)
+#' company_setup_code(meta)
 #' options(old)
 #' @export
-study_setup_code <- function(meta, date = Sys.Date(),
-                             standards = company_standards(), study = NULL) {
-  c(.setup_marker_standard(date, standards$about),
-    setup_code(meta[["study_id"]] %||% NA, standards),
+study_setup_code <- function(meta, date = Sys.Date(), study = NULL) {
+  q <- function(x) encodeString(x, quote = "\"")
+  c(.banner(
+      paste("Program    :", .study_setup_path()),
+      "What every program of the study starts with (ard_setup.R, report_setup.R",
+      "and fig_setup.R source it).  tflplanner writes it on every save: do not",
+      paste("edit it.  The company's code is in", .company_setup_file, "and yours in"),
+      paste0(.study_user_file, ": this file runs them, the company's first and yours last."),
+      paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
+             ", ", format(date, "%Y-%m-%d"))),
     "",
-    .study_setup_part2(meta, study),
-    .setup_marker_user)
+    "# This file runs once per program run: a program sets the option",
+    "# tflplanner.run when it starts (and clears it at its end), and this",
+    "# file sourced again in that run (a figure report: report_setup.R, then",
+    "# fig_setup.R) is skipped, so the company's code and yours run once and",
+    "# what yours sets stays.  Sourced without a program's run (by hand, the",
+    "# Plot Designer), it runs each time.  To run it again by hand:",
+    "# rm(.tfl_free_ran)",
+    sprintf(".tfl_free <- c(company = %s, user = %s)",
+            q(.company_setup_path()), q(.study_user_path())),
+    ".tfl_free_key <- paste(getwd(), getOption(\"tflplanner.run\", NA))",
+    ".tfl_free_run <- is.null(getOption(\"tflplanner.run\")) ||",
+    "  !identical(get0(\".tfl_free_ran\", envir = environment(), inherits = FALSE),",
+    "             .tfl_free_key)",
+    "if (.tfl_free_run) {",
+    "",
+    paste0("# ---- the company's code (", .company_setup_file, ")"),
+    "if (file.exists(.tfl_free[[\"company\"]])) source(.tfl_free[[\"company\"]], local = environment())",
+    "",
+    .study_setup_body(meta, study),
+    paste0("# ---- your code (", .study_user_file, ")"),
+    "if (file.exists(.tfl_free[[\"user\"]])) source(.tfl_free[[\"user\"]], local = environment())",
+    ".tfl_free_ran <- .tfl_free_key",
+    "}")
 }
 
-# programs/study_setup.R, written with the study: made when missing (part 1
-# from the standards in use, part 3 empty); otherwise part 2 only, when it
-# has changed.  A file whose markers are gone, or whose part 2 was edited,
-# goes to programs/.edited/ first.  The file's row of what the save did.
+#' @rdname study_setup_code
+#' @export
+company_setup_code <- function(meta, date = Sys.Date(), standards = company_standards()) {
+  about <- standards$about
+  v <- function(k) {
+    x <- about$value[match(k, about$key)]
+    if (length(x) && !is.na(x) && nzchar(x)) x else NA_character_
+  }
+  std <- paste(stats::na.omit(c(v("name"), v("version"))), collapse = " ")
+  if (!nzchar(std)) std <- "built-in"
+  upd <- v("updated")
+  c(paste0("# The company's code (", .company_setup_path(), "): copied from the company"),
+    paste0("# standards (", std, if (!is.na(upd)) paste0(" of ", upd), ") on ",
+           format(date, "%Y-%m-%d"), ".  The study's own now: tflplanner"),
+    "# never writes it again.  Every program runs it first (study_setup.R).",
+    "",
+    setup_code(meta[["study_id"]] %||% NA, standards))
+}
+
+# programs/study_user.R as a new study gets it
+.study_user_code <- function() {
+  c(paste0("# Your study's code (", .study_user_path(), "): helper functions, options,"),
+    "# library() lines.  Every program runs it after the study's setup",
+    "# (study_setup.R), before the ARD, report or figure setup.  tflplanner never",
+    "# writes it again.  Values the study's YAML defines (the rounding, the",
+    "# folders, the formats) are set there, not here.",
+    "")
+}
+
+# A study_setup.R in the form before #910: any that is not one tflplanner
+# writes now (its `.tfl_free <-` line), so a file with a marker gone, or
+# one written by hand, is checked and kept rather than written over
+.is_old_setup <- function(f) {
+  !any(startsWith(readLines(f, warn = FALSE, encoding = "UTF-8"), ".tfl_free <- "))
+}
+
+# Write `txt` to `f` through a file beside it, so a failure leaves `f` as it was
+.write_bytes_staged <- function(txt, f) {
+  tmp <- paste0(f, ".tmp-split")
+  .write_bytes(txt, tmp)
+  if (!file.rename(tmp, f)) {
+    unlink(tmp)
+    stop("could not write ", f, call. = FALSE)
+  }
+  invisible(f)
+}
+
+# Split an old study_setup.R (three marked parts) into company_setup.R
+# (part 1), study_user.R (part 3) and a new generated study_setup.R.  The
+# rows of what it did; attribute "note": why it kept the old file.
+.split_old_setup <- function(meta, root, study = NULL) {
+  f <- file.path(root, .study_setup_path())
+  free <- file.path(root, c(company = .company_setup_path(), user = .study_user_path()))
+  names(free) <- c("company", "user")
+  row <- function(file, status) data.frame(file = file, status = status, stringsAsFactors = FALSE)
+  txt <- .read_bytes(f)
+  lines <- strsplit(txt, "\n", fixed = TRUE, useBytes = TRUE)[[1L]]
+  once <- vapply(.setup_marker, function(m) sum(grepl(m, lines, useBytes = TRUE)) == 1L, NA)
+  parts <- if (all(once)) .split_study_setup(txt)
+  why <- if (is.null(parts)) {
+    "its marker lines are missing, repeated or out of order"
+  } else if (!.study_part_intact(parts$study)) {
+    "its tflplanner part was edited by hand"
+  } else {
+    want <- c(company = parts$standard, user = parts$user)
+    clash <- vapply(names(free), function(k) file.exists(free[[k]]) &&
+                      !identical(.read_bytes(free[[k]]), want[[k]]), NA)
+    if (any(clash)) "company_setup.R or study_user.R is there already, with other content"
+  }
+  if (!is.null(why)) {
+    if (!.backed_up(f, root)) .back_up_edited(f, root)
+    out <- row(f, "kept")
+    attr(out, "note") <- why
+    return(out)
+  }
+  # staged: the two free files, then the new study_setup.R; a failure
+  # takes back what was written and leaves the old file
+  .back_up_edited(f, root)
+  made <- character()
+  ok <- tryCatch({
+    for (k in names(free)) {
+      if (!file.exists(free[[k]])) {
+        .write_bytes_staged(want[[k]], free[[k]])
+        made <- c(made, free[[k]])
+      }
+    }
+    .write_bytes_staged(.lines_text(.program_lines(study_setup_code(meta, study = study))), f)
+    TRUE
+  }, error = function(e) {
+    unlink(made)
+    e
+  })
+  if (!isTRUE(ok)) {
+    out <- row(f, "kept")
+    attr(out, "note") <- conditionMessage(ok)
+    return(out)
+  }
+  rbind(row(free[["company"]], "split"), row(free[["user"]], "split"), row(f, "split"))
+}
+
+# programs/.edited/ has a copy of `f` as it is now (a kept old file is
+# backed up once, not on every save)
+.backed_up <- function(f, root) {
+  b <- list.files(file.path(root, .edited_dir),
+                  paste0("^", sub("[.][Rr]$", "", basename(f)), "_.*[.]R$"), full.names = TRUE)
+  length(b) > 0L && unname(tools::md5sum(f)) %in% unname(tools::md5sum(b))
+}
+
+# The lines of a generated program as .write_program() writes them (its
+# checksum after the Generated line)
+.program_lines <- function(code) {
+  at <- grep("^#  Generated  :", code)[1L]
+  append(code, paste("#  Checksum   :", .body_hash(code)), at)
+}
+
+# The study's setup files, written with the study.  study_setup.R: written
+# when it changed (one edited by hand goes to programs/.edited/ first);
+# company_setup.R and study_user.R: written when missing, never after.  An
+# old study_setup.R is split first (.split_old_setup()).  The rows of what
+# the save did; attribute "note": why an old file was kept as it was.
 .save_study_setup <- function(meta, root, study = NULL) {
   f <- file.path(root, .study_setup_path())
   dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
-  row <- function(status) data.frame(file = f, status = status,
-                                     stringsAsFactors = FALSE)
-  parts <- if (file.exists(f)) .split_study_setup(.read_bytes(f))
-  if (is.null(parts)) {
-    edited <- file.exists(f)
-    if (edited) .back_up_edited(f, root)
-    .write_bytes(.lines_text(study_setup_code(meta, study = study)), f)
-    return(row(if (edited) "rewritten" else "written"))
+  row <- function(file, status) data.frame(file = file, status = status, stringsAsFactors = FALSE)
+  rows <- list()
+  if (file.exists(f) && .is_old_setup(f)) {
+    sp <- .split_old_setup(meta, root, study)
+    if (!is.null(attr(sp, "note"))) return(sp)
+    rows <- list(sp)
   }
-  new <- .lines_text(.study_setup_part2(meta, study))
-  same <- identical(charToRaw(gsub("\r", "", parts$study, fixed = TRUE)),
-                    charToRaw(new))
-  if (same) {
-    return(row("unchanged"))
+  for (k in c("company", "user")) {
+    g <- file.path(root, .study_setup_files()[[k]])
+    if (!file.exists(g)) {
+      .write_bytes(.lines_text(if (k == "company") company_setup_code(meta) else .study_user_code()), g)
+      rows <- c(rows, list(row(g, "written")))
+    }
   }
-  edited <- !.study_part_intact(parts$study)
-  if (edited) .back_up_edited(f, root)
-  .write_bytes(paste0(parts$standard, new, parts$user), f)
-  row(if (edited) "rewritten" else "written")
+  status <- .put_program(study_setup_code(meta, study = study), f, root)
+  # (a split wrote it already: that row says so)
+  if (!length(rows) || !any(rows[[1L]]$status == "split")) rows <- c(rows, list(row(f, status)))
+  do.call(rbind, rows)
 }
 
 # The fingerprint of the study's setup: what an ARD or a report records
-# when it is built, so a change to study_setup.R marks it for a rebuild
-# ("" when there is none).  The programs work it out the same way
-# (tools::md5sum() of the file).
+# when it is built, so a change to one of its files (company_setup.R,
+# study_setup.R, study_user.R) marks it for a rebuild.  Their md5s joined
+# by "+", those that are there, in that order (a study made before #910:
+# study_setup.R's alone; "" when there is none).  The programs work it
+# out the same way.
 .study_setup_hash <- function(root) {
-  f <- file.path(root, .study_setup_path())
-  if (file.exists(f)) unname(tools::md5sum(f)) else ""
+  paste(unname(tools::md5sum(.study_setup_present(root))), collapse = "+")
+}
+
+# The study setup an ARD was built with, from its row of ard_status.csv:
+# the md5s save_ard() recorded of company_setup.R, study_setup.R and
+# study_user.R (option tflspec.ard_sources), joined as .study_setup_hash()
+# joins them ("" when none was recorded)
+.ard_recorded_setup <- function(r) {
+  v <- vapply(c("company", "setup", "user"), function(k) {
+    x <- if (k %in% names(r)) as.character(r[[k]])[1L] else NA_character_
+    if (length(x) && !is.na(x)) x else ""
+  }, "")
+  paste(v[nzchar(v)], collapse = "+")
 }
 
 # Built with another study setup than the one there now?  An output built
@@ -377,14 +597,18 @@ study_setup_code <- function(meta, date = Sys.Date(),
   !is.na(recorded) & nzchar(recorded) & recorded != now
 }
 
-# A report's setup: programs/study_setup.R and programs/tfl/report_setup.R
-# (the study's font, tokens, header, rounding: every report program sources
-# it), their fingerprints "<study>|<report>" -- what a report program records
-# (.report_setup_hash_code()); the ARD reads study_setup.R only
+# A report's setup: the study's setup files (company_setup.R, study_setup.R,
+# study_user.R: their fingerprints joined by "+", those that are there; a
+# study made before #910, study_setup.R's alone) and
+# programs/tfl/report_setup.R (the study's font, tokens, header, rounding:
+# every report program sources it): "<study>|<report>" -- what a report
+# program records (.report_setup_hash_code()); the ARD reads study_setup.R
+# only
 .report_setup_hash <- function(root) {
-  f <- file.path(root, c(.study_setup_path(), .report_setup_path()))
-  paste(vapply(f, function(x) if (file.exists(x)) unname(tools::md5sum(x)) else "", ""),
-        collapse = "|")
+  md5 <- function(x) if (file.exists(x)) unname(tools::md5sum(x)) else ""
+  st <- .study_setup_present(root)
+  paste(paste(vapply(st, md5, ""), collapse = "+"),
+        md5(file.path(root, .report_setup_path())), sep = "|")
 }
 
 .report_setup_path <- function() file.path(study_layout()[["programs_tfl"]], .report_setup_file)
@@ -400,16 +624,10 @@ study_setup_code <- function(meta, date = Sys.Date(),
 
 # ... the lines of a report program's record_report() that work it out
 .report_setup_hash_code <- function() {
-  p <- paste(encodeString(c(.study_setup_path(), .report_setup_path()), quote = "\""),
-             collapse = ", ")
-  sprintf(paste0("paste(vapply(c(%s), function(f) {\n",
-                 "    if (file.exists(f)) unname(tools::md5sum(f)) else \"\"\n",
-                 "  }, \"\"), collapse = \"|\")"), p)
-}
-
-# the line of a generated program that works out the setup's fingerprint
-.setup_hash_code <- function() {
-  p <- encodeString(.study_setup_path(), quote = "\"")
-  # over three lines, as `setup <- ` in record_report() (under 80)
-  sprintf("if (file.exists(%s)) {\n    unname(tools::md5sum(%s))\n  } else \"\"", p, p)
+  q <- function(x) paste(encodeString(x, quote = "\""), collapse = ", ")
+  sprintf(paste0("paste(paste(unname(tools::md5sum(Filter(file.exists, c(%s)))),\n",
+                 "                collapse = \"+\"),\n",
+                 "          if (file.exists(%s)) unname(tools::md5sum(%s)) else \"\",\n",
+                 "          sep = \"|\")"),
+          q(.study_setup_files()), q(.report_setup_path()), q(.report_setup_path()))
 }

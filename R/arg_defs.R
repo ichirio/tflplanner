@@ -14,12 +14,19 @@
 .arg_defs_cache <- new.env()
 
 # tflspec's definitions of a card's arguments: `fn` a schema function, "data"
-# or "analysis"; `template` "<series>/<template>".  NULL when tflspec has no
-# tfl_arg_defs() or the call stops (a template with no series file yet).
-# Read once a session (.arg_defs_reset() forgets them).
-.arg_defs <- function(fn = NULL, template = NULL) {
+# or "analysis"; `template` "<series>/<template>", read from the study's
+# copy when `study_dir` is given (tfl_arg_defs(study_dir =)), else from the
+# series folders.  NULL when tflspec has no tfl_arg_defs() or the call
+# stops (a template with no series file yet).  Read once a session
+# (.arg_defs_reset() forgets them; a study's copy again when its file
+# changes).
+.arg_defs <- function(fn = NULL, template = NULL, study_dir = NULL) {
   if (is.null(fn) == is.null(template)) return(NULL)
   key <- if (!is.null(fn)) paste0("fn:", fn) else paste0("template:", template)
+  if (!is.null(template) && !is.null(study_dir)) {
+    f <- .tpl_copy_file(study_dir, template)
+    key <- paste0(key, "@", study_dir, "@", unname(tools::md5sum(f)))
+  }
   if (exists(key, envir = .arg_defs_cache, inherits = FALSE)) {
     return(get(key, envir = .arg_defs_cache, inherits = FALSE))
   }
@@ -28,7 +35,11 @@
   }
   out <- if (is.function(f)) {
     tryCatch({
-      d <- if (!is.null(fn)) f(fn = fn) else f(template = template)
+      d <- if (!is.null(fn)) f(fn = fn) else if (!is.null(study_dir)) {
+        f(template = template, study_dir = study_dir)
+      } else {
+        f(template = template)
+      }
       if (is.data.frame(d)) d
     }, error = function(e) NULL)
   }
@@ -57,7 +68,7 @@
 }
 
 # The fields a def adds to a schema argument (.schema_of())
-.arg_def_fields <- c("input", "choices", "values", "free", "ordered", "columns", "step",
+.arg_def_fields <- c("input", "choices", "values", "free", "ordered", "columns", "new_row", "step",
                      "tier", "required", "unset", "default", "default_kind")
 
 # A schema entry with its arguments' definitions: each argument gains the
@@ -101,7 +112,7 @@
 .choice_group_labels <- c(
   vars = "Columns", levels = "Values", codelist = "Code list", populations = "Analysis sets",
   report_data = "This report's data", study_data = "Study data", ard = "ARD",
-  columns = "Columns", study_info = "Study information", tokens = "Tokens",
+  columns = "Columns", study_info = "Study information", tokens = "Values to insert",
   stats = "Statistics", fixed = "Fixed values", styles = "Styles", from_args = "Arguments")
 
 # "report_data, study_data" or c("vars(from)", "from_args(a, b)") -> the
@@ -278,6 +289,8 @@
          default = if (identical(kind, "value")) (if (tagged) dv$value else dv),
          required = isTRUE(d$required),
          doc = if (length(d$description) && !is.na(d$description) && nzchar(d$description)) d$description,
+         # (tflspec's Japanese help, `help: {en, ja}`: shown in the Japanese UI)
+         doc_ja = if (length(d$help_ja) && !is.na(d$help_ja) && nzchar(d$help_ja)) as.character(d$help_ja),
          study = if (identical(kind, "study") && tagged) as.character(dv$value),
          # (a !series K default: K, the series value it reads, .tpl_series_value())
          series = if (identical(kind, "series") && tagged) as.character(unlist(dv$value))[1L],

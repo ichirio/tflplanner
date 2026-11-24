@@ -44,7 +44,7 @@
 
 # A variable's levels in order, data first, and where the order comes
 # from: this table's own (the variables sheet's levels: "table"), the
-# report's code list ("codelist", the Analysis data step -- tflspec writes
+# report's code list ("codelist", the data step -- tflspec writes
 # plan_levels() from it, so the screen and the code agree), the ARD's
 # factor ("ard": `ard_factor`, its levels), else the ARD's values as
 # first seen ("seen"); a code list's order is followed by the ARD's values
@@ -99,6 +99,38 @@
     sprintf("group%d = %s", k, l)
   }, "", USE.NAMES = FALSE)
   paste(parts, collapse = " | ")
+}
+
+# The row keys plan_filter(by = ) takes: table_plan(rows = )'s columns,
+# outermost first -- rtfreporter reads `by` among them only (not the
+# column key, not the label, not a constant heading).  A hierarchy's: its
+# row keys but the last, the label; a summary table's: its layers but the
+# row-label key, the block of variables as `variable` (the rows' default
+# when the table has more than one variable; one variable has no such key).
+.filter_by_keys <- function(st) {
+  if (length(st$hierarchy)) return(utils::head(st$row_keys %||% character(), -1L))
+  l <- as.character(st$layers %||% character())
+  l <- l[!is.na(l) & nzchar(l) & !.is_heading(l) & !l %in% st$row_label]
+  v <- st$variables
+  nvar <- if (is.data.frame(v)) nrow(v) else length(v)
+  l <- if (nvar > 1L) replace(l, l == ".variable", "variable") else l[l != ".variable"]
+  unique(l)
+}
+
+# normalize_ard()'s own choices (ctx$arg_choices): stack's layers -- ALL
+# (the overall stratum), the columns offered (`ch`) and the ARD's group
+# slots after the first (group2 ...: whatever the ARD has there); combine's
+# the columns and the analysis's variables; drop_contexts the contexts --
+# attributes and total_n (the default's), then the ARD's (`m$contexts`)
+.norm_arg_choices <- function(ch, keys = character(), st = list(), m = list()) {
+  v <- st$variables
+  vars <- as.character(if (is.data.frame(v)) v$variable else unlist(v))
+  slots <- paste0("group", seq.int(2L, max(3L, length(keys))))
+  ch <- as.character(unlist(ch))
+  keep <- function(x) unique(x[!is.na(x) & nzchar(x)])
+  list(stack = keep(c("ALL", ch, slots)),
+       combine = keep(c(ch, vars)),
+       drop_contexts = keep(c("attributes", "total_n", as.character(unlist(m$contexts)))))
 }
 
 # a layer that is a constant heading ('"Overall"', ~"Worst grade"), not a key

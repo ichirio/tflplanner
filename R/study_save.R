@@ -105,17 +105,33 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
   }
   progs <- vapply(p$outputs$output_id, function(id)
     report_info(p, id)$program, "")
-  dup <- unique(progs[duplicated(progs)])
-  if (length(dup)) {
-    stop("Two reports share the program ", paste(dup, collapse = ", "),
-         "; give each its own `program` on the report sheet.", call. = FALSE)
+  # (before anything is written: a program name that is a generated file's,
+  # or one another report's, stops the save)
+  bad <- .program_name_problems(p)
+  if (length(bad)) {
+    stop(paste(vapply(bad, .program_name_message, ""), collapse = "
+"),
+         call. = FALSE)
   }
+  # A save that stops part way (a report whose program cannot be written
+  # ...) writes nothing: the files it wrote before it stopped are put back
+  # as they were, and the record of what is on disk is not touched -- the
+  # next save does not take its own half-written files for changes made
+  # outside the app (#751)
+  snap <- .save_snapshot(root)
+  done <- FALSE
+  on.exit(if (!done) .save_rollback(root, snap), add = TRUE)
   meta <- study$meta[.study_fields]
   old_meta <- tryCatch(.read_meta(root), error = function(e) list())
   meta$created <- old_meta$created %||% format(Sys.Date())
   # the YAML spec: each file written only when its text changed
-  before <- if (isTRUE(fill_widths)) .widths_before(root)
-  files <- .save_yaml_spec(p, meta, root, own = as_recorded)
+  # (the reports' files as they were: those the save writes, read just
+  # before it writes them)
+  before <- NULL
+  files <- .save_yaml_spec(p, meta, root, own = as_recorded,
+                           before_write = if (isTRUE(fill_widths)) function(q) {
+                             before <<- .widths_before(root, .spec_to_write(q, root))
+                           })
   # (the planner and its spec in step: what was saved)
   p <- attr(files, "planner")
   attr(files, "planner") <- NULL
@@ -148,16 +164,51 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
             "(the rest is saved):\n", ard_problem)
   }
   files <- rbind(files, ard_files)
-  files <- rbind(files, .save_study_setup(study$meta, root, .study_rounding_source(p)),
+  setup_files <- .save_study_setup(study$meta, root, .study_rounding_source(p))
+  # (an old study_setup.R kept as it was: why, for the save's message)
+  study$setup_note <- attr(setup_files, "note")
+  files <- rbind(files, setup_files,
                  .save_study_helpers(root),
                  .save_batch_programs(p, root))
   study$meta <- .read_meta(root)[.study_fields]
   .write_state(study, home)
+  done <- TRUE
   .set_config("last_study", study$meta$study_id, home)
   study$files <- files
   # why no ARD program was written, or NULL (the app says it)
   study$ard_problem <- ard_problem
   invisible(study)
+}
+
+# The files a save writes: those at the study's top (study.yml ...), and
+# under spec/ and programs/ (paths relative to the study)
+.save_files_now <- function(root) {
+  top <- list.files(root, all.files = TRUE, no.. = TRUE)
+  top <- top[!dir.exists(file.path(root, top))]
+  sub <- unlist(lapply(c("spec", "programs"), function(d) {
+    if (!dir.exists(file.path(root, d))) return(character())
+    file.path(d, list.files(file.path(root, d), recursive = TRUE, all.files = TRUE))
+  }))
+  c(top, sub)
+}
+# them as they are now (their bytes)
+.save_snapshot <- function(root) {
+  rel <- .save_files_now(root)
+  stats::setNames(lapply(rel, function(r) {
+    f <- file.path(root, r)
+    readBin(f, "raw", file.size(f))
+  }), rel)
+}
+# them put back as the snapshot had them: a file the save made goes
+.save_rollback <- function(root, snap) {
+  unlink(file.path(root, setdiff(.save_files_now(root), names(snap))))
+  for (r in names(snap)) {
+    f <- file.path(root, r)
+    if (file.exists(f) && identical(readBin(f, "raw", file.size(f)), snap[[r]])) next
+    dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+    writeBin(snap[[r]], f)
+  }
+  invisible()
 }
 
 # A study of an earlier version kept its report programs in programs/ and
@@ -170,7 +221,57 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
     new <- file.path(root, lay[["programs_tfl"]], p)
     if (file.exists(old) && !file.exists(new)) file.rename(old, new)
   }
-  old <- file.path(root, "programs", "autoexec_report.R")
+  old <- file.path(root, "programs", .autoexec_report_file)
   if (file.exists(old)) file.remove(old)
   invisible()
+}
+
+# ---- program names no report or ARD program may have ----------------------
+
+# The sentences, by kind (the English is the key of inst/i18n/strings/)
+.program_name_templates <- c(
+  reserved = "Report %s: the program %s is the name of a file tflplanner writes itself. Give the report another `program` on the report sheet.",
+  duplicate = "Reports %s and %s share the program %s (names that differ only in case are one file). Give each its own `program` on the report sheet.",
+  ard_reserved = "The ARD program of the output ID %s would be %s, the name of a file tflplanner writes itself. Use another output ID.",
+  ard_duplicate = "The output IDs %s and %s make the same ARD program %s (names that differ only in case are one file). Use output IDs whose ARD programs differ.")
+
+# What stops a save, from the report list alone: a list of problems, each
+# list(id, kind, args, sheet, field).  Names are compared in lower case
+# (Windows and macOS keep one file for T1.R and t1.R).  A report's program
+# is in programs/tfl/ and an ARD program in programs/ard/: each is compared
+# with its own folder's, and both with every name tflplanner writes, in any
+# folder of programs/ (one rule: a name is either a report's or tflplanner's).
+.program_name_problems <- function(p) {
+  ids <- p$outputs$output_id
+  ids <- ids[!is.na(ids) & nzchar(ids)]
+  out <- list()
+  add <- function(id, kind, args, sheet, field) {
+    out[[length(out) + 1L]] <<- list(id = id, kind = kind, args = as.character(args),
+                                     sheet = sheet, field = field)
+  }
+  reserved <- tolower(.generated_program_files())
+  one <- function(ids, names, kind, sheet, field) {
+    low <- tolower(names)
+    for (i in seq_along(ids)) {
+      if (is.na(names[i])) next
+      if (low[i] %in% reserved) {
+        add(ids[i], kind[1L], c(ids[i], names[i]), sheet, field)
+      }
+      j <- match(low[i], low[seq_len(i - 1L)])
+      if (!is.na(j)) {
+        add(ids[i], kind[2L], c(ids[j], ids[i], names[i]), sheet, field)
+      }
+    }
+  }
+  prog <- vapply(ids, function(id)
+    tryCatch(report_info(p, id)$program, error = function(e) NA_character_), "")
+  one(ids, unname(prog), c("reserved", "duplicate"), "report", "program")
+  ids <- unique(ids)
+  one(ids, .ard_prog_name(ids), c("ard_reserved", "ard_duplicate"),
+      "_tflplanner", "output_id")
+  out
+}
+
+.program_name_message <- function(x) {
+  do.call(sprintf, c(list(.program_name_templates[[x$kind]]), as.list(x$args)))
 }

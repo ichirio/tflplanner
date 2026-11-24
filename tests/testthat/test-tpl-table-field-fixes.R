@@ -7,11 +7,11 @@ skip_on_cran()
 
 tff_has_series <- function() {
   "tfl_arg_defs" %in% getNamespaceExports("tflspec") &&
-    tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/demog")), error = function(e) FALSE)
+    tryCatch(is.data.frame(tflspec::tfl_arg_defs(template = "tflspec_v1/tflspec_summary")), error = function(e) FALSE)
 }
 
 # a study with tflspec's fictional ADaM data and a series template report
-tff_study <- function(home, id, args, template = "tflspec_v1/demog") {
+tff_study <- function(home, id, args, template = "tflspec_v1/tflspec_summary") {
   skip_if_not_installed("cards")
   skip_if_not("tfl_ai_study_init" %in% getNamespaceExports("tflspec"))
   skip_if_not(tff_has_series(), "this tflspec has no series templates")
@@ -24,6 +24,8 @@ tff_study <- function(home, id, args, template = "tflspec_v1/demog") {
   s <- suppressMessages(open_study(d, home = home))
   o <- tflspec::tfl_output("T-TF-1", "table", template = list(name = template, args = args))
   s$planner <- suppressWarnings(.spec_add_output(s$planner, o))
+  # (a template report reads the study's copy: copied as the app copies it)
+  if ("tfl_copy_templates" %in% getNamespaceExports("tflspec")) invisible(.tpl_copy_into_study(d, template))
   suppressMessages(save_study(s))
   id
 }
@@ -45,11 +47,11 @@ tff_field <- function(html, fid) {
 
 test_that("a template's data rows: their ids and datasets, a {param} filled, the report's own after", {
   skip_if_not(tff_has_series(), "this tflspec has no series templates")
-  r <- .tpl_data_rows("tflspec_v1/demog")
+  r <- .tpl_data_rows("tflspec_v1/tflspec_summary")
   expect_identical(r$id, "adsl_sub")
   expect_identical(r$from, "ADSL")
-  r <- .tpl_data_rows("tflspec_v1/ae_soc_pt")
-  expect_identical(r$id, c("adsl_sub", "adae_sub"))
+  r <- .tpl_data_rows("tflspec_v1/tflspec_hierarchy", args = list(from = "ADAE"))
+  expect_identical(r$id, c("adsl_sub", "rec_sub"))
   expect_identical(r$from, c("ADSL", "ADAE"))
   # (from: "{from}" -- the report's argument, else the param's default, else NA)
   r <- .tpl_data_rows("tflspec_v1/tflspec_hierarchy", args = list(from = "ADAE"))
@@ -59,9 +61,9 @@ test_that("a template's data rows: their ids and datasets, a {param} filled, the
   expect_true(is.na(.tpl_data_rows("tflspec_v1/tflspec_hierarchy", params = list())$from[2L]))
   # (the report's own rows after the template's; a row of the same id once)
   own <- list(list(id = "adsl_itt", from = "ADSL"), list(id = "adsl_sub", from = "ADSL"))
-  expect_identical(.tpl_data_rows("tflspec_v1/demog", own = own)$id, c("adsl_sub", "adsl_itt"))
+  expect_identical(.tpl_data_rows("tflspec_v1/tflspec_summary", own = own)$id, c("adsl_sub", "adsl_itt"))
   # (old data steps, a map: not rows)
-  expect_identical(.tpl_data_rows("tflspec_v1/demog", own = list(steps = list()))$id, "adsl_sub")
+  expect_identical(.tpl_data_rows("tflspec_v1/tflspec_summary", own = list(steps = list()))$id, "adsl_sub")
   # (a template of no series: none)
   expect_identical(nrow(.tpl_data_rows("demog")), 0L)
   expect_null(.tpl_series_file("no_such/x"))
@@ -84,24 +86,31 @@ test_that("a table field's columns are its data row's dataset's, the report's da
   # (nothing it can name: every column, as before)
   expect_setequal(unname(.choice_values("vars(zz_sub)", ctx0)), c("USUBJID", "TRT01A", "AGE", "AEDECOD"))
   skip_if_not(tff_has_series(), "this tflspec has no series templates")
-  prm <- .tpl_params("tflspec_v1/demog")
-  ctx <- .tpl_table_ctx(data, NULL, rows = .tpl_data_rows("tflspec_v1/demog"), params = prm)
+  prm <- .tpl_params("tflspec_v1/tflspec_summary")
+  ctx <- .tpl_table_ctx(data, NULL, rows = .tpl_data_rows("tflspec_v1/tflspec_summary"), params = prm)
   spec <- .tpl_table_spec(prm$labels, ctx)
   expect_identical(unname(.choice_vec(spec$choices[[1L]])), c("USUBJID", "TRT01A", "AGE"))
   expect_identical(unname(.choice_values(prm$denominator$sources, ctx)), "adsl_sub")
 })
 
-test_that("a !series default's value is the series', the study's over it", {
+test_that("a !series default's value is the study's copy's, else the source's", {
   skip_if_not(tff_has_series(), "this tflspec has no series templates")
-  prm <- .tpl_params("tflspec_v1/demog")
+  skip_if_not("tfl_series_values_set" %in% getNamespaceExports("tflspec"))
+  prm <- .tpl_params("tflspec_v1/tflspec_summary")
   expect_identical(prm$formats$series, "formats")
   expect_null(prm$labels$series)
-  sv <- .tpl_series_value(list(study = list()), "tflspec_v1/demog", prm$formats)
+  sv <- .tpl_series_value(list(study = list()), "tflspec_v1/tflspec_summary", prm$formats)
   expect_identical(sv, tflspec::tfl_series_read("tflspec_v1")$values$formats)
-  own <- list(study = list(series_settings = list(tflspec_v1 = list(formats = list(mean = 3)))))
-  expect_identical(.tpl_series_value(own, "tflspec_v1/demog", prm$formats), list(mean = 3))
+  # a study with no copy of the series: the source's
+  dir <- withr::local_tempdir()
+  expect_identical(.tpl_series_value(list(study = list(), dir = dir), "tflspec_v1/tflspec_summary", prm$formats), sv)
+  # its copy, changed: the copy's
+  invisible(tflspec::tfl_copy_templates(dir, "tflspec_v1/tflspec_summary"))
+  tflspec::tfl_series_values_set(dir, "tflspec_v1", list(formats = list(mean = 3L)))
+  own <- list(study = list(), dir = dir)
+  expect_identical(.tpl_series_value(own, "tflspec_v1/tflspec_summary", prm$formats), list(mean = 3L))
   # (no series default, no series template: none)
-  expect_null(.tpl_series_value(list(), "tflspec_v1/demog", prm$labels))
+  expect_null(.tpl_series_value(list(), "tflspec_v1/tflspec_summary", prm$labels))
   expect_null(.tpl_series_value(list(), "demog", prm$formats))
 })
 
@@ -152,52 +161,52 @@ test_that("pick, picks and table fields offer \"(none)\"; a table drawn for it i
   expect_true(.is_unset(.tpl_value("(none)", "pick", list(name = "x"))))
 })
 
-test_that("a demog card: its columns ADSL's, its denominator a data row, formats light, (none), typing not cut", {
+test_that("a summary card (demog's arguments): its columns ADSL's, its denominator a data row, formats light, (none), typing not cut", {
   home <- local_home()
   id <- tff_study(home, "GTF1", list(by = "TRT01A", continuous = "AGE"))
   shiny::testServer(server_for(id), {
     rv <- session$userData$rv
     session$setInputs(target = "T-TF-1", nav = "make", step = "content", content_nav = "content")
-    card <- function() paste(as.character(output$tpl_card$html), collapse = "")
+    card <- function() tpl_cards_html(output)
     html <- card()
     # (1) the labels' columns: ADSL's only
-    lab <- tff_field(html, "tpl_tflspec_v1_demog__labels")
+    lab <- tff_field(html, "tpl_tflspec_v1_tflspec_summary__labels")
     expect_match(lab, "value=\"AGE\"", fixed = TRUE)
     expect_false(grepl("AEDECOD", lab, fixed = TRUE))
     expect_false(grepl("PARAMCD", lab, fixed = TRUE))
     # (4) the denominator: the data row adsl_sub, not a dataset's name
     expect_match(html, "<option value=\"adsl_sub\"", fixed = TRUE)
     # (8) formats: the series' values light
-    fm <- tff_field(html, "tpl_tflspec_v1_demog__formats")
+    fm <- tff_field(html, "tpl_tflspec_v1_tflspec_summary__formats")
     expect_match(fm, "rp-tbl-cand", fixed = TRUE)
     expect_match(fm, "placeholder=\"2\"", fixed = TRUE)
     # (3) "(none)" on the table and on the pick
-    expect_match(html, "tplNone(&#39;tpl_tflspec_v1_demog__labels&#39;, this)", fixed = TRUE)
+    expect_match(html, "tplNone(&#39;tpl_tflspec_v1_tflspec_summary__labels&#39;, this)", fixed = TRUE)
 
     # (2) the first value typed: written, the card not drawn again until the table is left
-    session$setInputs(`tpl_tflspec_v1_demog__labels` = tff_state(list(c("AGE", "Age (y"))))
+    session$setInputs(`tpl_tflspec_v1_tflspec_summary__labels` = tff_state(list(c("AGE", "Age (y"))))
     expect_identical(.tpl_of(rv$p, "T-TF-1")$args$labels, list(AGE = "Age (y"))
     expect_false(grepl("Age (y", card(), fixed = TRUE))
-    session$setInputs(`tpl_tflspec_v1_demog__labels` = tff_state(list(c("AGE", "Age (years)"))))
+    session$setInputs(`tpl_tflspec_v1_tflspec_summary__labels` = tff_state(list(c("AGE", "Age (years)"))))
     expect_identical(.tpl_of(rv$p, "T-TF-1")$args$labels, list(AGE = "Age (years)"))
     expect_false(grepl("Age (years)", card(), fixed = TRUE))
-    session$setInputs(tpl_tbl_left = "tpl_tflspec_v1_demog__labels")
+    session$setInputs(tpl_tbl_left = "tpl_tflspec_v1_tflspec_summary__labels")
     expect_match(card(), "value=\"Age (years)\"", fixed = TRUE)
 
     # (8) an entry typed over is the report's; the others stay the series'; cleared, it goes back
     fstate <- function(mean) tff_state(list(c("N", ""), c("mean", mean), c("sd", "")), c("text", "number_text"))
-    session$setInputs(`tpl_tflspec_v1_demog__formats` = fstate("1"))
+    session$setInputs(`tpl_tflspec_v1_tflspec_summary__formats` = fstate("1"))
     expect_identical(.tpl_of(rv$p, "T-TF-1")$args$formats, list(mean = 1))
-    session$setInputs(`tpl_tflspec_v1_demog__formats` = fstate(""))
+    session$setInputs(`tpl_tflspec_v1_tflspec_summary__formats` = fstate(""))
     expect_false("formats" %in% names(.tpl_of(rv$p, "T-TF-1")$args))
 
     # (3) "(none)" on a table: !unset; the empty table it is drawn as is no edit
-    session$setInputs(`tpl_tflspec_v1_demog__labels__none` = TRUE)
+    session$setInputs(`tpl_tflspec_v1_tflspec_summary__labels__none` = TRUE)
     expect_true(.is_unset(.tpl_of(rv$p, "T-TF-1")$args$labels))
-    session$setInputs(`tpl_tflspec_v1_demog__labels` = tff_state(list()))
+    session$setInputs(`tpl_tflspec_v1_tflspec_summary__labels` = tff_state(list()))
     expect_true(.is_unset(.tpl_of(rv$p, "T-TF-1")$args$labels))
     # (and on the denominator's pick)
-    session$setInputs(`tpl_tflspec_v1_demog__denominator` = "(none)")
+    session$setInputs(`tpl_tflspec_v1_tflspec_summary__denominator` = "(none)")
     expect_true(.is_unset(.tpl_of(rv$p, "T-TF-1")$args$denominator))
   })
 })
