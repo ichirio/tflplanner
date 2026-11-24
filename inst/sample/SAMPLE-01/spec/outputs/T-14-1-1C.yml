@@ -13,11 +13,31 @@ ard:
   analyses:
     - id: BIGN
       method: cards::ard_tabulate
+      formats:
+        N: 0
+        mean: 2
+        sd: 3
+        median: 1
+        min: 0
+        max: 0
+        p: "xx.x%"
+        "AGE:mean": 1
+        "AGE:sd": 2
       data: adsl_sub
       variables:
         - TRT01A
     - id: AGE
       method: cards::ard_summary
+      formats:
+        N: 0
+        mean: 2
+        sd: 3
+        median: 1
+        min: 0
+        max: 0
+        p: "xx.x%"
+        "AGE:mean": 1
+        "AGE:sd": 2
       data: adsl_sub
       by:
         - TRT01A
@@ -32,6 +52,16 @@ ard:
         - max
     - id: AGEGR1
       method: cards::ard_tabulate
+      formats:
+        N: 0
+        mean: 2
+        sd: 3
+        median: 1
+        min: 0
+        max: 0
+        p: "xx.x%"
+        "AGE:mean": 1
+        "AGE:sd": 2
       data: adsl_sub
       by:
         - TRT01A
@@ -39,6 +69,16 @@ ard:
         - AGEGR1
     - id: SEX
       method: cards::ard_tabulate
+      formats:
+        N: 0
+        mean: 2
+        sd: 3
+        median: 1
+        min: 0
+        max: 0
+        p: "xx.x%"
+        "AGE:mean": 1
+        "AGE:sd": 2
       data: adsl_sub
       by:
         - TRT01A
@@ -46,6 +86,16 @@ ard:
         - SEX
     - id: RACE
       method: cards::ard_tabulate
+      formats:
+        N: 0
+        mean: 2
+        sd: 3
+        median: 1
+        min: 0
+        max: 0
+        p: "xx.x%"
+        "AGE:mean": 1
+        "AGE:sd": 2
       data: adsl_sub
       by:
         - TRT01A
@@ -53,6 +103,16 @@ ard:
         - RACE
     - id: ECOGBL
       method: cards::ard_tabulate
+      formats:
+        N: 0
+        mean: 2
+        sd: 3
+        median: 1
+        min: 0
+        max: 0
+        p: "xx.x%"
+        "AGE:mean": 1
+        "AGE:sd": 2
       data: adsl_sub
       by:
         - TRT01A

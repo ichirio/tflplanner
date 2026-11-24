@@ -17,12 +17,32 @@ ard:
     - id: BIGN
       label: Subjects per group
       method: categorical
+      formats:
+        N: 0
+        mean: 2
+        sd: 3
+        median: 1
+        min: 0
+        max: 0
+        p: "xx.x%"
+        "AGE:mean": 1
+        "AGE:sd": 2
       data: adsl_saf
       variables:
         - TRT01A
     - id: AE
       label: TEAE by SOC / PT
       method: hierarchical
+      formats:
+        N: 0
+        mean: 2
+        sd: 3
+        median: 1
+        min: 0
+        max: 0
+        p: "xx.x%"
+        "AGE:mean": 1
+        "AGE:sd": 2
       data: adae_saf
       by:
         - TRT01A
