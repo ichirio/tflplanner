@@ -289,6 +289,8 @@
          default = if (identical(kind, "value")) (if (tagged) dv$value else dv),
          required = isTRUE(d$required),
          doc = if (length(d$description) && !is.na(d$description) && nzchar(d$description)) d$description,
+         # (tflspec's Japanese help, `help: {en, ja}`: shown in the Japanese UI)
+         doc_ja = if (length(d$help_ja) && !is.na(d$help_ja) && nzchar(d$help_ja)) as.character(d$help_ja),
          study = if (identical(kind, "study") && tagged) as.character(dv$value),
          # (a !series K default: K, the series value it reads, .tpl_series_value())
          series = if (identical(kind, "series") && tagged) as.character(unlist(dv$value))[1L],
