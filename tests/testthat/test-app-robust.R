@@ -52,6 +52,16 @@ test_that("closed choice columns refuse other values; open ones take them", {
   expect_identical(.ard_closed_columns,
                    c("data", "dataset", "population_id", "denominator", "from",
                      "subjects_in"))
+  # an analyses row's `from` (tflspec B-5): the analysis data, the named
+  # items, the datasets
+  ard <- list(analysis_data = data.frame(data_id = "adsl_saf"),
+              analyses = data.frame(analysis_id = c("a", "b", "c"),
+                                    name = c("ae_soc", NA, "")),
+              datasets = data.frame(dataset = c("ADSL", "ADAE")))
+  expect_identical(.ard_from_choices(ard), c("adsl_saf", "ae_soc", "ADSL", "ADAE"))
+  # a sheet without the column (a study saved before B-5)
+  ard$analyses$name <- NULL
+  expect_identical(.ard_from_choices(ard), c("adsl_saf", "ADSL", "ADAE"))
 })
 
 test_that("the SPEC | Code | Result tabs are not a card around the sheets' card", {

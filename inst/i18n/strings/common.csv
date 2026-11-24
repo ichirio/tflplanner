@@ -2187,3 +2187,5 @@
 "The row's analysis id (ANY, SER ...), one a row.","行の analysis id（ANY, SER など）。行ごとに 1 つ。"
 "The row's text.","行の文字。"
 "The records the row counts (R); empty for every record kept.","行が数える記録（R の条件）。空欄 = 残した記録すべて。"
+"The R name of the item's object in the ARD program; blank: .ard_<analysis_id> (a model: the id in lower case). A name is an R name no other object has.","ARD のプログラムで、この項目のオブジェクトにつける R の名前。空欄なら .ard_<analysis_id>（モデルなら id を小文字にしたもの）。名前は、ほかのどのオブジェクトとも重ならない R の名前にする。"
+"The object the item reads, piped into its call (`name <- from |> method(...)`); an object above it (an analysis data, a named item) or a dataset. Blank: the item makes its own data (data, dataset, records, where). Not with data.","この項目が読むオブジェクト。項目の呼び出しにパイプで渡す（`name <- from |> method(...)`）。上にあるオブジェクト（解析データ、名前のついた項目）かデータセット。空欄なら項目が自分でデータを作る（data、dataset、records、where）。data とは一緒に使えない。"
