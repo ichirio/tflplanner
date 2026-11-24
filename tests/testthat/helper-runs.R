@@ -69,7 +69,8 @@ fake_run <- function(study_dir, stamp, part = "tfl", ids = character(),
   writeLines(c(paste("Batch    :", stamp), paste("Study    :", study_id),
                "Spec     : none", paste("Runs     :", part),
                paste("Started  :", fmt(finished - 1)),
-               paste("Finished :", fmt(finished))),
+               paste("Finished :", fmt(finished)),
+               "Kind     : run", "Verified : yes"),
              file.path(d, "batch.txt"))
   invisible(d)
 }

@@ -134,7 +134,7 @@ test_that("plan_columns(): a width a column, the decimal alignment, the row titl
   skip_on_cran()
   sch <- .plan_form_schema("plan_columns")
   expect_identical(sch$visible, c("widths", "decimal", "row_title", "auto_width"))
-  # (cell_format given as R, column_widths_twips a list typed: under Other arguments)
+  # (cell_format given as R, column_widths_twips a list typed: under More settings)
   expect_identical(sch$args$cell_format$type, "r")
   expect_identical(sch$args$column_widths_twips$type, "list<integer>")
   p <- sample_planner()
@@ -450,7 +450,7 @@ test_that("plan_paginate_group(), plan_paginate_cols(), plan_row_group(): a form
                    c("every", "fit", "at", "keep", "cut_by", "order", "allow_span_break"))
   expect_identical(.plan_form_main("plan_row_group"), c("mode", "collapse"))
   # group_col a select of the table's columns (tflspec's column pick);
-  # col_header given as R: under Other arguments, saved
+  # col_header given as R: under More settings, saved
   expect_identical(.plan_form_schema("plan_row_group")$args$group_col$type, "column")
   expect_identical(.plan_form_schema("plan_paginate_cols")$args$col_header$type, "r")
   # the fields in the function's order (its formals)
@@ -563,7 +563,7 @@ test_that("plan_cell_style(): cols, where, the looks as fields, each call its ow
   expect_identical(.plan_form_main("plan_cell_style"),
                    c("cols", "header", "where", "bold", "italic", "align", "color", "background"))
   sch <- .plan_form_schema("plan_cell_style")
-  # a look left blank is not written (not FALSE); border: under Other arguments, as R
+  # a look left blank is not written (not FALSE); border: under More settings, as R
   expect_identical(.arg_kind(sch$args$bold$type), "enum")
   expect_identical(.arg_kind(sch$args$color$type), "colour")
   expect_identical(sch$args$border$type, "r")
@@ -680,6 +680,6 @@ test_that("every form card shows all its function's arguments: those written abo
   }
   # the same fields whatever the table's kind
   expect_identical(seen[["T-14-1-1"]], seen[["T-14-3-1"]])
-  expect_identical(tr("Not in the code", "ja"), "コードに書かれない引数")
-  expect_identical(tr("Arguments not in the code", "ja"), tr("Not in the code", "ja"))
+  # the fold's word, the same in every stage's cards: "More settings" (ja 詳細設定)
+  expect_identical(tr(.spec_more_label, "ja"), "\u8a73\u7d30\u8a2d\u5b9a")
 })

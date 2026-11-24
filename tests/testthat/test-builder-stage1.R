@@ -260,7 +260,7 @@ test_that("normalize_ard(): a form card -- the hierarchy a field marked From the
   hj <- html(.plan_card_note("normalize_ard", lang = "ja"))
   expect_match(hj, "ARD を Table を作りやすい形に整えます。", fixed = TRUE)
   expect_match(hj, "カテゴリの値は .label（行の文字）になります。", fixed = TRUE)
-  # every argument's help under Other arguments is said in Japanese too
+  # every argument's help under More settings is said in Japanese too
   helps <- unlist(lapply(.plan_verbs, function(fn)
     lapply(.schema_of(fn)$args, `[[`, "help")), use.names = FALSE)
   miss <- unique(helps[vapply(helps, tr, "", lang = "ja") == helps])

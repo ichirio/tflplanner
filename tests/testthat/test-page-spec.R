@@ -230,8 +230,11 @@ test_that("the form: a card a function, the arguments with a value first, labels
   h <- as.character(.page_form_ui(p, "T-14-3-1", identity))
   expect_match(h, "(rtf_document(page =))", fixed = TRUE)
   expect_match(h, "(rtf_section(footer =))", fixed = TRUE)
-  expect_match(h, "(font_size_half_points = pt x 2)", fixed = TRUE)
-  # the arguments not in the code: folded, each with rtfreporter's default
+  expect_match(h, "(font_size_half_points)", fixed = TRUE)
+  # (the label says the unit shown; the half points the code has, in its (i))
+  expect_match(h, "The code writes half points: font_size_half_points = pt x 2", fixed = TRUE)
+  expect_false(grepl("= pt x 2)", h, fixed = TRUE))
+  # the other settings: folded ("More settings"), each with rtfreporter's default
   expect_false(grepl("pg-lower\" open", h, fixed = TRUE))
   expect_match(h, "rtfreporter's default", fixed = TRUE)
   expect_match(h, "(margin_top_in)", fixed = TRUE)
@@ -239,7 +242,7 @@ test_that("the form: a card a function, the arguments with a value first, labels
   # the paper card's two rows above (paper, orientation, font, size; the
   # margins), whether written or not; the rest folded
   expect_lt(regexpr("data-arg=\"paper_size\"", h, fixed = TRUE), regexpr("margin_top_in", h, fixed = TRUE))
-  expect_lt(regexpr("margin_top_in", h, fixed = TRUE), regexpr("Not in the code (", h, fixed = TRUE))
+  expect_lt(regexpr("margin_top_in", h, fixed = TRUE), regexpr("More settings (", h, fixed = TRUE))
   # no figure card for a table
   expect_false(grepl("rtf_figures", h, fixed = TRUE))
   q <- .pgs_set_arg(p, "T-14-3-1", "rtf_page", "margin_top_in", 0.7)
