@@ -143,7 +143,8 @@
       pick = ,
       picks = {
         several <- identical(type, "picks")
-        ctx <- .tpl_table_ctx(data, dataset, args, params, populations = pop_choices(), rows = rows)
+        ctx <- .tpl_table_ctx(data, dataset, args, params, populations = pop_choices(), rows = rows,
+                              study = rv$study$path)
         ch <- tryCatch(.choice_values(prm$sources, ctx, tflplanner_language(), values = prm$choices),
                        error = function(e) character())
         cur <- as.character(shown %||% character())
@@ -181,7 +182,7 @@
       # (a def's table, a map or rows: the table field -- a row a line, the
       # template's own rows read only on top; its value the report's rows)
       table = {
-        ctx <- .tpl_table_ctx(data, dataset, args, params, rows = rows)
+        ctx <- .tpl_table_ctx(data, dataset, args, params, rows = rows, study = rv$study$path)
         spec <- .tpl_table_spec(prm, ctx, shown, tflplanner_language())
         # (a !series default: the series' value shown light, as candidates --
         # only an entry typed over is the report's, canon 1.39)

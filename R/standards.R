@@ -691,6 +691,22 @@ company_standards <- function(home = tflplanner_home()) {
        markers = s$figure_markers)
 }
 
+# The values a figure style offers a pick (choices: figure_style(<what>)):
+# "palette" the palettes' colours, "marker" the markers' shapes, in their
+# written order -- of the study's figure style, tflspec::tfl_fig_style(study)
+# (what its figures draw with: defaults.yml figure_style over the built-in);
+# with no study, the company standards'.  `study`: the study's folder
+.fig_style_choices <- function(what = NULL, study = NULL) {
+  w <- as.character(what %||% "")[1L]
+  st <- if (!is.null(study)) tryCatch(tflspec::tfl_fig_style(study), error = function(e) NULL)
+  st <- st %||% tryCatch(.std_fig_style(), error = function(e) NULL)
+  tab <- switch(w, palette = st$colors, marker = st$markers)
+  col <- switch(w, palette = "colour", marker = "shape")
+  if (is.null(col) || !is.data.frame(tab) || !col %in% names(tab)) return(NULL)
+  v <- as.character(tab[[col]])
+  unique(v[!is.na(v) & nzchar(v)])
+}
+
 #' Add the company's study defaults a study lacks
 #'
 #' For a study made without them (before a new empty study started from the

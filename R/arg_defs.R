@@ -106,14 +106,15 @@
 # the closed list of choice sources (tflspec's canon 11-14)
 .choice_sources <- c("vars", "levels", "codelist", "populations", "report_data",
                      "study_data", "ard", "columns", "study_info", "tokens",
-                     "stats", "fixed", "styles", "from_args")
+                     "stats", "fixed", "styles", "figure_style", "from_args")
 
 # the name of a source's group, where several make the list
 .choice_group_labels <- c(
   vars = "Columns", levels = "Values", codelist = "Code list", populations = "Analysis sets",
   report_data = "This report's data", study_data = "Study data", ard = "ARD",
   columns = "Columns", study_info = "Study information", tokens = "Tokens",
-  stats = "Statistics", fixed = "Fixed values", styles = "Styles", from_args = "Arguments")
+  stats = "Statistics", fixed = "Fixed values", styles = "Styles", figure_style = "Figure style",
+  from_args = "Arguments")
 
 # "report_data, study_data" or c("vars(from)", "from_args(a, b)") -> the
 # words, a comma inside brackets kept with its word
@@ -197,6 +198,7 @@
     columns = .choice_ctx(ctx, "columns", ref()),
     populations = , report_data = , study_data = , ard = , study_info = , tokens = ,
     stats = , styles = .choice_ctx(ctx, p$name),
+    figure_style = .choice_ctx(ctx, "figure_style", if (length(p$args)) p$args[[1L]]),
     fixed = values,
     from_args = {
       # (from_args(params): the names of the template's params)

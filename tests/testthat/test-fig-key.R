@@ -6,7 +6,7 @@
 # The sample study with a figure report F-9 that has the key: written the way
 # tflspec writes a series figure template out (tfl_template_to_spec()), added
 # to the TOC, taken in
-fk_study <- function(name = "km_curves", env = parent.frame()) {
+fk_study <- function(name = "fig_km", env = parent.frame()) {
   skip_if_not(exists(".fig_content_key", envir = asNamespace("tflspec"), inherits = FALSE),
               "tflspec has no figure: key yet")
   home <- withr_tempdir(env)
@@ -40,7 +40,7 @@ test_that("the figure: key is kept in the planner's figure design", {
   # the design the GUI reads (fig_design()) has it, and so has a design
   # the designer sets back (set_fig_design())
   d <- fig_design(p, "F-9")
-  expect_identical(d$figure$name, "km_curves")
+  expect_identical(d$figure$name, "fig_km")
   expect_identical(d$figure$args$by, "TRT01A")
   p2 <- set_fig_design(p, "F-9", fig_design(p, "F-9"))
   expect_identical(fig_design(p2, "F-9")$figure, d$figure)
@@ -91,7 +91,7 @@ test_that("the checks pass a figure: report, and say an unknown name and a missi
   expect_identical(r$severity, "error")
   expect_identical(r$column, "figure")
   expect_match(r$message, "not a figure content")
-  expect_match(r$message, "km_curves")
+  expect_match(r$message, "fig_km")
   # an argument the model needs, left out
   d <- fig_design(p, "F-9")
   d$figure$args$time <- NULL
@@ -104,7 +104,7 @@ test_that("the program is tflspec's call, the model's fit first", {
   k <- fk_study()
   code <- program_code(k$study$planner, "F-9")
   fit <- grep("km_fit <-", code, fixed = TRUE)
-  call <- grep("^content <- tflspec::km_curves\\(", code)
+  call <- grep("^content <- tflspec::fig_km\\(", code)
   expect_length(call, 1L)
   expect_true(length(fit) >= 1L && fit[1L] < call)
   expect_match(paste(code, collapse = "\n"), "Surv_CNSR(AVAL, CNSR) ~ TRT01A", fixed = TRUE)

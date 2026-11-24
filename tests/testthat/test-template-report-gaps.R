@@ -32,7 +32,7 @@ test_that("a series' templates are listed by kind, \"<series>/<template>\", with
   on.exit(unlink(d, recursive = TRUE), add = TRUE)
   w <- function(f, x) writeLines(x, file.path(d, "demo_v1", "templates", f))
   w("dm.yml", c("# demo", "template: dm", "label: Demographics", "params: {}"))
-  w("km.yml", c("template: km", "label: KM curves", "figure: km_curves"))
+  w("km.yml", c("template: km", "label: KM curves", "figure: fig_km"))
   w("lst.yml", c("template: lst", "label: A listing", "style: !series style_listing"))
   lister <- function() data.frame(name = c("demo_v1", "demo_v1"), label = "Demo", released = NA,
                                   path = file.path(d, "demo_v1"), source = c("option", "package"))
