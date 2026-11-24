@@ -146,7 +146,8 @@ test_that("a template's packages: its own, through the template it is made from"
   expect_true(all(c("survival", "ggsurvfit") %in% .template_needs("km_cumulative", real)))
   # code that names a package, or a model's package
   expect_identical(.pkgs_in_code("fit <- mmrm::mmrm(AVAL ~ ARM, data = d)"), "mmrm")
-  expect_identical(.pkgs_in_code("cardx::ard_regression(x, method = \"lmer\", package = \"mmrm\")"), "mmrm")
+  expect_identical(.pkgs_in_code("cardx::ard_regression(x, method = \"lmer\", package = \"mmrm\")"),
+                   c("mmrm", "broom.helpers"))
   expect_identical(.pkgs_in_code("cardx::ard_emmeans_contrast(data)"), "emmeans")
   expect_identical(.pkgs_in_code("my_ard_survival_x(data)"), character())
 })
