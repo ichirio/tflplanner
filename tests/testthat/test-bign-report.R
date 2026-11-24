@@ -36,3 +36,16 @@ test_that("SAMPLE-01's T-14-1-1: the header's N are BIGN's, and BIGN is not a ta
   prog <- readLines(file.path(b$batch, "programs", "tfl", "T-14-1-1.R"), warn = FALSE)
   expect_false(any(grepl("tflspec::", prog, fixed = TRUE)))
 })
+
+test_that("every code-SPEC report of SAMPLE-01 is written with no tflspec:: (a template's may name it)", {
+  skip_on_cran()
+  local_home()
+  suppressMessages(sample_study_copy())
+  p <- open_study("SAMPLE-01")$planner
+  sp <- .code_spec(p)
+  code_ids <- Filter(function(id) is.null(.tpl_spec_name(sp$outputs[[id]])), output_ids(p))
+  expect_gt(length(code_ids), 10L)
+  for (id in code_ids) {
+    expect_false(any(grepl("tflspec::", program_code(p, id), fixed = TRUE)), info = id)
+  }
+})
