@@ -23,7 +23,7 @@ arg_group <- function(label = NULL, fields, as = NULL, lang = "en") {
 }
 
 # The arguments not shown: the function's formals less the visible ones
-# and the ones in use, folded under "Other arguments (n)" -- a search
+# and the ones in use, folded under "More settings (n)" -- a search
 # field, the names in the function's order, each a field labelled
 # "meaning (name)" (the name alone when no meaning is known), its (i)
 # what the argument means (.arg_help()) or a link to the package's help.
@@ -32,7 +32,7 @@ arg_group <- function(label = NULL, fields, as = NULL, lang = "en") {
 #' @noRd
 arg_more <- function(id, fn, used = character(), schema = NULL, lang = "en",
                      values = list(), choices = NULL, rest = NULL, fields = NULL,
-                     label = "Other arguments") {
+                     label = "More settings") {
   t <- function(x) tr(x, lang)
   schema <- schema %||% .schema_of(fn)
   all <- .fn_formals(fn, schema)

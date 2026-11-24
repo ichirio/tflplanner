@@ -33,7 +33,7 @@
 "Start the official run","正式実行を開始"
 "Updating ...","更新しています…"
 "Content","内容（content）"
-"The page of the report chosen on the left: its titles, footnotes, its own header or footer, and tokens of your own ({STUDY} ...). Study defaults = every report's.","左で選んだ帳票のページ: タイトル、脚注、その帳票だけのヘッダー・フッター、自分のトークン（{STUDY} など）。試験標準 = すべての帳票のもの。"
+"The page of the report chosen on the left: its titles, footnotes, its own header or footer, and values of your own to insert ({STUDY} ...). Study defaults = every report's.","左で選んだ帳票のページ: タイトル、脚注、その帳票だけのヘッダー・フッター、自分の差し込む値（{STUDY} など）。試験標準 = すべての帳票のもの。"
 "Full size","原寸で見る"
 "Report (output_id)","帳票 (output_id)"
 "ARDs taken in","取り込んだ ARD"

@@ -294,7 +294,7 @@
 "The heading of the subjects' column.","被験者の列の見出し。"
 "The heading over the time points; empty for one heading line.","時点の上の見出し。空欄 = 見出しは 1 行。"
 "The summary's heading row.","要約の見出し行。"
-"The summary's rows, label to cell template, in order (tokens without digits; the digits are formats').","要約の行。ラベルとセルのテンプレートを順に書く（桁数の無いトークン。桁数は formats で指定）。"
+"The summary's rows, label to cell template, in order (tokens without digits; the digits are formats').","要約の行。ラベルとセルのテンプレートを順に書く（桁数の無い差し込む値。桁数は formats で指定）。"
 "A page's name, the last title line ({<variable>} the analyte's and the groups' values); empty for their values, a line each.","ページの名前。タイトルの最後の行（{変数名} は物質と群の値）。空欄 = それらの値を 1 行ずつ。"
 "The values aligned on the decimal point.","値を小数点で揃える。"
 "The time point that starts a second block of columns; empty for one block.","2 つ目の列のブロックを始める時点。空欄 = ブロックは 1 つ。"
