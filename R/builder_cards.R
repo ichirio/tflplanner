@@ -195,6 +195,11 @@ builder_card_read <- function(input, id, schema = NULL, args = NULL, logical_fal
     # (a rows<...> with no columns to show was drawn as its R: read as R)
     if (identical(.def_input(schema$args[[a]]), "table") && .tbl_is_state(get(a))) {
       v <- .tbl_read(get(a))
+      # (rows the SPEC keeps as text: the text, or the type's false where
+      # its switch is on -- R/field_rows_text.R)
+      if (!is.null(.def_serializer(schema$args[[a]]))) {
+        v <- .rows_text_write(v, schema$args[[a]], false = isTRUE(get(a, "false")))
+      }
       if (!is.null(v)) out[[a]] <- v
       next
     }

@@ -110,6 +110,12 @@ button[onclick*='tpl_revert'] { white-space: nowrap; flex-shrink: 0; }
 .rp-tbl-ro td { color: #6b7280; background: var(--bs-tertiary-bg, #f6f7f9); }
 .rp-tbl-table td.rp-tbl-none { color: #9ca3af; font-size: 12.5px; }
 .rp-tbl-addrow { padding: 0; font-size: 12.5px; text-decoration: none; }
+/* a Rows field's switch that writes its type's false (plan_sort's keys: the
+   data's order): while it is on, the rows are set aside */
+.rp-tbl-false-wrap { display: flex; gap: .4rem; align-items: center; font-size: 12.5px;
+  margin: .2rem 0 0; padding-left: 0; }
+.rp-tbl-false-wrap .form-check-input { margin: 0; float: none; }
+.rp-form-input:has(.rp-tbl-false:checked) .rp-tbl { opacity: .4; pointer-events: none; }
 .rp-tbl-cand:has(td:nth-last-child(2) .rp-tbl-cell:placeholder-shown) td:first-child .rp-tbl-cell {
   color: var(--bs-secondary-color, #9ca3af); }
 .rp-group { margin-bottom: .35rem; }

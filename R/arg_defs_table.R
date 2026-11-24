@@ -109,6 +109,21 @@
   }, "")
 }
 
+# a column's fixed values (its def's `values`), named by their labels in
+# the language (tflspec's value_labels: value, label_en, label_ja); NULL none
+.tbl_fixed_values <- function(cd, lang = "en") {
+  v <- as.character(unlist(cd$values))
+  if (!length(v)) return(NULL)
+  lb <- cd$value_labels
+  if (!is.data.frame(lb) || !nrow(lb)) return(v)
+  i <- match(v, lb$value)
+  en <- lb$label_en[i]
+  ja <- if ("label_ja" %in% names(lb)) lb$label_ja[i] else rep(NA_character_, length(v))
+  lab <- ifelse(rep(identical(lang, "ja"), length(v)) & !is.na(ja), ja,
+                ifelse(!is.na(en), vapply(en, function(x) if (is.na(x)) "" else tr(x, lang), ""), v))
+  stats::setNames(v, lab)
+}
+
 # The table's columns: `cols` their names, `heads` their headings, `kinds`
 # their cells' kinds, `choices` each one's choices, `ordered` whether rows
 # move.  A map: the key (picked from the def's choices -- typed when the
@@ -221,7 +236,11 @@
     has_r <- any(vapply(value, function(r) inherits(r[[k]], "tfl_r"), NA))
     is_cond <- identical(k, "where") || identical(c1$input, "condition")
     if (is_cond || (has_r && grepl("(^|\\|)\\s*r\\s*($|\\|)", c1$type %||% tt$value))) ck <- "r"
-    ch <- if (identical(ck, "r")) cond_choices(c1$choices) else .tbl_choices(c1$choices, ctx, lang)
+    # (a column's fixed values -- its `values:`, an enum's words -- its
+    # choices where it names no source, each labelled in the language)
+    src <- c1$choices %||% (if (length(c1$values)) "fixed")
+    ch <- if (identical(ck, "r")) cond_choices(src) else
+      .tbl_choices(src, ctx, lang, values = .tbl_fixed_values(c1, lang))
     if (identical(ck, "text") && length(ch) && identical(c1$input, "pick") && !isTRUE(c1$free)) ck <- "pick"
     list(kind = ck, choices = ch)
   }

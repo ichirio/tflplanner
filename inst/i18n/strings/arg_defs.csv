@@ -12,3 +12,6 @@
 "Add a value","値を足す"
 "From the template","テンプレートから"
 "Add the column:","列を足す："
+"Keep the data's order","データの順のまま（並べ替えない）"
+"Count (n)","件数 n"
+"Percent (p)","割合 %"

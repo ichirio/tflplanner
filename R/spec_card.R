@@ -29,7 +29,9 @@
 .plan_form_fns <- c("normalize_ard", "plan_filter", "plan_blanks", "plan_paginate_rows",
                     "plan_paginate_cols", "plan_paginate_group", "plan_row_group", "plan_stub",
                     "plan_columns", "plan_style", "plan_hide", "plan_cell_style",
-                    "plan_empty", "plan_titles", "plan_footnotes", "plan_after")
+                    "plan_empty", "plan_titles", "plan_footnotes", "plan_after",
+                    # (plan_sort: its keys are Rows, s1/sort-rows-trial)
+                    "plan_sort")
 
 # the arguments a card never shows: the data the call is given
 .data_args <- c("x", "plan", ".plan", "data", "ard", "...")

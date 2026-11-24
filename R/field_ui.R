@@ -78,6 +78,10 @@ field_look <- function(def, arg = NULL, value = NULL, fc = field_ctx("card", typ
   # (a def's input form: the field it says; .def_kind() the kind it draws)
   form <- .def_input(def)
   tbl <- NULL
+  # (a Rows field the SPEC keeps as text -- the def's serializer, plan_sort's
+  # keys: its rows, and whether its switch writes the type's false)
+  rt <- .rows_text_read(value, def)
+  value <- rt$value
   if (!is.null(form)) {
     if (is.null(choices) && length(def$choices)) {
       choices <- .choice_values(def$choices, ctx, lang, values = def$values)
@@ -105,7 +109,7 @@ field_look <- function(def, arg = NULL, value = NULL, fc = field_ctx("card", typ
       kind <- kind0
     }
   }
-  list(look = kind, form = form, choices = choices, value = value, tbl = tbl)
+  list(look = kind, form = form, choices = choices, value = value, tbl = tbl, false = rt$false)
 }
 
 # One argument's field on its surface: its control (.field_control()) in
@@ -200,7 +204,8 @@ field_ui <- function(id, arg, def = NULL, value = NULL, fc = field_ctx()) {
     pick_many = .field_select(fid, choices, value, multiple = TRUE, lang = lang,
                               placeholder = default, create = isTRUE(def$free)),
     condition = .field_condition(fid, value, default, choices),
-    table = .field_table(fid, tbl, value, fixed_rows, lang),
+    table = shiny::tagList(.field_table(fid, tbl, value, fixed_rows, lang),
+                           .rows_false_switch(fid, def, p$false, lang)),
     .field_r(fid, value, default))
 }
 

@@ -69,7 +69,8 @@
 
 # The fields a def adds to a schema argument (.schema_of())
 .arg_def_fields <- c("input", "choices", "values", "free", "ordered", "columns", "new_row", "step",
-                     "tier", "required", "unset", "default", "default_kind")
+                     "tier", "required", "unset", "default", "default_kind", "serializer",
+                     "false_label_en", "false_label_ja")
 
 # A schema entry with its arguments' definitions: each argument gains the
 # def's fields (.arg_def_fields) -- its label and help stay the schema's,

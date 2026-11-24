@@ -449,10 +449,7 @@
       plan_levels = if (has("plan_levels")) .levels_body(
         bid, st, sheet_rows(p0, "codelists", id),
         empty = vr_items, lang = lang,
-        vars = if (!hier) var_items, cols = shiny::uiOutput(bid("arms_ui"))),
-      plan_sort = if (hier && isTRUE(item_of("plan_sort")$present))
-        hier_sort_ui(st, sheet_rows(p0, "codelists", id)$variable,
-                     total = .rows_for(p0, "tables", id)$total[1L], stats = m$stats))
+        vars = if (!hier) var_items, cols = shiny::uiOutput(bid("arms_ui"))))
     # (a form of its own: the function's other arguments below it)
     for (fn in names(.special_covered)) {
       it <- item_of(fn)
@@ -499,6 +496,13 @@
       body <- spec_card(
         card_id(it$path), fn, it, lang = lang,
         ctx = list(choices = ch, arg_choices = arg_ch,
+                   # (plan_sort's keys, Rows: what their cells offer --
+                   # the row keys, the outer ones, the columns, the
+                   # statistics; R/field_rows_text.R)
+                   sources = if (identical(fn, "plan_sort")) {
+                     .sort_rows_sources(st, stats = m$stats,
+                                        total = .rows_for(p0, "tables", id)$total[1L], lang = lang)
+                   },
                    ard = if (identical(fn, "normalize_ard")) list(hierarchy = st$hierarchy),
                    fixed_link = if (identical(fn, "normalize_ard"))
                      shiny::actionLink("b_norm_step1", sprintf(t("Step %s's analysis"), .step_no("ard")), class = "small ms-1")))
@@ -708,69 +712,6 @@
     code_jump(builder_code_map(program_text(), items),
               "program_table")
   })
-  # A hierarchy's order, one a term (outermost first): by name -- the code
-  # list's order when the report has one for it -- or by a statistic of
-  # the ARD (n, p, a comparison's estimate ...): largest or smallest
-  # first, its sum over the columns or its largest / smallest in any one
-  # (an outer term by its own row's), or a key of the user's, written as
-  # it is.  The value counted in every column together or in one (the
-  # Total, an arm).  The keys plan_sort() gets are shown under it.  An
-  # order of the sheets' own is said, with a way back to the card's.
-  hier_sort_ui <- function(st, coded, total = NA, stats = character()) {
-    n <- length(st$row_keys)
-    if (identical(st$sort, "own")) {
-      return(shiny::div(
-        class = "small",
-        t("Order: as the sheets say (tables$sort)."), " ",
-        shiny::actionLink("b_sort_reset", t("Use the card's order"))))
-    }
-    key <- st$key[1L]
-    col_now <- attr(st$sort, "col") %||% NA_character_
-    cols <- c(stats::setNames("", t("All columns together")),
-              if (!is.na(total) && nzchar(total)) stats::setNames(total, total),
-              stats::setNames(st$arms[[key]] %||% character(), st$arms[[key]] %||% character()))
-    shiny::tagList(
-      lapply(seq_len(n), function(i) {
-        v <- st$row_keys[i]
-        now <- st$sort[i]
-        own <- startsWith(now, "=")
-        cl <- v %in% coded
-        choices <- .sort_key_choices(stats, cl, hier = v %in% st$hierarchy, lang = lang)
-        # (a key of the builder's form that is not offered: offered too)
-        if (!own && !now %in% choices) choices <- c(choices, stats::setNames(now, now))
-        choices <- c(choices, stats::setNames("=", t("Another key (written as it is)")))
-        opt <- function(value, label) shiny::tags$option(
-          value = value, selected = if (identical(if (own) "=" else now, value)) NA, label)
-        sid <- bid(paste0("sort", i))
-        # (the values plan_levels() names first: levels(group1), offered
-        # on every level -- where it names none, all tie, as if not there)
-        g <- if (i < n) sprintf("group%d", i) else "label"
-        first <- isTRUE((attr(st$sort, "first") %||% logical(n))[i])
-        shiny::div(
-          class = "d-flex flex-wrap align-items-center gap-2 mb-1",
-          shiny::span(class = "rp-b-var", style = "min-width: 9em;", v),
-          shiny::checkboxInput(
-            bid(paste0("sort_first", i)),
-            sprintf("%s (levels(%s))", t("Values in plan_levels' order first"), g),
-            value = first),
-          shiny::tags$select(
-            id = sid, class = "form-select form-select-sm",
-            style = "width: 22em; max-width: 100%;",
-            unname(Map(opt, unname(choices), names(choices)))),
-          shiny::conditionalPanel(
-            sprintf("input['%s'] == '='", sid),
-            shiny::textInput(bid(paste0("sort_own", i)), NULL,
-                             value = if (own) substring(now, 2L) else "",
-                             placeholder = "-max(n)@group1", width = "100%")))
-      }),
-      shiny::div(
-        class = "d-flex align-items-center gap-2 mb-1",
-        shiny::span(class = "small", style = "min-width: 9em;", t("Counted in")),
-        shiny::selectInput(bid("sort_col"), NULL, cols,
-                           selected = if (is.na(col_now)) "" else col_now, width = "22em")),
-      shiny::div(class = "small text-muted", "plan_sort(): ",
-                 shiny::tags$code(shiny::textOutput("b_sort_code", inline = TRUE))))
-  }
   # The layout cards with a form (.plan_form_fns: the blank rows, the
   # pages, the row label column, the style): read back by verb -- none
   # until the card's fields are there -- and written to the sheets through

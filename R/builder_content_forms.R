@@ -20,13 +20,12 @@
 .plan_form_args <- function(read, it, fn) spec_card_args(read, it, fn)
 
 # The cards of a form of their own (table_plan()'s roles, plan_cells()'
-# rows and formats, plan_col_header()'s lines, plan_sort()'s order): the
+# rows and formats, plan_col_header()'s lines): the
 # arguments their form says; the function's other arguments are fields as
 # a form card's, below the form (#417: every argument on the card)
 .special_covered <- list(table_plan = c("cols", "rows", "label"),
                          plan_cells = c("value", "categorical", "continuous", "default"),
-                         plan_col_header = c("header", "values"),
-                         plan_sort = c("keys", "stat"))
+                         plan_col_header = c("header", "values"))
 .special_args <- function(fn) {
   setdiff(.plan_form_schema(fn)$formals, c(.data_args, .special_covered[[fn]]))
 }
