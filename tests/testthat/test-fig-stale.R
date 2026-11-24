@@ -30,7 +30,7 @@ test_that("a figure from an ARD records the definition it read; batch.R knows it
   expect_true("record_report(report_id)" %in% program_code(p, "T-14-2-2"))
   # record_report() has the column
   rs <- report_setup_code(p)
-  expect_true(any(grepl("record_report <- function(output_id, ard = \"\")", rs, fixed = TRUE)))
+  expect_true(any(grepl("record_report <- function(output_id, ard = \"\", empty = NA)", rs, fixed = TRUE)))
   # (one element a statement: a line each)
   lines_of <- function(x) unlist(strsplit(x, "\n", fixed = TRUE))
   b <- lines_of(batch_code(p, root = s$path))
@@ -57,6 +57,37 @@ test_that("a figure from an ARD records the definition it read; batch.R knows it
   expect_identical(un, character())
   expect_false("T-14-2-2" %in% n0[["programs/tfl/F-14-2-3.R"]])
   expect_false(any(grepl("batch_needs_hash", b, fixed = TRUE)))
+})
+
+test_that("record_report(): a listing says whether it has no rows, in the column batch.R reads (sample-01 B4)", {
+  skip_on_cran()
+  s <- stale_study()
+  p <- s$planner
+  # a listing of `data` records whether it is empty; a table does not say
+  expect_true("record_report(report_id, empty = nrow(data) == 0)" %in% program_code(p, "L-16-2-7"))
+  expect_true("record_report(report_id)" %in% program_code(p, "T-14-2-2"))
+  # record_report() as report_setup.R has it, run in the study folder
+  rec <- report_setup_code(p)
+  rec <- rec[seq(grep("^record_report <- function", rec), length(rec) - 1L)]
+  sf <- file.path(s$path, study_layout()[["tfl"]], .report_status_name)
+  dir.create(dirname(sf), recursive = TRUE, showWarnings = FALSE)
+  # a row an earlier record_report() wrote: no `empty` column
+  utils::write.csv(data.frame(output_id = "T-14-2-2", built = "2026-11-01 10:00:00",
+                              setup = "x", ard = ""), sf, row.names = FALSE)
+  e <- new.env()
+  withr::with_dir(s$path, {
+    eval(parse(text = rec), envir = e)
+    e$record_report("L-16-2-7", empty = TRUE)
+    e$record_report("T-14-1-1", empty = FALSE)
+    e$record_report("F-14-2-1")
+  })
+  st <- utils::read.csv(sf, colClasses = "character")
+  expect_identical(st$empty[match(c("T-14-2-2", "L-16-2-7", "T-14-1-1", "F-14-2-1"),
+                                  st$output_id)], c("", "TRUE", "FALSE", ""))
+  expect_identical(st$setup[st$output_id == "T-14-2-2"], "x")
+  # the column the runner reads (tflspec's batch.R): `empty`, TRUE or FALSE
+  runner <- readLines(tflspec::tfl_runner_file(), warn = FALSE)
+  expect_true(any(grepl("c(\"output_id\", \"empty\") %in% names(st)", runner, fixed = TRUE)))
 })
 
 test_that("the figure turns outdated with the table's ARD, and the preview and the batch make it first", {
