@@ -484,3 +484,30 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
     tryCatch(suppressMessages(rtfreporter::plan_apply(plan, "table")), error = function(e) NULL))
   res
 }
+
+# The plan arguments the preview does not draw (preview_html() reads a
+# page's data, its column header -- a cell's bold, its rules above and
+# below, its alignment --, the blank rows, the stub's indent, the columns'
+# relative widths and the orientation): their fields on the builder's cards
+# say so (.spec_card_no_preview()).  By function, its arguments; "*": all
+# of them.  One list, beside the code that draws: a preview that learns to
+# draw one takes it off here.
+.preview_not_drawn <- list(
+  plan_style = c("border", "border_header", "border_spanning", "border_body",
+                 "border_first_row", "border_last_row", "border_group",
+                 "align_count_pct", "font", "font_size_half_points",
+                 "row_height_twips", "row_height_exact", "header_row_height_twips",
+                 "blank_row_height_twips", "cell_padding_left_twips",
+                 "cell_padding_right_twips", "cell_padding_top_twips",
+                 "cell_padding_bottom_twips", "cell_valign", "table_align",
+                 "table_width_twips", "table_width_pct", "table_width_pct_of_writable",
+                 "markup", "header_align", "header_bold", "header_italic",
+                 "align", "bold", "italic", "underline"),
+  plan_cell_style = "*",
+  plan_columns = c("column_widths_twips", "decimal"))
+
+# Whether the preview draws a plan function's argument
+.preview_draws <- function(fn, arg) {
+  no <- .preview_not_drawn[[fn]]
+  !(identical(no, "*") || arg %in% no)
+}

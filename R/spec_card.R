@@ -234,6 +234,18 @@ spec_card_fields <- function(fn, item = list(), ard = character(), defs = spec_c
 # item's (`value`: NULL below the fold), marked where it came from.  Its
 # `R` switch is the definition's: only a type that takes an R expression
 # has one (canon 17dfbb8); R for the rest is the card's "Edit as R".
+# A field the preview does not draw (.preview_not_drawn): a small mark on
+# its label, the RTF has the value
+.spec_card_no_preview <- function(f, lang = "en") {
+  if (!inherits(f, "shiny.tag")) return(f)
+  mark <- htmltools::tags$span(class = "rp-badge rp-no-pv",
+                               title = tr("The RTF has this value; the preview does not draw it", lang),
+                               tr("Not in preview", lang))
+  q <- htmltools::tagQuery(f)$find(".rp-field-label")
+  if (!length(q$selectedTags())) return(f)
+  q$append(mark)$allTags()
+}
+
 .spec_field <- function(id, fn, k, value, item, defs, ctx = list(), lang = "en") {
   d <- defs$args[[k]]
   a <- item$args %||% list()
@@ -300,7 +312,11 @@ spec_card <- function(id, fn, item = list(), ctx = list(), lang = "en",
   a <- item$args %||% list()
   fields <- spec_card_fields(fn, item, ard = names(Filter(length, ctx$ard)), defs = defs,
                              only = only)
-  draw <- function(k, shown) .spec_field(id, fn, k, if (shown) a[[k]], item, defs, ctx, lang)
+  draw <- function(k, shown) {
+    f <- .spec_field(id, fn, k, if (shown) a[[k]], item, defs, ctx, lang)
+    if (!.preview_draws(fn, k)) f <- .spec_card_no_preview(f, lang)
+    f
+  }
   groups <- .spec_groups(defs, fields)
   if (is.null(groups)) {
     upper <- arg_group(NULL, lapply(fields$name[fields$shown], draw, shown = TRUE), lang = lang)

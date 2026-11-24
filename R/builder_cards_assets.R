@@ -45,6 +45,7 @@
   border: 1px solid #e5e7eb; white-space: nowrap; vertical-align: middle; }
 .rp-badge-own { background: #ecfdf5; border-color: #a7f3d0; color: #047857; }
 .rp-badge-absent { background: none; border-style: dashed; color: #6b7280; }
+.rp-no-pv { background: none; border-style: dotted; color: #9ca3af; margin-left: .3rem; font-weight: normal; }
 .rp-card.rp-card-absent { border-style: dashed; }
 .rp-card.rp-card-absent > .rp-card-head .rp-card-title { color: #6b7280; }
 .rp-badge-standards { background: #eef6ff; border-color: #cfe2ff; color: #1d4ed8; }

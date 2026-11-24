@@ -649,3 +649,24 @@ test_that("a positional dots key's field takes the dots' label and help (tflspec
     expect_true(is.character(d$help) && nzchar(d$help), info = k[1L])
   }
 })
+
+test_that("a field the preview does not draw says so on its card", {
+  skip_on_cran()
+  # (user, 2026-11-24: which card's or field's value the preview shows
+  # should be known on the screen)
+  # every name in the list is an argument of its function (a rename is caught)
+  for (fn in names(.preview_not_drawn)) {
+    no <- .preview_not_drawn[[fn]]
+    if (identical(no, "*")) next
+    expect_true(all(no %in% spec_card_fields(fn)$name), info = fn)
+  }
+  mark <- function(h, a) grepl(sprintf('(?s)data-arg="%s"(?:(?!data-arg=).)*?rp-no-pv', a), h, perl = TRUE)
+  h <- html(spec_card("c", "plan_columns", list(fn = "plan_columns", args = list())))
+  expect_true(mark(h, "column_widths_twips"))
+  expect_false(mark(h, "widths"))
+  h2 <- html(spec_card("c", "plan_style", list(fn = "plan_style", args = list()), lang = "ja"))
+  expect_true(mark(h2, "border"))
+  expect_match(h2, "\u30d7\u30ec\u30d3\u30e5\u30fc\u5916", fixed = TRUE)
+  expect_true(.preview_draws("plan_stub", "name"))
+  expect_false(.preview_draws("plan_cell_style", "bold"))
+})
