@@ -19,7 +19,7 @@
 
 .tpl_none_selects <- c("population", "data", "levels", "vars", "var", "chips", "choice", "choices",
                        "pick", "picks")
-.tpl_none_buttons <- c("text", "number", "flag", "list", "table")
+.tpl_none_buttons <- c("text", "number", "flag", "list", "lines", "table")
 
 .tpl_none_wrap <- function(w, input_id, type, prm, none, t = identity) {
   # (nor on one tflspec says cannot be left unset: its `unset` "stop"; NA, a
@@ -50,7 +50,7 @@
   if (identical(type, "flag")) {
     q$addClass("tpl-flag-field")
   } else if (none) {
-    if (identical(type, "list")) {
+    if (type %in% c("list", "lines")) {
       q$find("textarea")$empty()$append(t(.none_word))
     } else {
       inp <- q$find("input")$removeAttrs(c("value", if (identical(type, "number")) "type"))

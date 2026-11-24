@@ -169,10 +169,12 @@ test_that("the lines read back: numbers, flags, blank cells and no lines at all"
   expect_null(.tpl_list_parse("", named))
   expect_null(.tpl_list_parse(" \n  \n", rec))
   expect_null(.tpl_list_parse(NULL, named))
-  # lines with no name are dropped, the rest kept
+  # lines with no name are dropped, the rest kept; a name with an empty value
+  # cell is not given (never "": the rule of an empty field)
   expect_null(.tpl_list_parse("| text only", named))
   expect_identical(.tpl_list_parse("AGE | Age (years)\n| lost\nSEX", named),
-                   c(AGE = "Age (years)", SEX = ""))
+                   c(AGE = "Age (years)"))
+  expect_null(.tpl_list_parse("SEX\nAGE | ", named))
   # a text with a bar in it keeps its later cells
   expect_identical(.tpl_list_parse("A | b | c", named), c(A = "b | c"))
   r <- .tpl_list_parse("USUBJID | Subject | 12\nAETERM, AEDECOD | | 2.5\nX | Flag | TRUE", rec)

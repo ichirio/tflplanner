@@ -205,6 +205,15 @@
               rows = max(2L, min(8L, length(strsplit(txt, "\n")[[1L]]) + 1L)),
               placeholder = if (none) t("(none)") else paste(.tpl_list_fields(prm), collapse = " | ")))
         }
+      },
+      # (a sequence of plain values -- a heading's lines, sort keys, breaks:
+      # a value a line, read by .tpl_lines_parse())
+      lines = {
+        txt <- .tpl_lines_text(shown)
+        shiny::textAreaInput(
+          input_id, lab, value = txt, width = "100%", updateOn = "blur",
+          rows = max(2L, min(8L, length(strsplit(txt, "\n", fixed = TRUE)[[1L]]) + 1L)),
+          placeholder = if (none) t("(none)") else t("(default)"))
       })
     .tpl_none_wrap(w, input_id, type, prm, unset, t)
   }
@@ -397,47 +406,20 @@
     v
   }
   # the required arguments the dialog has (NULL: one is empty)
+  # (its fields read as the card reads them: .tpl_dialog_args(), .tpl_field_arg())
   tpl_modal_args <- function(nm) {
-    args <- list()
     prm_all <- .tpl_params(nm)
-    # (the report's population, for a template that hides it: not an argument)
-    pop <- NULL
-    if (.tpl_pop_of_report(prm_all)) {
-      pop <- .tpl_value(input[[tpl_arg_id(nm, "population")]], "population", prm_all$population)
-      if (is.null(pop)) return(structure(list(), missing = "population"))
-    }
+    raws <- list()
+    nones <- list()
+    if (.tpl_pop_of_report(prm_all)) raws["population"] <- list(input[[tpl_arg_id(nm, "population")]])
     for (x in .tpl_shown(prm_all)) {
-      if (!isTRUE(x$required)) {
-        # (an optional one: written only when changed from what its field
-        # sent untouched -- not compared with the start value itself: a
-        # FALSE shown as "false", a list's vectors as its lines, are no edit)
-        raw <- tpl_picked(nm, x)
-        if (is.null(raw)) next
-        type <- .tpl_type(x)
-        start <- tpl_opt_start(x)
-        # (a switch the "(none)" button turned off: its own input, <id>__none)
-        none_in <- input[[paste0(tpl_arg_id(nm, x$name), "__none")]]
-        if (identical(type, "flag") && isTRUE(none_in)) raw <- .none_word
-        v <- .tpl_value(raw, type, x)
-        if (.tpl_flag_off_drawn(type, v, start, none_in)) next
-        # (an unset only equals an unset; other values: as the field sent them untouched)
-        same <- .same_unset(v, start)
-        if (is.null(v) || isTRUE(same)) next
-        if (is.na(same) && (identical(v, .tpl_untouched(start, type, x)) ||
-                              identical(as.character(unlist(v)), as.character(unlist(start))))) next
-        args[[x$name]] <- v
-        next
-      }
-      v <- .tpl_value(tpl_picked(nm, x), .tpl_type(x), x)
-      if (is.null(v)) return(structure(list(), missing = x$name))
-      # (the study's own value, as prefilled: left to the study)
-      sv <- .tpl_study_value(rv$p$spec$study, x)
-      if (!is.null(sv) && identical(as.character(unlist(v)), as.character(unlist(sv)))) next
-      args[[x$name]] <- v
+      raws[x$name] <- list(tpl_picked(nm, x))
+      nones[x$name] <- list(input[[paste0(tpl_arg_id(nm, x$name), "__none")]])
     }
+    args <- .tpl_dialog_args(prm_all, raws, rv$p$spec$study, nones)
+    if (!is.null(attr(args, "missing"))) return(args)
     dat <- tpl_modal_data(nm)
     if (!is.null(attr(dat, "missing"))) return(structure(list(), missing = attr(dat, "missing")))
-    if (!is.null(pop)) attr(args, "population") <- pop
     args
   }
   # Create: not while a required argument is empty
@@ -659,17 +641,10 @@
     # off: its first FALSE is what it showed, no edit)
     if (is.null(shown) && identical(type, "flag")) shown <- FALSE
     if (identical(type, "columns") && is.null(.tpl_list_text(shown, prm))) return()
-    # (a list the rows cannot show: its YAML text; not YAML, said and the value stays)
+    # (a list the rows cannot show: its YAML text, the text it was drawn with
+    # no edit; not YAML, said and the value stays)
     yaml_box <- identical(type, "list") && is.null(.tpl_list_text(shown, prm))
-    if (yaml_box) {
-      ed <- .tpl_yaml_edit(v, shown)
-      if (identical(ed$kind, "same")) return()
-      if (identical(ed$kind, "bad")) {
-        notify(sprintf(t("%s is not valid YAML, so it is not changed: %s"), a, ed$msg), "error")
-        tpl_ver(tpl_ver() + 1L)
-        return()
-      }
-    }
+    if (yaml_box && identical(.tpl_yaml_edit(v, shown)$kind, "same")) return()
     if (identical(type, "text") && is.character(v) && length(v) == 1L) {
       # (the text as it was shown: no edit; YAML that does not parse: said, and the value stays)
       sh <- .tpl_drawn_value(rv$p, id, tp$args, prm)
@@ -681,7 +656,13 @@
         return()
       }
     }
-    val <- if (yaml_box) ed$value else .tpl_value(v, type, prm)
+    # (read as the dialog reads it: an empty field is the default, "(none)" !unset)
+    val <- tryCatch(.tpl_field_arg(v, type, prm, shown, echo = FALSE), error = function(e) e)
+    if (inherits(val, "error")) {
+      notify(sprintf(t("%s is not valid YAML, so it is not changed: %s"), a, conditionMessage(val)), "error")
+      tpl_ver(tpl_ver() + 1L)
+      return()
+    }
     # (a field drawn again says its value back: what it shows already --
     # the report's, the study's or the default -- is no edit)
     # (a switch drawn off for its "(none)" says FALSE when drawn: not an edit

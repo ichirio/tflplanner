@@ -397,6 +397,7 @@
       choice = if (several) "choices" else "choice",
       pick = if (several) "picks" else "pick",
       list = "list",
+      lines = "lines",
       "text"))
   }
   d <- prm$default
@@ -526,7 +527,7 @@
   }
   if (.tpl_list_records(prm)) {
     f <- .tpl_list_fields(prm)
-    return(lapply(cells, function(cs) {
+    recs <- lapply(cells, function(cs) {
       r <- list()
       for (i in seq_along(f)) {
         if (i > length(cs)) break
@@ -534,11 +535,16 @@
         if (!is.null(v)) r[[f[[i]]]] <- v
       }
       r
-    }))
+    })
+    # (a line of empty cells is no record)
+    recs <- recs[lengths(recs) > 0L]
+    return(if (length(recs)) recs)
   }
   keys <- vapply(cells, function(cs) cs[[1L]], "")
   vals <- vapply(cells, function(cs) if (length(cs) > 1L) paste(cs[-1L], collapse = " | ") else "", "")
-  keep <- nzchar(keys)
+  # (a name with no value is not an entry: an empty cell is "not given",
+  # never "" -- the rule of an empty field)
+  keep <- nzchar(keys) & nzchar(vals)
   if (!any(keep)) return(NULL)
   # (a map whose value is several, fields `values`: a line's comma-separated
   # values as a vector -- RACE | ASIAN, WHITE)
@@ -550,6 +556,42 @@
     return(stats::setNames(lapply(vals[keep], val), keys[keep]))
   }
   stats::setNames(vals[keep], keys[keep])
+}
+
+# A sequence of plain values (a "lines" field, .tpl_param_type(): list<string>,
+# list<number>, list<integer>) as the text of its box, a value a line; "" for
+# none.  Only the values are shown: a map written where a sequence belongs
+# (a map of "" the add-report dialog once wrote) shows its non-empty values,
+# so its echo reads back as the sequence they make (none: not given).  An
+# entry of several lines is shown as its lines (a field of this kind holds
+# none: a heading's lines are its entries).
+.tpl_lines_text <- function(x) {
+  if (is.null(x) || !length(x) || .is_unset(x)) return("")
+  v <- as.character(unlist(x, use.names = FALSE))
+  paste(v[!is.na(v) & nzchar(trimws(v))], collapse = "\n")
+}
+
+# ... and the box read back: a value a line (blank lines dropped; NULL for
+# none).  Lines that all start "- " are YAML (.tpl_yaml_read()).  A number
+# type's lines are numbers when every one is (.tpl_whole()), else they stay
+# as typed; a string's keep their leading spaces (an indented heading line).
+.tpl_lines_parse <- function(text, prm = NULL) {
+  txt <- paste(as.character(text %||% ""), collapse = "\n")
+  lines <- sub("[ \t\r]+$", "", strsplit(txt, "\n", fixed = TRUE)[[1L]])
+  lines <- lines[nzchar(trimws(lines))]
+  if (!length(lines)) return(NULL)
+  if (all(grepl("^\\s*- ", lines))) {
+    v <- .tpl_yaml_read(paste(lines, collapse = "\n"))
+    if (is.list(v) && is.null(names(v)) &&
+          all(vapply(v, function(e) is.atomic(e) && length(e) == 1L, NA))) v <- unlist(v)
+    return(v)
+  }
+  ty <- as.character(prm$def$type %||% "")[1L]
+  if (grepl("^list<(number|integer)>$", ty)) {
+    n <- suppressWarnings(as.numeric(trimws(lines)))
+    if (!anyNA(n)) return(.tpl_whole(n, prm))
+  }
+  lines
 }
 
 # A value as one line to read (a default; a list's value): a plain string as
@@ -735,6 +777,7 @@
       if (!length(v)) NULL else if (identical(type, "levels") && !isTRUE(prm$multiple)) v[1L] else v
     },
     list = , columns = .tpl_list_parse(v, prm),
+    lines = .tpl_lines_parse(v, prm),
     table = if (.tbl_is_state(v)) .tbl_read(v),
     # (R as typed, never YAML: TRUE stays the text TRUE, `x: y` stays that text)
     r = {
@@ -759,14 +802,109 @@
     number = .num_or_null(shown),
     text = if (is.null(shown)) "" else .tpl_show(shown),
     r = .tpl_r_text(shown),
-    list = , columns = .tpl_list_text(shown, prm),
+    # (a list the rows cannot show is drawn as its YAML box)
+    list = .tpl_list_text(shown, prm) %||% .tpl_yaml_block(shown),
+    columns = .tpl_list_text(shown, prm),
+    lines = .tpl_lines_text(shown),
     table = .tpl_table_state(shown, prm),
     vars = , chips = , choices = , picks = as.character(shown %||% character()),
     levels = if (isTRUE(prm$multiple)) as.character(shown %||% character()) else
       as.character(shown %||% "")[1L],
     as.character(shown %||% "")[1L]), error = function(e) NULL)
   if (is.null(raw)) return(NULL)
-  tryCatch(.tpl_value(raw, type, prm), error = function(e) NULL)
+  tryCatch(.tpl_field_arg(raw, type, prm, shown, echo = FALSE), error = function(e) NULL)
+}
+
+# A template argument's field read back the way tpl_widget() drew it -- the
+# add-report dialog and the card both read through here: a list the
+# "name | text" rows cannot show is its YAML box (.tpl_yaml_read()), any other
+# field its own reader (.tpl_value()).  The rule of an empty field:
+#   NULL          "not given" (the argument left out, the template's
+#                 default): an empty or blank field, a list whose entries
+#                 are all empty, and (`echo`) a field that says what it sent
+#                 untouched when drawn with `shown` (.tpl_untouched());
+#   tfl_unset()   "(none)";
+#   the value     else, a list's empty entries ("", NA, none) dropped.
+# `shown`: the value the field was drawn with.  An error: a YAML box that
+# does not read (the caller says so).  No Shiny.
+.tpl_field_arg <- function(raw, type, prm = NULL, shown = NULL, echo = TRUE) {
+  if (is.null(raw)) return(NULL)
+  if (identical(type, "list") && is.null(.tpl_list_text(shown, prm))) {
+    txt <- paste(as.character(raw), collapse = "\n")
+    if (!isTRUE(prm$required) && trimws(txt) %in% .none_texts()) return(tflspec::tfl_unset())
+    v <- .tpl_yaml_read(txt)
+  } else {
+    v <- .tpl_value(raw, type, prm)
+  }
+  if (.is_unset(v)) return(v)
+  if (type %in% c("list", "lines", "columns")) v <- .tpl_drop_empty(v)
+  if (is.null(v)) return(NULL)
+  if (echo && !is.null(shown) && identical(v, .tpl_untouched(shown, type, prm))) return(NULL)
+  v
+}
+
+# A list value's empty entries dropped (none, NA, "" or a blank text, an
+# empty vector or list); NULL when none is left.  R code and other tagged
+# values are kept as they are.
+.tpl_drop_empty <- function(v) {
+  if (is.null(v) || is.object(v) || !(is.list(v) || is.atomic(v))) return(v)
+  empty <- vapply(as.list(v), function(e) {
+    is.null(e) || (!is.object(e) && (is.atomic(e) || is.list(e)) &&
+                     (!length(e) || (is.atomic(e) && length(e) == 1L &&
+                                       (is.na(e) || !nzchar(trimws(as.character(e)))))))
+  }, NA)
+  v <- v[!empty]
+  if (length(v)) v
+}
+
+# The arguments the add-report dialog writes for template `prm_all`
+# (.tpl_params()), from what its fields send: `raws` by argument name (a
+# pick's "Add all suggested" already expanded; `population` the report's
+# population field where the template hides it), `nones` by name a
+# switch's <id>__none input, `study` the study SPEC (its values prefill the
+# fields).  An optional argument is written only when its field says other
+# than what it sent untouched (.tpl_field_arg()); a required one empty
+# gives no args and attribute "missing" (its name).  No Shiny.
+.tpl_dialog_args <- function(prm_all, raws, study = NULL, nones = list()) {
+  args <- list()
+  # (the report's population, for a template that hides it: not an argument)
+  pop <- NULL
+  if (.tpl_pop_of_report(prm_all)) {
+    pop <- .tpl_value(raws[["population"]], "population", prm_all$population)
+    if (is.null(pop)) return(structure(list(), missing = "population"))
+  }
+  for (x in .tpl_shown(prm_all)) {
+    raw <- raws[[x$name]]
+    type <- .tpl_type(x)
+    start <- .tpl_study_value(study, x) %||% x$default
+    if (!isTRUE(x$required)) {
+      # (an optional one: written only when changed from what its field
+      # sent untouched -- not compared with the start value itself: a
+      # FALSE shown as "false", a list's vectors as its lines, are no edit)
+      if (is.null(raw)) next
+      # (a switch the "(none)" button turned off: its own input, <id>__none)
+      none_in <- nones[[x$name]]
+      if (identical(type, "flag") && isTRUE(none_in)) raw <- .none_word
+      # (a YAML box that does not read: not written)
+      v <- tryCatch(.tpl_field_arg(raw, type, x, start), error = function(e) NULL)
+      if (.tpl_flag_off_drawn(type, v, start, none_in)) next
+      # (an unset only equals an unset; other values: as the field sent them untouched)
+      same <- .same_unset(v, start)
+      if (is.null(v) || isTRUE(same)) next
+      if (is.na(same) && (identical(v, .tpl_untouched(start, type, x)) ||
+                            identical(as.character(unlist(v)), as.character(unlist(start))))) next
+      args[[x$name]] <- v
+      next
+    }
+    v <- tryCatch(.tpl_field_arg(raw, type, x, start, echo = FALSE), error = function(e) NULL)
+    if (is.null(v)) return(structure(list(), missing = x$name))
+    # (the study's own value, as prefilled: left to the study)
+    sv <- .tpl_study_value(study, x)
+    if (!is.null(sv) && identical(as.character(unlist(v)), as.character(unlist(sv)))) next
+    args[[x$name]] <- v
+  }
+  if (!is.null(pop)) attr(args, "population") <- pop
+  args
 }
 
 # A table parameter (a def's input "table": a map<K,V> or a rows<...>,
