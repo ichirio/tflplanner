@@ -365,10 +365,16 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
     var head = box.children('.rp-more-search, .rp-group-label').last();
     if (after) after.after(el); else if (wrap) box.prepend(el); else head.length ? head.after(el) : box.prepend(el);
   }
+  // (a press on the field's own R or (none) switch -- a label, it takes no
+  // focus -- blurs the field before the switch turns: that is not leaving it)
+  var downIn = null;
+  $(document).on('mousedown', function(e) { downIn = e.target; });
+  $(document).on('mouseup', function() { setTimeout(function() { downIn = null; }, 0); });
   $(document).on('focusout', '.rp-plan-args .rp-field', function() {
     var f = $(this);
     setTimeout(function() {
       if (f[0].contains(document.activeElement)) return;
+      if (downIn && f[0].contains(downIn)) return;
       var card = f.closest('.rp-plan-args');
       // (a card with groups: the field stays in its own group, above or in the fold)
       var grp = f.closest('[data-group]').attr('data-group');

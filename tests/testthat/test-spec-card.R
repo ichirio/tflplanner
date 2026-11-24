@@ -669,4 +669,6 @@ test_that("a field the definitions keep above says so, and the page keeps it the
   js <- .builder_cards_js
   expect_match(js, "f.attr('data-keep-up') !== '1'", fixed = TRUE)
   expect_match(js, "f.find('.rp-isr').is(':checked')", fixed = TRUE)
+  # (a press inside the field -- its R or (none) switch -- is not leaving it)
+  expect_match(js, "if (downIn && f[0].contains(downIn)) return;", fixed = TRUE)
 })
