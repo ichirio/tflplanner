@@ -93,3 +93,34 @@ test_that(".generated_program_files() lists every file a save writes besides the
               info = paste(setdiff(basename(generated), .generated_program_files()),
                            collapse = ", "))
 })
+
+test_that("tflspec checks the names; the cell each kind points at is tflplanner's", {
+  local_home()
+  p <- add_output(new_planner(), "T1", description = "a table")
+  p <- add_output(p, "T2", description = "another table")
+  p <- add_output(p, "ard_setup", type = "table")
+  p <- set_sheet_rows(p, "report", "T1", data.frame(program = "Batch.R"))
+  p <- set_sheet_rows(p, "report", "T2", data.frame(program = "batch.r"))
+  bad <- .program_name_problems(p)
+  expect_identical(bad, list(
+    list(id = "T1", kind = "reserved", args = c("T1", "Batch.R"),
+         sheet = "report", field = "program"),
+    list(id = "T2", kind = "reserved", args = c("T2", "batch.r"),
+         sheet = "report", field = "program"),
+    list(id = "T2", kind = "duplicate", args = c("T1", "T2", "batch.r"),
+         sheet = "report", field = "program"),
+    list(id = "ard_setup", kind = "reserved", args = c("ard_setup", "ard_setup.R"),
+         sheet = "report", field = "program"),
+    list(id = "ard_setup", kind = "ard_reserved", args = c("ard_setup", "ard_setup.R"),
+         sheet = "_tflplanner", field = "output_id")))
+  expect_identical(.program_name_message(bad[[3L]]),
+                   sprintf(.program_name_templates[["duplicate"]], "T1", "T2", "batch.r"))
+})
+
+test_that("the layout and an ARD program's name are tflspec's", {
+  expect_identical(study_layout(), tflspec::tfl_study_layout())
+  ids <- c("T-14-1-1", "a b/c", "x.y_z", "ARD")
+  f <- tflspec::tfl_study_program_files(stats::setNames(rep(NA_character_, length(ids)), ids))
+  expect_identical(file.path(study_layout()[["programs_ard"]], .ard_prog_name(ids)),
+                   f$ard_program)
+})
