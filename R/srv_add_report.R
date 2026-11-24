@@ -1117,7 +1117,7 @@
         if (length(low)) shiny::tags$details(
           class = "mt-1", open = if (isTRUE(shiny::isolate(input[[key]]))) NA,
           ontoggle = sprintf("Shiny.setInputValue('%s', this.open)", key),
-          shiny::tags$summary(class = "small", sprintf(t("Arguments with defaults (%d)"), length(low))),
+          shiny::tags$summary(class = "small", sprintf("%s (%d)", t("More settings"), length(low))),
           shiny::div(class = "mt-2", lapply(low, row, upper = FALSE))))
     }
     missing_alert <- if (length(miss)) shiny::div(

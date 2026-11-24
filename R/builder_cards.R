@@ -13,7 +13,7 @@
 #   arg_field(id, arg, type, ...)        one argument's field, by its type (a
 #                                        def's table: R/arg_defs_table.R)
 #   arg_group(label, fields, as)         several fields on one row
-#   arg_more(id, fn, used, schema)       the folded "other arguments"
+#   arg_more(id, fn, used, schema)       the folded "More settings"
 #   from_badge(from)                     the mark of where a value came from
 #   code_jump(lines_map, output_id)      Code line <-> card
 #   nav_hint(text, where)                a sentence shown in nav mode only

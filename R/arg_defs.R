@@ -112,7 +112,7 @@
 .choice_group_labels <- c(
   vars = "Columns", levels = "Values", codelist = "Code list", populations = "Analysis sets",
   report_data = "This report's data", study_data = "Study data", ard = "ARD",
-  columns = "Columns", study_info = "Study information", tokens = "Tokens",
+  columns = "Columns", study_info = "Study information", tokens = "Values to insert",
   stats = "Statistics", fixed = "Fixed values", styles = "Styles", from_args = "Arguments")
 
 # "report_data, study_data" or c("vars(from)", "from_args(a, b)") -> the
