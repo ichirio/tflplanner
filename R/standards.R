@@ -148,11 +148,13 @@
     figure_markers = .tflspec_fig_style()$markers,
     code_templates = .df(
       name = c("table_data", "table_process", "figure_plot", "setup"),
+      # (analysis_id stays: the report splits BIGN's rows off by it, then
+      # the table is made from the rest -- A10, 2026-11-24)
       code = c(paste(
         "# this report's rows of the study ARD (made by {ARD_PROGRAM})",
         "ard <- readRDS(\"{ARD}\") |>",
         "  dplyr::filter(output_id == report_id) |>",
-        "  dplyr::select(-c(output_id, analysis_id, population_id))",
+        "  dplyr::select(-c(output_id, population_id))",
         "if (!nrow(ard)) {",
         "  stop(\"The study ARD has no rows for \", report_id, \": run {ARD_PROGRAM} first.\")",
         "}",
