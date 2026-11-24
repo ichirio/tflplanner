@@ -3,7 +3,6 @@
 \name{ard_setup_code}
 \alias{ard_setup_code}
 \alias{ard_program_code}
-\alias{ard_autoexec_code}
 \title{The ARD programs of a study}
 \usage{
 ard_setup_code(spec, date = Sys.Date())
@@ -15,8 +14,6 @@ ard_program_code(
   dir = ".",
   codelists = NULL
 )
-
-ard_autoexec_code(spec, date = Sys.Date())
 }
 \arguments{
 \item{spec}{An \code{\link[tflspec:tfl_ard_spec]{tflspec::tfl_ard_spec()}} (or the path of one).}
@@ -45,10 +42,8 @@ sources: the study's setup (\code{programs/study_setup.R}, see
 the stat_fmt formats, and the option that makes \code{save_ard()} (the
 study's \code{programs/study_helpers.R}, see \code{\link[=study_helpers_code]{study_helpers_code()}}) record
 the study setup each ARD was built with.
-\code{ard_program_code()} is one output's program, \verb{programs/ard/<output_id>.R}.  \code{ard_autoexec_code()} is
-\code{programs/ard/autoexec_ard.R}, which runs them from the study folder --
-all, or the ones named (\verb{Rscript programs/ard/autoexec_ard.R T-14-1-1})
--- each in its own R process with its log in \verb{logs/ard/}.
+\code{ard_program_code()} is one output's program, \verb{programs/ard/<output_id>.R}.  An official run of them is
+\code{\link[=run_batch]{run_batch()}}'s.
 }
 \examples{
 # a home in the temporary folder: used in this R session only, nothing

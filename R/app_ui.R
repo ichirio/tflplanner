@@ -540,9 +540,8 @@ app_ui <- function(lang = "en") {
         code = shiny::tagList(
           shiny::radioButtons(
             "ard_scope", NULL,
-            stats::setNames(c("report", "setup", "autoexec"),
-                            c(t("This output's program"), "ard_setup.R",
-                              "autoexec_ard.R")),
+            stats::setNames(c("report", "setup"),
+                            c(t("This output's program"), "ard_setup.R")),
             inline = TRUE),
           shiny::uiOutput("ard_prog_state"),
           code_view("ard_code", lang)),

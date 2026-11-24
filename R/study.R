@@ -15,10 +15,9 @@
 #     spec/                table_spec.xlsx, report_spec.xlsx (the report
 #                          programs read them; ard_spec.xlsx only if exported)
 #     programs/            study_setup.R (what every program runs first),
-#                          batch.R, autoexec_all.R (official runs)
-#     programs/ard/        one ARD program per output, ard_setup.R,
-#                          autoexec_ard.R
-#     programs/tfl/        one program per report, autoexec_report.R
+#                          batch.R (the runner of official runs)
+#     programs/ard/        one ARD program per output, ard_setup.R
+#     programs/tfl/        one program per report
 #     output/ard/          the study's working ARD (ard.rds): what previews
 #                          and hand runs of a program leave, for the design
 #                          aids to read; not an official result
@@ -35,8 +34,8 @@
 #                          its own (a preview; not a log of record)
 #
 # Every program runs with the study folder as its working directory:
-# RStudio does that when the .Rproj is opened, autoexec_report.R does it
-# for the programs it runs, and the app runs everything through it.
+# RStudio does that when the .Rproj is opened, and the runner does it for the
+# programs it runs.
 
 #' The folder layout of a study
 #'

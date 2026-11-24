@@ -26,7 +26,7 @@ ARD   :  Web GUI（ARD 定義） ⇒ （Excel：任意） ⇒ ARD 作成プロ�
 表    :  試験 ARD から output_id で取得 ⇒ normalize ⇒ Rework ⇒ 表の定義 ⇒ RTF
 Listing / 図 : SDTM / ADaM ⇒ 帳票プログラム ⇒ RTF
 自分の R  : データ・内容の手順を R プログラムに ⇒ そのコードが手順を作る ⇒ 体裁は帳票の設定から ⇒ RTF
-正式実行 : autoexec_*.R ⇒ runs/<日時>_<内容>/（ログ・結果・コード）
+正式実行 : 「正式実行を開始」/ tflspec::tfl_run_study() ⇒ runs/<日時>_<内容>/（ログ・結果・コード）
 ```
 
 - **ARD 作成と帳票作成は分かれています。** 担当者が違っても、また ARD がすべてそろう前でも、
@@ -287,10 +287,10 @@ ABC-101/
   input/ard/           他で作って取り込んだ ARD（読み取り専用）と imports.csv（4.5 節）
   input/toc/           取り込んだ TOC の写しと記録（10 章）
   spec/                表・レポートの定義ブック、ARD 定義のコピー（ard_definition.json）
-  programs/            batch.R、autoexec_all.R（正式実行）
-  programs/ard/        ARD プログラム（帳票ごと）、ard_setup.R、autoexec_ard.R
+  programs/            batch.R（正式実行のランナー）
+  programs/ard/        ARD プログラム（帳票ごと）、ard_setup.R
   programs/ard/functions/   試験で使う独自の ARD 関数（4.6 節）
-  programs/tfl/        帳票プログラム、autoexec_report.R
+  programs/tfl/        帳票プログラム
   output/ard/          作業用の試験 ARD（ard.rds）
   output/tfl/          作業用の RTF
   runs/                正式実行の実行フォルダ
@@ -548,7 +548,7 @@ ggplot2 を自分で書きたい図は、内容の手順を R プログラムに
 
 | | プレビュー | 正式実行 |
 |---|---|---|
-| 実行方法 | 各帳票の「プレビューを更新」、RStudio でプログラムを直接実行 | `autoexec_ard.R` / `autoexec_report.R` / `autoexec_all.R`、アプリの「正式実行を開始」 |
+| 実行方法 | 各帳票の「プレビューを更新」、RStudio でプログラムを直接実行 | アプリの「正式実行を開始」、`tflspec::tfl_run_study()` |
 | 結果 | 作業用の `output/` を更新 | 作業用の `output/` を更新し、実行フォルダにも格納 |
 | ログ | 残さない | logrx で各プログラムのログを残す |
 
@@ -593,10 +593,10 @@ runs/batch_20260927-143000_Topline/
 「実行フォルダを開く」は、アプリを自分の PC で動かしているときだけ使えます。
 
 ```{r}
-# コマンドラインから（試験フォルダで）
-# Rscript programs/autoexec_all.R --run=Topline   実行の定義 Topline を正式実行
-# Rscript programs/ard/autoexec_ard.R             ARD だけ（試験の作業用。正式実行ではありません）
-# Rscript programs/tfl/autoexec_report.R          帳票だけ（同上）
+# 試験は programs/batch.R だけが正式実行を始めます（試験フォルダに autoexec_*.R はありません）。
+# R から: tflspec::tfl_run_study(study, "Topline")   実行の定義 Topline を正式実行
+# 実行フォルダ（runs/batch_...）の中の autoexec_*.R は、tflspec も tflplanner も
+# なしで同じ実行をやり直せます（FDA などに渡したあとの実行はこの形です）。
 
 # R から
 s <- open_study("ABC-101")

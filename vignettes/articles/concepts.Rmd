@@ -15,7 +15,7 @@ ARD      web GUI  =>  (Excel, optional)  =>  ARD programs  =>  the study ARD
 Tables   the study ARD, by output_id  =>  normalize, rework  =>  RTF
 Listings, Figures   SDTM / ADaM  =>  report programs  =>  RTF
 Your own R   a report's data or content step as R code; the report's page wraps it  =>  RTF
-Official runs   autoexec_*.R  =>  runs/<date>_<time>_<what>/  (logs, results, code)
+Official runs   Run button / tfl_run_study()  =>  runs/<date>_<time>_<what>/  (logs, results, code)
 ```
 
 

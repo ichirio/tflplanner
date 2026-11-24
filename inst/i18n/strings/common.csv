@@ -12,7 +12,6 @@
 "Copy","複製"
 "Rename","名前変更"
 "Delete","削除"
-"The order is the order autoexec_report.R runs them in. Copy copies the report's rows of every sheet.","順番 = autoexec_report.R の実行順。複製は全シートの行ごとコピーします。"
 "Description","説明"
 "1. ARD: make `ard` (Listing / Figure: make `content`). Blank = TODO.","1. ARD 作成：`ard` を作る（Listing / Figure は `content` を作る）。空欄 = TODO。"
 "Run and read the ARD","実行して ARD を読む"

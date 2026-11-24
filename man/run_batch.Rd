@@ -29,8 +29,8 @@ stopped) -- its \code{definition} and when it \code{finished}.
 }
 \description{
 \code{run_batch()} starts an official run of a saved run definition
-(\code{\link[=run_definitions]{run_definitions()}}): \verb{programs/autoexec_all.R --run=<name>}, the
-command of \code{\link[tflspec:tfl_run_command]{tflspec::tfl_run_command()}}.  The run makes a batch folder
+(\code{\link[=run_definitions]{run_definitions()}}): the command of \code{\link[tflspec:tfl_run_command]{tflspec::tfl_run_command()}} (the
+runner, \verb{programs/batch.R}, with \verb{--run=<name>}).  The run makes a batch folder
 \verb{runs/batch_<date>-<time>_<name>/} with each program's log, what the run
 made, the R and package versions (\code{session_info.txt}, and the study's
 \code{renv.lock} when it has one), the study's programs and definition files

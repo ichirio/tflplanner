@@ -24,7 +24,7 @@ print.rtfstudy <- function(x, ...) {
 #' [open_study()] reads; the one before goes to its history), then writes
 #' the study folder from it: the definition workbooks in `spec/` (with
 #' `output_path` and `program_dir` set to the study's own folders), the
-#' report programs, `autoexec_report.R`, `programs/study_setup.R` (made
+#' report programs, `programs/study_setup.R` (made
 #' when missing; otherwise its tflplanner part only, see
 #' [study_setup_code()]), and `study.yml`.  The programs
 #' are the definition's: each is written from it whenever it changes.  One
@@ -221,7 +221,7 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
 
 # A study of an earlier version kept its report programs in programs/ and
 # the ARD in one programs/make_ard.R: the report programs move to
-# programs/tfl/ (edits and all), the generated autoexec goes.
+# programs/tfl/ (edits and all).
 .move_old_programs <- function(root, progs) {
   lay <- study_layout()
   for (p in progs) {
@@ -229,7 +229,7 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
     new <- file.path(root, lay[["programs_tfl"]], p)
     if (file.exists(old) && !file.exists(new)) file.rename(old, new)
   }
-  old <- file.path(root, "programs", .autoexec_report_file)
+  old <- file.path(root, "programs", "autoexec_report.R")
   if (file.exists(old)) file.remove(old)
   invisible()
 }

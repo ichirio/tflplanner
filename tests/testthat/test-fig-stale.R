@@ -211,7 +211,7 @@ test_that("a hand run of a report that reads the ARD of a report not selected st
   expect_length(list.files(d, pattern = "[.]rtf$", recursive = TRUE), 0L)
 })
 
-test_that("a hand run of the reports alone is refused: only autoexec_all.R starts an official run", {
+test_that("a hand run of the reports alone is refused: only the runner (tfl_run_study(), the Run button) starts an official run", {
   skip_on_cran()
   d <- tempfile("runner")
   dir.create(d)

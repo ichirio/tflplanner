@@ -2,12 +2,9 @@
 % Please edit documentation in R/batch.R
 \name{batch_code}
 \alias{batch_code}
-\alias{autoexec_all_code}
 \title{The official-run programs of a study}
 \usage{
 batch_code(x, date = Sys.Date(), root = ".")
-
-autoexec_all_code(date = Sys.Date())
 }
 \arguments{
 \item{x}{A \code{tflplanner}.}
@@ -23,9 +20,7 @@ The program, one element per line.
 \description{
 \code{batch_code()} is \code{programs/batch.R}: the study's programs (the ARD
 programs, the report programs, what each report makes) and the runner
-that runs them into a batch folder.  \code{autoexec_all_code()} is
-\code{programs/autoexec_all.R} (the ARD, then the reports); see also
-\code{\link[=ard_autoexec_code]{ard_autoexec_code()}} and \code{\link[=autoexec_code]{autoexec_code()}}.
+that runs them into a batch folder.
 }
 \examples{
 x <- add_output(new_planner(), "T-14-1-1", type = "table")

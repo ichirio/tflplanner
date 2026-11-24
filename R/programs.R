@@ -1,4 +1,4 @@
-# The report programs: one per report, and autoexec_report.R to run them.
+# The report programs: one per report.
 #
 # A program does four things and only the first is the study's own: make
 # its data, read the report's definition, lay the report out from it, write
@@ -1079,35 +1079,4 @@ report_setup_code <- function(x, date = Sys.Date()) {
     return(rep(NA_character_, length(output_id)))
   }
   st$setup[match(output_id, st$output_id)]
-}
-
-#' The program that runs every report program
-#'
-#' `programs/tfl/autoexec_report.R` runs from the study folder.  It runs the
-#' programs in the order of the report list -- or only the ones named on
-#' its command line (`Rscript programs/tfl/autoexec_report.R DM.R AE.R`) --
-#' each in its own `Rscript` process with the study folder as its working
-#' directory and its log in `logs/`, and ends with a table of what passed
-#' (`logs/autoexec_report.csv`).
-#'
-#' @param x An `tflplanner`.
-#' @param date The date stamped in the banner.
-#' @return The program, one element per line.
-#' @examples
-#' # a home in the temporary folder: used in this R session only, nothing
-#' # is written to your settings
-#' old <- options(tflplanner.home = NULL)
-#' setup_tflplanner(home = tempfile("tflplanner-home"))
-#' \donttest{
-#' s <- create_sample_study(run = FALSE)
-#' head(autoexec_code(s$planner), 6)
-#' }
-#' options(old)
-#' @export
-autoexec_code <- function(x, date = Sys.Date()) {
-  lay <- study_layout()
-  c(.autoexec_banner(file.path(lay[["programs_tfl"]], .autoexec_report_file),
-                     "Official run of the report programs, in the report list's order.",
-                     "T-14-1-1.R       only these", date),
-    .autoexec_body("tfl"))
 }

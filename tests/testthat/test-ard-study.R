@@ -51,7 +51,6 @@ test_that("a table the ARD definition serves reads its part of the study ARD", {
   p <- set_step_code(p, "DM", "data", "ard <- my_ard()")
   expect_true("ard <- my_ard()" %in% data_lines(p, "DM"))
   expect_false(any(grepl("ard.rds", data_lines(p, "DM"))))
-  expect_false(any(grepl("make_ard", autoexec_code(p))))
 })
 
 test_that("the definition is saved, reopened and run", {
@@ -65,8 +64,14 @@ test_that("the definition is saved, reopened and run", {
   expect_false(file.exists(file.path(s$path, "spec", "ard_definition.json")))
   expect_true(file.exists(file.path(s$path, "spec", "data.yml")))
   expect_false(is.null(tflspec::tfl_read_output(file.path(s$path, "spec", "outputs", "DM.yml"))$ard))
-  for (f in c("ard_setup.R", "DM.R", "autoexec_ard.R")) {
+  for (f in c("ard_setup.R", "DM.R")) {
     expect_true(file.exists(file.path(s$path, "programs", "ard", f)))
+  }
+  # a study has no entry file of its own: official runs start from
+  # programs/batch.R (tflspec::tfl_run_study(), the Run button)
+  for (f in c("programs/autoexec_all.R", "programs/ard/autoexec_ard.R",
+              "programs/tfl/autoexec_report.R")) {
+    expect_false(file.exists(file.path(s$path, f)), label = f)
   }
   expect_true(file.exists(file.path(s$path, "programs", "tfl", "DM.R")))
   s2 <- save_study(s)

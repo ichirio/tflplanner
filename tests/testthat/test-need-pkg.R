@@ -185,12 +185,6 @@ test_that("run_study(), run_batch() and preview_code() check the reports' packag
   expect_error(preview_code(s, "F1"), "install.packages(\"ggsurvfit\")", fixed = TRUE,
                class = "tflplanner_need_pkg")
   # the official run: said before the run starts (no batch folder made)
-  dir.create(file.path(s$path, "programs"), recursive = TRUE, showWarnings = FALSE)
-  for (f in c(file.path(s$path, "programs", .autoexec_all_file),
-              file.path(s$path, "programs", "ard", .ard_autoexec_file))) {
-    dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
-    if (!file.exists(f)) writeLines("", f)
-  }
   s$planner <- set_run_definition(s$planner, "Only", "F1")
   expect_error(run_batch(s, "Only"), "The report F1",
                class = "tflplanner_need_pkg")
