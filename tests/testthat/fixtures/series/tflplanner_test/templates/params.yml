@@ -1,0 +1,41 @@
+# tflplanner_test/templates/params.yml: a test-only template with the
+# param forms no shipped template has since the purpose templates left
+# tflspec_v1 (canon 2026-11-24): a scalar R condition (lab_tox_shift's
+# record_where was the last one) and a level whose choices are another
+# param's values (orr_subgroup's responder).  Fictional; params only.
+template: params
+label: Test params
+params:
+  by:
+    type: list<column>
+    input: pick
+    choices: vars(adsl_sub)
+    required: true
+    step: analysis
+    tier: required
+    description: The column variable(s); the groups across.
+  category:
+    type: column
+    input: pick
+    choices: vars(rec_sub)
+    default: AVALC
+    step: data
+    tier: other
+    description: The column of the category.
+  responder:
+    type: level
+    input: pick
+    choices: levels(category)
+    free: true
+    default: CR
+    step: analysis
+    tier: usual
+    description: The category level counted.
+  record_where:
+    type: r
+    input: condition
+    choices: vars(rec_sub)
+    default: !r AVISIT == "WORST POST-BASELINE"
+    step: data
+    tier: usual
+    description: The records kept, R.

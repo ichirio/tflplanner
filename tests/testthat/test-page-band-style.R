@@ -23,13 +23,30 @@ test_that("the titles' card: the size shown, the rest folded until the page says
   h <- as.character(.page_form_ui(p, "T-14-3-1", identity))
   ti <- substring(h, regexpr("(rtf_titles())", h, fixed = TRUE))
   expect_match(ti, "data-fn=\"rtf_titles\" data-arg=\"font_size_half_points\"", fixed = TRUE)
-  expect_match(ti, "Not in the code (4)", fixed = TRUE)
+  expect_match(ti, "More settings (4)", fixed = TRUE)
   q <- .pgs_set_arg(p, "T-14-3-1", "rtf_titles", "align", .pgs_value("left", "choice"))
   h <- as.character(.page_form_ui(q, "T-14-3-1", identity))
   ti <- substring(h, regexpr("(rtf_titles())", h, fixed = TRUE))
-  expect_match(ti, "Not in the code (3)", fixed = TRUE)
+  expect_match(ti, "More settings (3)", fixed = TRUE)
   expect_lt(regexpr("data-fn=\"rtf_titles\" data-arg=\"align\"", ti, fixed = TRUE),
-            regexpr("Not in the code", ti, fixed = TRUE))
+            regexpr("More settings", ti, fixed = TRUE))
+})
+
+test_that("the titles' card in Japanese: the content cards' fold word, the size, the part named", {
+  skip_on_cran()
+  p <- band_sample()
+  ja <- function(x) tr(x, "ja")
+  h <- as.character(.page_form_ui(p, "T-14-3-1", ja))
+  ti <- substring(h, regexpr("(rtf_titles())", h, fixed = TRUE))
+  # (the fold: the content cards' fold word, "More settings")
+  expect_match(ti, "\u8a73\u7d30\u8a2d\u5b9a (4)", fixed = TRUE)
+  expect_identical(ja(.spec_more_label), "\u8a73\u7d30\u8a2d\u5b9a")
+  for (en in c("Font size (pt)", "+ Add a title line for this report only",
+               "(Choose a value to insert: report number, page number, ...)")) {
+    expect_false(identical(ja(en), en), info = en)
+    expect_match(ti, ja(en), fixed = TRUE, info = en)
+  }
+  expect_false(grepl("Not in the code", ti, fixed = TRUE))
 })
 
 test_that("an argument set is in the report's YAML (tflspec writes it into the program)", {
