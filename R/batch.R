@@ -499,53 +499,48 @@ run_batch <- function(study, name, wait = FALSE) {
        output = txt)
 }
 
-# The ARD each report reads, by the rules of the code a figure's program runs
-# (.fig_ard_lines()): a report's own ARD (its id has analyses); a figure whose
-# ARD source is its own or a table's reads that id, whether or not its design
-# uses it.  What a report's code reads of another report's ARD is not found
-# out here: that read stops the run when it happens.  A data.frame, one row
-# per read:
+# The ARD each report reads: tflspec::tfl_ard_reads() (the SPEC's rule, one
+# for the GUI and the CLI), given the reports as they are on screen -- every
+# report of the planner, unsaved edits and the analyses of its sheets in
+# them (.spec_now() takes the edits in; the saved files are not read) -- and
+# the study's spec.  A data.frame, one row per read:
 #   report  the output id
 #   reads   the id whose ARD it reads; NA when that cannot be worked out
-#   kind    "own" (its own analyses) or "source" (a figure's own/table source)
-#   reason  NA when resolved, else "no source" (the design reads an ARD, no
-#           source chosen), "source not in analyses", "source report not
-#           found", or "lookup failed: <message>"
-# A report that reads none has no row; a lookup that fails is that report's
-# row, not an error.  A run must not start on a read not known.
+#   kind    "own" (its own analyses) or "source" (a figure's ARD source)
+#   reason  NA when resolved; else tflspec's: "no source", "source not
+#           understood: <value>", "source not in analyses", "source report
+#           not found", "source lookup failed", "ref analysis: <ref>",
+#           "file not read: <message>" or "lookup failed: <message>"
+# A report that reads none has no row (an `import:<file>` source reads no
+# report's ARD: no row).  A failure of the lookup as a whole (the spec could
+# not be made from the sheets) is a row of every report, not an error.  A
+# run must not start on a read not known.
 .batch_report_reads <- function(x) {
-  spec <- x$ard %||% .empty_ard_spec()
-  ids <- unique(stats::na.omit(spec$analyses$output_id))
   out_ids <- x$outputs$output_id
-  row <- function(report, reads, kind, reason = NA_character_) {
-    data.frame(report = report, reads = reads, kind = kind, reason = reason,
-               stringsAsFactors = FALSE)
-  }
-  one <- function(id) {
-    got <- if (id %in% ids) row(id, id, "own")
-    if (identical(report_info(x, id)$type, "figure")) {
-      src <- .fig_ard_source(x, id)
-      if (src$kind %in% c("own", "table")) {
-        if (src$id %in% ids) {
-          if (!src$id %in% got$reads) got <- rbind(got, row(id, src$id, "source"))
-        } else {
-          why <- if (src$id %in% out_ids) "source not in analyses" else
-            "source report not found"
-          got <- rbind(got, row(id, NA_character_, "source", why))
-        }
-      } else if (identical(src$kind, "none") &&
-                 .fig_reads_ard(fig_design(x, id), id)) {
-        got <- rbind(got, row(id, NA_character_, "source", "no source"))
-      }
+  empty <- data.frame(report = character(), reads = character(),
+                      kind = character(), reason = character(),
+                      stringsAsFactors = FALSE)
+  got <- tryCatch({
+    sp <- .spec_now(.spec_ensure(x))
+    if (is.null(sp) || is.null(sp$study)) stop("the planner has no spec", call. = FALSE)
+    # every report on screen: a report the spec lacks is a lookup that fails,
+    # not left out (a source naming it would be "source report not found")
+    lack <- setdiff(out_ids, names(sp$outputs))
+    if (length(lack)) {
+      stop("no spec for the report(s): ", paste(lack, collapse = ", "), call. = FALSE)
     }
-    got
-  }
-  got <- lapply(out_ids, function(id) tryCatch(one(id), error = function(e) {
-    row(id, NA_character_, "source", paste0("lookup failed: ", conditionMessage(e)))
-  }))
-  out <- do.call(rbind, c(list(row(character(), character(), character(), character())), got))
-  rownames(out) <- NULL
-  out
+    tflspec::tfl_ard_reads(sp$study, sp$outputs)
+  }, error = function(e) {
+    if (!length(out_ids)) return(empty)
+    data.frame(report = out_ids, reads = NA_character_, kind = "source",
+               reason = paste0("lookup failed: ", conditionMessage(e)),
+               stringsAsFactors = FALSE)
+  })
+  # (the order of the report list, as before)
+  got <- got[order(match(got$report, out_ids), na.last = TRUE), , drop = FALSE]
+  got <- got[, names(empty), drop = FALSE]
+  rownames(got) <- NULL
+  got
 }
 
 # the needs of .batch_report_reads(): a named list, output id -> the ids whose

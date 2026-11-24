@@ -292,24 +292,52 @@ rd_planner <- function(ids = c("DM", "VS")) {
   p
 }
 
-test_that("a lookup that fails for one report is that report's reason; the others' needs stay", {
+# The rules (which reads, which reasons) are tflspec's: tfl_ard_reads() has
+# its own tests, rule by rule.  Here: the wrapper passes tflspec every report
+# as it is on screen (unsaved edits too) and returns its answer.
+test_that("the wrapper passes every report on screen and the study's spec to tflspec", {
   p <- rd_planner(c("T-1", "T-2"))
   p <- add_output(p, "F-1", type = "figure")
+  got <- NULL
   testthat::local_mocked_bindings(
-    .fig_ard_source = function(x, output_id) stop("boom"))
+    tfl_ard_reads = function(study, outputs = NULL) {
+      got <<- list(study = study, outputs = outputs)
+      data.frame(report = c("T-2", "T-1"), reads = c("T-2", "T-1"), kind = "own",
+                 reason = NA_character_, stringsAsFactors = FALSE)
+    },
+    .package = "tflspec")
   r <- .batch_report_reads(p)
+  expect_s3_class(got$study, "tfl_study_spec")
+  expect_setequal(names(got$outputs), p$outputs$output_id)
+  expect_true(all(vapply(got$outputs, inherits, NA, "tfl_output")))
+  # the analyses of the sheets are in the report tflspec reads
+  expect_gt(length(got$outputs[["T-1"]]$ard$analyses), 0L)
+  # the shape, and the report list's order
   expect_identical(names(r), c("report", "reads", "kind", "reason"))
+  expect_identical(r$report, c("T-1", "T-2"))
   expect_identical(.batch_reads_needs(r), list(`T-1` = "T-1", `T-2` = "T-2"))
-  expect_identical(.batch_reads_unresolved(r), c(`F-1` = "lookup failed: boom"))
   expect_identical(.batch_report_needs(p), .batch_reads_needs(r))
 })
 
-test_that("a figure's source is a need whether or not its design reads it; an unknown one is unresolved", {
+test_that("a lookup that fails as a whole is every report's reason, not an error", {
+  p <- rd_planner(c("T-1", "T-2"))
+  testthat::local_mocked_bindings(
+    tfl_ard_reads = function(study, outputs = NULL) stop("boom"),
+    .package = "tflspec")
+  r <- .batch_report_reads(p)
+  expect_identical(names(r), c("report", "reads", "kind", "reason"))
+  expect_setequal(r$report, p$outputs$output_id)
+  expect_true(all(is.na(r$reads)))
+  expect_true(all(r$reason == "lookup failed: boom"))
+  expect_length(.batch_reads_needs(r), 0L)
+  expect_setequal(names(.batch_reads_unresolved(r)), p$outputs$output_id)
+})
+
+test_that("tflspec's answer for the planner's reports: sources, analyses, import", {
   p <- rd_planner()
   p <- add_output(p, "F1", type = "figure")
   p <- set_fig_ard_source(p, "F1", "table:DM")
   # the default design does not read an ARD: the figure still needs the table
-  expect_true(is.na(.fig_ard_need(p, "F1")))
   r <- .batch_report_reads(p)
   expect_identical(r$reads[r$report == "F1"], "DM")
   expect_identical(r$kind[r$report == "F1"], "source")
@@ -327,16 +355,44 @@ test_that("a figure's source is a need whether or not its design reads it; an un
   p$sheets$report$ard_source[p$sheets$report$output_id == "F2"] <- "table:GONE"
   expect_identical(.batch_reads_unresolved(.batch_report_reads(p)),
                    c(F2 = "source report not found"))
-  # no source: nothing unless its design reads an ARD
+  # no source, and a design that reads no ARD: no row
   p <- set_fig_ard_source(p, "F2", NULL)
   expect_length(.batch_reads_unresolved(.batch_report_reads(p)), 0L)
-  testthat::local_mocked_bindings(
-    .fig_reads_ard = function(design, output_id = "fig") TRUE)
-  expect_identical(.batch_reads_unresolved(.batch_report_reads(p)), c(F2 = "no source"))
-  # an import has none
+  # an import reads no report's ARD: neither a need nor unresolved (tflspec
+  # gives it no row)
   p$sheets$report$ard_source[p$sheets$report$output_id == "F2"] <- "import:x.rds"
-  expect_length(.batch_reads_unresolved(.batch_report_reads(p)), 0L)
-  expect_false("F2" %in% names(.batch_reads_needs(.batch_report_reads(p))))
+  r <- .batch_report_reads(p)
+  expect_false("F2" %in% r$report)
+  expect_length(.batch_reads_unresolved(r), 0L)
+  expect_false("F2" %in% names(.batch_reads_needs(r)))
+})
+
+test_that("the on-screen reports are read, not the saved ones", {
+  skip_on_cran()
+  s <- stale_study()
+  p <- s$planner
+  # as saved: the sample figure reads its table's ARD
+  r <- .batch_report_reads(p)
+  expect_identical(.batch_reads_needs(r)[["F-14-2-3"]], "T-14-2-2")
+  # unsaved: a new table with analyses, and the figure's source moved to it
+  a <- p$ard$analyses
+  row <- a[a$output_id == "T-14-2-2", , drop = FALSE][1L, , drop = FALSE]
+  row$output_id <- "T-99"
+  row$analysis_id <- "NEW1"
+  p <- add_output(p, "T-99")
+  p$ard$analyses <- rbind(a, row)
+  p <- set_fig_ard_source(p, "F-14-2-3", "table:T-99")
+  r <- .batch_report_reads(p)
+  expect_identical(.batch_reads_needs(r)[["F-14-2-3"]], "T-99")
+  expect_identical(.batch_reads_needs(r)[["T-99"]], "T-99")
+  expect_length(.batch_reads_unresolved(r), 0L)
+  # the saved study is as it was (the wrapper did not read it)
+  expect_identical(.batch_reads_needs(.batch_report_reads(s$planner))[["F-14-2-3"]], "T-14-2-2")
+  # a report taken away: a source naming it is not found
+  q <- set_fig_ard_source(p, "F-14-2-3", NULL)
+  q$sheets$report$ard_source[q$sheets$report$output_id == "F-14-2-3"] <- "table:T-GONE"
+  expect_identical(.batch_reads_unresolved(.batch_report_reads(q))[["F-14-2-3"]],
+                   "source report not found")
 })
 
 test_that("batch_code writes .batch_unresolved, report program -> reason", {
