@@ -34,9 +34,8 @@
     d
   }
   s <- list(
-    about = .df(key = c("name", "version", "owner", "updated"),
-                value = c("tflplanner draft standards", "0.1", "",
-                          "2026-09-27")),
+    # (tflspec's: the study's setup programs read them, tfl_setup_program())
+    about = tflspec::tfl_builtin_standards()$about,
     settings = .df(
       key = c("language", "rounding", "font", "font_size", "subject_id",
               "ard_output", "listing_type", "listing_max_rows", "max_levels",
@@ -171,17 +170,8 @@
         "a figure's plot before it is written (a stop() follows it)",
         "the setup code every report of a new study runs first (blank: none)")),
     # a new study's programs/company_setup.R (copied when the study is made;
-    # every program runs it first): one line of R a row
-    # (no tflspec: the programs call the study's programs/study_helpers.R)
-    setup_code = .df(
-      code = c("library(cards)", "library(dplyr)", "library(rtfreporter)",
-               "options(warn = 1)", .time_unit_lines()),
-      note = c("the ARD programs' cards calls",
-               "the programs' data steps (filter(), mutate() ...)",
-               "the report programs' rtfreporter calls",
-               "warnings are printed as they happen: a run's log shows where",
-               "the days in a week, a month, a year: a figure's time unit divides by them",
-               NA, NA)),
+    # every program runs it first): one line of R a row (tflspec's)
+    setup_code = tflspec::tfl_builtin_standards()$setup_code,
     listing_types = .df(type = "multiline", label = "multiline",
                         note = "rtfreporter's listing type: / separator, gutters, a blank row per record"),
     # a TOC in the company's layout: which of its columns is what -- the
