@@ -792,3 +792,25 @@ add_standard_defaults <- function(x, study_id) {
   p$ard$datasets <- .normalize_ard_sheet(s$datasets, "datasets")
   p
 }
+
+# A new study's planner (.standard_planner()) with the company standards'
+# code lists in its spec: defaults.yml `codelists:` (.std_codelists_block())
+# and the study's lists as tflspec reads them (study$codelists), put there
+# as [Data] -> ADaM levels puts `adam_meta:` (.adam_levels_apply()).  The
+# planner is given the spec its save would write (.spec_ensure(), after the
+# save's own .meta_tokens(); `meta`: the study's fields and `created`), so
+# the save writes the block with the rest.  A company with no code lists:
+# the planner as it is (no `codelists:`).  Only create_study() calls it: an
+# existing study never takes the company's lists.
+.std_codelists_into_spec <- function(p, meta, home = tflplanner_home()) {
+  block <- .std_codelists_block(standard_codelists(home = home))
+  if (!length(block)) return(p)
+  p <- .spec_ensure(.meta_tokens(p, meta), meta)
+  sp <- p$spec
+  dflt <- file.path(study_layout()[["spec"]], "defaults.yml")
+  sp$text[[dflt]] <- .set_study_block(sp$text[[dflt]], "codelists", block)
+  sp$text <- sp$text[sort(names(sp$text), method = "radix")]
+  sp$study$codelists <- .defaults_block_read(block)$codelists
+  p$spec <- sp
+  p
+}

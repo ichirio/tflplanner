@@ -238,7 +238,8 @@ study_layout <- function() {
 #'   (`short_title`: the title for a header or footer, `{STUDY_SHORT_TITLE}`).
 #' @param planner An `tflplanner` to start from (e.g. an earlier study's
 #'   `open_study(...)$planner`); `NULL` starts from the company standards:
-#'   their study-default rows, analysis sets and data catalog.
+#'   their study-default rows, analysis sets, data catalog and code lists
+#'   (`spec/defaults.yml` `codelists:`).
 #' @param root The folder the new study folder goes in; defaults to the
 #'   one set up with [setup_tflplanner()].
 #' @param study A registered study's id, or a study folder.
@@ -285,6 +286,12 @@ create_study <- function(study_id, title = NA, compound = NA, phase = NA,
   writeLines(.rproj, file.path(path, paste0(study_id, ".Rproj")))
   s <- .new_study(path, .read_meta(path)[.study_fields],
                   planner %||% .standard_planner(study_id))
+  # a study made from the company standards takes their code lists too
+  # (defaults.yml `codelists:`); one made from a planner has that one's
+  if (is.null(planner)) {
+    s$planner <- .std_codelists_into_spec(s$planner, c(s$meta, created = meta$created),
+                                          home = home)
+  }
   s <- save_study(s, home = home)
   # the company's review depth of the AI agent into study.yml (the study's
   # own from now on), and the state told of the file as it is now
