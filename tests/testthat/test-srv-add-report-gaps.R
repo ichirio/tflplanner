@@ -333,20 +333,27 @@ test_that("a template listing: its data card writes the dataset's steps, keeps a
     session$setInputs(tpl_data_ds = "", tpl_data_apply = 1)
     expect_identical(add_notes(shown)[length(shown$notes)], "Choose the dataset.")
     expect_null(steps())
-    # the dataset, the study's analysis set, and a record condition
+    # the dataset, the study's analysis set, and a record condition: the set
+    # the report's data `population:`, no join step of it (canon 11-15)
     session$setInputs(tpl_data_ds = "ADAE", tpl_data_param = "", tpl_data_pop = "SAF",
                       tpl_data_filter = "AESER == 'Y'", tpl_data_apply = 2)
     f <- .tpl_steps_fields(steps())
     expect_identical(c(f$dataset, f$filter), c("ADAE", "AESER == 'Y'"))
+    expect_false(f$join)
+    expect_identical(rv$p$spec$outputs[["L-ZZ-7"]]$data$population, "SAF")
+    expect_null(rv$p$spec$outputs[["L-ZZ-7"]]$common$population)
+    # a flag the study does not define: a join of the report's own, no set
+    session$setInputs(tpl_data_pop = "flag:XXFL", tpl_data_apply = 3)
+    f <- .tpl_steps_fields(steps())
     expect_true(f$join)
-    expect_identical(f$join_where, "SAFFL == \"Y\"")
-    expect_identical(rv$p$spec$outputs[["L-ZZ-7"]]$common$population, "SAF")
+    expect_identical(f$join_where, "XXFL == \"Y\"")
+    expect_true(is.na(.o_population(rv$p$spec$outputs[["L-ZZ-7"]])))
     # the report's own join, as it is: no population of the study
-    session$setInputs(tpl_data_pop = ".own", tpl_data_apply = 3)
-    expect_true(.tpl_steps_fields(steps())$join)
-    expect_true(is.null(rv$p$spec$outputs[["L-ZZ-7"]]$common$population))
+    session$setInputs(tpl_data_pop = ".own", tpl_data_apply = 4)
+    expect_identical(.tpl_steps_fields(steps())$join_where, "XXFL == \"Y\"")
+    expect_true(is.na(.o_population(rv$p$spec$outputs[["L-ZZ-7"]])))
     # no analysis set and no filter: the dataset is read, and that is all
-    session$setInputs(tpl_data_pop = "", tpl_data_filter = "", tpl_data_apply = 4)
+    session$setInputs(tpl_data_pop = "", tpl_data_filter = "", tpl_data_apply = 5)
     f <- .tpl_steps_fields(steps())
     expect_identical(f$dataset, "ADAE")
     expect_false(f$join)
@@ -612,14 +619,63 @@ test_that("a KM template's data card: its button says what it does, an action, n
     expect_match(h, ">Match the analysis set</span></button>", fixed = TRUE)
     expect_match(h, "Writes the report&#39;s data: steps from these fields", fixed = TRUE)
     expect_false(grepl(">Apply</span></button>", h, fixed = TRUE))
-    # (what it does is as before: the data: steps written, the analysis set's join)
+    expect_match(h, "the program keeps the set&#39;s subjects", fixed = TRUE)
+    # (the data: steps written, the set the report's data `population:` --
+    # no join step of it, the program keeps its subjects; no `common:`, canon 11-15)
     session$setInputs(tpl_data_ds = "ADTTE", tpl_data_param = "", tpl_data_pop = "SAF",
                       tpl_data_filter = "", tpl_data_apply = 1)
-    f <- .tpl_steps_fields(rv$p$spec$outputs[["F-KMB-1"]]$data$steps)
-    expect_true(f$join)
-    # (the set on the report's data, as the dialog writes it: no `common:`, #868)
-    expect_identical(rv$p$spec$outputs[["F-KMB-1"]]$data$population, "SAF")
-    expect_null(rv$p$spec$outputs[["F-KMB-1"]]$common$population)
+    o <- rv$p$spec$outputs[["F-KMB-1"]]
+    f <- .tpl_steps_fields(o$data$steps)
+    expect_false(f$join)
+    expect_identical(vapply(o$data$steps, function(s) s$step, ""), "read")
+    expect_identical(o$data$population, "SAF")
+    expect_null(o$common$population)
+    expect_false(grepl("join", paste(rv$p$spec$text[["spec/outputs/F-KMB-1.yml"]], collapse = "\n"),
+                       fixed = TRUE))
+    # (the card says what keeps the subjects: the report's set, not a join)
+    h <- add_text(output$tpl_card_data$html)
+    expect_match(h, "Analysis set: SAF (", fixed = TRUE)
+    expect_match(h, "the report's set: the program keeps its subjects.", fixed = TRUE)
+    expect_false(grepl("(join)", h, fixed = TRUE))
+    expect_false(grepl("also have the analysis set's join", h, fixed = TRUE))
+  })
+})
+
+test_that("an old KM report with the set's join and `common: population` still reads its set; the card says the join, and Match takes it out (canon 11-15)", {
+  id <- sample_for_add("KMO")
+  shown <- watch_add()
+  shiny::testServer(server_for(id), {
+    rv <- session$userData$rv
+    pops <- rv$p$ard$populations
+    k <- match("SAF", pops$population_id)
+    skip_if(is.na(k), "the sample study has no SAF")
+    saf <- as.list(pops[k, intersect(c("population_id", "dataset", "where"), names(pops)), drop = FALSE])
+    # (as #868 and before wrote it: the set in `common:`, its join a step)
+    o <- tflspec::tfl_output("F-KMO-1", "figure", label = "KM", common = list(population = "SAF"),
+                             template = list(name = "km_survival"),
+                             data = list(steps = .tpl_steps_from("ADTTE", saf, "")))
+    rv$p <- .spec_add_output(rv$p, o, label = "KM", population = "SAF")
+    # (read as it is: not written again)
+    before <- rv$p$spec$text[["spec/outputs/F-KMO-1.yml"]]
+    expect_identical(.o_population(rv$p$spec$outputs[["F-KMO-1"]]), "SAF")
+    session$setInputs(target = "F-KMO-1", nav = "make", step = "data")
+    session$flushReact()
+    h <- add_text(output$tpl_card_data$html)
+    expect_identical(rv$p$spec$text[["spec/outputs/F-KMO-1.yml"]], before)
+    expect_true(.tpl_steps_fields(rv$p$spec$outputs[["F-KMO-1"]]$data$steps)$join)
+    expect_match(h, "Analysis set: SAF (", fixed = TRUE)
+    expect_match(h, "the report's set: the program keeps its subjects.", fixed = TRUE)
+    expect_match(h, "The steps also have the analysis set's join", fixed = TRUE)
+    expect_false(grepl("is not the analysis set's", h, fixed = TRUE))
+    # Match: the join taken out, the set on the data, `common:` gone
+    session$setInputs(tpl_data_ds = "ADTTE", tpl_data_param = "", tpl_data_pop = "SAF",
+                      tpl_data_filter = "", tpl_data_apply = 1)
+    o2 <- rv$p$spec$outputs[["F-KMO-1"]]
+    expect_false(.tpl_steps_fields(o2$data$steps)$join)
+    expect_identical(o2$data$population, "SAF")
+    expect_null(o2$common$population)
+    h <- add_text(output$tpl_card_data$html)
+    expect_false(grepl("The steps also have the analysis set's join", h, fixed = TRUE))
   })
 })
 

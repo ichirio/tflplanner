@@ -874,8 +874,9 @@
     card
   }
   # A template whose data stage is the report's (a KM type): the report's
-  # `data:` steps -- the dataset, its analysis set's subjects (the report's
-  # population), the parameter, a filter -- written by Apply.  Steps the
+  # `data:` steps -- the dataset, the parameter, a filter -- and its
+  # analysis set (the data's `population:`, whose subjects the program keeps:
+  # no join step of it), written by Match the analysis set.  Steps the
   # fields cannot say are kept and shown as they are.
   tpl_data_block <- function(id, steps) {
     f <- .tpl_steps_fields(steps)
@@ -912,17 +913,24 @@
                  if (is.null(pop) && f$join) {
                    sprintf(t("Analysis set: the report's own join (%s: %s)."), f$join_dataset, f$join_where)
                  } else if (is.null(pop)) t("Analysis set: none (the report has no population).") else
-                   sprintf(t("Analysis set: %s (%s: %s), its subjects kept (join)."),
+                   sprintf(t("Analysis set: %s (%s: %s), the report's set: the program keeps its subjects."),
                            pop$population_id, pop$dataset, pop$where %||% "")),
-      # (no join in the steps: the analysis set's subjects are kept by the
-      # template itself from the report's set -- nothing stale, #868)
-      if (nzchar(f$dataset) && f$join && .tpl_join_stale(f, pop)) shiny::div(
-        class = "alert alert-warning py-1 small",
-        t("The analysis set changed: Match the analysis set writes the new join.")),
+      # (a report of the study's set with a join in its steps -- written
+      # before the set kept its subjects itself: a copy of it, or, the set
+      # changed since, another one -- said; Match takes it out, canon 11-15)
+      if (!is.null(pop) && f$join) {
+        if (.tpl_join_stale(f, pop)) shiny::div(
+          class = "alert alert-warning py-1 small",
+          sprintf(t("The steps' join (%s: %s) is not the analysis set's: Match the analysis set takes it out."),
+                  f$join_dataset, f$join_where))
+        else shiny::div(
+          class = "small text-muted mb-1",
+          t("The steps also have the analysis set's join, written before the report's set kept its subjects: Match the analysis set takes it out."))
+      },
       # (an action, not a save: the data: steps written from these fields,
-      # the join as the analysis set says it now -- #754)
+      # the analysis set the report's -- #754, canon 11-15)
       .btn("tpl_data_apply", t("Match the analysis set"), class = "btn-sm btn-outline-primary",
-           title = t("Writes the report's data: steps from these fields, with the join of the analysis set as the study defines it now.")),
+           title = t("Writes the report's data: steps from these fields, and the analysis set as the report's data: population (no join step: the program keeps the set's subjects).")),
       if (length(steps)) shiny::tags$details(
         class = "mt-1",
         shiny::tags$summary(class = "small", t("The steps written")),
@@ -973,29 +981,22 @@
     if (!nzchar(trimws(input$tpl_data_ds %||% ""))) return(notify(t("Choose the dataset."), "warning"))
     o <- rv$p$spec$outputs[[id]]
     f <- .tpl_steps_fields(o$data$steps)
-    # the analysis set chosen: the study's (the report's population), a flag
-    # the study does not define, the report's own join as it is (".own"),
-    # or none
+    # the analysis set chosen: the study's -- the report's set, its data's
+    # `population:`, whose subjects the program keeps (canon 11-15): no join
+    # step of it, an old one taken out -- a flag the study does not define or
+    # the report's own join as it is (".own"), kept as a join, or none
     sel <- input$tpl_data_pop %||% tpl_data_pop_sel(id, f)
-    pop <- NULL
+    join <- NULL
     if (identical(sel, ".own")) {
-      pop <- list(dataset = f$join_dataset, where = f$join_where)
-      o <- .o_set_population(o, NA_character_)
+      join <- list(dataset = f$join_dataset, where = f$join_where)
     } else if (startsWith(sel, "flag:")) {
-      pop <- list(dataset = "ADSL", where = sprintf("%s == \"Y\"", sub("^flag:", "", sel)))
-      o <- .o_set_population(o, NA_character_)
-    } else if (nzchar(sel)) {
-      o <- .o_set_population(o, sel)
-      pops <- rv$p$ard$populations
-      k <- match(sel, pops$population_id)
-      if (!is.na(k)) pop <- as.list(pops[k, intersect(c("population_id", "dataset", "where"), names(pops)),
-                                         drop = FALSE])
-    } else {
-      o <- .o_set_population(o, NA_character_)
+      join <- list(dataset = "ADSL", where = sprintf("%s == \"Y\"", sub("^flag:", "", sel)))
     }
-    steps <- .tpl_steps_from(input$tpl_data_ds, pop, input$tpl_data_param %||% "",
+    steps <- .tpl_steps_from(input$tpl_data_ds, join, input$tpl_data_param %||% "",
                              input$tpl_data_filter %||% "")
     if (is.null(steps)) o$data$steps <- NULL else o$data$steps <- steps
+    # (the set written after the steps: on the data map they make)
+    o <- .o_set_population(o, if (is.null(join) && nzchar(sel)) sel else NA_character_)
     if (!length(o$data)) o$data <- NULL
     p2 <- guarded(.spec_set_output(.spec_set_toc_population(rv$p, id, .o_population(o)), id, o))
     if (is.null(p2)) return()
