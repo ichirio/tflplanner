@@ -291,7 +291,7 @@
       if (!tp %in% c("km_single_arm", "individual_spider") && !kind %in% c("waterfall", "swimmer"))
         sz("pd_tpl_group", t("Group (treatment)"), .group_choices(cols)),
       if (kind %in% c("km", "swimmer") || tp == "individual_spider")
-        shiny::selectInput("pd_tpl_unit", t("Time shown in (the data's time is in days)"),
+        shiny::selectInput("pd_tpl_unit", t("Time shown in (the data's time is read in its AVALU)"),
                            c("months", "weeks", "days", "years")),
       if (kind %in% c("mean", "box", "individual", "pk") && !whole)
         sz("pd_tpl_value", t("Value"), intersect(c("AVAL", "CHG", "PCHG"), vars)),

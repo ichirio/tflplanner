@@ -48,7 +48,7 @@
 "Figures are designed here: choose a Figure report on the left.","ここでは Figure を設計します。左で Figure の帳票を選んでください。"
 "Redraw on change","変更したら再描画"
 "The design has changed since this drawing: press Redraw.","この Figure のあとでデザインを変更しました。「再描画」を押してください。"
-"Time shown in (the data's time is in days)","表示する時間の単位（データの時間は日数として読みます）"
+"Time shown in (the data's time is read in its AVALU)","表示する時間の単位（データの時間は AVALU の単位で読みます）"
 "needs data this study has not got","この試験に無いデータが要ります"
 "choose the data","データを選んでください"
 "The template's choices could not be made from the data: %s","データからテンプレートの選択肢を作れませんでした: %s"
