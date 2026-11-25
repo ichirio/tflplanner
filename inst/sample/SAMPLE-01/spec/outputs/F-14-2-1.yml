@@ -1,6 +1,8 @@
 id: F-14-2-1
 kind: figure
 label: Mean change from baseline in systolic blood pressure
+common:
+  population: SAF
 extends:
   - defaults
 data:
