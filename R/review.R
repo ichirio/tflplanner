@@ -459,7 +459,7 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
 
 # D03: a dataset column named like a constant of the programs (the days in
 # a week, a month, a year: days_per_month ...).  The programs say the
-# constant's name as it is (AVAL / days_per_month); a column of that name
+# constant's name as it is (TRTDURD / days_per_month); a column of that name
 # would be read instead -- the naming rule: no program name is a column's
 .rule_d03 <- function(facts) {
   ds <- facts$datasets
