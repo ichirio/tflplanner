@@ -1,0 +1,4 @@
+# spec/runs.yml: the study's run definitions
+runs:
+  - name: "All"
+    reports: all

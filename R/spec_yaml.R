@@ -26,7 +26,8 @@
 # of what it could not convert and the backups are not the study's)
 .spec_files_yaml <- function(root) {
   sp <- study_layout()[["spec"]]
-  f <- c(.study_file, file.path(sp, c("data.yml", "defaults.yml", "toc.yml")))
+  f <- c(.study_file, file.path(sp, c("data.yml", "defaults.yml", "toc.yml")),
+         .runs_rel())
   for (d in c("patterns", "outputs")) {
     dd <- file.path(root, sp, d)
     if (dir.exists(dd)) {
@@ -36,6 +37,10 @@
   f[file.exists(file.path(root, f))]
 }
 
+# The run definitions' file, relative to the study folder: tflspec's place
+# for it (tflspec::tfl_runs_file(), the only place that spells it)
+.runs_rel <- function() sub("^[.]/", "", tflspec::tfl_runs_file("."))
+
 # The planner read from a study folder's YAML spec: its view of the spec
 # (.planner_from_spec()), the spec in `$spec` (.spec_load(); in step with
 # the view once .spec_rebase() is given the study's fields).  What the YAML
@@ -44,9 +49,14 @@
   sp <- .spec_load(root)
   if (is.null(sp)) {
     # (a spec with no reports' folder: what tflspec reads of it)
-    return(.planner_from_spec(tflspec::tfl_read_study_spec(root), tflspec::tfl_read_outputs(root)))
+    p <- .planner_from_spec(tflspec::tfl_read_study_spec(root), tflspec::tfl_read_outputs(root))
+    p$runs <- .runs_read(root)
+    return(p)
   }
   p <- .planner_from_spec(sp$study, sp$outputs)
+  # the run definitions: spec/runs.yml; no file, the older carriers' (toc.yml
+  # `sets:`, a workbook's `batches`), tflspec's one function for the files
+  p$runs <- .runs_read(root)
   p$spec <- sp
   p
 }
@@ -58,6 +68,10 @@
 .planner_sheets <- function(p, meta, style = p$spec$study$study$settings$style) {
   o <- p$outputs[names(.empty_outputs())]
   o$setup_code <- rep(NA_character_, nrow(o))
+  # (tflspec's bridge still reads a `batches` column of the report sheet to
+  # write toc.yml's `sets:`; the run definitions are in runs.yml now, so it
+  # is empty, and .spec_sync_runs() takes any `sets:` off)
+  o$batches <- rep(NA_character_, nrow(o))
   planner <- rbind(
     data.frame(output_id = NA_character_, description = "(every report)",
                setup_code = p$setup, process_code = NA_character_,
@@ -233,6 +247,12 @@
   whole <- is.null(p$spec)
   p <- .spec_sync(p, meta)
   attr(p, "changed") <- NULL
+  # (the run definitions moved from an older form are in the files now: the
+  # planner saved says no more that they were moved)
+  if (!is.null(attr(p$runs, "migrated"))) {
+    attr(p$runs, "migrated") <- NULL
+    p <- .spec_rebase(p, meta)
+  }
   # (a planner with no spec is written whole: what of study.yml the writer
   # does not write -- the AI screens' ai:, a block by hand, a settings:
   # key no sheet holds -- kept from the file as it is)
@@ -263,8 +283,10 @@
   }, error = function(e) NULL)
   if (!is.null(p)) {
     attr(p, "not_converted") <- NULL
-    # (the study's own spec stays its own)
+    # (the study's own spec stays its own, and its run definitions: the
+    # bridge writes none)
     p$spec <- s$planner$spec
+    p$runs <- s$planner$runs
     # (the app's own settings pass through no sheet: they stay as saved)
     own <- intersect(.study_app_only_settings, names(s$planner$study))
     if (length(own)) p$study[own] <- s$planner$study[own]

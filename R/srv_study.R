@@ -105,7 +105,7 @@
   # figures, report rows and titles
   p_list <- p_part(function(p) list(p$outputs, p$ard, p$lf, p$fig_designs,
                                     p$sheets$report, p$sheets$titles, p$sheets$tokens,
-                                    p$study))
+                                    p$study, p$runs))
   # A new table's first drawing in the builder (#417): the description the
   # builder shows is put in the planner -- the preview's, the next edit's
   # -- but held: until something is changed it is no change (not saved, no

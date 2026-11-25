@@ -53,20 +53,11 @@
 )
 
 # The packages code calls by name (`survival::coxph`, a model's
-# `package = "mmrm"`), and cardx's ARD functions that call one
-# (cardx::ard_survival_survfit() needs survival)
-.code_pkgs <- c("survival", "ggsurvfit", "emmeans", "mmrm")
-.ard_fn_pkgs <- c(ard_survival_ = "survival", ard_emmeans_ = "emmeans")
-
-# The packages a piece of code (or a method name) calls
+# `package = "mmrm"`), and cardx's ARD functions that call one at run time
+# (cardx::ard_regression() needs broom.helpers): tflspec's table, so the
+# runner's renv.lock and these messages name the same packages
 .pkgs_in_code <- function(code) {
-  code <- paste(as.character(unlist(code)), collapse = "\n")
-  if (!nzchar(code)) return(character())
-  hit <- .code_pkgs[vapply(.code_pkgs, function(p) grepl(
-    paste0("\\b", p, "::|package\\s*=\\s*[\"']", p, "[\"']"), code, perl = TRUE), NA)]
-  fam <- .ard_fn_pkgs[vapply(names(.ard_fn_pkgs), function(f)
-    grepl(paste0("\\bcardx::", f), code, perl = TRUE), NA)]
-  unique(c(hit, unname(fam)))
+  utils::getFromNamespace(".pkgs_in_code", "tflspec")(code)
 }
 
 # The packages an ARD function needs: its own (cards, cardx) and the one
@@ -105,7 +96,7 @@
   unique(c(.template_needs(tpl, templates),
            if (!is.null(o)) .pkgs_in_code(tryCatch(deparse(unclass(o)), error = function(e) "")),
            if (NROW(an)) .pkgs_in_code(c(an$method, an$args, an$code)),
-           intersect(fig, .code_pkgs)))
+           intersect(fig, utils::getFromNamespace(".code_pkgs", "tflspec"))))
 }
 
 # Before reports run: stop when one needs a package not installed, naming
@@ -175,16 +166,12 @@
   invisible(TRUE)
 }
 
-# The reports a run_batch() call runs: every one, or those `only` names
-# (by output id or program), less `exclude`, within the named `batch`
-.batch_report_ids <- function(x, only = NULL, exclude = NULL, batch = NULL) {
+# The reports a run_batch() call runs: those of the run definition `name`
+# (every report when none is named)
+.batch_report_ids <- function(x, name = NULL) {
   ids <- x$outputs$output_id
-  prog <- vapply(ids, function(id) tryCatch(as.character(report_info(x, id)$program),
-                                            error = function(e) NA_character_), "",
-                 USE.NAMES = FALSE)
-  on <- function(v) ids %in% v | (!is.na(prog) & prog %in% v)
-  keep <- if (length(only)) on(only) else rep(TRUE, length(ids))
-  if (length(exclude)) keep <- keep & !on(exclude)
-  if (length(batch)) keep <- keep & ids %in% unlist(batch_sets(x)[batch])
-  ids[keep]
+  if (!length(name)) return(ids)
+  d <- x$runs[match(name, .run_names(x))][[1L]]
+  if (is.null(d)) return(character())
+  .run_def_ids(x, d)
 }

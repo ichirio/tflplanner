@@ -589,8 +589,8 @@ test_that("a copy of the sample is listed at once; its run goes on in the backgr
   px <- list(is_alive = function() alive, get_exit_status = function() 0L,
              kill = function() invisible(TRUE))
   started <- NULL
-  local_mocked_bindings(run_batch = function(study, parts, ...) {
-    started <<- list(id = study$meta$study_id, parts = parts)
+  local_mocked_bindings(run_batch = function(study, name, ...) {
+    started <<- list(id = study$meta$study_id, name = name)
     px
   })
   shiny::testServer(function(input, output, session)
@@ -601,7 +601,7 @@ test_that("a copy of the sample is listed at once; its run goes on in the backgr
                       ns_root = studies_root(), ns_ok = 1L)
     # copied and listed, its official run started and not waited for
     expect_identical(list_studies()$study_id, "TRAIN-01")
-    expect_identical(started, list(id = "TRAIN-01", parts = c("ard", "tfl")))
+    expect_identical(started, list(id = "TRAIN-01", name = "All"))
     expect_identical(rv$job_study, "TRAIN-01")
     ids <- function() .study_list_ids(list_studies(), "TRAIN-01",
                                       if (!is.null(rv$job)) rv$job_study)

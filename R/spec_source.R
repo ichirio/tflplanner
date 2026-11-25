@@ -281,6 +281,8 @@
   inc <- .study_parts(r)
   a <- s
   for (k in chg) a <- .set_study_part(a, k, inc[[k]])
+  # (the definitions moved in from an older form: not on disk yet, said)
+  if ("runs" %in% chg) a$planner$runs <- .runs_keep_attr(a$planner$runs, r$planner$runs)
   r <- .spec_attach(a)
   .write_state(r, home)
   r$spec <- list(status = "adopted", files = diff[diff$status != "same", ,
@@ -372,7 +374,8 @@
     ifelse(kind == "ard", paste0(name, " (ARD)"),
       ifelse(kind == "lf", paste0(name, " (listings and figures)"),
         ifelse(kind == "fig", paste0("figure ", name),
-          ifelse(kind == "meta", name, parts)))))
+          ifelse(kind == "meta", name,
+            ifelse(kind == "runs", "run definitions", parts))))))
 }
 
 # ---------------------------------------------------------------- the API
@@ -755,7 +758,8 @@ preview_spec_import <- function(study, path, home = tflplanner_home()) {
 .part_summary <- function(cur, inc, parts) {
   a <- .study_parts(cur)
   b <- .study_parts(inc)
-  one <- function(x) {
+  one <- function(x, k = "") {
+    if (identical(k, "runs")) return(sprintf("%d definition(s)", length(x)))
     if (is.data.frame(x)) return(paste(nrow(x), if (nrow(x) == 1L) "row" else "rows"))
     if (is.null(x) || (length(x) == 1L && is.na(x))) return("none")
     if (is.character(x) && length(x) == 1L) {
@@ -764,7 +768,7 @@ preview_spec_import <- function(study, path, home = tflplanner_home()) {
     if (is.list(x)) return("a design")
     paste(x, collapse = ", ")
   }
-  vapply(parts, function(k) sprintf("%s \u2192 %s", one(a[[k]]), one(b[[k]])),
+  vapply(parts, function(k) sprintf("%s \u2192 %s", one(a[[k]], k), one(b[[k]], k)),
          "", USE.NAMES = FALSE)
 }
 

@@ -74,3 +74,23 @@ fake_run <- function(study_dir, stamp, part = "tfl", ids = character(),
              file.path(d, "batch.txt"))
   invisible(d)
 }
+
+# An official run through a saved run definition (B1: a run always starts
+# from one).  Sets the definition `name` (the reports `reports`, or "all"),
+# saves the study and runs it.  `mode` and `copy_data` are the definition's
+# options (the mode is "all" or "ard"; the old `parts`).  Returns the batch
+# folder's path, as run_batch() does.
+run_def <- function(study, name = "All", reports = "all", mode = NULL,
+                    copy_data = NULL, wait = TRUE) {
+  p <- set_run_definition(study$planner, name, reports, mode = mode,
+                          copy_data = copy_data)
+  study$planner <- p
+  study <- save_study(study)
+  run_batch(study, name, wait = wait)
+}
+
+# a run definition's reports, in the report list's order (an unknown name: none)
+run_def_ids <- function(x, name) {
+  i <- match(name, .run_names(x))
+  if (is.na(i)) character() else .run_def_ids(x, x$runs[[i]])
+}

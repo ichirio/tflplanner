@@ -138,6 +138,8 @@
 # (.spec_bridge_study()).  test-spec-sync-speed.R checks it on the sample.
 .planner_core <- function(body) {
   if (is.null(body)) return(NULL)
+  # (the run definitions reach spec/runs.yml alone: .spec_sync_runs())
+  body$runs <- NULL
   if (length(body$study)) body$study <- body$study[setdiff(names(body$study), .study_own_settings)]
   st <- body$ard$study
   if (is.data.frame(st) && "key" %in% names(st) && any(st$key %in% "adam_levels")) {
@@ -378,6 +380,12 @@
 }
 
 .spec_sync_run <- function(p, meta) {
+  .spec_sync_runs(.spec_sync_bridge(p, meta))
+}
+
+# The edits of the sheets' view taken into the spec through the bridge (the
+# files the bridge writes); the run definitions are not the bridge's
+.spec_sync_bridge <- function(p, meta) {
   sp <- p$spec
   body <- .planner_body(p)
   m <- .spec_meta(meta)
@@ -416,6 +424,9 @@
     rels <- union(names(was$text), names(now$text))
     changed <- rels[!vapply(rels, function(r) identical(was$text[[r]], now$text[[r]]), NA)]
   }
+  # (the bridge writes no run definitions: a file it lacks is not gone
+  # from the spec -- .spec_sync_runs() owns it)
+  changed <- setdiff(changed, .runs_rel())
   if (length(changed)) {
     # study.yml with the study's own lines: when it was created, when
     # updated, by which tflplanner
@@ -531,6 +542,102 @@
   }
   attr(p, "changed") <- changed
   p
+}
+
+# The run definitions in the spec's text (spec/runs.yml), derived at the end
+# of every sync, whatever the bridge changed (R2.4):
+#  - no definition: no file;
+#  - the file's own text is kept when it parses to the definitions the
+#    planner has (a hand-formatted file is not rewritten), and while it does
+#    not parse at all (it blocks its own save: .read_spec(); its text is
+#    never replaced);
+#  - else tflspec's text of them;
+#  - a study of the older form (toc.yml `sets:`, the report list's `batches`)
+#    is moved here: toc.yml loses each report's `sets:`, in the same sync.
+# The files that changed are the attribute `changed`.
+.spec_sync_runs <- function(p) {
+  sp <- p$spec
+  if (is.null(sp)) return(p)
+  rel <- .runs_rel()
+  toc_rel <- file.path(study_layout()[["spec"]], "toc.yml")
+  changed <- attr(p, "changed") %||% character()
+  cur <- sp$text[[rel]]
+  want <- .runs_text_want(p$runs, cur, p$outputs$output_id)
+  if (!identical(want, cur)) {
+    sp$text[[rel]] <- want
+    if (length(sp$text)) sp$text <- sp$text[sort(names(sp$text), method = "radix")]
+    changed <- union(changed, rel)
+  }
+  toc <- sp$text[[toc_rel]]
+  if (length(toc)) {
+    k <- .toc_drop_sets(toc)
+    if (!identical(k, toc)) {
+      sp$text[[toc_rel]] <- k
+      for (i in seq_along(sp$study$toc$outputs)) sp$study$toc$outputs[[i]]$sets <- NULL
+      changed <- union(changed, toc_rel)
+    }
+  }
+  p$spec <- sp
+  attr(p, "changed") <- changed
+  p
+}
+
+# The text of spec/runs.yml the spec should have: `cur` (its text now, or
+# NULL), `runs` (the planner's), `order` (the report list's ids).  NULL: no
+# file.
+.runs_text_want <- function(runs, cur, order) {
+  runs <- .runs_bare(runs)
+  parsed <- if (length(cur)) .runs_parse_text(cur)
+  # (a text that does not parse is never replaced)
+  if (!is.null(parsed) && isTRUE(parsed$broken)) return(cur)
+  if (!length(runs)) return(NULL)
+  if (!is.null(parsed) &&
+      identical(tflspec::tfl_runs_text(parsed$runs, order = order),
+                tflspec::tfl_runs_text(runs, order = order))) {
+    return(cur)
+  }
+  tflspec::tfl_runs_text(runs, order = order)
+}
+
+# A runs file's text read by tflspec: list(runs = the definitions, broken =
+# TRUE when the file as a whole does not read: not YAML, not a map with a
+# `runs:` list)
+.runs_parse_text <- function(lines) {
+  tmp <- tempfile("tflplanner-runs")
+  on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
+  f <- file.path(tmp, .runs_rel())
+  dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+  writeLines(lines, f, useBytes = TRUE)
+  r <- tflspec::tfl_read_runs(tmp)
+  rp <- attr(r, "read_problems")
+  list(runs = .runs_bare(.runs_from_tfl(r)),
+       broken = is.data.frame(rp) && any(rp$field %in% c("file", "runs")))
+}
+
+# toc.yml's text without the `sets:` of each report (the key line and the
+# lines of its list); a text with none is returned as it is
+.toc_drop_sets <- function(lines) {
+  keep <- rep(TRUE, length(lines))
+  indent <- function(x) nchar(x) - nchar(sub("^ +", "", x))
+  i <- 1L
+  n <- length(lines)
+  while (i <= n) {
+    if (grepl("^ +sets:( |$)", lines[i])) {
+      ind <- indent(lines[i])
+      keep[i] <- FALSE
+      inline <- nzchar(trimws(sub("^ +sets:", "", lines[i])))
+      j <- i + 1L
+      while (!inline && j <= n && nzchar(trimws(lines[j])) &&
+             (indent(lines[j]) > ind || (indent(lines[j]) == ind && grepl("^ *- ", lines[j])))) {
+        keep[j] <- FALSE
+        j <- j + 1L
+      }
+      i <- j
+    } else {
+      i <- i + 1L
+    }
+  }
+  lines[keep]
 }
 
 # The study's fields as .planner_sheets() gives them to the bridge

@@ -161,10 +161,9 @@ reference:
     contents:
       - program_code
       - report_setup_code
-      - autoexec_code
       - batch_code
       - run_study
       - run_batch
       - batch_data_plan
       - compare_batches
-      - batch_sets
+      - run_definitions

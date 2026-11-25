@@ -48,7 +48,7 @@ Saves the study's state in tflplanner's home (the copy
 \code{\link[=open_study]{open_study()}} reads; the one before goes to its history), then writes
 the study folder from it: the definition workbooks in \verb{spec/} (with
 \code{output_path} and \code{program_dir} set to the study's own folders), the
-report programs, \code{autoexec_report.R}, \code{programs/study_setup.R} (made
+report programs, \code{programs/study_setup.R} (made
 when missing; otherwise its tflplanner part only, see
 \code{\link[=study_setup_code]{study_setup_code()}}), and \code{study.yml}.  The programs
 are the definition's: each is written from it whenever it changes.  One

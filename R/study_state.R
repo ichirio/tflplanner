@@ -84,7 +84,7 @@
         split(d[!shared, , drop = FALSE], o[!shared]))
     }
     q <- p
-    q$sheets <- q$lf <- q$fig_designs <- q$spec <- NULL
+    q$sheets <- q$lf <- q$fig_designs <- q$spec <- q$runs <- NULL
     q$study <- .program_key_study(p$study)
     .program_cache$cut <- list(sheets = lapply(p$sheets, cut), lf = lapply(p$lf, cut), rest = q,
                                in_step = !is.null(p$spec) && !is.null(p$spec$base) &&

@@ -274,16 +274,29 @@ set_ard_rows <- function(x, sheet, output_id = "", rows) {
   }
   # a definition that does not hold writes no ARD program: said, not
   # passed over (#323) -- the rest of the save is still worth keeping
-  problem <- NULL
-  spec <- tryCatch(.ard_spec(a), error = function(e) {
-    problem <<- conditionMessage(e)
-    NULL
-  })
-  if (!is.null(spec) && nrow(a$analyses)) {
+  spec <- .ard_spec_or_problem(a)
+  problem <- attr(spec, "problem")
+  if (is.null(problem) && nrow(a$analyses)) {
     out <- rbind(out, .save_ard_programs(spec, root, .study_codelists(p)))
   }
   if (nrow(a$analyses)) attr(out, "problem") <- problem
   out
+}
+
+# The ARD definition as a spec, or NULL with attr "problem" (why it does not
+# hold).  `a`: the planner's ARD sheets, normalized.  One check for the save
+# (no ARD program written) and the official run (not started).
+.ard_spec_or_problem <- function(a) {
+  tryCatch(.ard_spec(a), error = function(e) structure(list(), problem = conditionMessage(e)))
+}
+
+# Why the study's ARD definition does not hold, or NULL (none, or it holds)
+.ard_definition_problem <- function(p) {
+  a <- p$ard %||% .empty_ard_spec()
+  a <- stats::setNames(lapply(names(.ard_sheets()), function(s)
+    .normalize_ard_sheet(a[[s]], s)), names(.ard_sheets()))
+  if (!nrow(a$analyses)) return(NULL)
+  attr(.ard_spec_or_problem(a), "problem")
 }
 
 # the copy in the study folder, read back

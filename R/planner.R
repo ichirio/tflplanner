@@ -274,7 +274,7 @@ sheet_columns <- function(sheet) {
   data.frame(output_id = character(), description = character(),
              process_code = character(),
              section = character(), population = character(),
-             datasets = character(), batches = character(),
+             datasets = character(),
              stringsAsFactors = FALSE)
 }
 
@@ -303,7 +303,10 @@ new_planner <- function(study = NULL) {
   structure(list(sheets = stats::setNames(lapply(sh, .empty_sheet), sh),
                  study = st, outputs = .empty_outputs(),
                  setup = NA_character_, ard = .empty_ard_spec(),
-                 lf = .empty_lf(), fig_designs = list()),
+                 lf = .empty_lf(), fig_designs = list(),
+                 # the run definitions (spec/runs.yml): a list of list(name, reports,
+                 # mode, copy_data); run_definitions()
+                 runs = list()),
             class = "tflplanner")
 }
 
@@ -386,6 +389,14 @@ read_planner <- function(path) {
     if (length(sh)) pl <- .read_sheet_text(f, sh[1L])
   }
   p <- .planner_from_sheets(sp, pl)
+  # (a workbook's report list that has the `batches` column of before the run
+  # definitions: moved to run definitions, by tflspec's function)
+  if (!is.null(pl) && all(c("output_id", "batches") %in% names(pl))) {
+    d <- as.data.frame(pl, stringsAsFactors = FALSE)
+    d <- d[!is.na(d$output_id) & nzchar(trimws(d$output_id)), c("output_id", "batches"),
+           drop = FALSE]
+    p$runs <- .runs_from_tfl(tflspec::tfl_runs_migrate("", outputs = d))
+  }
   old <- attr(p, "old_data_code")
   attr(p, "old_data_code") <- NULL
   # (a figure has a design when its file is beside the workbooks)
@@ -471,7 +482,7 @@ add_output <- function(x, output_id, description = NA_character_,
     output_id = id, description = as.character(description),
     process_code = as.character(process_code),
     section = as.character(section), population = as.character(population),
-    datasets = NA_character_, batches = NA_character_, stringsAsFactors = FALSE)
+    datasets = NA_character_, stringsAsFactors = FALSE)
   o <- x$outputs
   k <- if (identical(at, "natural")) .natural_slot(o$output_id, id) else nrow(o) + 1L
   x$outputs <- rbind(o[seq_len(k - 1L), , drop = FALSE], row,
@@ -572,6 +583,8 @@ rename_output <- function(x, from, to) {
     x$sheets[[s]]$output_id[i] <- to
   }
   x$outputs$output_id[x$outputs$output_id == from] <- to
+  # the run definitions that name the report name it by its new id
+  x$runs <- .runs_rename_id(x$runs, from, to)
   for (sh in c("analyses", "analysis_data")) {
     if (is.null(x$ard[[sh]]) || !nrow(x$ard[[sh]])) next
     i <- !is.na(x$ard[[sh]]$output_id) & x$ard[[sh]]$output_id == from
@@ -598,6 +611,8 @@ remove_output <- function(x, output_id) {
   }
   x$outputs <- x$outputs[x$outputs$output_id != output_id, , drop = FALSE]
   rownames(x$outputs) <- NULL
+  # the run definitions lose it (one left with none is a Review problem, not removed)
+  x$runs <- .runs_drop_id(x$runs, output_id)
   for (sh in c("analyses", "analysis_data")) {
     an <- x$ard[[sh]]
     if (is.null(an) || !nrow(an)) next
@@ -757,7 +772,7 @@ write_planner <- function(x, dir, table_file = "table_spec.xlsx",
     data.frame(output_id = NA_character_, description = "(every report)",
                setup_code = x$setup, process_code = NA_character_,
                section = NA_character_, population = NA_character_,
-               datasets = NA_character_, batches = NA_character_,
+               datasets = NA_character_,
                stringsAsFactors = FALSE),
     o)
   .write_book(.spec_object(x, report_sheets(), .study_keys$report), rp,

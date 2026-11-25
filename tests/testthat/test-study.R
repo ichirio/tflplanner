@@ -142,10 +142,10 @@ test_that("a study's files export, and import into another study", {
 test_that("saving writes the programs from the definition, an edited one too", {
   local_home()
   s <- create_study("S1", planner = sample_planner())
-  # the YAML spec's files, the programs, batch.R, the two autoexec programs,
+  # the YAML spec's files, the programs, batch.R,
   # fig_setup.R, report_setup.R, study_setup.R, study_helpers.R, and the
   # company's and the user's setup files (company_setup.R, study_user.R)
-  expect_equal(sum(s$files$status == "written"), length(.spec_files_yaml(s$path)) + 5 + 9)
+  expect_equal(sum(s$files$status == "written"), length(.spec_files_yaml(s$path)) + 5 + 7)
   s0 <- save_study(s)
   expect_true(all(s0$files$status == "unchanged"))
   f <- file.path(s$path, "programs", "tfl", "DM.R")
@@ -189,6 +189,42 @@ test_that("saving writes the programs from the definition, an edited one too", {
   expect_equal(s$files$status[s$files$file == fa], "rewritten")
   expect_true(any(grepl("^ard_DM_",
                         list.files(file.path(s$path, "programs", ".edited")))))
+})
+
+test_that("a save takes away the entry files an earlier tflplanner wrote", {
+  local_home()
+  s <- create_study("S2", planner = sample_planner())
+  for (f in c("programs/autoexec_all.R", "programs/ard/autoexec_ard.R",
+              "programs/tfl/autoexec_report.R")) {
+    expect_false(file.exists(file.path(s$path, f)), label = f)
+  }
+  # what an earlier tflplanner wrote: its banner and a checksum
+  old <- function(rel) {
+    f <- file.path(s$path, rel)
+    dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+    .write_program(c(.banner(paste("Program    :", rel),
+                             "Official run of the programs.",
+                             "Run it from the study folder.",
+                             "Generated  : tflplanner 0.0.1, 2026-11-01"),
+                     "", "source(\"programs/batch.R\")",
+                     "run_batch(\"tfl\", commandArgs(trailingOnly = TRUE))"), f)
+    f
+  }
+  fa <- old("programs/autoexec_all.R")
+  fd <- old("programs/ard/autoexec_ard.R")
+  ft <- old("programs/tfl/autoexec_report.R")
+  writeLines(c(readLines(fa), "# mine"), fa)  # one edited by hand
+  s <- save_study(s)
+  expect_false(any(file.exists(c(fa, fd, ft))))
+  for (f in c(fa, fd, ft)) {
+    expect_equal(s$files$status[s$files$file == f], "removed", label = f)
+  }
+  # the edited one is kept in programs/.edited/
+  expect_true(any(grepl("^autoexec_all_", list.files(file.path(s$path, "programs", ".edited")))))
+  # the runner stays; a second save has nothing more to remove
+  expect_true(file.exists(file.path(s$path, "programs", "batch.R")))
+  s <- save_study(s)
+  expect_false("removed" %in% s$files$status)
 })
 
 test_that("a study runs end to end and reports what it produced", {

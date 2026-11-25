@@ -7,7 +7,11 @@
   c(stats::setNames(lapply(.study_fields, function(k) s$meta[[k]]),
                     paste0("meta:", .study_fields)),
     list(`study keys` = p$study, setup = p$setup,
-         `report list` = p$outputs),
+         `report list` = p$outputs,
+         # the run definitions (spec/runs.yml): a part of their own, merged
+         # whole (a list of definitions, without the attributes that say
+         # where it was read from)
+         runs = .runs_bare(p$runs)),
     stats::setNames(p$sheets, paste0("sheet:", names(p$sheets))),
     stats::setNames(p$ard, paste0("ard:", names(p$ard))),
     stats::setNames(p$lf %||% .empty_lf(), paste0("lf:", .lf_sheet_names)),
@@ -27,7 +31,8 @@
     fig = s$planner <- set_fig_design(s$planner, name, value),
     `study keys` = s$planner$study <- value,
     setup = s$planner$setup <- value,
-    `report list` = s$planner$outputs <- value)
+    `report list` = s$planner$outputs <- value,
+    runs = s$planner$runs <- as.list(value))
   s
 }
 

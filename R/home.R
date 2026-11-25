@@ -482,7 +482,8 @@ studies_root <- function(home = tflplanner_home()) {
        sheets = lapply(p$sheets, .cols_df),
        ard = lapply(p$ard %||% .empty_ard_spec(), .cols_df),
        lf = lapply(p$lf %||% .empty_lf(), .cols_df),
-       fig_designs = if (length(p$fig_designs)) .fig_r_to_state(p$fig_designs))
+       fig_designs = if (length(p$fig_designs)) .fig_r_to_state(p$fig_designs),
+       runs = .runs_to_state(p$runs))
 }
 
 .json <- function(x) {
@@ -526,6 +527,10 @@ studies_root <- function(home = tflplanner_home()) {
   }
   p <- .old_program_default(p)
   p$fig_designs <- .fig_designs_from_state(ps$fig_designs)
+  # the run definitions; a state of before them has them in the report
+  # list's `batches` column (moved by tflspec, the same as the files')
+  p$runs <- .runs_of_state(ps, .df_from(ps$outputs, data.frame(
+    output_id = character(), batches = character(), stringsAsFactors = FALSE)))
   if (!is.null(ps$ard)) {
     for (s in names(p$ard)) {
       p$ard[[s]] <- .normalize_ard_sheet(.df_from(ps$ard[[s]], p$ard[[s]]), s)

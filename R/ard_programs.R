@@ -9,9 +9,10 @@
 #                                 it replaces that output's rows of
 #                                 output/ard/ard.rds and records the build in
 #                                 output/ard/ard_status.csv
-#   programs/ard/autoexec_ard.R   the official run of them all: a batch
-#                                 folder with each program's log (logrx),
-#                                 the study ARD and the code (programs/batch.R)
+#
+# The official run of them all is programs/batch.R's (tflspec::tfl_run_study(),
+# the Run button): a batch folder with each program's log (logrx), the study
+# ARD and the code.
 #
 # Run on its own -- from the app or in RStudio -- an ARD program is a
 # preview: it updates the study's working ARD, so tables can be made from
@@ -26,7 +27,6 @@
 }
 
 .ard_setup_file <- "ard_setup.R"
-.ard_autoexec_file <- "autoexec_ard.R"
 
 #' The ARD programs of a study
 #'
@@ -36,10 +36,8 @@
 #' the stat_fmt formats, and the option that makes `save_ard()` (the
 #' study's `programs/study_helpers.R`, see [study_helpers_code()]) record
 #' the study setup each ARD was built with.
-#' `ard_program_code()` is one output's program, `programs/ard/<output_id>.R`.  `ard_autoexec_code()` is
-#' `programs/ard/autoexec_ard.R`, which runs them from the study folder --
-#' all, or the ones named (`Rscript programs/ard/autoexec_ard.R T-14-1-1`)
-#' -- each in its own R process with its log in `logs/ard/`.
+#' `ard_program_code()` is one output's program, `programs/ard/<output_id>.R`.  An official run of them is
+#' [run_batch()]'s.
 #'
 #' @param spec An [tflspec::tfl_ard_spec()] (or the path of one).
 #' @param output_id The output.
@@ -131,23 +129,13 @@ ard_program_code <- function(spec, output_id, date = Sys.Date(), dir = ".",
     .run_end)
 }
 
-#' @rdname ard_setup_code
-#' @export
-ard_autoexec_code <- function(spec, date = Sys.Date()) {
-  lay <- study_layout()
-  c(.autoexec_banner(file.path(lay[["programs_ard"]], .ard_autoexec_file),
-                     "Official run of the ARD programs, one per output.",
-                     "T-14-1-1         only these", date),
-    .autoexec_body("ard"))
-}
-
 # missing / current / generated / edited, as a report program's
 .ard_program_state <- function(code, f) {
   if (!file.exists(f)) return("missing")
   have <- readLines(f, warn = FALSE, encoding = "UTF-8")
   chk <- sub("^#  Checksum   : *", "",
              grep("^#  Checksum   :", have, value = TRUE))
-  # an earlier tflplanner wrote its autoexec without a checksum
+  # an earlier tflplanner wrote some programs without a checksum
   if (!length(chk) && any(grepl("^#  Generated  : tflplanner", have))) {
     return("generated")
   }
@@ -179,8 +167,8 @@ ard_autoexec_code <- function(spec, date = Sys.Date()) {
 
 .ard_prog_cache <- new.env()
 
-# the ARD programs, written with the study: the setup, one per output, the
-# autoexec; a program of an output no longer defined goes (one edited by
+# the ARD programs, written with the study: the setup, one per output; a
+# program (an earlier tflplanner's autoexec_ard.R too) of an output no longer defined goes (one edited by
 # hand copied to programs/.edited/ first)
 .save_ard_programs <- function(spec, root, codelists = NULL) {
   lay <- study_layout()
@@ -207,8 +195,7 @@ ard_autoexec_code <- function(spec, date = Sys.Date()) {
     }
     put(.ard_prog_cache$code[[id]], .ard_prog_name(id))
   }
-  put(ard_autoexec_code(spec), .ard_autoexec_file)
-  keep <- c(.ard_setup_file, .ard_autoexec_file, vapply(ids, .ard_prog_name, ""))
+  keep <- c(.ard_setup_file, vapply(ids, .ard_prog_name, ""))
   for (f in setdiff(list.files(dir, "\\.[Rr]$"), keep)) {
     p <- file.path(dir, f)
     have <- readLines(p, warn = FALSE, encoding = "UTF-8")

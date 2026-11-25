@@ -20,8 +20,8 @@ read it, one string).
 }
 \description{
 The data files the programs of a run read (by the data catalog, see
-\code{\link[=run_batch]{run_batch()}}'s \code{data}), with their size, as the study folder has them
-now: what \code{run_batch(data = TRUE)} would copy into the batch folder.
+\code{\link[=run_batch]{run_batch()}}'s \code{copy_data}), with their size, as the study folder has them
+now: what a run definition with \code{copy_data} would copy into the batch folder.
 }
 \examples{
 # a home in the temporary folder: used in this R session only, nothing

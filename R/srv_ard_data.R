@@ -1364,8 +1364,7 @@
     tryCatch(switch(scope,
       report = ard_program_code(a, id, dir = rv$study$path,
                                 codelists = .study_codelists(rv$p)),
-      setup = ard_setup_code(a),
-      autoexec = ard_autoexec_code(a)),
+      setup = ard_setup_code(a)),
       error = function(e) msg(paste(
         if (length(.old_format(rv$p))) paste0(t(.old_format_line), "\n\n"),
         t("The code cannot be written yet:"), conditionMessage(e))))
@@ -1378,7 +1377,7 @@
     lay <- study_layout()
     name <- switch(input$ard_scope %||% "report",
                    report = .ard_prog_name(ard_target()),
-                   setup = .ard_setup_file, autoexec = .ard_autoexec_file)
+                   setup = .ard_setup_file)
     f <- file.path(rv$study$path, lay[["programs_ard"]], name)
     st <- .ard_program_state(code, f)
     shiny::p(class = "small text-muted mb-1",
@@ -1394,7 +1393,7 @@
     if (isTRUE(do_preview(ard_target()))) bslib::nav_select("ard_right", "result")
   })
   # making the study ARD: always the saved programs (programs/ard/), so
-  # what is built is what anyone rerunning autoexec_ard.R gets
+  # what is built is what an official run gets
   ard_log_ver <- shiny::reactiveVal(0L)
   ard_preview_out <- shiny::reactiveVal(NULL)
   # the result kept is the report's it was made for: another report's table

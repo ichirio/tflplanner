@@ -23,8 +23,12 @@ test_that("a run this session did not start: the marks and the builder's ARD fol
     session$elapse(1000)
     expect_match(output$builder_note$html, "no ARD yet", fixed = TRUE)
     # made elsewhere: no job of this session
-    invisible(suppressMessages(run_batch(open_study("SAMPLE-01"), "ard")))
-    for (i in 1:5) session$elapse(1100)
+    invisible(suppressMessages(run_def(open_study("SAMPLE-01"), "ArdOnly", "all", mode = "ard")))
+    # (the poll sees the run end within a few ticks; a slow machine takes more)
+    for (i in 1:20) {
+      session$elapse(1100)
+      if (!grepl("no ARD yet", output$builder_note$html %||% "", fixed = TRUE)) break
+    }
     expect_false(grepl("no ARD yet", output$builder_note$html %||% "", fixed = TRUE))
     # the marks come as marks, the list is not drawn again for them (#9184)
     re <- session$userData$run_end
@@ -52,7 +56,7 @@ test_that("a run in the background draws nothing again: the list, the report lis
     view0 <- re$view()
     status_ver0 <- rv$status_ver
     ard_ver0 <- rv$ard_ver
-    invisible(suppressMessages(run_batch(open_study("SAMPLE-01"), "ard")))
+    invisible(suppressMessages(run_def(open_study("SAMPLE-01"), "ArdOnly", "all", mode = "ard")))
     for (i in 1:3) session$elapse(1100)
     # nothing that draws the page was invalidated
     expect_identical(attr(re$rows(), "seq"), rows0)

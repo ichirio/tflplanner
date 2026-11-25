@@ -1,7 +1,6 @@
-# Leaving reports out of an official run, and named batches (#299 D6): a
-# report's batches are the report list's `batches` column; programs/batch.R
-# carries them as .batch_sets; the runner takes --batch <name> and
-# --exclude=<program>.
+# Run definitions (slice B1): a study's official runs are saved definitions
+# (p$runs, spec/runs.yml); the API, its name rule, the planner parts, the
+# older forms moved in, and an official run of a definition.
 
 bs_home <- function(env = parent.frame()) {
   home <- withr_tempdir(env)
@@ -27,89 +26,202 @@ bs_planner <- function(ids = c("DM", "VS")) {
   p
 }
 
-test_that("a named batch is the reports that say they belong to it", {
+test_that("run definitions: set, update, rename, remove", {
   p <- bs_planner()
-  expect_identical(batch_sets(p), stats::setNames(list(), character()))
-  p <- set_batch(p, "Topline", "DM")
-  p <- set_batch(p, "Final", c("DM", "VS", "L1"))
-  # a report in two batches
-  expect_identical(p$outputs$batches[p$outputs$output_id == "DM"], "Topline | Final")
-  expect_identical(batch_sets(p), list(Topline = "DM", Final = c("DM", "VS", "L1")))
-  # overwritten: the name is these reports, and no other
-  p <- set_batch(p, "Topline", c("VS", "L1"))
-  expect_identical(batch_sets(p)$Topline, c("VS", "L1"))
-  expect_identical(p$outputs$batches[p$outputs$output_id == "DM"], "Final")
+  expect_identical(nrow(run_definitions(p)), 0L)
+  p <- set_run_definition(p, "Topline", "DM")
+  p <- set_run_definition(p, "Final", "all")
+  rd <- run_definitions(p)
+  expect_identical(rd$name, c("Topline", "Final"))
+  expect_identical(rd$reports, c(1L, 3L))
+  expect_identical(rd$mode, c("all", "all"))
+  expect_identical(rd$copy_data, c(FALSE, FALSE))
+  # the ids are kept in the report list's order, whatever order they come in
+  p <- set_run_definition(p, "Topline", c("L1", "DM"))
+  expect_identical(p$runs[[1]]$reports, c("DM", "L1"))
+  # an argument left NULL stays; the options are set
+  p <- set_run_definition(p, "Topline", mode = "ard", copy_data = TRUE)
+  expect_identical(p$runs[[1]]$reports, c("DM", "L1"))
+  expect_identical(run_definitions(p)$mode[1], "ard")
+  expect_true(run_definitions(p)$copy_data[1])
   # renamed, removed (the reports stay)
-  p <- rename_batch(p, "Topline", "Interim Analysis")
-  expect_identical(names(batch_sets(p)), c("Final", "Interim Analysis"))
-  expect_error(rename_batch(p, "Final", "Interim Analysis"), "exists already")
-  p <- remove_batch(p, "Final")
-  expect_identical(names(batch_sets(p)), "Interim Analysis")
+  p <- rename_run_definition(p, "Topline", "Interim_Analysis")
+  expect_identical(run_definitions(p)$name, c("Interim_Analysis", "Final"))
+  expect_error(rename_run_definition(p, "Final", "interim_analysis"), "exists already")
+  expect_error(rename_run_definition(p, "Nope", "X"), "No run definition")
+  p <- remove_run_definition(p, "Final")
+  expect_identical(run_definitions(p)$name, "Interim_Analysis")
   expect_identical(nrow(p$outputs), 3L)
-  # what a batch cannot be
-  expect_error(set_batch(p, "Topline", "AE"), "No report")
-  expect_error(set_batch(p, "", "DM"), "Give the batch a name")
-  expect_error(set_batch(p, "Top/line", "DM"), "letters, digits")
-  expect_equal(nrow(batch_set_problems(p)), 0L)
-  p$outputs$batches[1] <- "Top/line"
-  expect_match(batch_set_problems(p)$problem, "cannot carry")
+  expect_error(remove_run_definition(p, "Final"), "No run definition")
 })
 
-test_that("left out of a run: a report's ARD and report programs; who reads them", {
+test_that("a run definition's name: the rule, the case, and what a new one needs", {
   p <- bs_planner()
-  expect_setequal(.batch_exclude(p, "DM"), c("DM.R", report_info(p, "DM")$program))
-  expect_identical(.batch_exclude(p, "other.R"), "other.R")
+  expect_error(set_run_definition(p, "", "DM"), "Give the run definition a name")
+  expect_error(set_run_definition(p, "Top/line", "DM"), "name")
+  expect_error(set_run_definition(p, "Top line", "DM"), "name")
+  expect_error(set_run_definition(p, "1st", "DM"), "name")
+  expect_error(set_run_definition(p, strrep("a", 41), "DM"), "name")
+  expect_error(set_run_definition(p, "Topline"), "needs its reports")
+  expect_error(set_run_definition(p, "Topline", "AE"), "No report")
+  p <- set_run_definition(p, "Topline", "DM")
+  # the same name but for the case is another definition: refused
+  expect_error(set_run_definition(p, "topline", "VS"), "ignoring case")
+  # ... but renaming it so is the same definition
+  q <- rename_run_definition(p, "Topline", "topline")
+  expect_identical(run_definitions(q)$name, "topline")
+  expect_identical(q$runs[[1]]$reports, "DM")
+  # `all` is a definition's reports: every report, now and later
+  p <- set_run_definition(p, "Final", "all")
+  p <- add_output(p, "AE", at = "end")
+  expect_identical(run_definitions(p)$reports, c(1L, 4L))
+  expect_identical(.report_run_names(p, c("DM", "AE")), c("Topline | Final", "Final"))
 })
 
-test_that("an official run of a named batch, or leaving reports out", {
+test_that("an older name that breaks the rule: updated and kept, a Review row, not a new one", {
+  p <- bs_planner()
+  p$runs <- list(list(name = "Top line", reports = "DM"))
+  # (an older name passes an update; its Review row asks for a rename)
+  p <- set_run_definition(p, "Top line", c("DM", "VS"))
+  expect_identical(p$runs[[1]]$reports, c("DM", "VS"))
+  rows <- .rules_runs(p)
+  expect_true(any(vapply(rows$args, function(a) "Top line" %in% a, NA)))
+  # the save rule: a name new in this session that breaks it is refused ...
+  root <- withr_tempdir()
+  expect_identical(nrow(.runs_save_problems(p, root)), 1L)
+  # ... one the disk has already passes
+  dir.create(file.path(root, "spec"))
+  writeLines(c("runs:", "  - name: \"Top line\"", "    reports: all"),
+             file.path(root, "spec", "runs.yml"))
+  expect_identical(nrow(.runs_save_problems(p, root)), 0L)
+  # a rename to a name that keeps the rule fixes it
+  p <- rename_run_definition(p, "Top line", "Topline")
+  expect_identical(nrow(.runs_save_problems(p, root)), 0L)
+})
+
+test_that("rename_output and remove_output carry the ids of the definitions", {
+  p <- bs_planner()
+  p <- set_run_definition(p, "Topline", c("DM", "L1"))
+  p <- set_run_definition(p, "Final", "all")
+  p <- rename_output(p, "DM", "DM2")
+  expect_identical(p$runs[[1]]$reports, c("DM2", "L1"))
+  expect_identical(p$runs[[2]]$reports, "all")
+  p <- remove_output(p, "L1")
+  expect_identical(p$runs[[1]]$reports, "DM2")
+  expect_identical(run_definitions(p)$reports, c(1L, 2L))
+})
+
+test_that("the planner's fields are all in the state, the parts and the merge", {
+  # A new field of the planner must be named here, and then it has to be in
+  # the state, in the parts, and put back by the merge: this fails while any
+  # of them does not carry it.
+  part_of <- c(sheets = "sheet:", study = "study keys", outputs = "report list",
+               setup = "setup", ard = "ard:", lf = "lf:", fig_designs = "fig:",
+               runs = "runs")
+  p <- bs_planner()
+  p <- set_run_definition(p, "Topline", c("DM", "L1"), mode = "ard")
+  expect_setequal(setdiff(names(new_planner()), "meta"), names(part_of))
+  s <- list(planner = p, meta = list())
+  parts <- .study_parts(s)
+  ps <- .planner_state(p)
+  for (f in names(part_of)) {
+    expect_true(f %in% names(ps), info = paste("the state has no", f))
+    # (a figure's design is a part when the study has one)
+    if (f != "fig_designs") {
+      expect_true(any(startsWith(names(parts), part_of[[f]])),
+                  info = paste("the parts have no", f))
+    }
+  }
+  # the merge puts each part back where it was
+  for (k in setdiff(names(parts), grep("^meta:", names(parts), value = TRUE))) {
+    q <- .set_study_part(list(planner = new_planner(), meta = list()), k, parts[[k]])
+    expect_identical(.study_parts(q)[[k]], parts[[k]], info = k)
+  }
+  expect_identical(.part_labels("runs"), "run definitions")
+  # the state restores the definitions
+  back <- .planner_from_state(list(planner = ps))
+  expect_identical(.runs_bare(back$runs), .runs_bare(p$runs))
+  expect_identical(.run_def_ids(back, back$runs[[1]]), c("DM", "L1"))
+})
+
+test_that("the older form moves into run definitions: the state, the workbook", {
+  p <- bs_planner()
+  ps <- .planner_state(p)
+  ps$runs <- NULL
+  ps$outputs$batches <- list("Topline | Final", "Final", NULL)
+  q <- .planner_from_state(list(planner = ps))
+  expect_identical(vapply(q$runs, function(d) d$name, ""), c("Topline", "Final"))
+  expect_identical(q$runs[[2]]$reports, c("DM", "VS"))
+  expect_identical(attr(q$runs, "migrated"), 2L)
+  # the Review tab says so
+  rows <- .rules_runs(q)
+  expect_match(rows$template, "set(s) of the earlier form", fixed = TRUE)
+  expect_identical(rows$args[[1]], "2")
+  # a state with run definitions of its own is not migrated again
+  ps$runs <- .runs_to_state(q$runs)
+  expect_null(attr(.planner_from_state(list(planner = ps))$runs, "migrated"))
+  # the workbook of an older planner: the column is not written
+  dir <- withr_tempdir()
+  paths <- write_planner(p, dir)
+  expect_false("batches" %in% names(read_planner(paths)$outputs))
+})
+
+test_that("batch.R carries the definitions (with their problem) and the stamp", {
+  p <- bs_planner()
+  p <- set_run_definition(p, "Topline", c("DM", "L1"))
+  man <- .batch_runs_manifest(p)
+  expect_identical(man[[1]]$name, "Topline")
+  expect_identical(man[[1]]$reports, c("DM", "L1"))
+  expect_identical(man[[1]]$mode, "all")
+  expect_false(man[[1]]$copy_data)
+  expect_identical(man[[1]]$problem, "")
+  # a definition with a problem still goes in, with its problem
+  p$runs <- c(p$runs, list(list(name = "Top line", reports = "ZZ")))
+  man <- .batch_runs_manifest(p)
+  expect_match(man[[2]]$problem, "ZZ")
+  # the code parses; it names the definition and no older sets
+  code <- batch_code(set_run_definition(bs_planner(), "Topline", "DM"))
+  expect_no_error(parse(text = code))
+  expect_true(any(grepl("Topline", code, fixed = TRUE)))
+  expect_false(any(grepl("^\\.batch_sets <- list", code)))
+  # the stamp is the spec's: the same spec, the same stamp
+  root <- withr_tempdir()
+  expect_identical(.batch_stamp(root), .batch_stamp(root))
+})
+
+test_that("an official run of a definition, and the runs it leaves", {
   skip_on_cran()
   bs_home()
-  p <- set_batch(bs_planner(), "Topline", c("DM", "L1"))
-  p <- set_batch(p, "Final", c("DM", "VS", "L1"))
+  # (the ARD programs only: the study has no report code to run)
+  p <- set_run_definition(bs_planner(), "Topline", c("DM", "L1"), mode = "ard")
+  p <- set_run_definition(p, "Final", "all", mode = "ard")
   s <- create_study("B1", planner = p)
   saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
   o <- open_study("B1")
-  code <- readLines(file.path(s$path, "programs", "batch.R"))
-  expect_true(any(grepl("^\\.batch_sets <- list\\(", code)))
-  expect_true(any(grepl("`Topline` = c(\"DM\", \"L1\")", code, fixed = TRUE)))
+  expect_true(file.exists(file.path(s$path, "spec", "runs.yml")))
 
-  # the ARD of the named batch: its folder and batch.txt name it
-  b <- run_batch(o, "ard", batch = "Topline")
+  b <- run_batch(o, "Topline", wait = TRUE)
   expect_true(b$ok)
-  expect_match(basename(b$batch), "_ard_Topline$")
+  expect_match(basename(b$batch), "^batch_[0-9]{8}-[0-9]{6}_Topline$")
   expect_identical(basename(b$result$program), "DM.R")
   txt <- readLines(file.path(b$batch, "batch.txt"))
-  expect_true("Batch set : Topline" %in% txt)
-  # what the batch left out (VS is not in Topline) is in the record too
-  expect_true(any(grepl("^Excluded : .*VS\\.R", txt)))
+  expect_true("Run      : Topline" %in% txt)
   lb <- list_batches(o)
-  expect_identical(lb$what[1], "ard")
-  expect_identical(lb$set[1], "Topline")
+  expect_identical(lb$definition[1], "Topline")
+  expect_identical(lb$state[1], "done")
   Sys.sleep(1.1)
 
-  # left out: VS's ARD program does not run, and the record says so
-  b2 <- run_batch(o, "ard", exclude = "VS")
-  expect_identical(basename(b2$result$program), "DM.R")
-  expect_true(any(grepl("^Excluded : .*VS\\.R", readLines(file.path(b2$batch, "batch.txt")))))
-  expect_match(list_batches(o)$excluded[1], "VS.R", fixed = TRUE)
-  Sys.sleep(1.1)
+  # a definition of every report; VS is in it, too
+  b2 <- run_batch(o, "Final", wait = TRUE)
+  expect_true(b2$ok)
+  expect_true("VS.R" %in% basename(b2$result$program))
 
-  # a batch with a report the programs do not have (batch.R older than the
-  # list): said, and the rest runs
-  bf <- file.path(s$path, "programs", "batch.R")
-  code <- readLines(bf)
-  code <- sub("`Topline` = c(\"DM\", \"L1\")", "`Topline` = c(\"DM\", \"L1\", \"GONE\")",
-              code, fixed = TRUE)
-  writeLines(code, bf)
-  b3 <- run_batch(o, "ard", batch = "Topline")
-  expect_true(b3$ok)
-  expect_true(any(grepl("no program for GONE", b3$output, fixed = TRUE)))
-
-  # a name the study does not have
-  expect_error(run_batch(o, "ard", batch = "Nope"), "No batch named")
+  # a name the study does not have; none given
+  expect_error(run_batch(o, "Nope"), "No run definition named")
+  expect_error(run_batch(o), "name")
 })
 
-test_that("the runner takes an output id as a program name, and --exclude too", {
+test_that("a run of the ARD only, and a report whose program has a name of its own", {
   skip_on_cran()
   bs_home()
   # DM's report has a program name of its own (t_dm), so the id is not a file name
@@ -121,38 +233,14 @@ test_that("the runner takes an output id as a program name, and --exclude too", 
   o <- open_study("BN")
   progs <- function(b) basename(b$result$program)
   expect_identical(report_info(o$planner, "DM")$program, "t_dm.R")
-
-  # an id: the ARD program (DM.R) and the report program (t_dm.R) of the report
-  b <- run_batch(o, c("ard", "tfl"), only = "DM")
+  # an id in a definition: the ARD program (DM.R) and the report program (t_dm.R)
+  b <- run_def(o, "OneReport", "DM")
   expect_identical(progs(b), c("DM.R", "t_dm.R"))
   Sys.sleep(1.1)
-  # a file name still works, with or without .R (an official run makes the
-  # ARD first, so the ARD program is named too)
-  expect_identical(progs(run_batch(o, c("ard", "tfl"), only = c("DM.R", "t_dm"))),
-                   c("DM.R", "t_dm.R"))
-  Sys.sleep(1.1)
-  expect_identical(progs(run_batch(o, "ard", only = "VS.R")), "VS.R")
-  Sys.sleep(1.1)
-  # the runner's own rule: Rscript programs/autoexec_all.R --exclude=<id>
-  old <- setwd(s$path)
-  out <- system2(file.path(R.home("bin"), "Rscript"),
-                 c("programs/autoexec_all.R", "--exclude=DM"),
-                 stdout = TRUE, stderr = TRUE)
-  setwd(old)
-  left <- grep("^Left out: ", out, value = TRUE)
-  expect_length(left, 1L)
-  expect_match(left, "DM.R", fixed = TRUE)
-  expect_match(left, "t_dm.R", fixed = TRUE)
-  Sys.sleep(1.1)
-  # a name that matches nothing (a typing slip) stops, naming it, in --only
-  # and in --exclude alike
-  b <- run_batch(o, "ard", only = "NOPE")
-  expect_false(b$ok)
-  expect_true(any(grepl("The name 'NOPE' stands for no output.", b$output, fixed = TRUE)))
-  Sys.sleep(1.1)
-  b <- run_batch(o, c("ard", "tfl"), exclude = "DMX")
-  expect_false(b$ok)
-  expect_true(any(grepl("The name 'DMX' stands for no output.", b$output, fixed = TRUE)))
+  # the ARD only: the mode of the definition
+  b <- run_def(open_study("BN"), "ArdOnly", c("DM", "VS"), mode = "ard")
+  expect_identical(progs(b), c("DM.R", "VS.R"))
+  expect_match(basename(b$batch), "_ArdOnly$")
 })
 
 test_that("a report with no program of its own does not break batch.R", {
@@ -167,39 +255,30 @@ test_that("a report with no program of its own does not break batch.R", {
   expect_false(any(grepl("`NA`", code, fixed = TRUE)))
 })
 
-test_that("the batches column survives the SPEC round trip", {
-  skip_on_cran()
-  p <- set_batch(bs_planner(), "Topline", c("DM", "L1"))
-  dir <- withr_tempdir()
-  paths <- write_planner(p, dir)
-  q <- read_planner(paths)
-  expect_identical(batch_sets(q), batch_sets(p))
-})
-
-test_that("the report list shows a report's report sets; they are made on the Runs tab", {
+test_that("the run definitions survive a save and an open of the study", {
   skip_on_cran()
   bs_home()
-  p <- set_batch(bs_planner(), "Topline", "DM")
-  create_study("B2", planner = p)
-  # one report's names: checked, " | " between them, none NA
-  q <- .set_report_batches(p, "VS", c("Final", " Topline ", ""))
-  expect_identical(q$outputs$batches[q$outputs$output_id == "VS"], "Final | Topline")
-  expect_identical(batch_sets(q)$Topline, c("DM", "VS"))
-  expect_true(is.na(.set_report_batches(q, "VS", character())$outputs$batches[2]))
-  expect_error(.set_report_batches(p, "VS", "Top/line"), "letters, digits")
+  p <- set_run_definition(bs_planner(), "Topline", c("DM", "L1"), mode = "ard")
+  s <- create_study("B2", planner = p)
+  o <- open_study("B2")
+  expect_identical(.runs_bare(o$planner$runs), .runs_bare(p$runs))
+  txt <- readLines(file.path(s$path, "spec", "runs.yml"))
+  expect_true(any(grepl("Topline", txt, fixed = TRUE)))
+  # the report list shows the names, one report's definitions together
+  expect_identical(.report_run_names(o$planner, c("DM", "VS", "L1")), c("Topline", "", "Topline"))
+  # the Runs tab: the ticked reports saved under a name (the new API's rule)
   shiny::testServer(server_for("B2"), {
     rv <- session$userData$rv
-    session$setInputs(nav = "outputs", target = "VS")
-    # the list's column (the table is drawn server side: its data here)
-    expect_match(paste(output$outputs, collapse = ""), "Report sets", fixed = TRUE)
-    # the Runs tab makes a set: the shown reports ticked together (a filter),
-    # saved under a name
+    session$setInputs(nav = "results")
     expect_setequal(.batch_ticks("DM", "VS", "add"), c("DM", "VS"))
     expect_identical(.batch_ticks(c("DM", "VS"), "DM", "remove"), "VS")
-    session$setInputs(batch_shown = list(mode = "add", ids = list("VS"), n = 1))
     session$setInputs(batch_reports = "VS")
     session$setInputs(batch_save_name = "Interim", batch_save_name_ok = 1)
-    expect_identical(batch_sets(rv$p)$Interim, "VS")
+    expect_identical(rv$p$runs[[2]]$name, "Interim")
+    expect_identical(rv$p$runs[[2]]$reports, "VS")
+    # a name that breaks the rule is refused, the list as it was
+    session$setInputs(batch_save_name = "Bad name", batch_save_name_ok = 2)
+    expect_length(rv$p$runs, 2L)
   })
 })
 
@@ -238,7 +317,7 @@ test_that("an official run keeps the data its programs read, and the versions", 
   expect_identical(nrow(batch_data_plan(o, "tfl")), 0L)
 
   # off by default: no data, but the R and package versions
-  b <- run_batch(o, "ard")
+  b <- run_def(o, "ArdOnly", "all", mode = "ard")
   expect_true(b$ok)
   expect_false(dir.exists(file.path(b$batch, "data")))
   txt <- readLines(file.path(b$batch, "batch.txt"))
@@ -268,7 +347,7 @@ test_that("an official run keeps the data its programs read, and the versions", 
   # kept: under its path in the study folder, its md5 in the manifest; the
   # study's renv.lock with the versions
   writeLines("{}", file.path(s$path, "renv.lock"))
-  b2 <- run_batch(o, "ard", data = TRUE)
+  b2 <- run_def(o, "ArdData", "all", mode = "ard", copy_data = TRUE)
   expect_true(b2$ok)
   expect_true(file.exists(file.path(b2$batch, "data", "adam", "adsl.rds")))
   man <- utils::read.csv(file.path(b2$batch, "data_manifest.csv"), colClasses = "character")
@@ -279,34 +358,8 @@ test_that("an official run keeps the data its programs read, and the versions", 
   expect_match(grep("^Data +:", txt, value = TRUE), "kept (data/, 1 file(s)", fixed = TRUE)
   expect_true(file.exists(file.path(b2$batch, "renv.lock")))
   expect_true(list_batches(o)$data[1])
-
-  # a batch.R written before: said, not run
-  bf <- file.path(s$path, "programs", "batch.R")
-  writeLines(gsub("--data", "--d-a-t-a", readLines(bf), fixed = TRUE), bf)
-  expect_error(run_batch(o, "ard", data = TRUE), "keep the data")
 })
 
-test_that("the Runs tab says the data a run would keep, and warns when large", {
-  skip_on_cran()
-  bs_home()
-  s <- create_study("BS", planner = bs_planner())
-  saveRDS(data.frame(x = 1:10), file.path(s$path, "data", "adam", "adsl.rds"))
-  old <- options(tflplanner.batch_data_warn_mb = 0)
-  on.exit(options(old), add = TRUE)
-  shiny::testServer(server_for("BS"), {
-    session$setInputs(nav = "runs", batch_parts = "ard", batch_data = FALSE)
-    expect_null(output$batch_data_size)
-    session$setInputs(batch_data = TRUE)
-    txt <- paste(output$batch_data_size$html, collapse = "")
-    expect_match(txt, "Data kept: 1 files", fixed = TRUE)
-    # over the limit (0 MB here): said
-    expect_match(txt, "every run keeps its own copy", fixed = TRUE)
-  })
-  expect_identical(.mb_text(0.04), "41 KB")
-  expect_identical(.mb_text(1.44), "1.4 MB")
-  expect_identical(.mb_text(12.3), "12 MB")
-  expect_identical(.mb_text(2048), "2.0 GB")
-})
 
 test_that("a time taken, and a failed run's state", {
   expect_identical(.elapsed_text(42), "0:42")
@@ -340,16 +393,10 @@ cmp_runs <- function(d) {
       utils::write.csv(data.frame(path = names(data_md5), md5 = unname(data_md5)),
                        file.path(d, b, "data_manifest.csv"), row.names = FALSE)
     }
-    # the folder is the code: snapshot.csv has the md5 of the files it copied
-    if (length(code)) {
-      md5 <- vapply(code, function(txt) {
-        f <- tempfile()
-        on.exit(unlink(f))
-        writeLines(txt, f)
-        unname(tools::md5sum(f))
-      }, "")
-      utils::write.csv(data.frame(path = names(code), size = 1, md5 = unname(md5)),
-                       file.path(d, b, "snapshot.csv"), row.names = FALSE)
+    # the folder is the code: the programs it ran, as files
+    for (rel in names(code)) {
+      dir.create(dirname(file.path(d, b, rel)), recursive = TRUE, showWarnings = FALSE)
+      writeLines(code[[rel]], file.path(d, b, rel))
     }
   }
   mk("20260101_100000_all", c("{\\rtf1", "Generated on: 01Jan2026  10:00", "}"), 1:3,
@@ -374,10 +421,10 @@ test_that("two official runs compared: their inputs where kept, their results", 
   res <- stats::setNames(r$result, paste(r$kind, r$file))
   expect_identical(res[["data data/adam/adae.rds"]], "changed")
   expect_false("data data/adam/adsl.rds" %in% names(res))
-  expect_identical(res[["code programs/tfl/T-2.R"]], "changed")
+  expect_identical(res[["code tfl/T-2.R"]], "changed")
   expect_identical(res[["output output/tfl/T-1.rtf"]], "same but the time")
   expect_identical(res[["output output/ard/T-1.rds"]], "different")
-  expect_identical(attr(r, "changed")$inputs, c("data/adam/adae.rds", "programs/tfl/T-2.R"))
+  expect_identical(attr(r, "changed")$inputs, c("data/adam/adae.rds", "tfl/T-2.R"))
   expect_identical(attr(r, "changed")$outputs, "output/ard/T-1.rds")
   # a run that kept no data nor code: its inputs are not compared
   r2 <- compare_batches(s, "20260103_100000_report", "20260102_100000_all")
@@ -387,8 +434,6 @@ test_that("two official runs compared: their inputs where kept, their results", 
   expect_identical(.batch_previous(list_batches(s), "20260103_100000_report"),
                    "20260102_100000_all")
   expect_error(compare_batches(s, "20260101_100000_all"), "No earlier official run")
-  expect_identical(.batch_compare_file(tempfile(), file.path(s$path, "runs", "20260101_100000_all",
-                                                             "run.csv")), "new")
 
   # the Runs tab: the dialog says what changed, the table only that
   shiny::testServer(server_for("CMP"), {
@@ -410,12 +455,12 @@ test_that("two official runs of the sample compared after a data fix", {
   withr::local_options(tflplanner.home = home)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
   s <- suppressMessages(sample_study_copy())
-  b1 <- run_batch(s, c("ard", "tfl"), data = TRUE, only = "T-14-1-1")
+  b1 <- run_def(s, "One", "T-14-1-1", copy_data = TRUE)
   expect_true(file.exists(file.path(b1$batch, "programs", "study_helpers.R")))
   expect_true(file.exists(file.path(b1$batch, "output", "tfl", "report_status.csv")))
   Sys.sleep(1.1)
   # as it is: nothing changed
-  b2 <- run_batch(s, c("ard", "tfl"), data = TRUE, only = "T-14-1-1")
+  b2 <- run_def(s, "One", "T-14-1-1", copy_data = TRUE)
   r <- compare_batches(s, basename(b2$batch))
   expect_length(attr(r, "changed")$inputs, 0L)
   expect_length(attr(r, "changed")$outputs, 0L)
@@ -423,7 +468,7 @@ test_that("two official runs of the sample compared after a data fix", {
   # a data fix: that input, and the results that read it
   adsl <- file.path(s$path, "data", "adam", "adsl.rds")
   saveRDS(readRDS(adsl)[-1, ], adsl)
-  b3 <- run_batch(s, c("ard", "tfl"), data = TRUE, only = "T-14-1-1")
+  b3 <- run_def(s, "One", "T-14-1-1", copy_data = TRUE)
   r3 <- compare_batches(s, basename(b3$batch))
   expect_identical(attr(r3, "changed")$inputs, "data/adam/adsl.rds")
   # (the study ARD; a table's data is not saved per report, #405)

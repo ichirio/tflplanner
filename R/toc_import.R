@@ -943,10 +943,11 @@ toc_profile <- function(study) {
 
 #' Put what a TOC read by the rules says besides the spec into a study
 #'
-#' The reports' batches (the Topline flag, `toc_batches()`) go into the
-#' report list's `batches` column: a report flagged gets the batch, one the
-#' last TOC flagged and this one does not loses it; a batch given here is
-#' kept, and nothing changes when the TOC has no flag column.
+#' The reports' batches (the Topline flag, `toc_batches()`) go into the run
+#' definition of that name ([set_run_definition()]): a report flagged is in
+#' it, one the last TOC flagged and this one does not is out of it; a
+#' report put in it here is kept, and nothing changes when the TOC has no
+#' flag column.
 #'
 #' @param x A `tflplanner`, after [toc_apply()].
 #' @param result What [toc_import_read()] returned.
@@ -960,14 +961,12 @@ toc_apply_extras <- function(x, result, last = NULL) {
   on <- result$batches$output_id
   for (id in intersect(r$output_id, x$outputs$output_id)) {
     i <- match(id, x$outputs$output_id)
-    have <- .split_bar(x$outputs$batches[i] %||% NA_character_)
     was <- name %in% unlist(last[[id]]$batches)
     if (id %in% on) {
-      have <- union(have, name)
+      x <- .run_def_member(x, name, id, TRUE)
     } else if (was) {
-      have <- setdiff(have, name)
-    } else next
-    x <- .set_report_batches(x, id, have)
+      x <- .run_def_member(x, name, id, FALSE)
+    }
   }
   x
 }
