@@ -290,12 +290,17 @@ set_report_population <- function(x, output_id, population) {
     for (id in ids) {
       o <- output %||% x$spec$outputs[[id]]
       if (is.null(o)) next
+      if (!is.null(pops)) o <- .o_set_population(o, pops[match(id, output_id)])
       if (is.null(output)) {
         w <- x$spec$where
         rel <- if (id %in% names(w)) w[[id]]
-        if (!is.null(rel) && sum(unlist(w) == rel) > 1L) next
+        # (a file several reports share is written by the save, as before;
+        # its TOC line follows the set now all the same)
+        if (!is.null(rel) && sum(unlist(w) == rel) > 1L) {
+          x <- .spec_set_toc_population(x, id, .o_population(o))
+          next
+        }
       }
-      if (!is.null(pops)) o <- .o_set_population(o, pops[match(id, output_id)])
       x <- .spec_set_output(.spec_set_toc_population(x, id, .o_population(o)), id, o)
     }
   }
