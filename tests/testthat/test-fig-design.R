@@ -10,7 +10,7 @@ test_that("a figure's design is kept, saved as YAML, and makes its plot", {
   s$planner <- set_step_code(s$planner, "F-14-2-1", "content", NA)
   # (the sample's setup code has its library() lines: not the design's)
   s$planner$setup <- NA_character_
-  d <- tflspec::tfl_fig_template("mean_ci", data = "ADVS", param = "SYSBP",
+  d <- tflspec::tfl_fig_template("mean_ci", data = "ADVS", param = "SYSBP", group = "TRT01A",
                                   value = "CHG", title = "SBP: mean change")
   d$plot$dpi <- 150
   s$planner <- set_fig_design(s$planner, "F-14-2-1", d)
@@ -68,7 +68,7 @@ test_that("a design is drawn on the study's data, as its program saves it", {
   on.exit(options(old), add = TRUE)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
   s <- suppressMessages(sample_study_copy())
-  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP",
+  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", group = "TRT01A",
                                   value = "CHG")
   r <- preview_figure(s, "F-14-2-1", d)
   expect_null(r$error)
@@ -76,7 +76,7 @@ test_that("a design is drawn on the study's data, as its program saves it", {
   expect_equal(nrow(r$problems), 0L)
   expect_equal(r$size$dpi, 300)
   # the design against the data
-  bad <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "NOPE",
+  bad <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "NOPE", group = "TRT01A",
                                     value = "NOVAR")
   r <- preview_figure(s, "F-14-2-1", bad)
   expect_true(any(grepl("no PARAMCD NOPE", r$problems$problem)))
@@ -147,7 +147,8 @@ test_that("a designed figure is copied to other parameters", {
   on.exit(options(old), add = TRUE)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
   s <- suppressMessages(sample_study_copy())
-  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", value = "CHG")
+  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", group = "TRT01A",
+                                  value = "CHG")
   p <- set_fig_design(.set_report_type(s$planner, "F-14-2-1", "figure"), "F-14-2-1", d)
   p$outputs$description[p$outputs$output_id == "F-14-2-1"] <- "Mean change in SYSBP"
   p2 <- copy_fig_to_params(p, "F-14-2-1", c("DIABP", "PULSE"))
@@ -167,7 +168,8 @@ test_that("a preview for the screen is smaller, and says the saved size", {
   on.exit(options(old), add = TRUE)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
   s <- suppressMessages(sample_study_copy())
-  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", value = "CHG")
+  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", group = "TRT01A",
+                                  value = "CHG")
   full <- preview_figure(s, "F-14-2-1", d)
   small <- preview_figure(s, "F-14-2-1", d, max_px = 800)
   expect_null(small$error)
@@ -183,7 +185,7 @@ test_that("a preview for the screen is smaller, and says the saved size", {
 
 test_that("a design's other parts (ggplot2 version, composed figures) are kept", {
   skip_if_not("ggplot2_version" %in% names(formals(tflspec::tfl_fig_design)))
-  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP")
+  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", group = "TRT01A")
   d$ggplot2_version <- "3.5"
   p <- set_fig_design(new_planner(), "F1", d)
   expect_equal(fig_design(p, "F1")$ggplot2_version, "3.5")
@@ -314,7 +316,7 @@ test_that("a design saved before #293 (its statistics apart) reads as one data l
 })
 
 test_that("a design with R code in it (tfl_r, !r) is saved in the state and read back", {
-  d <- tflspec::tfl_fig_template("km_simple")
+  d <- tflspec::tfl_fig_template("km_simple", group = "TRT01P")
   d$plot$add <- list(list(fn = "scale_y_continuous",
                           args = list(labels = tflspec::tfl_r("scales::label_percent()"))))
   # as the study keeps it (set_fig_design())

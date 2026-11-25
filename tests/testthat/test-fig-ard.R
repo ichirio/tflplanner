@@ -303,7 +303,8 @@ tpl_fig_planner <- function(p, name, id, ...) {
 
 test_that("a template figure with analyses of its own reads its own ARD; one without, none", {
   s <- fig_ard_study()
-  p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF")
+  p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF",
+                       group = "TRT01A")
   expect_true(NROW(ard_rows(p, "analyses", "F-9-1")) > 0L)
   expect_true(is.na(p$sheets$report$ard_source[match("F-9-1", p$sheets$report$output_id)]) ||
                 !"ard_source" %in% names(p$sheets$report))
@@ -323,7 +324,8 @@ test_that("a template figure with analyses of its own reads its own ARD; one wit
 
 test_that("a forest_hr template figure's program reads its ARD, no stop()", {
   s <- fig_ard_study()
-  p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF")
+  p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF",
+                       group = "TRT01A")
   code <- program_code(p, "F-9-1")
   expect_false(any(grepl("stop(\"F-9-1 reads an ARD", code, fixed = TRUE)))
   expect_true(any(grepl("readRDS(", code, fixed = TRUE)))
@@ -337,7 +339,8 @@ test_that("a forest_hr template figure's program reads its ARD, no stop()", {
 
 test_that("Review does not say 'No dataset is read' of a figure reading an ARD", {
   s <- fig_ard_study()
-  p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF")
+  p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF",
+                       group = "TRT01A")
   r <- review_problems(p)
   expect_false(any(r$output_id == "F-9-1" & r$message == "No dataset is read."))
   # a figure reading neither an ARD nor a dataset still gets it
@@ -350,9 +353,10 @@ test_that("Review does not say 'No dataset is read' of a figure reading an ARD",
 
 test_that("a template figure's ARD tabs are on when it makes an ARD (forest_hr), off when it does not (km_survival, mean_se) (#514)", {
   s <- fig_ard_study()
-  p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF")
+  p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF",
+                       group = "TRT01A")
   expect_true(.report_uses_ard(p, "F-9-1"))
-  p <- tpl_fig_planner(p, "mean_se", "F-9-2", param = "SYSBP")
+  p <- tpl_fig_planner(p, "mean_se", "F-9-2", param = "SYSBP", group = "TRT01A")
   p <- tpl_fig_planner(p, "km_survival", "F-9-3", by = "TRT01A")
   expect_false(.report_uses_ard(p, "F-9-3"))
   expect_false(.report_uses_ard(p, "F-9-2"))
@@ -424,7 +428,8 @@ test_that("a figure's own ARD for its preview: the study ARD's while built, else
   st <- stale_ard_study()
   on.exit(st$done(), add = TRUE)
   s <- st$s
-  s$planner <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF")
+  s$planner <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF",
+                               group = "TRT01A")
   pr <- "p1"
   built <- "not built"
   made <- 0L

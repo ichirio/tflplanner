@@ -260,7 +260,7 @@ test_that("step 2, the listing form: what it cannot show stays as written", {
 test_that("step 2, the figure designer: what it cannot show stays as written", {
   local_home()
   p <- add_output(new_planner(), "F1", type = "figure")
-  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP")
+  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", group = "TRT01A")
   # a number as the design has it (written as text), a setting the
   # designer has no field for
   d$plot$y_max <- "180"
@@ -303,7 +303,7 @@ test_that("step 2, the figure designer: what it cannot show stays as written", {
 test_that("the designer's form follows a design put in place of the one there (#866)", {
   local_home()
   p <- add_output(new_planner(), "F1", type = "figure")
-  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP")
+  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", group = "TRT01A")
   d$plot$x_label <- "Old label"
   p <- set_fig_design(p, "F1", d)
   create_study("S1", planner = p)

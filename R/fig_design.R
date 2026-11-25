@@ -37,7 +37,7 @@
 #' s <- create_sample_study(run = FALSE)
 #' x <- s$planner
 #' fig_design(x, "F-14-2-1")  # NULL: this figure is written by hand
-#' x <- set_fig_design(x, "F-14-2-1", tflspec::tfl_fig_template("km_simple"))
+#' x <- set_fig_design(x, "F-14-2-1", tflspec::tfl_fig_template("km_simple", group = "TRT01P"))
 #' class(fig_design(x, "F-14-2-1"))
 #' }
 #' options(old)
