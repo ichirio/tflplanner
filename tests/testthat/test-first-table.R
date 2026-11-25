@@ -667,6 +667,16 @@ test_that("a template figure has no population flag: a forest's analysis data is
     expect_identical(nrow(pr0), 1L)
     expect_match(pr0$problem, "analysis set|解析対象集団")
     expect_match(pr0$problem, "1")
+    # "apply the template again" only for a design from a template; one
+    # built by hand is told the step that has the set alone (M9)
+    d1 <- d0
+    d1$template <- NULL
+    no_tpl <- "This report has no analysis set. Choose one in step %s, 'This report's analysis set'."
+    expect_identical(pr0$problem, .fig_no_set_text(d0))
+    expect_identical(.fig_no_set_text(d1), sprintf(tr(no_tpl), .step_no("data")))
+    expect_false(identical(.fig_no_set_text(d0), .fig_no_set_text(d1)))
+    expect_false(grepl("\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8", tr(no_tpl, "ja"), fixed = TRUE))
+    expect_match(tr(no_tpl, "ja"), "\u9078\u3093\u3067\u304f\u3060\u3055\u3044", fixed = TRUE)
     # ... and the checks list it to check, with the way to step 1, whether
     # or not the figure could be drawn (only the picture needs a drawing)
     draw()

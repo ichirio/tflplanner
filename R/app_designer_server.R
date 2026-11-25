@@ -832,7 +832,7 @@
     id <- current()
     known <- !is.null(id) && .fig_no_set(rv$p, id, design())
     if (!known) return(shiny::tagList(shiny::strong(lead), err))
-    shiny::tagList(.fig_no_set_text(),
+    shiny::tagList(.fig_no_set_text(design()),
                    shiny::tags$details(class = "mt-1 text-muted", shiny::tags$summary(t("Details")), err))
   }
   # a piece chosen, moved, removed

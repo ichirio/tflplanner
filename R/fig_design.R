@@ -554,7 +554,7 @@ preview_figure <- function(study, output_id,
       if (!is.null(r$ard_problems) && nrow(r$ard_problems)) gone <- gone | pr$problem %in% r$ard_problems$problem
       pr <- pr[!gone, , drop = FALSE]
     }
-    row <- data.frame(part = "ard", field = "population", problem = .fig_no_set_text(),
+    row <- data.frame(part = "ard", field = "population", problem = .fig_no_set_text(design),
                       stringsAsFactors = FALSE)
     return(if (is.null(pr)) row else rbind(pr[c("part", "field", "problem")], row))
   }
@@ -580,10 +580,16 @@ preview_figure <- function(study, output_id,
 }
 
 # its sentence (one for the check, the preview and step 1: a known cause is
-# said, not the R error it ends in)
-.fig_no_set_text <- function() {
-  sprintf(tr("This report has no analysis set. Choose one in step %s, 'This report's analysis set', then apply the template again."),
-          .step_no("data"))
+# said, not the R error it ends in): the step that has the set; "apply the
+# template again" only for a design that came from a template (it writes
+# the figure's analyses for the set it is applied with)
+.fig_no_set_text <- function(design = NULL) {
+  tpl <- design$template
+  from_tpl <- length(tpl) == 1L && !is.na(tpl) && nzchar(tpl)
+  sprintf(tr(if (from_tpl)
+    "This report has no analysis set. Choose one in step %s, 'This report's analysis set', then apply the template again."
+  else "This report has no analysis set. Choose one in step %s, 'This report's analysis set'."),
+  .step_no("data"))
 }
 
 # What an app's drawing of a figure is made from: its design, the
