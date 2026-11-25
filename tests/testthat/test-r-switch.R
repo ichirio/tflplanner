@@ -105,16 +105,21 @@ test_that("on -> off keeps the border: a call goes back to the field as the call
     h <- html(spec_card("c", fn, list(fn = fn, args = args)))
     expect_true(shown_value(h, paste0("c__", a, "__isr")), info = info)
     expect_identical(shown_value(h, paste0("c__", a, "__r")), .B_R, info = info)
-    # (moved back: the field's call, as the spec holds a call; the same
-    # value, so the stored form is kept)
+    # (moved back: the field's call, as the spec holds a call -- written
+    # so, the same R, so that the border opens with the switch off)
     t1 <- .turn(fn, a, args, on = FALSE)
     expect_s3_class(t1$read[[a]], "tfl_call")
     expect_identical(t1$read[[a]]$fn, "rtf_border", info = info)
     expect_identical(t1$read[[a]]$args, list(bottom = "single"), info = info)
-    expect_identical(t1$args, args, info = info)
+    expect_identical(t1$args[[a]], t1$read[[a]], info = info)
     expect_match(args_to_r(fn, t1$args), paste0(a, " = ", .B_R), fixed = TRUE, info = info)
-    # (not moved -- the field empty, the R in the box: kept)
+    h1 <- html(spec_card("c", fn, list(fn = fn, args = t1$args)))
+    expect_false(shown_value(h1, paste0("c__", a, "__isr")), info = info)
+    # (not turned: R, unchanged)
+    expect_identical(.turn(fn, a, args, on = NULL)$args, args, info = info)
+    # (not moved -- the field empty, the R in the box: kept, as the call)
     t2 <- .turn(fn, a, args, on = FALSE, moved = FALSE)
+    expect_s3_class(t2$args[[a]], "tfl_call")
     expect_match(args_to_r(fn, t2$args), paste0(a, " = ", .B_R), fixed = TRUE, info = info)
     # (R that is not a call of the field's, my_border: stays R, never lost)
     t3 <- .turn(fn, a, stats::setNames(list(tflspec::tfl_r("my_border")), a), on = FALSE, moved = FALSE)
@@ -220,6 +225,12 @@ test_that("a saved border survives the switch: turned and saved, the SPEC and th
   s <- reopen(s)
   code <- paste(program_code(s$planner, id), collapse = "\n")
   expect_match(code, 'border = rtf_border(bottom = "single")', fixed = TRUE)
+  # ... saved as the call, so it opens with the switch off
+  it <- item_of(s$planner, "plan_cell_style")
+  expect_s3_class(it$args$border, "tfl_call")
+  h <- html(spec_card("c", "plan_cell_style", it))
+  expect_false(shown_value(h, "c__border__isr"))
+  expect_identical(shown_value(h, "c__border"), .B_R)
 })
 
 # The page's half of the rule (.r_carry_js, window.rpCarry) and the switch's
@@ -266,6 +277,23 @@ test_that("in the browser: the switch moves the border across and back, and keep
   expect_identical(unlist(js("rpCarry.fromR('one', '\"none\"', []).value")), "none")
   expect_false(js("rpCarry.fromR('rtext', 'my_border', ['rtf_border']).ok"))
   expect_true(js("rpCarry.fromR('rtext', 'rtf_border(top = TRUE)', ['rtf_border']).ok"))
+  # (the field's one test, rpCarry.holds, says what R's read says: the
+  # call (.call_value() a tfl_call) or R)
+  rc <- .r_carry("call", "call<rtf_border>")
+  expect_identical(rc$inner, "rtf_border_line")
+  arr <- function(x) paste0("[", paste0("'", x, "'", collapse = ", "), "]")
+  cases <- c('rtf_border(bottom = "single")', "rtf_border()", "rtfreporter::rtf_border(top = TRUE)",
+             'rtf_border(bottom = rtf_border_line(style = "double", width = 30L))',
+             "rtf_border(bottom = -1, top = NA)", "my_border", "rtf_border(bottom = x)",
+             'rtf_border("single")', 'rtf_border(bottom = "a") + 1', "rtf_border(top = TRUE, top = FALSE)",
+             "rtf_border(bottom = rtf_border_line(style = rtf_border_line()))", "list(top = 1)",
+             "rtf_border(bottom == 1)", "")
+  for (x in cases) {
+    page_says <- js(sprintf("rpCarry.holds('rtext', %s, %s, %s)", jsonlite::toJSON(x, auto_unbox = TRUE),
+                            arr(rc$fns), arr(rc$inner)))
+    r_says <- nzchar(x) && inherits(.call_value(x, rc$fns), "tfl_call")
+    expect_identical(page_says, r_says, info = x)
+  }
   expect_identical(js("rpCarry.toR('check', true, false)"), "TRUE")
   # (a string the page writes is R's string)
   txt <- js("rpCarry.toR('text', 'A \"q\" \\u00e9 \\\\ b', false)")
@@ -297,4 +325,30 @@ test_that("in the browser: the switch moves the border across and back, and keep
   expect_true(s3$cls)
   expect_identical(s3$r, "my_border")
   expect_match(s3$note, "stays R", fixed = TRUE)
+  # the R box retyped to R the field holds: the note said again -- gone
+  js("$('#c__border__r').val('my_bord').trigger('input')")
+  expect_match(jsonlite::fromJSON(js(st))$note, "stays R", fixed = TRUE)
+  js("$('#c__border__r').val('rtf_border(top = \"single\")').trigger('input')")
+  s4 <- jsonlite::fromJSON(js(st))
+  expect_identical(s4$note, "")
+  js(turn)
+  s5 <- jsonlite::fromJSON(js(st))
+  expect_false(s5$on)
+  expect_identical(s5$f, 'rtf_border(top = "single")')
+  # R the field cannot hold typed in it: the same test moves it to the R
+  # box, the switch on, a note says so
+  js("$('#c__border').val('my_border').trigger('change')")
+  s6 <- jsonlite::fromJSON(js(st))
+  expect_true(s6$on)
+  expect_true(s6$cls)
+  expect_identical(s6$r, "my_border")
+  expect_identical(s6$f, "")
+  expect_match(s6$note, "moved to the R box", fixed = TRUE)
+  # ... and a call it holds stays in the field
+  js("$('#c__border__r').val('')")
+  js(turn)
+  js("$('#c__border').val('rtf_border(left = TRUE)').trigger('change')")
+  s7 <- jsonlite::fromJSON(js(st))
+  expect_false(s7$on)
+  expect_identical(s7$f, "rtf_border(left = TRUE)")
 })
