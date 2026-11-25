@@ -650,27 +650,34 @@ test_that("a KM figure's time unit: the template's choices, its help behind the 
     # the label is the meaning and the argument; the note is the tip's
     expect_match(h, "Time unit (time_unit)", fixed = TRUE)
     expect_false(grepl("Time shown in", h, fixed = TRUE))
-    expect_match(h, "is converted from each record", fixed = TRUE)
+    # (the help: the km template's own description of time_unit, M10)
+    expect_match(h, htmltools::htmlEscape(.tpl_arg_help("km_simple", "km", "time_unit")), fixed = TRUE)
     expect_match(h, "rp-tip", fixed = TRUE)
     # the choices and the default: tflspec's tfl_param("time_unit")
     for (u in km$choices) expect_match(h, sprintf('<option value="%s"', u), fixed = TRUE)
     expect_match(h, sprintf('<option value="%s" selected>', km$default), fixed = TRUE)
   })
-  expect_identical(
-    tr("The time axis is shown in this unit. The data's time is converted from each record's unit (AVALU); days when AVALU is missing.", "ja"),
-    "時間軸をこの単位で表示します。データの時間は各レコードの単位（AVALU）から換算します（AVALU が無ければ日数）。")
 })
 
-test_that("a template argument's help follows the template: the time unit of a swimmer plot is not the KM text", {
-  km <- .tpl_arg_help("km_simple", "km", "time_unit")
-  expect_match(km, "AVALU", fixed = TRUE)
-  sw <- .tpl_arg_help("swimmer_bar", "swimmer", "time_unit")
-  expect_false(grepl("AVALU", sw, fixed = TRUE))
-  expect_match(sw, "duration column is read as days", fixed = TRUE)
-  expect_match(.tpl_arg_help("individual_spider", "individual", "time_unit"), "ADY", fixed = TRUE)
+test_that("a template argument's help is the template's own description, else the argument's shared text (M10)", {
+  # km_simple: the km template's tfl_param("time_unit") doc, as a doc is shown
+  km <- .tpl_params("km")$time_unit
+  skip_if(is.null(km) || !nzchar(km$doc %||% ""), "this tflspec's km template has no time_unit doc")
+  expect_identical(.tpl_arg_help("km_simple", "km", "time_unit"), .tpl_doc_shown(km))
   ja <- function(x) tr(x, "ja")
-  expect_match(.tpl_arg_help("swimmer_bar", "swimmer", "time_unit", ja), "\u65e5\u6570\u3068\u3057\u3066\u8aad\u307f\u307e\u3059")
-  expect_false(grepl("AVALU", .tpl_arg_help("swimmer_bar", "swimmer", "time_unit", ja), fixed = TRUE))
+  expect_identical(.tpl_arg_help("km_simple", "km", "time_unit", ja, "ja"), .tpl_doc_shown(km, ja, "ja"))
+  # a template that does not describe it (swimmer, spider): the argument's
+  # shared text -- never another template's doc (KM's AVALU)
+  shared <- .tpl_arg_shared_help[["time_unit"]]
+  for (tk in list(c("swimmer_bar", "swimmer"), c("individual_spider", "individual"))) {
+    if (!is.null(.tpl_params(tk[1L])$time_unit) || !is.null(.tpl_params(tk[2L])$time_unit)) next
+    expect_identical(.tpl_arg_help(tk[1L], tk[2L], "time_unit"), shared)
+    expect_identical(.tpl_arg_help(tk[1L], tk[2L], "time_unit", ja, "ja"), ja(shared))
+  }
+  expect_false(grepl("AVALU", shared, fixed = TRUE))
+  expect_false(identical(ja(shared), shared))
+  # an argument with neither: no help
+  expect_identical(.tpl_arg_help("swimmer_bar", "swimmer", "no_such_argument"), "")
 })
 
 test_that("a template figure has no population flag: a forest's analysis data is the report's set", {
@@ -780,7 +787,7 @@ test_that("the template form's analysis-set line in Japanese, and the form's new
   # every text the change added: its Japanese, with as many %s
   s <- .strings()
   new <- c("Variable on the x axis", "Variable on the y axis", "Duration in days", "Visit shown",
-           "The time axis is shown in this unit. The data's time is converted from each record's unit (AVALU); days when AVALU is missing.",
+           "The unit the time axis is shown in; the data's days are converted to it.",
            "This report's analysis set: %s", "This report's analysis set: none (choose it in step %s)",
            "A figure's subjects are the report's analysis set (the data's `population:`). Change it in step %s, in This report's population.")
   expect_identical(setdiff(new, s$en), character())

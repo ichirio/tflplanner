@@ -340,7 +340,8 @@
       # help behind "?", not in the label, #862)
       if (kind %in% c("km", "swimmer") || tp == "individual_spider")
         shiny::selectInput("pd_tpl_unit",
-                           with_tip(lab("time_unit"), .tpl_arg_help(tp, kind, "time_unit", t)),
+                           with_tip(lab("time_unit"),
+                                    .tpl_arg_help(tp, kind, "time_unit", t, tflplanner_language())),
                            args$time_unit$choices %||% "months",
                            selected = args$time_unit$default),
       if (kind %in% c("mean", "box", "individual", "pk") && !whole)
