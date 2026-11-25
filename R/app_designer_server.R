@@ -456,14 +456,8 @@
       empty_design()
     } else {
       ds <- nz(input$pd_tpl_data)
-      # the template's group argument (its own tfl_param() named group, or
-      # by: .fig_tpl_own_arg()) as it is applied: the one chosen, else the
-      # default the template declares -- given to the template, so that the
-      # design and the fallback below read the same group
-      grp_in <- nz(input$pd_tpl_group)
-      kind <- templates$kind[templates$template == tp]
-      grp <- grp_in %||%
-        nz(as.character(.fig_tpl_own_arg(tp, kind, "group")$default %||% "")[1L])
+      # the group: only the one chosen (no default, PRINCIPLES 1.14)
+      grp <- nz(input$pd_tpl_group)
       # (no population flag: the figure's subjects are its report's analysis
       # set, the report's data `population:` -- canon 11-15)
       # the group from ADSL when the dataset has not got it
@@ -497,7 +491,7 @@
         dat <- study_data(c(ds, "ADSL"))
         x <- dat[[toupper(ds)]]
         given <- c(param = "param", group = "group")[
-          !vapply(list(args$param, grp_in), is.null, logical(1))]
+          !vapply(list(args$param, grp), is.null, logical(1))]
         if (!is.null(x)) d <- .trim_join(d, x)
         fit <- if (!is.null(x)) .template_fit(d, x, dat$ADSL, given, group = args$group) else character()
         if (length(fit)) {
