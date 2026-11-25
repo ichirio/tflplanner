@@ -628,6 +628,35 @@ test_that("a forest's blank comparison is left to the template: every other arm"
   })
 })
 
+test_that("a KM figure's time unit: the template's choices, its help behind the ? (#862)", {
+  skip_on_cran()
+  km <- .tpl_params("km")$time_unit
+  skip_if(is.null(km$choices), "this tflspec's km template has no time_unit choices")
+  local_home()
+  s <- create_study("G4")
+  dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(cards::ADSL, file.path(s$path, "data/adam/adsl.rds"))
+  saveRDS(cards::ADTTE, file.path(s$path, "data/adam/adtte.rds"))
+  s$planner <- add_output(s$planner, "F-KM", type = "figure")
+  save_study(s)
+  shiny::testServer(server_for("G4"), {
+    session$setInputs(target = "F-KM", nav = "make", step = "content", content_nav = "content")
+    session$setInputs(pd_from = "template", pd_tpl = "km_simple", pd_tpl_data = "ADTTE")
+    h <- output$pd_tpl_more$html
+    # the label is the meaning and the argument; the note is the tip's
+    expect_match(h, "Time unit (time_unit)", fixed = TRUE)
+    expect_false(grepl("Time shown in", h, fixed = TRUE))
+    expect_match(h, "is converted from each record", fixed = TRUE)
+    expect_match(h, "rp-tip", fixed = TRUE)
+    # the choices and the default: tflspec's tfl_param("time_unit")
+    for (u in km$choices) expect_match(h, sprintf('<option value="%s"', u), fixed = TRUE)
+    expect_match(h, sprintf('<option value="%s" selected>', km$default), fixed = TRUE)
+  })
+  expect_identical(
+    tr("The time axis is shown in this unit. The data's time is converted from each record's unit (AVALU); days when AVALU is missing.", "ja"),
+    "時間軸をこの単位で表示します。データの時間は各レコードの単位（AVALU）から換算します（AVALU が無ければ日数）。")
+})
+
 test_that("a template figure has no population flag: a forest's analysis data is the report's set", {
   skip_on_cran()
   local_home()

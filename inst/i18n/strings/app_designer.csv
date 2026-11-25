@@ -113,3 +113,4 @@
 "The statistics the figure makes","Figure が作る統計量"
 "The data steps that make an object: a KM fit, summary statistics, a function's result, the ARD's numbers. They read the records of step %s; the figure (step %s) draws what they make.","オブジェクトを作るデータの手順：KM の fit、要約統計量、関数の結果、ARD の数値など。手順 %s のレコードを読み、手順 %s の Figure がこれらが作ったものを描きます。"
 "every other arm","他のすべての投与群"
+"The time axis is shown in this unit. The data's time is converted from each record's unit (AVALU); days when AVALU is missing.","時間軸をこの単位で表示します。データの時間は各レコードの単位（AVALU）から換算します（AVALU が無ければ日数）。"

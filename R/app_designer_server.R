@@ -325,9 +325,14 @@
       if (kind != "swimmer") sz("pd_tpl_param", lab("param"), prm),
       if (!tp %in% c("km_single_arm", "individual_spider") && !kind %in% c("waterfall", "swimmer"))
         sz("pd_tpl_group", lab("group"), .group_choices(cols)),
+      # (its choices and default: the template's tfl_param("time_unit"),
+      # tfl_fig_template()'s own default when tflspec defines none; the
+      # help behind "?", not in the label, #862)
       if (kind %in% c("km", "swimmer") || tp == "individual_spider")
-        shiny::selectInput("pd_tpl_unit", lab("time_unit"),
-                           c("months", "weeks", "days", "years")),
+        shiny::selectInput("pd_tpl_unit",
+                           with_tip(lab("time_unit"), t("The time axis is shown in this unit. The data's time is converted from each record's unit (AVALU); days when AVALU is missing.")),
+                           args$time_unit$choices %||% "months",
+                           selected = args$time_unit$default),
       if (kind %in% c("mean", "box", "individual", "pk") && !whole)
         sz("pd_tpl_value", lab("value"), intersect(c("AVAL", "CHG", "PCHG"), vars)),
       if (kind == "scatter") sz("pd_tpl_x", lab("x"), vars),
