@@ -450,6 +450,7 @@ preview_figure <- function(study, output_id,
   # its ARD (#293): the rows of its source, in `ard`; their problems
   reads_ard <- isTRUE(attr(tflspec::tfl_fig_design_code(saved, output_id, setup = TRUE,
                                                          save = FALSE), "ard"))
+  ap <- NULL
   ard_given <- ard
   ard <- if (reads_ard) {
     if (!is.null(ard_given)) ard_given$rows else .fig_ard_rows(study, output_id)
@@ -518,7 +519,30 @@ preview_figure <- function(study, output_id,
   }
   list(png = png, size = size, problems = problems, advice = advice, warnings = warns,
        error = err, code = code,
+       # (the ARD's own problems and the rows they were read from: the app
+       # reads them again from the figure's state now, .fig_problems_now())
+       ard_problems = ap, ard_rows = ard,
        objects = .fig_objects_glance(e, .fig_design_objects(saved)))
+}
+
+# A drawing's problems with the figure's ARD ones read from its state now.
+# A drawing is kept until the design changes, but the figure's ARD source
+# (its own analyses chosen, a table's ARD) and its analyses are the study's,
+# not the design's: a drawing made before them says "the figure has none"
+# after the figure has its own.  `r` is the drawing (.preview_figure()),
+# `study` the study with the planner now.
+.fig_problems_now <- function(r, study, output_id, design, ard = r$ard_rows) {
+  pr <- r$problems
+  if (is.null(design) || !.fig_reads_ard(design, output_id)) return(pr)
+  now <- tryCatch(.fig_ard_problems(study, output_id, design, ard = ard),
+                  error = function(e) NULL)
+  if (is.null(now)) return(pr)
+  if (!is.null(pr) && !is.null(r$ard_problems) && nrow(r$ard_problems)) {
+    pr <- pr[!pr$problem %in% r$ard_problems$problem, , drop = FALSE]
+  }
+  if (!nrow(now)) return(pr)
+  now <- now[c("part", "field", "problem")]
+  if (is.null(pr)) now else rbind(pr, now)
 }
 
 # What an app's drawing of a figure is made from: its design, the
@@ -735,7 +759,15 @@ remove_fig_preset <- function(name, home = tflplanner_home()) {
   # (no population flag is fitted: a template has no flag step now -- the
   # figure's analysis set is its report's, read from the population's dataset)
   if (!"group" %in% given) {
-    g <- d$plot$colour_by %||% unlist(lapply(d$data, `[[`, "by"))[1L]
+    # the template's group argument: the colour variable, else the variable
+    # an ARD statistic is for (forest_hr); the `by` of an ard_stats step is
+    # its subgroups, not the group
+    nz1 <- function(v) if (length(v) && !is.na(v[[1L]]) && nzchar(v[[1L]])) v[[1L]]
+    g <- d$plot$colour_by %||%
+      nz1(unlist(lapply(Filter(function(z) identical(z$step, "ard_stats"), d$data),
+                        `[[`, "variable"))) %||%
+      unlist(lapply(Filter(function(z) !identical(z$step, "ard_stats"), d$data),
+                    `[[`, "by"))[1L]
     v <- fit_var(g, c("TRT01P", "TRT01A", "TRTP", "TRTA", "ARM", "ACTARM"))
     if (!is.na(v)) {
       out[["group"]] <- v

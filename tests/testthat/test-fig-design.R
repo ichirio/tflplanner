@@ -223,6 +223,22 @@ test_that("a template's defaults the data has not got are replaced by the data's
   expect_length(j0, 0L)
 })
 
+test_that("the group fallback reads the template's group, not its subgroup variables (#872)", {
+  d <- tflspec::tfl_fig_template("forest_hr", data = "ADTTE")
+  # the dataset has OS and the group in ADSL; the subgroups (AGEGR1, SEX) are
+  # in neither the dataset: they are not the group
+  x <- data.frame(USUBJID = "A", PARAMCD = "OS", AVAL = 1, CNSR = 0)
+  adsl <- data.frame(USUBJID = "A", TRT01P = "P", AGEGR1 = "<65", SEX = "F")
+  fit <- .template_fit(d, x, adsl)
+  expect_false("group" %in% names(fit))
+  expect_length(.template_fit_notes(fit, "ADTTE"), 0L)
+  # the group is really missing: the note names the group's own default
+  adsl2 <- data.frame(USUBJID = "A", TRT01A = "P", AGEGR1 = "<65", SEX = "F")
+  fit2 <- .template_fit(d, x, adsl2)
+  expect_identical(fit2[["group"]], "TRT01A")
+  expect_identical(attr(fit2, "was")[["group"]], "TRT01P")
+})
+
 test_that("the designer shows a piece's own lines of the design's code", {
   d <- tflspec::tfl_fig_template("km_simple", data = "ADTTE", param = "TTDE",
                                  group = "TRT01A")

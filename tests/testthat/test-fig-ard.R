@@ -95,6 +95,23 @@ test_that("the checks: no source, not made yet, then each piece against the rows
   pr <- .fig_ard_problems(s, "F-14-2-3")
   expect_identical(pr$severity, "error")
   expect_match(pr$problem, "no TRT01A = Nobody")
+  # a drawing made before the figure had its own ARD: its checks are read
+  # from the figure now (#873)
+  r0 <- list(problems = .fig_ard_problems(s0, "F-14-2-3")[c("part", "field", "problem")],
+             ard_problems = .fig_ard_problems(s0, "F-14-2-3"), ard_rows = NULL)
+  expect_match(r0$problems$problem, "has none: choose it in step 2")
+  d3 <- fig_design(s$planner, "F-14-2-3")
+  s3 <- s
+  s3$planner <- set_fig_ard_source(s$planner, "F-14-2-3", "own")
+  now <- .fig_problems_now(r0, s3, "F-14-2-3", d3, ard = NULL)
+  expect_false(any(grepl("has none", now$problem)))
+  # (its own ARD is read now: what that has to say, not "none")
+  expect_match(paste(now$problem, collapse = " "), "has no analysis|not made yet")
+  # the drawing's own problems stay
+  r1 <- r0
+  r1$problems <- rbind(data.frame(part = "layers[1] point", field = "x", problem = "no such column"),
+                       r0$problems)
+  expect_true("no such column" %in% .fig_problems_now(r1, s3, "F-14-2-3", d3)$problem)
   # the study's spec check names them too
   ck <- .check_fig_ards(s, "F-14-2-3")
   expect_match(ck$message, "F-14-2-3: no TRT01A = Nobody")

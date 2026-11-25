@@ -578,13 +578,25 @@
     sel(list(sec = "plot", i = 1L))
     redraw_form()
   })
+  # the drawing's problems, the figure's ARD ones as the figure is now
+  # (its ARD source and analyses change without the design: the drawing
+  # is not drawn again for them)
+  checks_now <- shiny::reactive({
+    r <- pv()
+    if (is.null(r)) return(NULL)
+    id <- current()
+    if (is.null(id) || !identical(r$id, id) || is.null(rv$study)) return(r$problems)
+    s <- rv$study
+    s$planner <- rv$p
+    .fig_problems_now(r, s, id, design())
+  })
   overlay_open <- shiny::reactiveVal(TRUE)
   shiny::observeEvent(input$pd_overlay_toggle, overlay_open(!overlay_open()))
   output$pd_overlay <- shiny::renderUI({
     r <- pv()
     shiny::req(r, r$png)
     a <- r$advice
-    pr <- r$problems
+    pr <- checks_now()
     n_bad <- if (is.null(pr)) 0L else nrow(pr)
     n_adv <- if (is.null(a)) 0L else nrow(a)
     if (!n_bad && !n_adv) return(NULL)
@@ -1316,7 +1328,7 @@
   output$pd_checks <- shiny::renderUI({
     r <- pv()
     if (is.null(r)) return(shiny::p(class = "text-muted small", t("Not drawn yet.")))
-    pr <- r$problems
+    pr <- checks_now()
     items <- c(
       if (!is.null(pr) && nrow(pr)) lapply(seq_len(nrow(pr)), function(i)
         shiny::tags$li(class = "text-danger",
