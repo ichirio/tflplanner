@@ -33,3 +33,12 @@ test_that("the file inputs and the grid grip speak the app's language", {
   expect_false(grepl("drag to resize", html, fixed = TRUE))
   expect_match(as.character(app_ui("en")), "drag to resize", fixed = TRUE)
 })
+
+test_that("a figure's layer is one word in Japanese (#870)", {
+  s <- .strings()
+  ja <- s$ja[grepl("designer's layer|code layer", s$en)]
+  expect_gt(length(ja), 1L)
+  # the designer says レイヤー, never 層
+  expect_true(all(grepl("レイヤー", ja, fixed = TRUE)))
+  expect_false(any(grepl("層", ja, fixed = TRUE)))
+})

@@ -99,7 +99,7 @@
 "This figure reads %s's ARD: its own analyses are used once it reads its own.","この Figure は %s の ARD を読んでいます。Figure 自身の解析は、Figure が自身の ARD を読むと使われます。"
 "Read its own ARD","自身の ARD を読む"
 "Its row of the ARD definition (the figure's ARD program):","ARD 定義の行（Figure の ARD プログラムが作ります）："
-"A new figure: take the first step -- from a template or empty; both become the designer's layers. To write the ggplot code yourself instead: R program at the top of this step.","新しい Figure: 最初の一歩を選んでください（テンプレートか空から。どちらもデザイナーの層になります）。ggplot のコードを自分で書くときは、この手順の上の R プログラムで。"
+"A new figure: take the first step -- from a template or empty; both become the designer's layers. To write the ggplot code yourself instead: R program at the top of this step.","新しい Figure: 最初の一歩を選んでください（テンプレートか空から。どちらもデザイナーのレイヤーになります）。ggplot のコードを自分で書くときは、この手順の上の R プログラムで。"
 "On the page %s x %s in (step %s), %s dpi (shown at screen resolution)","ページ上で %s x %s インチ（手順 %s）、%s dpi（画面の解像度で表示）"
 "How to join (how)","結合の仕方 (how)"
 "Left join (left)","左結合 (left)"
