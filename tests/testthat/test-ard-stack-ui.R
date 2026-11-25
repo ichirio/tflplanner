@@ -106,6 +106,7 @@ test_that("the ARD tab: the outline, a stack's form, one inside it, grouping and
     session$setInputs(ard_stack_delete = 1)
     session$setInputs(ard_stack_delete_how = "ungroup", ard_stack_keep_n = FALSE,
                       ard_stack_delete_ok = 1)
-    expect_identical(ard_rows(rv$p, "analyses", "T2")$analysis_id, c("CONT", "CAT"))
+    expect_identical(ard_rows(rv$p, "analyses", "T2")$analysis_id,
+                     c("BIGN", "CONT", "CAT"))
   })
 })
