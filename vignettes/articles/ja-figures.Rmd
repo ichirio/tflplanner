@@ -37,7 +37,7 @@ tflplanner の図の作り方は 3 つあります。この記事はこの順に
 
 | パート | 何を書くか | 部品の例 |
 |---|---|---|
-| `data`（データ加工） | ADaM から図に使う行と列を作り、そこから計算する（上から順に） | データセットを読む、PARAMCD を選ぶ、解析対象集団で絞る、ADSL を結合する、時間の単位を変える、Kaplan-Meier 推定、群・来院ごとの平均と SE |
+| `data`（データ加工） | ADaM から図に使う行と列を作り、そこから計算する（上から順に） | データセットを読む、PARAMCD を選ぶ、ADSL を結合する、時間の単位を変える、Kaplan-Meier 推定、群・来院ごとの平均と SE |
 | `plot`（図全体の設定） | 図全体に効く設定 | 軸ラベル、軸の範囲、色の付け方、凡例の位置、図の大きさ |
 | `layers`（レイヤー） | 描くものを順に | KM 曲線、打ち切りマーク、線、点、エラーバー、水平線、リスク集合数 |
 
@@ -159,16 +159,17 @@ run_app("SAMPLE-01")             # サンプル試験を開いてアプリを起
 1. 2.1 節で足した **F-14-2-4** の **3 コンテンツ** で、**テンプレートから始める** の **テンプレート** に「KM 曲線 · ADTTE」（`km_simple`）を選ぶ。
 2. **データセット** に `ADTTE` を選ぶと、そのデータの変数から選べる項目が出る。
    - **パラメータ（PARAMCD）**：`TTSKIN`（初めての治験薬投与後の皮膚・皮下組織障害までの日数）
-   - **解析対象集団フラグ**：`SAFFL`
    - **群（投与群）**：`TRT01A`
    - **表示する時間の単位**：`days`（ADTTE の `AVAL` は日数）
+
+   解析対象集団は帳票の解析対象集団（手順 1 で選ぶ）から入るので、図のフォームでは選ばない。
 3. **テンプレートを適用** を押す。データ加工・図全体の設定・レイヤーが一度に埋まり、プレビューに図が描かれる
    （最初の描画はパッケージの読み込みで数秒かかる）。
 
 ![最初の一歩：km_simple のテンプレートに ADTTE の値を選んだところ](figures/fig-start.png)
 
 左の **デザイン** には、テンプレートが入れた部品が並びます：
-データ加工に「データセットを読む（ADTTE）→ パラメータで絞る（TTSKIN）→ 解析対象集団で絞る（SAFFL）→ 時間の単位を変える（days）→ Kaplan-Meier 推定」、
+データ加工に「データセットを読む（ADTTE）→ パラメータで絞る（TTSKIN）→ 時間の単位を変える（days）→ Kaplan-Meier 推定」、
 レイヤーに「KM 曲線 → 打ち切りマーク」。
 
 R では `tfl_fig_template()` で、同じ選択をそのまま引数にします。
@@ -178,7 +179,6 @@ km <- tfl_fig_template(
   "km_simple",
   data  = "ADTTE",     # データセット
   param = "TTSKIN",    # パラメータ（PARAMCD）
-  pop   = "SAFFL",     # 解析対象集団フラグ
   group = "TRT01A",    # 群
   time_unit = "days"   # 時間の単位
 )
@@ -186,7 +186,7 @@ km
 ```
 
 表示されているのがデザイン（YAML）です。画面の **Spec（YAML）** と同じ内容です。
-`data` の部品が「ADTTE を読む → TTSKIN を選ぶ → SAFFL = "Y" で絞る → 時間の単位 → KM 推定（`survfit`、`fit` を作る）」、
+`data` の部品が「ADTTE を読む → TTSKIN を選ぶ → 時間の単位 → KM 推定（`survfit`、`fit` を作る）」、
 `layers` が「KM 曲線 → 打ち切りマーク」です。
 
 ### 3.2 デザイナーでレイヤーを足す・設定を直す
@@ -321,16 +321,15 @@ parts[parts$piece == "summary", c("field", "kind", "label", "default")]
 
 ### 4.2 データ加工
 
-ADVS を読み、収縮期血圧（`SYSBP`）を選び、群と解析対象集団フラグを ADSL から結合して、
-安全性解析対象集団に絞ります。来院（`AVISIT`）は文字なので、`AVISITN` の順に並ぶよう水準を付けます。
+ADVS を読み、収縮期血圧（`SYSBP`）を選び、群（`TRT01A`）を ADSL から結合します。
+図の対象者は、帳票に設定した安全性解析対象集団なので、デザインはフラグで絞りません。来院（`AVISIT`）は文字なので、`AVISITN` の順に並ぶよう水準を付けます。
 
 ```{r}
 mean_fig <- tfl_fig_design(
   data = list(
     list(step = "read",   dataset = "ADVS"),
     list(step = "param",  value = "SYSBP"),
-    list(step = "join",   dataset = "ADSL", vars = "TRT01A, SAFFL"),
-    list(step = "flag",   variable = "SAFFL"),
+    list(step = "join",   dataset = "ADSL", vars = "TRT01A"),
     list(step = "filter", expr = "!is.na(CHG) & !is.na(AVISITN)"),
     list(step = "levels", variable = "AVISIT", order_by = "AVISITN")
   )
