@@ -610,8 +610,8 @@ test_that("a forest's blank comparison is left to the template: every other arm"
   shiny::testServer(server_for("G2"), {
     session$setInputs(target = "F-HR", nav = "make", step = "content", content_nav = "content")
     session$setInputs(pd_from = "template", pd_tpl = "forest_hr", pd_tpl_data = "ADTTE",
-                      pd_tpl_param = cards::ADTTE$PARAMCD[1L], pd_tpl_ref = "Placebo",
-                      pd_tpl_comparison = "")
+                      pd_tpl_param = cards::ADTTE$PARAMCD[1L], pd_tpl_group = "TRT01P",
+                      pd_tpl_ref = "Placebo", pd_tpl_comparison = "")
     # the comparison box says what blank means
     expect_match(output$pd_tpl_more$html, "every other arm", fixed = TRUE)
     # each field "meaning (argument)", as the new report's dialog heads it (#861)
@@ -629,6 +629,54 @@ test_that("a forest's blank comparison is left to the template: every other arm"
     # one arm chosen: the figure is narrowed to it
     session$setInputs(pd_tpl_comparison = "Xanomeline High Dose")
     expect_match(code(), "`comparison` (Xanomeline High Dose)", fixed = TRUE)
+  })
+})
+
+test_that("a figure template's group has no default: the study's treatment grey, not written; empty, one item to check", {
+  # (PRINCIPLES 1.14: group / by have no default; 1.15: the suggestion is
+  # the study's settings.treatment; 1.16: grey in the field, written only
+  # when picked)
+  skip_on_cran()
+  skip_if_not(all(c("forest_hr", "km") %in% .fig_tpl_registered()), "this tflspec has no forest_hr or km template")
+  local_home()
+  s <- create_study("G6")
+  dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(cards::ADSL, file.path(s$path, "data/adam/adsl.rds"))
+  saveRDS(cards::ADTTE, file.path(s$path, "data/adam/adtte.rds"))
+  s$planner <- add_output(s$planner, "F-HR", type = "figure")
+  s$planner <- add_output(s$planner, "F-KM", type = "figure")
+  save_study(s)
+  shiny::testServer(server_for("G6"), {
+    rv <- session$userData$rv
+    p <- rv$p
+    p$spec$study$study$settings$treatment <- "TRT01A"
+    rv$p <- p
+    n <- 0L
+    for (case in list(c("F-HR", "forest_hr", "Group (group)"),
+                      c("F-KM", "km_simple", "Variable that splits the curves (by)"))) {
+      session$setInputs(target = case[1L], nav = "make", step = "content", content_nav = "content")
+      session$setInputs(pd_from = "template", pd_tpl = case[2L], pd_tpl_data = "ADTTE",
+                        pd_tpl_param = cards::ADTTE$PARAMCD[1L], pd_tpl_group = "")
+      h <- output$pd_tpl_more$html
+      # the study's treatment, grey in the group's field: not its value
+      expect_match(h, "Suggested: TRT01A", fixed = TRUE, info = case[2L])
+      expect_false(grepl('<option value="TRT01A" selected', h, fixed = TRUE), info = case[2L])
+      # applied with the group empty: nothing written, one item to check
+      # naming the argument by its heading
+      n <- n + 1L
+      session$setInputs(pd_start = n)
+      expect_null(fig_design(rv$p, case[1L]))
+      for (o in list(output$pd_overlay$html, output$pd_checks$html)) {
+        expect_match(o, "to check", fixed = TRUE, info = case[2L])
+        expect_match(o, case[3L], fixed = TRUE, info = case[2L])
+      }
+      # a group chosen: written
+      n <- n + 1L
+      session$setInputs(pd_tpl_group = "TRT01A", pd_start = n)
+      d <- fig_design(rv$p, case[1L])
+      expect_false(is.null(d), info = case[2L])
+      expect_true("TRT01A" %in% unlist(d), info = case[2L])
+    }
   })
 })
 
@@ -694,7 +742,7 @@ test_that("a template figure has no population flag: a forest's analysis data is
   shiny::testServer(server_for("G3"), {
     session$setInputs(target = "F-HR", nav = "make", step = "content", content_nav = "content")
     session$setInputs(pd_from = "template", pd_tpl = "forest_hr", pd_tpl_data = "ADTTE",
-                      pd_tpl_param = cards::ADTTE$PARAMCD[1L])
+                      pd_tpl_param = cards::ADTTE$PARAMCD[1L], pd_tpl_group = "TRT01P")
     # (the figure's subjects are its report's analysis set: no flag to choose)
     expect_false(grepl("pd_tpl_pop", output$pd_tpl_more$html, fixed = TRUE))
     # the line under the Dataset says so: none yet, in the warning colour,
