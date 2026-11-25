@@ -44,7 +44,7 @@ test_that("a dataset column named like a program constant is an error of the rev
   local_home()
   s <- suppressMessages(create_study("S1", planner = add_output(new_planner(), "T1")))
   dir.create(file.path(s$path, "data", "adam"), recursive = TRUE, showWarnings = FALSE)
-  # the clash the programs' bare name would meet: AVAL / days_per_month
+  # the clash the programs' bare name would meet: TRTDURD / days_per_month
   saveRDS(data.frame(USUBJID = 1:2, AVAL = c(30, 60), days_per_month = 1),
           file.path(s$path, "data", "adam", "adtte.rds"))
   saveRDS(data.frame(USUBJID = 1:2, SAFFL = "Y"), file.path(s$path, "data", "adam", "adsl.rds"))

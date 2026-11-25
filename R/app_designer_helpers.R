@@ -90,10 +90,8 @@
     if (is.null(other)) character() else .lines_added(code, other)
   }
   while (length(out) && !nzchar(trimws(out[length(out)]))) out <- out[-length(out)]
-  # a time already in days: nothing to change (ADTTE's AVAL is in days)
-  if (!length(out) && identical(p$step, "time_unit") && identical(p$unit %||% "days", "days")) {
-    return(t_static("(no line: the time is in days already; months, weeks or years divide it)"))
-  }
+  # (a time-unit step on AVAL writes its one line `tte_time("<unit>")`, days
+  # too, so `out` is not empty for it)
   if (!length(out)) return(t_static("(nothing yet: this piece writes no line on its own)"))
   paste(out, collapse = "\n")
 }
