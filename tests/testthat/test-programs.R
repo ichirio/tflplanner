@@ -254,3 +254,25 @@ test_that("a report's ARD read by its own name (data.object), ard by default", {
   p$spec$outputs$PK$data$object <- "1x"
   expect_identical(.ard_object(p, "PK"), "ard")
 })
+
+test_that("tflspec's content calls get the study for a figure (its set's subjects), none for a table or a listing (canon 11-15)", {
+  st <- structure(list(dir = "study"), class = "tfl_study_spec")
+  expect_identical(.content_study(list(id = "F1", kind = "figure"), st), st)
+  expect_null(.content_study(list(id = "T1", kind = "table"), st))
+  expect_null(.content_study(list(id = "L1", kind = "listing"), st))
+  expect_null(.content_study(NULL, st))
+  # the content pages of the builder's preview: the same rule (a table's
+  # call given none)
+  p <- suppressMessages(sample_study_copy())$planner
+  seen <- new.env()
+  local_mocked_bindings(
+    tfl_content_run = function(output, data, study = NULL) {
+      seen$kind <- output$kind
+      seen$study <- study
+      stop("watched")
+    },
+    .package = "tflspec")
+  expect_error(.preview_content_pages(p, "T-14-1-1", list()), "watched", fixed = TRUE)
+  expect_identical(seen$kind, "table")
+  expect_null(seen$study)
+})

@@ -428,6 +428,96 @@ test_that("a template figure's preview draws the picture, says when the definiti
   })
 })
 
+test_that("a template figure with a set: its preview and its expanded code are the set's subjects; a set tflspec cannot make them for is the pane's message, no R error (canon 11-15)", {
+  skip_if_not("km_survival" %in% tflspec::tfl_templates()$name)
+  skip_if_not("study" %in% names(formals(tflspec::tfl_content_run)),
+              "this tflspec's tfl_content_run() takes no study (tflspec A2-2)")
+  id <- sample_for_add("FSJ")
+  shown <- watch_add()
+  # (tflspec's own call, watched: the study it is given, and a set it
+  # cannot make the subjects of, as it stops then -- class tfl_fig_subjects)
+  run <- tflspec::tfl_content_run
+  seen <- new.env()
+  local_mocked_bindings(
+    tfl_content_run = function(output, data, study = NULL) {
+      seen$output <- output
+      seen$study <- study
+      if (isTRUE(seen$refuse)) {
+        stop(structure(class = c("tfl_fig_subjects", "error", "condition"),
+                       list(message = paste0(output$id, ": the report's analysis set: 'NOSUCH' is ",
+                                             "not an analysis set; the figure would draw every subject."),
+                            call = NULL)))
+      }
+      run(output, data, study = study)
+    },
+    .package = "tflspec")
+  shiny::testServer(server_for(id), {
+    rv <- session$userData$rv
+    session$setInputs(add = 1, modal_type = "figure", modal_how = "template", modal_tpl_figure = "km_survival",
+                      modal_id = "SJ-1", modal_desc = "", modal_section = "",
+                      mtpl_km_survival___data_ds = "ADTTE", mtpl_km_survival___data_param = "TTSKIN",
+                      mtpl_km_survival__population = "SAF", mtpl_km_survival__by = "TRT01A")
+    suppressWarnings(suppressMessages(session$setInputs(add_ok = 1)))
+    rid <- "F-SJ-1"
+    expect_identical(rv$p$spec$outputs[[rid]]$data$population, "SAF")
+    session$setInputs(target = rid, nav = "make", step = "content", content_nav = "content")
+    # the preview: tflspec is given the study the program writer has, so the
+    # figure is drawn from the set's subjects (its code makes them first)
+    suppressWarnings(suppressMessages(session$setInputs(tpl_fig_preview = 1)))
+    expect_match(add_html(output$tpl_fig_out$html), "data:image/png;base64,", fixed = TRUE)
+    expect_s3_class(seen$study, "tfl_study_spec")
+    expect_identical(seen$study$dir, rv$p$spec$study$dir)
+    code <- tflspec::tfl_content_code(seen$output, study = seen$study)
+    expect_true(any(grepl("# the report's subjects: its analysis set", code, fixed = TRUE)))
+    expect_true(any(grepl("SAFFL", code, fixed = TRUE)))
+    expect_false(any(grepl("^stop\\(", code)))
+    # (no study: what the preview would be without it -- a stop() line)
+    expect_true(any(grepl("^stop\\(", tflspec::tfl_content_code(seen$output))))
+    # the content's code expanded (Report code): the same subjects first
+    expect_match(add_text(output$tpl_code_expanded_fig$html),
+                 "the report(&#39;|')s subjects: its analysis set")
+    # a set tflspec cannot make the subjects of: said in the pane, no picture
+    # and no R error
+    seen$refuse <- TRUE
+    suppressWarnings(suppressMessages(session$setInputs(tpl_fig_preview = 2)))
+    pane <- add_text(output$tpl_fig_out$html)
+    expect_match(pane, "The figure could not be drawn:", fixed = TRUE)
+    expect_match(pane, "the figure would draw every subject", fixed = TRUE)
+    expect_false(grepl("data:image/png;base64,", add_html(output$tpl_fig_out$html), fixed = TRUE))
+  })
+})
+
+test_that("a template figure with no group (it has no default, PRINCIPLES 1.14): its preview waits for it, its code pane says why, no R error", {
+  skip_if_not("mean_se" %in% tflspec::tfl_templates()$name)
+  prm <- .tpl_params("mean_se")
+  skip_if(!isTRUE(prm$group$required), "this tflspec's mean_se has a group default (before A2-2)")
+  id <- sample_for_add("FNG")
+  shown <- watch_add()
+  shiny::testServer(server_for(id), {
+    rv <- session$userData$rv
+    # (the dialog's Create waits for it: not made without one)
+    session$setInputs(add = 1, modal_type = "figure", modal_how = "template", modal_tpl_figure = "mean_se",
+                      modal_id = "NG-1", modal_desc = "", modal_section = "",
+                      mtpl_mean_se__param = "SYSBP", mtpl_mean_se__population = "SAF")
+    suppressWarnings(suppressMessages(session$setInputs(add_ok = 1)))
+    expect_null(rv$p$spec$outputs[["F-NG-1"]])
+    expect_true(any(grepl("Fill in the required argument", add_notes(shown), fixed = TRUE)))
+    session$setInputs(mtpl_mean_se__group = "TRT01A")
+    suppressWarnings(suppressMessages(session$setInputs(add_ok = 2)))
+    rid <- "F-NG-1"
+    expect_identical(as.character(unlist(add_args(rv$p, rid)$group)), "TRT01A")
+    # emptied on its card: the preview waits, saying which
+    session$setInputs(target = rid, nav = "make", step = "content", content_nav = "content")
+    suppressWarnings(session$setInputs(tpl_mean_se__group = ""))
+    expect_null(add_args(rv$p, rid)$group)
+    suppressWarnings(session$setInputs(tpl_fig_preview = 1))
+    expect_match(add_text(output$tpl_fig_out$html),
+                 "Required arguments are empty: group. The preview waits for them.", fixed = TRUE)
+    # (Report code: tflspec's message, not an R error)
+    expect_match(add_text(output$tpl_code_expanded_fig$html), "group", fixed = TRUE)
+  })
+})
+
 # ---- demog: the dialog's untouched fields, the switch, the population ---------------------
 
 # What a field of the dialog sends untouched, as the browser has it: the
