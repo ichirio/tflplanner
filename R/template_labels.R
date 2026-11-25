@@ -44,7 +44,8 @@
   labels = "Variable headings",
   order = "Variable order",
   cells = "Row statistics",
-  group = "Treatment group compared",
+  # (the same word for the same meaning in every template: the group, #868)
+  group = "Group",
   subgroups = "Subgroup variables",
   comparison = "Group compared with reference",
   time = "Time variable",
@@ -187,7 +188,7 @@
   border_group = "Rule under each block",
   style = "Style set",
   conditions = "Analysis rows",
-  subgroup_vars = "Variables the subgroup rows read",
+  subgroup_vars = "Subgroup variables",
   responder = "Response category",
   overall_label = "Any-record row label",
   days_per_month = "Days per month",
@@ -211,5 +212,6 @@
     "Analysis ID of each parameter",
   "The subgroup rows, one a subgroup level, after the ALL row." = "Subgroup rows",
   "The group variable; one curve a group." = "Variable that splits the curves",
+  "The treatment variable compared." = "Group",
   "The breaks of the time axis (and the times of the number at risk); none for ggplot2's." = "Time axis ticks"
 )

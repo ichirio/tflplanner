@@ -78,8 +78,9 @@ test_that("a KM type's analysis set is asked as the report's set, not an argumen
   prm <- .tpl_params("km_survival")
   expect_true(.tpl_asks_report_pop(prm))
   expect_false(.tpl_pop_of_report(prm))
-  # (the layout `km` takes it as a shown argument: not asked as the report's)
-  expect_false(.tpl_asks_report_pop(.tpl_params("km")))
+  # (every template has the one control; the layout `km` takes the set as a
+  # shown argument too: the control also writes it, as its field did)
+  expect_true(.tpl_asks_report_pop(.tpl_params("km")))
   a <- .tpl_dialog_args(prm, list(population = "SAF", by = "TRT01A"))
   expect_null(attr(a, "missing"))
   expect_identical(attr(a, "population"), "SAF")
@@ -89,11 +90,16 @@ test_that("a KM type's analysis set is asked as the report's set, not an argumen
   expect_null(attr(b, "population"))
 })
 
-test_that("a report's own data stage asks the report's set only when its `population` is hidden: a shown one is an argument, its own field (#868)", {
+test_that("the report's set control is for every template; a shown `population` is no field of its own, it is written as the argument too (#868)", {
   own <- list(data = list(name = "data", hidden = TRUE, step = "data"))
-  expect_true(.tpl_asks_report_pop(c(own, list(population = list(name = "population", hidden = TRUE, step = "data")))))
-  expect_false(.tpl_asks_report_pop(c(own, list(population = list(name = "population", step = "data")))))
-  expect_false(.tpl_asks_report_pop(own))
+  hid <- c(own, list(population = list(name = "population", hidden = TRUE, step = "data")))
+  shn <- c(own, list(population = list(name = "population", step = "data")))
+  for (prm in list(hid, shn, own)) expect_true(.tpl_asks_report_pop(prm))
+  expect_false(.tpl_pop_is_arg(hid))
+  expect_true(.tpl_pop_is_arg(shn))
+  expect_false(.tpl_pop_is_arg(own))
+  expect_false("population" %in% names(.tpl_dialog_shown(shn)))
+  expect_true("data" %in% names(.tpl_dialog_shown(c(shn, list(data = list(name = "data"))))))
 })
 
 test_that("a report's analysis set is read and set where its file has it: the data map's, else common: (#868)", {
