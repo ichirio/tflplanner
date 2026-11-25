@@ -9,7 +9,7 @@ content: !r |-
   arms <- c("Drug X", "Control")
   km_df <- adtte[adtte$PARAMCD == "TTSKIN" & adtte$SAFFL == "Y", ]
   km_df$TRT01A <- factor(km_df$TRT01A, levels = arms)
-  km_fit <- survfit2(Surv(AVAL, 1 - CNSR) ~ TRT01A, data = km_df)
+  km_fit <- survfit2(Surv(AVAL, CNSR == 0) ~ TRT01A, data = km_df)
 
   # the number at risk: the KM table's (T-14-2-2's ARD, `ard`: the
   # figure's ARD source) -- checked against the curve's own count

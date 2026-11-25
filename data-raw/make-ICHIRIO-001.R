@@ -155,7 +155,7 @@ code <- list(
   "F-14-2-1" = c(
     "library(ggplot2)",
     "library(survival)",
-    "fit <- survfit(Surv(AVAL, 1 - CNSR) ~ TRTA, data = adtte)",
+    "fit <- survfit(Surv(AVAL, CNSR == 0) ~ TRTA, data = adtte)",
     "km <- data.frame(time = c(0, fit$time), surv = c(1, fit$surv),",
     "                 arm = c(NA, rep(sub(\"TRTA=\", \"\", names(fit$strata)),",
     "                                 fit$strata)))",

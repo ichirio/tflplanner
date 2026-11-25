@@ -62,7 +62,7 @@ spec <- list(
     ds("ADLB", "adlb"), ds("ADVS", "advs"), ds("ADEG", "adeg"),
     ds("ADEX", "adex", "TRTA = TRT01A"),
     ds("ADCM", "adcm"), ds("ADMH", "admh"),
-    ds("ADTTE", "adtte_onco", "EVENT = 1 - CNSR"),
+    ds("ADTTE", "adtte_onco", "EVENT = as.integer(CNSR == 0)"),
     ds("ADRS", "adrs_onco", "RESP = AVALC == \"Y\""),
     ds("ADPC", "adpc"), ds("ADPP", "adpp"))),
   populations = tbl(list(
@@ -332,7 +332,7 @@ cb <- adrs_onco[adrs_onco$PARAMCD == "CB" &
                   adrs_onco$USUBJID %in% saf$USUBJID, ]
 pfs <- adtte_onco[adtte_onco$PARAMCD == "PFS" &
                     adtte_onco$USUBJID %in% saf$USUBJID, ]
-km <- survival::survfit(survival::Surv(AVAL, 1 - CNSR) ~ ARM, data = pfs)
+km <- survival::survfit(survival::Surv(AVAL, CNSR == 0) ~ ARM, data = pfs)
 kmq <- quantile(km, probs = 0.5)$quantile
 alt <- adlb[adlb$PARAMCD == "ALT" & adlb$AVISIT %in% "POST-BASELINE MAXIMUM" &
               adlb$USUBJID %in% saf$USUBJID, ]
@@ -374,7 +374,7 @@ checks <- list(
                         context = "survival_survfit") ,
     NA_real_),
   c("T-TTE", "LOGRANK", stat("T-TTE", "LOGRANK", "statistic"),
-    survival::survdiff(survival::Surv(AVAL, 1 - CNSR) ~ ARM,
+    survival::survdiff(survival::Surv(AVAL, CNSR == 0) ~ ARM,
                        data = pfs)$chisq))
 # the KM median: its row is the one for probability 0.5
 k <- ard[ard$output_id == "T-TTE" & ard$analysis_id == "KM" &
