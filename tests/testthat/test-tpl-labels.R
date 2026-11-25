@@ -82,3 +82,46 @@ test_that("every tflspec_v1 template's arguments, help tips and label have their
   # (the series card's unsaved mark)
   expect_identical(tr("unsaved", "ja"), "未保存")
 })
+
+test_that("the designer's template form heads its fields as the new report's dialog does (#861)", {
+  ja <- function(x) tr(x, "ja")
+  figs <- .fig_tpl_registered()
+  skip_if_not(all(c("forest_hr", "km") %in% figs), "this tflspec has no forest_hr or km template")
+  # forest_hr: tflspec's own arguments, the dialog's one copy of the meaning
+  a <- .fig_tpl_args("forest_hr", "forest", figures = figs)
+  expect_identical(a$subgroups, .tpl_params("forest_hr")$subgroups)
+  head_of <- function(f, t = identity) .tpl_arg_heading(a[[f]], t)
+  expect_identical(head_of("param"), "Parameter (param)")
+  expect_identical(head_of("group"), "Group (group)")
+  expect_identical(head_of("subgroups"), "Subgroup variables (subgroups)")
+  expect_identical(head_of("ref"), "Reference treatment group (ref)")
+  expect_identical(head_of("comparison"), "Group compared with reference (comparison)")
+  expect_identical(head_of("param", ja), "パラメータ（param）")
+  expect_identical(head_of("group", ja), "群（group）")
+  expect_identical(head_of("subgroups", ja), "部分集団の変数（subgroups）")
+  expect_identical(head_of("ref", ja), "基準群（ref）")
+  expect_identical(head_of("comparison", ja), "基準群に対して示す群（comparison）")
+  # a Kaplan-Meier figure (km_simple: the km template's): its group is `by`
+  a <- .fig_tpl_args("km_simple", "km", figures = figs)
+  expect_identical(a$group, .tpl_params("km")$by)
+  expect_identical(head_of("group"), "Variable that splits the curves (by)")
+  expect_identical(head_of("group", ja), "曲線を分ける変数（by）")
+  expect_identical(head_of("time_unit"), "Time unit (time_unit)")
+  expect_identical(head_of("time_unit", ja), "時間の単位（time_unit）")
+  # the rule: every field of every designer template has its meaning, in Japanese too
+  s <- .strings()
+  has_ja <- s$en[!is.na(s$ja) & nzchar(s$ja)]
+  tp <- tflspec::tfl_fig_templates()
+  for (i in seq_len(nrow(tp))) {
+    a <- .fig_tpl_args(tp$template[i], tp$kind[i], figures = figs)
+    for (f in names(a)) {
+      h <- .tpl_arg_heading(a[[f]])
+      end <- sprintf(" (%s)", a[[f]]$name)
+      expect_true(endsWith(h, end), info = paste(tp$template[i], f))
+      expect_true(substr(h, 1L, nchar(h) - nchar(end)) %in% has_ja, info = paste(tp$template[i], f))
+    }
+  }
+  # (the form's old labels are gone, and their rows with them)
+  expect_false(any(c("Reference arm", "Arm shown against the reference", "Duration (days)",
+                     "Treatment group compared") %in% s$en))
+})

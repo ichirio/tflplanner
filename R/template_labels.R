@@ -44,7 +44,8 @@
   labels = "Variable headings",
   order = "Variable order",
   cells = "Row statistics",
-  group = "Treatment group compared",
+  # (a figure's groups: a variable, not always the treatment, #861)
+  group = "Group",
   subgroups = "Subgroup variables",
   comparison = "Group compared with reference",
   time = "Time variable",
@@ -116,6 +117,12 @@
   visit_var = "Visit variable",
   visit_order = "Visit order",
   responders = "Responder categories",
+  # (the figure designer's template form, tfl_fig_template()'s arguments
+  # no tfl_param() defines, #861)
+  x = "Variable on the x axis",
+  y = "Variable on the y axis",
+  duration = "Duration in days",
+  at_visit = "Visit shown",
   ci_method = "Confidence interval method",
   stat_layout = "Rate and interval layout",
   layout = "Table layout",

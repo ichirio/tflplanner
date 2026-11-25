@@ -171,6 +171,47 @@
   }, "", USE.NAMES = FALSE)
 }
 
+# The template form's fields (#861): tfl_fig_template()'s arguments, as
+# the designer gives them
+.fig_tpl_fields <- c("param", "group", "time_unit", "value", "x", "y", "time", "category",
+                     "responders", "duration", "subgroups", "ref", "comparison", "at_visit")
+# tfl_fig_template()'s arguments a template's tfl_param() names otherwise
+# (the Kaplan-Meier template's group is `by`)
+.fig_tpl_arg_alias <- c(group = "by")
+
+# The template form's fields, each as tflspec's figure templates define it
+# (tfl_param(): its name, doc, choices, default), so that the form heads it
+# as the new report's dialog does (.tpl_arg_heading(): "meaning (name)"
+# from .tpl_arg_labels, one copy for both).  A field's definition: the
+# template's own -- by its name, else its kind's (km_simple is km's) --
+# under the field's name or its alias; else the first figure template that
+# has the field; else the name alone.  `params`, `figures`: the templates'
+# parameters (.tpl_params()) and the figure templates' names.
+.fig_tpl_args <- function(template, kind, fields = .fig_tpl_fields, params = .tpl_params,
+                          figures = .fig_tpl_registered()) {
+  seen <- list()
+  prm <- function(nm) {
+    if (is.null(seen[[nm]])) seen[[nm]] <<- params(nm) %||% list()
+    seen[[nm]]
+  }
+  own <- unique(c(template, kind))
+  stats::setNames(lapply(fields, function(a) {
+    for (nm in own) {
+      p <- prm(nm)
+      for (x in stats::na.omit(c(a, .fig_tpl_arg_alias[a]))) if (!is.null(p[[x]])) return(p[[x]])
+    }
+    for (nm in setdiff(figures, own)) if (!is.null(prm(nm)[[a]])) return(prm(nm)[[a]])
+    list(name = a)
+  }), fields)
+}
+
+# tflspec's figure templates (tfl_templates(), kind figure), in its order
+.fig_tpl_registered <- function() {
+  x <- tryCatch(tflspec::tfl_templates(), error = function(e) NULL)
+  if (!is.data.frame(x) || !all(c("name", "kind") %in% names(x))) return(character())
+  x$name[x$kind %in% "figure"]
+}
+
 # the value an input gives, as a field: NULL = not set (the default)
 .pd_value <- function(kind, v) {
   if (is.null(v) || !length(v)) return(NULL)

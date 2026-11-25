@@ -317,28 +317,32 @@
                             options = list(placeholder = placeholder, create = TRUE))
     cols <- .data_columns(dat)
     whole <- !templates$parts[templates$template == tp]
+    # each field headed "meaning (argument)" as the new report's dialog
+    # heads it: the template's own argument, one copy of the meaning (#861)
+    args <- .fig_tpl_args(tp, kind)
+    lab <- function(a) .tpl_arg_heading(args[[a]], t)
     shiny::tagList(
-      if (kind != "swimmer") sz("pd_tpl_param", t("Parameter (PARAMCD)"), prm),
+      if (kind != "swimmer") sz("pd_tpl_param", lab("param"), prm),
       if (!tp %in% c("km_single_arm", "individual_spider") && !kind %in% c("waterfall", "swimmer"))
-        sz("pd_tpl_group", t("Group (treatment)"), .group_choices(cols)),
+        sz("pd_tpl_group", lab("group"), .group_choices(cols)),
       if (kind %in% c("km", "swimmer") || tp == "individual_spider")
-        shiny::selectInput("pd_tpl_unit", t("Time shown in (the data's time is in days)"),
+        shiny::selectInput("pd_tpl_unit", lab("time_unit"),
                            c("months", "weeks", "days", "years")),
       if (kind %in% c("mean", "box", "individual", "pk") && !whole)
-        sz("pd_tpl_value", t("Value"), intersect(c("AVAL", "CHG", "PCHG"), vars)),
-      if (kind == "scatter") sz("pd_tpl_x", t("X"), vars),
-      if (kind == "scatter") sz("pd_tpl_y", t("Y"), vars),
-      if (kind == "pk") sz("pd_tpl_time", t("Nominal time"), vars),
-      if (kind == "bar") sz("pd_tpl_category", t("Category"), vars),
-      if (tp == "bar_rate_ci") shiny::textInput("pd_tpl_responders", t("Counted as response"), "CR, PR"),
-      if (kind == "swimmer") sz("pd_tpl_duration", t("Duration (days)"), vars),
+        sz("pd_tpl_value", lab("value"), intersect(c("AVAL", "CHG", "PCHG"), vars)),
+      if (kind == "scatter") sz("pd_tpl_x", lab("x"), vars),
+      if (kind == "scatter") sz("pd_tpl_y", lab("y"), vars),
+      if (kind == "pk") sz("pd_tpl_time", lab("time"), vars),
+      if (kind == "bar") sz("pd_tpl_category", lab("category"), vars),
+      if (tp == "bar_rate_ci") shiny::textInput("pd_tpl_responders", lab("responders"), "CR, PR"),
+      if (kind == "swimmer") sz("pd_tpl_duration", lab("duration"), vars),
       # a forest plot: its subgroups (ADSL's categorical columns) and the arm
       # compared with the reference (the group's first level)
       if (kind == "forest" && !whole) {
         cat_cols <- names(cols)[vapply(cols, function(v)
           (is.character(v) || is.factor(v)) && length(unique(stats::na.omit(v))) <= 12L, NA)]
         cat_cols <- setdiff(cat_cols, c(.group_choices(cols), grep("FL$", cat_cols, value = TRUE)))
-        shiny::selectizeInput("pd_tpl_subgroups", t("Subgroups"), .labelled(cat_cols, cols),
+        shiny::selectizeInput("pd_tpl_subgroups", lab("subgroups"), .labelled(cat_cols, cols),
                               intersect(c("SEX", "AGEGR1"), cat_cols), multiple = TRUE,
                               options = list(plugins = list("remove_button", "drag_drop")))
       },
@@ -347,12 +351,12 @@
         # column; the reference left out of the arm compared)
         lv <- .group_levels(dat)
         shiny::tagList(
-          sz("pd_tpl_ref", t("Reference arm"), lv),
+          sz("pd_tpl_ref", lab("ref"), lv),
           # (blank: every other arm against the reference)
-          sz("pd_tpl_comparison", t("Arm shown against the reference"), lv[-1L],
+          sz("pd_tpl_comparison", lab("comparison"), lv[-1L],
              placeholder = t("every other arm")))
       },
-      if (tp %in% c("box_by_group", "scatter_shift")) sz("pd_tpl_at_visit", t("At visit"),
+      if (tp %in% c("box_by_group", "scatter_shift")) sz("pd_tpl_at_visit", lab("at_visit"),
         if (!is.null(x) && "AVISIT" %in% names(x)) unique(x$AVISIT)),
       if (whole) shiny::p(class = "small text-muted",
         t("This type is not yet in parts: the design is its whole script, with the type's arguments to edit.")))

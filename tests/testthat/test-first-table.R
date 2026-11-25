@@ -610,6 +610,11 @@ test_that("a forest's blank comparison is left to the template: every other arm"
                       pd_tpl_comparison = "")
     # the comparison box says what blank means
     expect_match(output$pd_tpl_more$html, "every other arm", fixed = TRUE)
+    # each field "meaning (argument)", as the new report's dialog heads it (#861)
+    for (h in c("Parameter (param)", "Group (group)", "Subgroup variables (subgroups)",
+                "Reference treatment group (ref)", "Group compared with reference (comparison)")) {
+      expect_match(output$pd_tpl_more$html, h, fixed = TRUE)
+    }
     code <- function() {
       session$setInputs(pd_start = 1)
       paste(unlist(fig_design(session$userData$rv$p, "F-HR")$data), collapse = "

@@ -130,7 +130,9 @@ test_that("every sentence the app shows has its Japanese", {
   # (app.R and its parts since the split: app_ui.R, app_helpers.R, srv_*.R)
   r_dir <- test_path("..", "..", "R")
   skip_if_not(file.exists(file.path(r_dir, "app.R")), "source not available (installed package)")
-  src <- c(file.path(r_dir, c("app.R", "app_ui.R", "app_helpers.R", "app_designer.R")),
+  # (the designer's server and helpers too: its template form's texts, #861)
+  src <- c(file.path(r_dir, c("app.R", "app_ui.R", "app_helpers.R", "app_designer.R",
+                              "app_designer_server.R", "app_designer_helpers.R")),
            list.files(r_dir, "^srv_.*[.]R$", full.names = TRUE))
   expect_gt(length(src), 10L)
   code <- unlist(lapply(src, readLines, encoding = "UTF-8", warn = FALSE))
