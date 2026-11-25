@@ -171,7 +171,10 @@ set_fig_design <- function(x, output_id, design) {
 # report part's are.
 .fig_key_lines <- function(x, output_id) {
   y <- .code_output(x, output_id)
-  call <- tryCatch(as.character(tflspec::tfl_content_code(.code_content(y), pipe = "|>")),
+  # (the study the program writer has: every content call of a figure is
+  # given it, canon 11-15 -- a figure key's data is its ARD definition's)
+  call <- tryCatch(as.character(tflspec::tfl_content_code(.code_content(y), pipe = "|>",
+                                                          study = y$study)),
                    error = function(e) c(
                      "# the figure's key does not hold:",
                      paste0("stop(", .r_string(trimws(conditionMessage(e))), ")")))
