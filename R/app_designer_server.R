@@ -166,33 +166,38 @@
     d$dataset[!is.na(d$path) & file.exists(.data_file(rv$study$path, d$path))]
   }
   # `current`: the design's template (chosen first when it is in the list)
-  tpl_select <- function(current = NULL) {
-    tc <- .fig_template_choices(
-      templates, data_present(),
-      list(label = t, missing = t("needs data this study has not got"),
-           other = t("Other"), empty = t("Empty design")),
-      current = current)
+  tpl_choices <- function(current = NULL) .fig_template_choices(
+    templates, data_present(),
+    list(label = t, missing = t("needs data this study has not got"),
+         other = t("Other"), empty = t("Empty design")),
+    current = current)
+  tpl_select <- function(tc) {
     s <- shiny::selectInput("pd_tpl", t("Template"), tc$choices,
                             selected = tc$first, width = "100%")
     # the ones the data cannot draw: listed, but not to be chosen (the
     # options are HTML inside the tag, so they are marked in the HTML)
     .disable_options(s, tc$off)
   }
-  # the template's data, when the study has it, fills the Dataset
+  # the Dataset a template fills: its data, when the study has it ("": none)
+  tpl_data <- function(tp) {
+    if (is.null(tp) || !nzchar(tp) || !"data" %in% names(templates)) return("")
+    ds <- .fig_first_data(templates$data[templates$template == tp][1L], data_present())
+    if (is.na(ds)) "" else ds
+  }
   shiny::observeEvent(input$pd_tpl, {
     tp <- input$pd_tpl
     if (is.null(tp) || !nzchar(tp) || !"data" %in% names(templates)) return()
-    ds <- .fig_first_data(templates$data[templates$template == tp], data_present())
-    shiny::updateSelectizeInput(session, "pd_tpl_data",
-                                selected = if (is.na(ds)) "" else ds)
+    shiny::updateSelectizeInput(session, "pd_tpl_data", selected = tpl_data(tp))
   })
   # `current`, `data`: the design's template and the dataset it reads, chosen
-  # first (the template's observer below does not fire when the template
-  # chosen is the one chosen last time, so the dataset is set here too)
+  # first; no dataset given (or not in the study), the one the template
+  # chosen fills (the template's observer above does not fire when the
+  # template chosen is the one chosen last time, so the dataset is set here)
   start_inputs <- function(current = NULL, data = NULL) {
     ds_have <- data_present()
+    tc <- tpl_choices(current)
     data <- ds_have[toupper(ds_have) %in% toupper(data)][1L]
-    if (is.na(data)) data <- ""
+    if (is.na(data)) data <- tpl_data(tc$first)
     pr <- fig_presets()
     shiny::tagList(
       shiny::radioButtons("pd_from", NULL, inline = TRUE,
@@ -203,7 +208,7 @@
         bslib::layout_columns(
           col_widths = c(6, 6),
           shiny::div(
-            tpl_select(current),
+            tpl_select(tc),
             shiny::selectizeInput("pd_tpl_data", t("Dataset"), c("", ds_have),
                                   selected = data,
                                   options = list(placeholder = t("choose the data"))),

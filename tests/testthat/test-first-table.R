@@ -425,6 +425,10 @@ test_that("a new figure starts from a template the study's data can draw", {
     # ADTTE templates are listed but cannot be chosen, and say why
     expect_match(h, "needs data this study has not got")
     expect_match(h, 'value="km_risk_table" disabled')
+    # the Dataset starts on the data of the template chosen first, drawn
+    # with it (the template's observer does not fire for the template
+    # chosen last time)
+    expect_match(h, '<option value="ADAE" selected>', fixed = TRUE)
     # the first step: a template or empty, both the designer's layers
     expect_match(h, "First step")
     expect_match(h, "pd_empty")
@@ -706,6 +710,10 @@ test_that("a template figure has no population flag: a forest's analysis data is
     itt <- tte()[grepl("_itt_", tte()$data_id, fixed = TRUE), ]
     expect_identical(itt$population_id, "ITT")
     expect_match(output$pd_code, "^# Subjects: the report's analysis set ITT ")
+    # a set the study's populations have not: said so (its subjects are all)
+    p2 <- rv$p
+    p2$ard$populations <- p2$ard$populations[0L, , drop = FALSE]
+    expect_match(.fig_subjects_line(p2, "F-HR"), "ITT is not one of the study's populations", fixed = TRUE)
     # (the view's line only: not the design's code, which the program saves)
     d <- fig_design(rv$p, "F-HR")
     expect_false(any(grepl("# Subjects:", .fig_design_lines(rv$p, "F-HR", d), fixed = TRUE)))
