@@ -669,7 +669,7 @@ test_that("a template argument's help follows the template: the time unit of a s
   expect_match(sw, "duration column is read as days", fixed = TRUE)
   expect_match(.tpl_arg_help("individual_spider", "individual", "time_unit"), "ADY", fixed = TRUE)
   ja <- function(x) tr(x, "ja")
-  expect_match(.tpl_arg_help("swimmer_bar", "swimmer", "time_unit", ja), "日数として読みます")
+  expect_match(.tpl_arg_help("swimmer_bar", "swimmer", "time_unit", ja), "\u65e5\u6570\u3068\u3057\u3066\u8aad\u307f\u307e\u3059")
   expect_false(grepl("AVALU", .tpl_arg_help("swimmer_bar", "swimmer", "time_unit", ja), fixed = TRUE))
 })
 
