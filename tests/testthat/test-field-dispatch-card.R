@@ -37,11 +37,11 @@
 }
 
 # The R switch's frame changed on purpose after the GUI review of #855 (its
-# rule, R/field_ui.R .r_carry(): the field's data-carry, data-r-fns and
-# data-r-num; the switch's tooltip and notes; the R box's placeholder): left
+# rule, R/field_ui.R .r_carry(): the field's data-carry, data-r-fns,
+# data-r-inner and data-r-num; the switch's tooltip and notes; the R box's placeholder): left
 # out of both, so that the rest is still compared with the copy
 .dispatch_r_switch_as_before <- function(h) {
-  h <- gsub(' data-(carry|r-fns|r-num)="[^"]*"', "", h)
+  h <- gsub(' data-(carry|r-fns|r-inner|r-num)="[^"]*"', "", h)
   h <- gsub('<label class="rp-r-toggle"[^>]*>', '<label class="rp-r-toggle">', h)
   gsub('(rp-r-input" value="[^"]*") placeholder="[^"]*"', "\\1", h)
 }
