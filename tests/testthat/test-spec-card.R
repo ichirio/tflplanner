@@ -418,16 +418,14 @@ test_that("a help by language is the card's language's", {
 
 test_that("an r input is an R-expression field: its R mark fixed, no switch", {
   skip_on_cran()
-  # (plan_cell_style(border = ): R while tflspec's definition says `input: r`,
-  # rtf_border()'s fields with the R switch when it does not -- the card
-  # follows the definition)
-  inp <- with(tflspec::tfl_arg_defs(fn = "plan_cell_style"), input[name == "border"])
+  # (plan_cell_style(border = ) is a group, rtf_border()'s fields with the R
+  # switch: tflspec's definition has no `input: r` on it, G10)
   d <- spec_card_defs("plan_cell_style")
-  expect_identical(identical(d$args$border$type, "r"), identical(inp, "r"))
-  expect_identical(d$args$border$def_type, tflspec::tfl_schema("plan_cell_style")$args$border$type)
+  expect_identical(d$args$border$type, "call<rtf_border>")
+  expect_identical(as.character(field_type(d$args$border)), "group")
   h <- html(spec_card("c", "plan_cell_style", list(fn = "plan_cell_style", args = list())))
   expect_match(h, 'data-arg="border"', fixed = TRUE)
-  expect_identical(grepl('id="c__border__isr"', h, fixed = TRUE), !identical(inp, "r"))
+  expect_true(grepl('id="c__border__isr"', h, fixed = TRUE))
   # the data / analysis built-ins' R (then, code, args, post): input r
   for (fn in c("data", "analysis")) {
     dd <- tflspec::tfl_arg_defs(fn = fn)

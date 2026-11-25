@@ -103,6 +103,8 @@ test_that("G6: a plain member beside a call decides the field; the call is the d
   u <- field_type(list(type = "call<unit>|r", input = "text"))
   expect_identical(as.character(u), "group")
   expect_identical(attr(u, "detail"), "unit")
+  # (a lone number beside a call is not a G6 plain member: the call's group, as today)
+  expect_identical(as.character(field_type(list(type = "call<unit, rel>|number|r", input = "text"))), "group")
   # (a first member that is plain decides as before; the call after it opens)
   b <- field_type(list(type = "logical|enum[single|double]|call<rtf_border_line>", input = "pick"))
   expect_identical(as.character(b), "pick_one")

@@ -47,10 +47,12 @@ field_type <- function(def) {
   .field_type_info(type, input, def)$word
 }
 
-# The members of a type that are plain values a person picks or counts: a
-# column, a list of columns, numbers, levels or statistics.
+# The members of a type that are plain values a person picks beside a
+# call<fn> (G6): a column, a list of columns, a list of numbers.  A lone
+# number beside a call (call<unit, rel>|number|r) stays the call's group, as
+# today -- the design does not say.
 .field_plain_member <- function(m) {
-  grepl("^(list<)?(column|level|stat|number|integer)>?$", m)
+  grepl("^((list<)?column>?|list<number>)$", m)
 }
 
 # The word of a type and an input form, with what it opens.  The first
