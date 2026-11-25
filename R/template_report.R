@@ -872,16 +872,18 @@
 # The arguments the add-report dialog writes for template `prm_all`
 # (.tpl_params()), from what its fields send: `raws` by argument name (a
 # pick's "Add all suggested" already expanded; `population` the report's
-# population field where the template hides it, .tpl_asks_report_pop();
-# returned as attribute "population"), `nones` by name a
+# set control, .tpl_asks_report_pop(); returned as attribute "population",
+# never as an argument: the one setter writes it, .write_report_population()),
+# `nones` by name a
 # switch's <id>__none input, `study` the study SPEC (its values prefill the
 # fields).  An optional argument is written only when its field says other
 # than what it sent untouched (.tpl_field_arg()); a required one empty
 # gives no args and attribute "missing" (its name).  No Shiny.
 .tpl_dialog_args <- function(prm_all, raws, study = NULL, nones = list()) {
   args <- list()
-  # (the report's population, for a template that hides it: not an argument;
-  # required for one whose set is the report's alone, demog)
+  # (the report's set: not an argument -- the setter writes it, and the
+  # template's `population` argument with it where it takes one (H5);
+  # required for one that needs it, demog, forest_hr)
   pop <- NULL
   if (.tpl_asks_report_pop(prm_all)) {
     pop <- .tpl_value(raws[["population"]], "population", prm_all$population)
@@ -922,10 +924,7 @@
     if (!is.null(sv) && identical(as.character(unlist(v)), as.character(unlist(sv)))) next
     args[[x$name]] <- v
   }
-  if (!is.null(pop)) {
-    attr(args, "population") <- pop
-    if (.tpl_pop_is_arg(prm_all)) args$population <- pop
-  }
+  if (!is.null(pop)) attr(args, "population") <- pop
   args
 }
 
@@ -1308,9 +1307,9 @@
 }
 
 # Whether the template takes its set as a shown argument (forest_hr,
-# tflspec_hierarchy): the dialog's set control then also writes that
-# argument, as the field of it did; a hidden one, or none, is the report's
-# set alone
+# tflspec_hierarchy): the one setter of a report's set
+# (.write_report_population(), .o_write_set()) then also writes that
+# argument, the same value; a hidden one, or none, is the report's set alone
 .tpl_pop_is_arg <- function(prm) {
   p <- prm[["population"]]
   !is.null(p) && !isTRUE(p$hidden)
@@ -1396,8 +1395,10 @@
   prm <- .tpl_params(o$template$name)
   args <- args[c(intersect(names(prm), names(args)), setdiff(names(args), names(prm)))]
   # (the report's set written where the report's set lives -- a figure's
-  # data `population:` (canon 11-15), a data map's, else `common:` -- never
-  # a second value beside it, .o_set_population(); #868)
+  # data `population:` (canon 11-15), a data map's, else `common:` --
+  # .o_set_population(); #868.  Every write of this file then goes through
+  # the setter, .write_report_population(), which keeps the template's
+  # `population` argument the same value: H5)
   if (!is.null(args$population)) o <- .o_set_population(o, as.character(args$population))
   # (a template whose analysis set is the report's population (demog) holds
   # it in `common:`, not in its arguments)

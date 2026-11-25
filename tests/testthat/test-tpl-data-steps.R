@@ -79,7 +79,8 @@ test_that("a KM type's analysis set is asked as the report's set, not an argumen
   expect_true(.tpl_asks_report_pop(prm))
   expect_false(.tpl_pop_of_report(prm))
   # (every template has the one control; the layout `km` takes the set as a
-  # shown argument too: the control also writes it, as its field did)
+  # shown argument too: the setter, .write_report_population(), writes
+  # it with the report's set -- not the dialog's arguments; review H5)
   expect_true(.tpl_asks_report_pop(.tpl_params("km")))
   a <- .tpl_dialog_args(prm, list(population = "SAF", by = "TRT01A"))
   expect_null(attr(a, "missing"))

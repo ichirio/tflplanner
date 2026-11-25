@@ -900,7 +900,7 @@ test_that("the dialog has one control for the report's set on every figure templ
   })
 })
 
-test_that("the dialog's set control writes where the template takes the set: a shown argument too, else the report's set alone (#868)", {
+test_that("the dialog's set control gives the report's set alone, never an argument: the setter writes it, and the argument where the template takes one (#868, review H5)", {
   skip_if_not("forest_hr" %in% tflspec::tfl_templates()$name)
   prm <- .tpl_params("forest_hr")
   expect_true(.tpl_asks_report_pop(prm))
@@ -908,7 +908,9 @@ test_that("the dialog's set control writes where the template takes the set: a s
   a <- .tpl_dialog_args(prm, list(population = "SAF", param = "PFS"))
   expect_null(attr(a, "missing"))
   expect_identical(attr(a, "population"), "SAF")
-  expect_identical(a$population, "SAF")
+  # (not an argument here: .write_report_population() writes it, H5)
+  expect_null(a$population)
+  expect_true(.tpl_pop_is_arg(prm))
   # (required by the template: no set, no Create)
   b <- .tpl_dialog_args(prm, list(population = "", param = "PFS"))
   expect_identical(attr(b, "missing"), "population")
@@ -926,6 +928,39 @@ test_that("the dialog's set control writes where the template takes the set: a s
   d1 <- .tpl_dialog_args(p1, list(population = "", by = "TRT01A"))
   expect_null(attr(d1, "missing"))
   expect_null(attr(d1, "population"))
+})
+
+test_that("forest_hr made in the dialog, then its set changed in step 1: its data's set and its `population` argument agree after each (review H5)", {
+  skip_if_not("forest_hr" %in% tflspec::tfl_templates()$name)
+  skip_if_not(.tpl_pop_is_arg(.tpl_params("forest_hr")), "forest_hr takes no set argument")
+  id <- sample_for_add("H5D")
+  shown <- watch_add()
+  shiny::testServer(server_for(id), {
+    rv <- session$userData$rv
+    other <- setdiff(as.character(stats::na.omit(rv$p$ard$populations$population_id)), "SAF")[1L]
+    skip_if(is.na(other), "the sample study has one population")
+    rid <- "F-H5-1"
+    agree <- function(want) {
+      o <- rv$p$spec$outputs[[rid]]
+      expect_false(is.null(o))
+      expect_identical(o$data$population, want)
+      expect_null(o$common$population)
+      expect_identical(.tpl_of(rv$p, rid)$args$population, want)
+      expect_identical(add_row(rv$p, rid)$population, want)
+      toc <- Filter(function(e) identical(e$id, rid), rv$p$spec$study$toc$outputs)
+      expect_identical(toc[[1L]]$population, want)
+    }
+    # the dialog's set control: the set on the report's data, and the argument
+    session$setInputs(add = 1, modal_type = "figure", modal_how = "template", modal_tpl_figure = "forest_hr",
+                      modal_id = "H5-1", modal_desc = "", modal_section = "",
+                      mtpl_forest_hr__param = "TTSKIN", mtpl_forest_hr__population = "SAF")
+    suppressWarnings(suppressMessages(session$setInputs(add_ok = 1)))
+    agree("SAF")
+    # step 1's control (set_report_population()): both move
+    session$setInputs(target = rid, nav = "make", step = "content", content_nav = "content")
+    suppressWarnings(suppressMessages(session$setInputs(fig_report_pop_pick_by = list(report = rid, value = other))))
+    agree(other)
+  })
 })
 
 test_that("one set of labels for the same meaning in forest_hr and tflspec_v1/forest_hr: group, reference, compared, subgroup (#868)", {

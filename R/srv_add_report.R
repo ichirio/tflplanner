@@ -609,16 +609,17 @@
     tpl_pending$id <- id
     if (identical(kind, "table")) tpl_autoprev$want <- id
     # (a KM type: its data the report's own `data:` steps, from the dialog.
-    # The analysis set where the report's set lives, .o_set_population(): a
-    # figure's on its data's `population:` -- no `common:` and no step of it,
-    # canon 11-15 -- a table's in `common:`; #868)
+    # The analysis set is not written here: the one setter,
+    # .write_report_population(), puts it where the report's set lives -- a
+    # figure's on its data's `population:` (no `common:` and no step of it,
+    # canon 11-15), a table's in `common:` -- and in the template's
+    # `population` argument where it takes one, the same value (#868, H5))
     dat <- tpl_modal_data(nm)
-    pop <- as.character(attr(args, "population") %||% args$population %||% NA_character_)
+    pop <- as.character(attr(args, "population") %||% NA_character_)
     attr(args, "population") <- NULL
     o <- tflspec::tfl_output(id, kind, label = if (is.na(desc)) NA_character_ else desc,
                              template = .tpl_write_args(list(name = nm), args, by_step = TRUE),
                              data = if (length(dat$steps)) list(steps = dat$steps))
-    o <- .o_set_population(o, pop)
     # (straight into the spec: its toc line and its file, the view of
     # that report alone -- .spec_add_output(); its set then written as every
     # report's is, .write_report_population())

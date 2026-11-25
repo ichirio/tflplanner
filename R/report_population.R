@@ -257,10 +257,14 @@ set_report_population <- function(x, output_id, population) {
 #   one sync of the view's edits (the analyses moved); a report new to the
 #   view reaches the spec by the save, from the column and rows set here.
 #   (A report that shares its file with others: the save's, as before.)
+# - a template report whose template takes the set as an argument of its
+#   own (.tpl_pop_is_arg(): forest_hr, tflspec_hierarchy ...): that
+#   argument too, the same value, so the two never disagree (.o_write_set();
+#   review H5).
 # `output`: one report's tfl_output written with its set (a template
 # report's argument or step write, what it writes beside the set as it
-# is); `population` NULL keeps the set it has.  Its analyses are its
-# template's: none moved, no data made.
+# is); `population` NULL keeps the set it has (its argument made the
+# same).  Its analyses are its template's: none moved, no data made.
 .write_report_population <- function(x, output_id, population = NULL, output = NULL) {
   n <- length(output_id)
   if (!is.null(output) && n != 1L) stop("One report's file is written at a time.", call. = FALSE)
@@ -290,7 +294,15 @@ set_report_population <- function(x, output_id, population) {
     for (id in ids) {
       o <- output %||% x$spec$outputs[[id]]
       if (is.null(o)) next
-      if (!is.null(pops)) o <- .o_set_population(o, pops[match(id, output_id)])
+      if (!is.null(pops)) {
+        o <- .o_write_set(o, pops[match(id, output_id)])
+      } else {
+        # (the set kept: its argument made the same -- the set where the
+        # data keeps it, else, an older file's, the argument's)
+        now <- .o_population(o)
+        if (is.na(now)) now <- .o_arg_population(o)
+        if (!is.na(now)) o <- .o_write_set(o, now)
+      }
       if (is.null(output)) {
         w <- x$spec$where
         rel <- if (id %in% names(w)) w[[id]]
@@ -309,6 +321,41 @@ set_report_population <- function(x, output_id, population) {
     attr(x, "left") <- unique(left)
   }
   x
+}
+
+# One report's file with its set (NA: none) in every place it lives:
+# where its data keeps it (.o_set_population()) and, when its template
+# takes the set as an argument of its own (a shown `population`
+# parameter, .tpl_pop_is_arg()), that argument -- the same value, or taken
+# out with it.  The one rule .write_report_population() writes by (H5).
+.o_write_set <- function(o, population) {
+  o <- .o_set_population(o, population)
+  if (!.o_takes_set_arg(o)) return(o)
+  has <- length(population) && !is.na(population[1L]) && nzchar(population[1L])
+  t <- o$template
+  args <- .tpl_args_of(t)
+  if (!has && is.null(args$population)) return(o)
+  if (has && identical(as.character(unlist(args$population)), as.character(population[1L]))) return(o)
+  if (has) args["population"] <- list(as.character(population[1L])) else args$population <- NULL
+  # (in the place the file has it, a new one in its step's: .tpl_write_args())
+  o$template <- .tpl_write_args(t, args, by_step = TRUE)
+  o
+}
+
+# Whether a report's template takes its set as an argument of its own
+# (a template SPEC with a shown `population` parameter; FALSE for a report
+# of no template, a figure designer's name, a template not found)
+.o_takes_set_arg <- function(o) {
+  t <- o$template
+  if (!is.list(t) || is.null(t$name)) return(FALSE)
+  isTRUE(tryCatch(.tpl_pop_is_arg(.tpl_params(as.character(t$name)[1L])), error = function(e) FALSE))
+}
+
+# The set a report's template argument says (NA: none, or no such argument)
+.o_arg_population <- function(o) {
+  if (!.o_takes_set_arg(o)) return(NA_character_)
+  v <- as.character(unlist(.tpl_args_of(o$template)$population %||% NA_character_))[1L]
+  if (is.na(v) || !nzchar(v)) NA_character_ else v
 }
 
 # The planner's own part of .write_report_population() for one report:

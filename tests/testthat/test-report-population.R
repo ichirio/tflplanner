@@ -406,3 +406,78 @@ test_that("a TOC taken in moves a report's set where its data keeps it, its toc 
   expect_null(attr(q2, "set_moved"))
   expect_length(.toc_set_lines(attr(q2, "set_moved")), 0L)
 })
+
+test_that("a template that takes the set as an argument: every write of the report's set moves the argument with it (review H5)", {
+  skip_on_cran()
+  home <- local_home()
+  s <- suppressMessages(sample_study_copy(home))
+  p <- s$planner
+  other <- setdiff(as.character(stats::na.omit(p$ard$populations$population_id)), "SAF")[1L]
+  skip_if(is.na(other), "the sample study has one population")
+  # forest_hr (a figure: its set on its data) and tflspec_v1/tflspec_hierarchy
+  # (a table: its set in common:), each with a shown `population`
+  tpls <- c(`F-H5-1` = "forest_hr", `T-H5-2` = "tflspec_v1/tflspec_hierarchy")
+  if ("tfl_copy_templates" %in% getNamespaceExports("tflspec")) {
+    invisible(tryCatch(tflspec::tfl_copy_templates(s$path, tpls[["T-H5-2"]]), error = function(e) NULL))
+  }
+  tpls <- tpls[vapply(tpls, function(nm) .tpl_pop_is_arg(.tpl_params(nm)), NA)]
+  skip_if(!length(tpls), "this tflspec has no template that takes the set as an argument")
+  set_of <- function(p, id) .o_population(p$spec$outputs[[id]])
+  arg_of <- function(p, id) .tpl_of(p, id)$args$population
+  agree <- function(p, id, want) {
+    expect_identical(set_of(p, id), want, info = id)
+    expect_identical(arg_of(p, id), want, info = id)
+    expect_identical(report_population(p, id), want, info = id)
+  }
+  for (id in names(tpls)) {
+    kind <- if (startsWith(id, "F-")) "figure" else "table"
+    # (an older file: the argument alone, no set where the data keeps it)
+    o <- tflspec::tfl_output(id, kind, label = id,
+                             template = list(name = tpls[[id]], args = list(population = "SAF")))
+    p <- .spec_add_output(p, o, label = id)
+    expect_true(is.na(set_of(p, id)))
+    # a write of its template (no set given): the argument's set taken as
+    # the report's, in both places
+    p <- .write_report_population(p, id, output = p$spec$outputs[[id]])
+    expect_identical(set_of(p, id), "SAF", info = id)
+    expect_identical(arg_of(p, id), "SAF", info = id)
+    # set_report_population() -- the report list, step 1: both move
+    p <- set_report_population(p, id, other)
+    agree(p, id, other)
+    p <- set_report_population(p, id, "SAF")
+    agree(p, id, "SAF")
+    # (none: both taken out)
+    q <- set_report_population(p, id, NA)
+    expect_true(is.na(set_of(q, id)))
+    expect_null(arg_of(q, id))
+  }
+  # a figure's set on its data, a table's in common:, the argument beside it
+  if ("F-H5-1" %in% names(tpls)) expect_identical(p$spec$outputs[["F-H5-1"]]$data$population, "SAF")
+  if ("T-H5-2" %in% names(tpls)) expect_identical(p$spec$outputs[["T-H5-2"]]$common$population, "SAF")
+  # a TOC taken in: both move
+  f <- tempfile(fileext = ".csv")
+  on.exit(unlink(f), add = TRUE)
+  kinds <- ifelse(startsWith(names(tpls), "F-"), "Figure", "Table")
+  writeLines(c("No.,Kind,Title", paste0(names(tpls), ",", kinds, ",", names(tpls))), f)
+  sp <- tflspec::tfl_read_toc(f, map = c(output_id = "No.", type = "Kind", title = "Title"))
+  pops <- stats::setNames(rep(other, length(tpls)), names(tpls))
+  q <- toc_apply(p, sp, toc_changes(p, sp), populations = pops)
+  for (id in names(tpls)) agree(q, id, other)
+  # (the view's edits taken in, as a save takes them: they still agree)
+  now <- .spec_now(q)
+  for (id in names(tpls)) {
+    expect_identical(.o_population(now$outputs[[id]]), other, info = id)
+    expect_identical(.tpl_args_of(now$outputs[[id]]$template)$population, other, info = id)
+  }
+})
+
+test_that("a report whose template takes no set argument gets none from the setter (review H5)", {
+  o <- list(id = "F1", kind = "figure", template = list(name = "no/such_template", args = list(by = "TRT01A")))
+  expect_false(.o_takes_set_arg(o))
+  w <- .o_write_set(o, "SAF")
+  expect_identical(w$data$population, "SAF")
+  expect_null(w$template$args$population)
+  # (a figure designer's template, a name: no template SPEC)
+  expect_false(.o_takes_set_arg(list(id = "F2", kind = "figure", template = "forest_hr")))
+  expect_true(is.na(.o_arg_population(o)))
+})
