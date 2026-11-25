@@ -815,3 +815,36 @@ test_that("a switch to a KM type writes no join: the report's set goes on its da
     expect_identical(toc[[1L]]$population, "SAF")
   })
 })
+
+test_that("a card's `population` argument write of a figure template: the report's data, the toc line and the report list all say the new set", {
+  skip_if_not("mean_se" %in% tflspec::tfl_templates()$name)
+  id <- sample_for_add("FGW")
+  shown <- watch_add()
+  shiny::testServer(server_for(id), {
+    rv <- session$userData$rv
+    prm <- .tpl_params("mean_se")
+    skip_if(is.null(prm$population) || isTRUE(prm$population$hidden), "mean_se shows no population")
+    other <- setdiff(as.character(stats::na.omit(rv$p$ard$populations$population_id)), "SAF")[1L]
+    skip_if(is.na(other), "the sample study has one population")
+    session$setInputs(add = 1, modal_type = "figure", modal_how = "template", modal_tpl_figure = "mean_se",
+                      modal_id = "FW-1", modal_desc = "", modal_section = "",
+                      mtpl_mean_se__param = "SYSBP", mtpl_mean_se__population = "SAF")
+    suppressWarnings(suppressMessages(session$setInputs(add_ok = 1)))
+    toc_pop <- function() {
+      Filter(function(e) identical(e$id, "F-FW-1"), rv$p$spec$study$toc$outputs)[[1L]]$population
+    }
+    expect_identical(toc_pop(), "SAF")
+    # (the argument changed in its card: tpl_write() is reached with no `population =`, the
+    # set moves on the report's data, and the toc line follows it, not stays at the old set)
+    session$setInputs(target = "F-FW-1", nav = "make", step = "data")
+    session$flushReact()
+    suppressWarnings(suppressMessages(do.call(session$setInputs,
+      stats::setNames(list(other), paste0("tpl_mean_se__", "population")))))
+    o <- rv$p$spec$outputs[["F-FW-1"]]
+    expect_identical(o$data$population, other)
+    expect_null(o$common$population)
+    expect_identical(.o_population(o), other)
+    expect_identical(toc_pop(), other)
+    expect_identical(add_row(rv$p, "F-FW-1")$population, other)
+  })
+})
