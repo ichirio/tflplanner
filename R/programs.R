@@ -644,6 +644,13 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   report_part <- c(
     .section("report"),
     .report_code_lines(x, output_id, (table || tpl_listing) && identical(content, "plan"), content))
+  # a listing of `data` (as_rtftables(data, ...)): its program records
+  # whether `data` has no records, so the official run notes an empty
+  # listing (batch.R reads report_status.csv's `empty`)
+  if (identical(type, "listing") && any(grepl("as_rtftables[(]data,", c(data, report_part)))) {
+    report_part[report_part == "record_report(report_id)"] <-
+      "record_report(report_id, empty = nrow(data) == 0)"
+  }
 
   c(head,
     "",
@@ -1016,7 +1023,8 @@ report_setup_code <- function(x, date = Sys.Date()) {
 # What a report program records in output/tfl/report_status.csv (its
 # record_report(), written in report_setup.R by tflspec): tflplanner reads
 # it -- a report made with another programs/study_setup.R than the one
-# there now is outdated
+# there now is outdated; `empty` (a listing says it): whether the report
+# has no rows, which the official run notes
 .report_status_name <- "report_status.csv"
 
 # the definition of the ARD each figure was made from, as its program

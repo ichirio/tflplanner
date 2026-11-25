@@ -34,9 +34,17 @@ ard:
         cards::ard_strata(
           data,
           .strata = SEX,
-          .f = ~ cardx::ard_regression(
-            survival::coxph(survival::Surv(AVAL, CNSR == 0) ~ TRT01A, data = .x),
-            exponentiate = TRUE
+          .f = ~ tryCatch(
+            cardx::ard_regression(
+              survival::coxph(survival::Surv(AVAL, CNSR == 0) ~ TRT01A, data = .x),
+              exponentiate = TRUE
+            ),
+            error = function(e) {
+              warning("HR_SEX: the Cox model of a subgroup failed (",
+                      conditionMessage(e), "); the figure prints its hazard ratio NE",
+                      call. = FALSE)
+              NULL
+            }
           )
         )
       purpose: SECONDARY OUTCOME MEASURE
@@ -48,9 +56,17 @@ ard:
         cards::ard_strata(
           data,
           .strata = AGEGR1,
-          .f = ~ cardx::ard_regression(
-            survival::coxph(survival::Surv(AVAL, CNSR == 0) ~ TRT01A, data = .x),
-            exponentiate = TRUE
+          .f = ~ tryCatch(
+            cardx::ard_regression(
+              survival::coxph(survival::Surv(AVAL, CNSR == 0) ~ TRT01A, data = .x),
+              exponentiate = TRUE
+            ),
+            error = function(e) {
+              warning("HR_AGEGR1: the Cox model of a subgroup failed (",
+                      conditionMessage(e), "); the figure prints its hazard ratio NE",
+                      call. = FALSE)
+              NULL
+            }
           )
         )
       purpose: SECONDARY OUTCOME MEASURE
@@ -72,11 +88,20 @@ data:
     - step: code
       label: 'the rows to draw: the comparison arm, a heading row per subgroup'
       code: |-
+        # an upper limit above this is a model that did not converge (an arm
+        # with no event in the subgroup): its hazard ratio is NE
+        ne_upper <- 1000
+        # the comparison arm (the reference arm's row has no interval)
+        est <- filter(est, TRT01A == "Drug X")
+        # a subgroup level with no row (its Cox model failed: the ARD program
+        # left it out) is a row of its own, NE
+        est <- bind_rows(
+          est,
+          tibble(SEX = setdiff(names(cl_sex), as.character(est$SEX))),
+          tibble(AGEGR1 = setdiff(names(cl_agegr1), as.character(est$AGEGR1)))
+        )
+        # NE: no estimate, or an interval that is not finite or above ne_upper
         est <- est |>
-          # the reference arm has no interval; a subgroup whose model did not
-          # converge (no events in an arm) has no point: NE
-          filter(!is.na(conf.low)) |>
-          filter(TRT01A == "Drug X") |>
           mutate(
             subgroup = case_when(
               !is.na(SEX) ~ "SEX",
@@ -87,7 +112,7 @@ data:
             level = coalesce(unname(cl_sex[as.character(SEX)]),
                          unname(cl_agegr1[as.character(AGEGR1)]), "All subjects"),
             ok = is.finite(estimate) & is.finite(conf.low) & is.finite(conf.high) &
-              conf.high < 1000,
+              conf.high <= ne_upper,
             txt = ifelse(ok, sprintf("%.2f (%.2f, %.2f)", estimate, conf.low, conf.high),
                          "NE"),
             across(c(estimate, conf.low, conf.high), ~ ifelse(ok, .x, NA))
@@ -100,10 +125,11 @@ data:
         est <- est |>
           mutate(head = FALSE) |>
           bind_rows(heads) |>
-          arrange(factor(subgroup, levels = unique(est$subgroup)), desc(head)) |>
+          arrange(factor(subgroup, levels = unique(est$subgroup)), desc(head),
+                  match(SEX, names(cl_sex)), match(AGEGR1, names(cl_agegr1))) |>
           mutate(
             label = ifelse(head | subgroup == "All subjects", level, paste0("    ", level)),
-            n = ifelse(head, "", as.character(n_obs)),
+            n = ifelse(head | is.na(n_obs), "", as.character(n_obs)),
             txt = ifelse(head, "", txt),
             y = rev(row_number())
           )
