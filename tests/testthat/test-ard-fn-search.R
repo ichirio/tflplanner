@@ -197,7 +197,8 @@ test_that("the screen says why a function was found, and its category", {
   save_study(s)
   shiny::testServer(server_for("FS"), {
     session$setInputs(nav = "make", step = "ard", target = "T1")
-    session$setInputs(hot_ard_analyses_select = list(select = list(r = 2L)))
+    # (CONT: after BIGN and STACK -- the study's header prints N)
+    session$setInputs(hot_ard_analyses_select = list(select = list(r = 3L)))
     st_env <- session$userData$st_env
     id <- function(x) paste0("st", st_env$n, "_", x)
     expect_match(output$ard_stat_ui$html, "PROC LOGISTIC", fixed = TRUE)
@@ -250,7 +251,8 @@ test_that("the chooser is one line once a function is chosen", {
   save_study(s)
   shiny::testServer(server_for("FC"), {
     session$setInputs(nav = "make", step = "ard", target = "T1")
-    session$setInputs(hot_ard_analyses_select = list(select = list(r = 2L)))
+    # (CONT: after BIGN and STACK -- the study's header prints N)
+    session$setInputs(hot_ard_analyses_select = list(select = list(r = 3L)))
     h <- output$ard_stat_ui$html
     # closed (no open attribute), "method" and the choice on one line
     expect_match(h, '<details class="ard-fn mb-2">', fixed = TRUE)
@@ -462,7 +464,8 @@ test_that("the form starts from the setting a word means", {
   save_study(s)
   shiny::testServer(server_for("FP"), {
     session$setInputs(nav = "make", step = "ard", target = "T1")
-    session$setInputs(hot_ard_analyses_select = list(select = list(r = 2L)))
+    # (CONT: after BIGN and STACK -- the study's header prints N)
+    session$setInputs(hot_ard_analyses_select = list(select = list(r = 3L)))
     st_env <- session$userData$st_env
     id <- function(x) paste0("st", st_env$n, "_", x)
     inp <- list(); inp[[id("fn_q")]] <- "PROC LOGISTIC"
