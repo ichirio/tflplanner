@@ -2187,3 +2187,4 @@
 "The row's analysis id (ANY, SER ...), one a row.","行の analysis id（ANY, SER など）。行ごとに 1 つ。"
 "The row's text.","行の文字。"
 "The records the row counts (R); empty for every record kept.","行が数える記録（R の条件）。空欄 = 残した記録すべて。"
+"Step %d changes AVAL's unit with tte_time() before step %d keeps the parameter: tte_time() needs one unit (AVALU) and stops when the rows hold two or more, as ADTTE's parameters often do. Keep the parameter first: move step %d after step %d.","手順 %d で tte_time() が AVAL の単位を変えていますが、パラメータを選ぶのは手順 %d です。tte_time() は単位（AVALU）が 1 つのデータにしか使えず、2 つ以上あると止まります（ADTTE はパラメータごとに単位が違うことがよくあります）。先にパラメータを選んでください：手順 %d を手順 %d の後ろに動かします。"
