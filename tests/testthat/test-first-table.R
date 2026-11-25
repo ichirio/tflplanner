@@ -425,6 +425,10 @@ test_that("a new figure starts from a template the study's data can draw", {
     # ADTTE templates are listed but cannot be chosen, and say why
     expect_match(h, "needs data this study has not got")
     expect_match(h, 'value="km_risk_table" disabled')
+    # the Dataset starts on the data of the template chosen first, drawn
+    # with it (the template's observer does not fire for the template
+    # chosen last time)
+    expect_match(h, '<option value="ADAE" selected>', fixed = TRUE)
     # the first step: a template or empty, both the designer's layers
     expect_match(h, "First step")
     expect_match(h, "pd_empty")
