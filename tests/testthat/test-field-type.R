@@ -23,7 +23,9 @@ test_that("the plan's cases have their basic types", {
   cases <- list(
     # (the plan's hand list)
     list("list<stat>", "pick", "pick_many"),
-    list("r|call<vars>|list<column>|column", "pick", "group"),
+    list("r|call<vars>|list<column>|column", "pick", "pick_many"),
+    list("call<expansion, expand_scale, waiver>|list<number>|r", "text", "pick_many"),
+    list("call<unit>|r", "text", "group"),
     list("number|enum[fit]", "text", "number"),
     list("integer|enum[fit]", "text", "number"),
     list("logical|enum[single|double|thick]|call<rtf_border_line>", "pick", "pick_one"),
@@ -38,8 +40,13 @@ test_that("the plan's cases have their basic types", {
     list("list<r>", "r", "r"),
     list("call<rtf_border>", "r", "r"),
     list("call|string|r", "text", "r"),
+    list("r|call", "text", "r"),
+    list("list<call>", "r", "r"),
+    list("step<content>", "table", "r"),
     list("step<data>", "table", "r"),
-    list("list<vec<string, string>>", "text", "r"),
+    list("list<call<no_such_function_xyz>>", "r", "r"),
+    list("list<vec<string, string>>", "text", "rows"),
+    list("list<list<string>|vec<string, string>>", "text", "rows"),
     list("logical|string", "pick", "pick_one"),
     list("logical", "pick", "yesno"),
     list("logical", "text", "yesno"),
@@ -83,4 +90,88 @@ test_that("the word is the type's and the input's only; many, ordered and free a
   expect_false(attr(one, "ordered"))
   expect_false(attr(one, "free"))
   expect_true(attr(field_type(list(type = "list<column>|column", input = "pick")), "many"))
+})
+
+test_that("G6: a plain member beside a call decides the field; the call is the detail opener", {
+  f <- field_type(list(type = "r|call<vars>|list<column>|column", input = "pick"))
+  expect_identical(as.character(f), "pick_many")
+  expect_identical(attr(f, "detail"), "vars")
+  e <- field_type(list(type = "call<expansion, expand_scale, waiver>|list<number>|r", input = "text"))
+  expect_identical(as.character(e), "pick_many")
+  expect_identical(attr(e, "detail"), c("expansion", "expand_scale", "waiver"))
+  # (a call alone, or with only R, is still its own group)
+  u <- field_type(list(type = "call<unit>|r", input = "text"))
+  expect_identical(as.character(u), "group")
+  expect_identical(attr(u, "detail"), "unit")
+  # (a lone number beside a call is not a G6 plain member: the call's group, as today)
+  expect_identical(as.character(field_type(list(type = "call<unit, rel>|number|r", input = "text"))), "group")
+  # (a first member that is plain decides as before; the call after it opens)
+  b <- field_type(list(type = "logical|enum[single|double]|call<rtf_border_line>", input = "pick"))
+  expect_identical(as.character(b), "pick_one")
+  expect_identical(attr(b, "detail"), "rtf_border_line")
+})
+
+test_that("G1: a bare call is a pick of the def's names, a value of one's own too, its arguments the detail", {
+  f <- field_type(list(type = "call|string|r", values = list("dodge", "stack")))
+  expect_identical(as.character(f), "pick_one")
+  expect_true(attr(f, "free"))
+  expect_identical(attr(f, "detail"), "*")
+  # (no names: R, as before; theme, strip)
+  expect_identical(as.character(field_type(list(type = "call|r"))), "r")
+  # (a call that is not first is a text with a call after it)
+  expect_identical(as.character(field_type(list(type = "string|call"))), "text")
+})
+
+test_that("G3: step<data> is a group of its columns:, step<content> is not a field", {
+  cols <- list(source = list(type = "enum[ard|dataset]"), dataset = list(type = "string"))
+  expect_identical(as.character(field_type(list(type = "step<data>", columns = cols))), "group")
+  expect_identical(as.character(field_type(list(type = "step<data>"))), "r")
+  expect_identical(as.character(field_type(list(type = "step<content>", columns = cols))), "r")
+})
+
+test_that("G4 G5: a list of vectors, a list of calls of a schema function, is rows", {
+  skip_if_not_installed("tflspec")
+  expect_identical(as.character(field_type(list(type = "list<vec<string, string>>"))), "rows")
+  lc <- field_type(list(type = "list<call<listing_col>>", input = "r"))
+  expect_identical(as.character(lc), "rows")
+  expect_identical(attr(lc, "of"), "listing_col")
+  expect_identical(as.character(field_type(list(type = "list<call<nope_not_a_fn>>"))), "r")
+  expect_identical(as.character(field_type(list(type = "list<call>"))), "r")
+})
+
+test_that("G10: the three borders are groups from the schema, like the other nine", {
+  skip_on_cran()
+  skip_if_not_installed("tflspec")
+  n <- 0L
+  for (fn in names(tflspec::tfl_schema())) {
+    args <- .schema_of(fn)$args
+    for (a in names(args)) {
+      if (identical(args[[a]]$type, "call<rtf_border>")) {
+        n <- n + 1L
+        expect_identical(as.character(field_type(args[[a]])), "group", info = paste(fn, a))
+      }
+    }
+  }
+  expect_gte(n, 12L)
+})
+
+test_that("a bare call with names is a pick; the layers' position among them (G1)", {
+  skip_on_cran()
+  skip_if_not_installed("tflspec")
+  n <- 0L
+  for (fn in names(tflspec::tfl_schema())) {
+    args <- .schema_of(fn)$args
+    for (a in names(args)) {
+      f <- field_type(args[[a]])
+      if (identical(attr(f, "detail"), "*")) {
+        n <- n + 1L
+        expect_identical(as.character(f), "pick_one")
+        expect_gt(length(args[[a]]$values), 0L, label = paste(fn, a))
+      }
+    }
+  }
+  expect_gte(n, 80L)
+  p <- field_type(.schema_of("geom_bar")$args$position)
+  expect_identical(as.character(p), "pick_one")
+  expect_true(attr(p, "free"))
 })

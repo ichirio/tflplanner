@@ -87,7 +87,8 @@ test_that("the form picks a function, fills its arguments and writes args", {
   shiny::testServer(server_for("AG"), {
     rv <- session$userData$rv
     session$setInputs(nav = "make", step = "ard", target = "T1")
-    session$setInputs(hot_ard_analyses_select = list(select = list(r = 3L)))
+    # (BIGN, STACK, CONT, CAT: the study's header prints N)
+    session$setInputs(hot_ard_analyses_select = list(select = list(r = 4L)))
     st_env <- session$userData$st_env
     id <- function(x) paste0("st", st_env$n, "_", x)
     h <- output$ard_stat_ui$html
@@ -130,7 +131,7 @@ test_that("the form picks a function, fills its arguments and writes args", {
     a2 <- ard_rows(rv$p, "analyses", "T1")
     a2$args[a2$analysis_id == "CONT"] <- NA
     rv$p <- set_ard_rows(rv$p, "analyses", "T1", a2)
-    session$setInputs(hot_ard_analyses_select = list(select = list(r = 2L)))
+    session$setInputs(hot_ard_analyses_select = list(select = list(r = 3L)))
     inp <- list(); inp[[id("fn_pick")]] <- "cardx::ard_continuous_ci"
     do.call(session$setInputs, inp)
     r <- ard_rows(rv$p, "analyses", "T1")
@@ -180,7 +181,7 @@ test_that("the form shows the variables, groups and strata in the definition's o
   s$planner$ard$datasets <- .normalize_ard_sheet(data.frame(
     dataset = c("ADSL", "ADAE"), path = c("data/adam/adsl.rds", "data/adam/adae.rds")), "datasets")
   a <- ard_rows(s$planner, "analyses", "T1")
-  a <- a[1L, ]
+  a <- a[a$analysis_id == "STACK", ]
   a$analysis_id <- "AE"
   a$method <- "hierarchical"
   a$dataset <- "ADAE"

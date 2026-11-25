@@ -117,12 +117,15 @@ test_that("an order by any statistic of the ARD, or a key of the user's", {
   expect_identical(unname(.sort_key_choices("n", hier = FALSE)), "alpha")
 })
 
-test_that("a hierarchy counted of a denominator has the subjects per group", {
+test_that("a hierarchy's header N is its BIGN's, not the hierarchy's denominator", {
   p <- hier_planner()
   expect_true(.has_group_n(p, "T-AE", "TRT01A"))
+  # the hierarchy alone: its denominator counts the subjects per group too,
+  # but the header reads BIGN only (tflspec#969)
   a <- ard_rows(p, "analyses", "T-AE")
-  a$denominator <- NA
   a$output_id <- NULL
+  a <- a[a$analysis_id != "BIGN", , drop = FALSE]
+  expect_identical(a$denominator, "adsl_saf")
   expect_false(.has_group_n(set_ard_rows(p, "analyses", "T-AE", a), "T-AE", "TRT01A"))
 })
 
@@ -145,8 +148,8 @@ test_that("the builder opens on a hierarchy table, and writes its order", {
     expect_match(h, "Most frequent first (ties by name)", fixed = TRUE)
     expect_match(h, "Counted in", fixed = TRUE)
     expect_no_match(h, "Rows: variables in order", fixed = TRUE)
-    # no warning about the subjects per group: the denominator counts them
-    expect_no_match(h, "a header's (N=n) prints NA", fixed = TRUE)
+    # no warning about the subjects per group: the starter wrote BIGN
+    expect_no_match(h, "reads its N from BIGN", fixed = TRUE)
     bf <- session$userData$bform
     b <- function(x) paste0("b", bf$n, "_", x)
     v <- list()

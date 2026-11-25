@@ -10,12 +10,20 @@ data:
     from: ADSL
 ard:
   analyses:
+    - id: BIGN
+      label: Subjects per group
+      method: categorical
+      data: adsl_saf
+      variables:
+        - TRT01A
+      purpose: PRIMARY OUTCOME MEASURE
     - id: DEMOG
       label: Demographics, run together
       method: cards::ard_stack
       data: adsl_saf
       by:
         - TRT01A
+      args: !r .by_stats = FALSE
       purpose: PRIMARY OUTCOME MEASURE
     - id: CONT
       parent: DEMOG
