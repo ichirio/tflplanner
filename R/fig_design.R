@@ -389,7 +389,8 @@ preview_figure <- function(study, output_id,
   po <- study$planner$ard$populations
   k <- if (!is.na(pop) && !is.null(po)) match(pop, po$population_id) else NA_integer_
   if (is.na(k)) return(data)
-  ds <- toupper(po$dataset[k] %||% "ADSL")
+  d0 <- po$dataset[k]
+  ds <- if (.is_blank(d0)) "ADSL" else toupper(d0)
   base <- data[[ds]] %||% .study_data(study, ds)[[ds]]
   if (is.null(base) || !"USUBJID" %in% names(base)) return(data)
   w <- po$where[k]

@@ -1184,7 +1184,9 @@
     }
     r$id <- id
     pv(r)
-    drawn(list(id = id, design = .fig_norm(unclass(d))))
+    # (with the report's analysis set: its subjects are the picture's)
+    drawn(list(id = id, design = .fig_norm(unclass(d)),
+               pop = report_population(shiny::isolate(rv$p), id)))
     drawing(FALSE)
   }
   # the form, the code and the checks first: the figure is drawn after the
@@ -1200,16 +1202,23 @@
     if (identical(form_on_page$id, shiny::isolate(current()))) draw_after() else
       form_on_page$waiting <- TRUE
   }
+  # the report's analysis set: another set, other subjects drawn
+  fig_pop <- shiny::reactive({
+    id <- current()
+    if (is.null(id)) NA_character_ else report_population(rv$p, id)
+  })
   stale <- shiny::reactive({
     d <- design()
     w <- drawn()
     !is.null(d) && (is.null(w) || !identical(w$id, current()) ||
-                      !identical(w$design, .fig_norm(unclass(d))))
+                      !identical(w$design, .fig_norm(unclass(d))) ||
+                      !identical(w$pop, fig_pop()))
   })
   design_d <- shiny::debounce(design, 600)
   shiny::observe({
     design_d()
     fig_id()
+    fig_pop()
     auto <- !identical(input$pd_auto, FALSE)
     if (on_tab() && shiny::isolate(stale()) &&
         (auto || !identical(shiny::isolate(drawn()$id), current()))) {
