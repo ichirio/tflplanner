@@ -14,6 +14,8 @@
 #   .field_control(kind, ...)             the control of a kind
 #   .field_frame(fid, arg, kind, ...)     the card's frame around it: label,
 #                                         badge, help, "(none)" and R switches
+#   .r_carry(kind, type)                  how the R switch moves the value
+#                                         between the control and its R box
 #
 # field_type() (R/field_type.R) names the basic type a definition has; it
 # does not choose the look in step 1.
@@ -157,7 +159,41 @@ field_ui <- function(id, arg, def = NULL, value = NULL, fc = field_ctx()) {
   control <- .field_control(kind, fid, arg, value, def, fc, p)
   .field_frame(fid, arg, kind, def, fc, control,
                st = list(value = value, r_only = r_only, r_ok = r_ok, is_r = is_r, r_text = r_text,
-                         none = none))
+                         none = none, carry = if (r_ok) .r_carry(kind, type)))
+}
+
+# How the page moves a field's value across when its R switch turns
+# (.builder_cards_js): the control's value written as R in the R box (on),
+# the R box's text put back in the control (off).  One rule for every
+# field with the switch, by the control its kind draws:
+#   rtext   R source already (a call typed as its R, rtf_border(...)): the
+#           text as it is; back only a call to one of the type's
+#           functions (`fns`) where the type names some
+#   text    a text: a string literal ("Table 1")
+#   number  a number: its literal
+#   one     a select of one: a literal (a string; TRUE, FALSE)
+#   many    a select of several: one literal, or c() of them
+#   check   a check: TRUE / FALSE
+# and `num`: the values are numbers (list<integer>: c(2, 4), not strings).
+# A value the box cannot put back (R the control cannot show) stays R, and
+# the field says so.  None ("": a table, a mapping, a call's small form):
+# nothing moved -- the R box empty, the field's value is read
+# (builder_card_read()) and the field says so.  A list(carry, fns, num).
+.r_carry <- function(kind, type) {
+  carry <- switch(kind,
+                  call = if (.call_has_form(.type_call_fn(type))) "" else "rtext",
+                  string = , template = "text",
+                  number = , integer = "number",
+                  column = , stat = , object = , pick_one = , colour = , shape = , enum = ,
+                  pick_enum = "one",
+                  list = , pick_many = , plot = "many",
+                  logical = "check",
+                  map = , table = "",
+                  "rtext")
+  fns <- if (identical(kind, "call")) .type_call_fn(type) else character()
+  first <- if (!is.null(type) && nzchar(type)) .type_split(trimws(type), "|")[[1L]] else ""
+  num <- kind %in% c("number", "integer") || grepl("^(list|vec)<(number|integer)", first)
+  list(carry = carry, fns = fns, num = num)
 }
 
 # The control of a look (`kind`): the card's switch of today's helpers.
@@ -228,10 +264,15 @@ field_ui <- function(id, arg, def = NULL, value = NULL, fc = field_ctx()) {
   r_text <- st$r_text
   none <- st$none
   r_input <- shiny::tags$input(type = "text", id = paste0(fid, "__r"), class = "form-control form-control-sm rp-mono rp-r-input",
-                               value = r_text, placeholder = "R", spellcheck = "false")
+                               value = r_text, placeholder = t("R code"), spellcheck = "false")
+  # (the switch says what its two states are; the notes the page shows
+  # when a value cannot be moved across -- .r_carry())
   r_switch <- if (r_only) shiny::tags$span(class = "rp-r-toggle rp-r-fixed", title = t("As R"), "R") else
     if (r_ok) shiny::tags$label(
-    class = "rp-r-toggle", title = t("As R"),
+    class = "rp-r-toggle",
+    title = t("R switch. On: the value is R code, typed in the R box. Off: the field's own value. The value moves across when it turns."),
+    `data-note-kept` = t("This R cannot be shown in the field: it stays R."),
+    `data-note-field` = t("The field's value is kept until R is typed in the R box."),
     shiny::tags$input(type = "checkbox", id = paste0(fid, "__isr"), class = "rp-isr",
                       checked = if (is_r) NA else NULL),
     shiny::tags$span("R"))
@@ -255,8 +296,11 @@ field_ui <- function(id, arg, def = NULL, value = NULL, fc = field_ctx()) {
   cls <- c("rp-field", paste0("rp-field-", cls_kind), if (required) "rp-field-required",
            if (is_r) "rp-field-r", if (none) "rp-field-none",
            if (none || nzchar(r_text) || .has_value(value)) "rp-has-value")
+  carry <- st$carry
   shiny::div(
     class = paste(cls, collapse = " "), `data-arg` = arg, `data-field` = fid,
+    `data-carry` = carry$carry, `data-r-fns` = if (length(carry$fns)) paste(carry$fns, collapse = " "),
+    `data-r-num` = if (isTRUE(carry$num)) "1",
     # (the "(none)" and R switches on the label's line, right: the input
     # keeps the field's whole width)
     shiny::div(class = "rp-field-head",
