@@ -372,6 +372,26 @@ $(document).on('hidden.bs.modal', function() {
     document.body.style.removeProperty('padding-right');
   }
 });
+// (its list being in <body>, a dialog closed with a list open left the list
+// floating on the page, #869.)  Esc with a list open closes the list, not
+// the dialog, as anywhere else; a dialog closing closes its lists.
+(function() {
+  function sel(el) {
+    var c = el && el.closest ? el.closest('.modal .selectize-control') : null;
+    var s = c ? jQuery(c).siblings('.selectized')[0] : null;
+    return s && s.selectize;
+  }
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    var s = sel(e.target);
+    if (s && s.isOpen) { s.close(); e.preventDefault(); e.stopPropagation(); }
+  }, true);
+  $(document).on('hide.bs.modal', function(e) {
+    jQuery(e.target).find('.selectized').each(function() {
+      if (this.selectize) this.selectize.close();
+    });
+  });
+})();
 "
 
 .unsaved_js <- "

@@ -63,6 +63,18 @@ test_that("the SPEC | Code | Result tabs are not a card around the sheets' card"
   expect_false(grepl("card-header", before, fixed = TRUE))
 })
 
+test_that("a dialog's open list closes with Esc and with the dialog, not left floating (#869)", {
+  js <- .modal_scroll_js
+  # (every selectize in a dialog draws its list in <body>)
+  expect_match(js, "opts.dropdownParent = 'body'", fixed = TRUE)
+  # Esc with a list open: the list closes, the dialog stays
+  expect_match(js, "if (s && s.isOpen) { s.close(); e.preventDefault(); e.stopPropagation(); }",
+               fixed = TRUE)
+  # a dialog closing closes its lists
+  expect_match(js, "on('hide.bs.modal'", fixed = TRUE)
+  expect_match(as.character(app_ui()), "hide.bs.modal", fixed = TRUE)
+})
+
 test_that("R's error output becomes one line and, when known, the next step", {
   out <- c("Loading ...",
            "Error in library(rtfreporter) : there is no package called 'rtfreporter'",
