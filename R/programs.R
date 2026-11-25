@@ -786,7 +786,8 @@ report_setup_code <- function(x, date = Sys.Date()) {
 # What a report program records in output/tfl/report_status.csv (its
 # record_report(), written in report_setup.R by tflspec): tflplanner reads
 # it -- a report made with another programs/study_setup.R than the one
-# there now is outdated
+# there now is outdated; `empty` (a listing says it): whether the report
+# has no rows, which the official run notes
 .report_status_name <- "report_status.csv"
 
 # the definition of the ARD each figure was made from, as its program
