@@ -652,12 +652,13 @@ remove_fig_preset <- function(name, home = tflplanner_home()) {
   invisible(f)
 }
 
-# A template's own defaults (its parameter OS, its flag FASFL, its group
-# TRT01P) may not be in the study's data.  For each the user left blank,
-# the data's own when the default is not there: the first parameter of
-# the dataset, a population flag it has, a treatment variable it has.
-# `x` is the dataset, `adsl` ADSL (where flags and the group may be);
-# `given` the names the user chose (param, pop, group).  Returns the
+# A template's own defaults (its parameter OS, its group TRT01P) may not be
+# in the study's data.  For each the user left blank, the data's own when
+# the default is not there: the first parameter of the dataset, a
+# treatment variable it has.  (The analysis set is the report's, its
+# data's `population:`, not a template's step: nothing to fit.)
+# `x` is the dataset, `adsl` ADSL (where the group may be);
+# `given` the names the user chose (param, group).  Returns the
 # arguments to give the template instead, named (empty when none).
 .template_fit <- function(d, x, adsl = NULL, given = character()) {
   cols <- unique(c(names(x), names(adsl)))
