@@ -650,6 +650,8 @@ test_that("a template figure has no population flag: a forest's analysis data is
     session$setInputs(pd_start = 1)
     expect_true(length(fig_design(rv$p, "F-HR")$layers) > 0L)
     expect_false(any(ard_rows(rv$p, "analysis_data", "F-HR")$from %in% "ADTTE"))
+    # the code view says whose subjects the code gets (#873)
+    expect_match(output$pd_code, "^# Subjects: all -- the report has no analysis set")
     # the report's set, chosen in the figure's step 1 as a table's: the
     # analysis data's, and its name
     expect_match(output$fig_report_pop$html, "fig_report_pop_pick", fixed = TRUE)
@@ -658,5 +660,9 @@ test_that("a template figure has no population flag: a forest's analysis data is
     session$setInputs(pd_start = 2)
     itt <- tte()[grepl("_itt_", tte()$data_id, fixed = TRUE), ]
     expect_identical(itt$population_id, "ITT")
+    expect_match(output$pd_code, "^# Subjects: the report's analysis set ITT ")
+    # (the view's line only: not the design's code, which the program saves)
+    d <- fig_design(rv$p, "F-HR")
+    expect_false(any(grepl("# Subjects:", .fig_design_lines(rv$p, "F-HR", d), fixed = TRUE)))
   })
 })

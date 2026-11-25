@@ -1341,7 +1341,8 @@
     id <- current()
     d <- design()
     shiny::req(id, d)
-    paste(tryCatch(.fig_design_lines(rv$p, id, d),
+    # (the subjects are the report's set's, kept before this code: said here)
+    paste(tryCatch(c(.fig_subjects_line(rv$p, id), .fig_design_lines(rv$p, id, d)),
                    error = function(e) conditionMessage(e)),
           collapse = "\n")
   })

@@ -404,6 +404,15 @@ preview_figure <- function(study, output_id,
   })
 }
 
+# The designer's code view's first line (not the saved program's): the
+# subjects the design's code gets -- the report's analysis set's, kept by
+# the report's program before it (A2-2), or all when the report has none.
+.fig_subjects_line <- function(x, output_id) {
+  pop <- report_population(x, output_id)
+  if (is.na(pop)) "# Subjects: all -- the report has no analysis set." else
+    sprintf("# Subjects: the report's analysis set %s (its program keeps them before this code).", pop)
+}
+
 # preview_figure(), with the ARD to print from given: `ard` is
 # .fig_preview_ard()'s (the app's previews: an outdated ARD made again
 # first); NULL reads the study ARD's rows as they are (.fig_ard_rows())
