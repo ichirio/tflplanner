@@ -109,6 +109,22 @@ test_that("a report's analysis set is read and set where its file has it: the da
   expect_true(is.na(.o_population(list())))
 })
 
+test_that("a template's `population` argument is the report's set where its file has it: no second value beside it (#868)", {
+  skip_if_not("km" %in% tflspec::tfl_templates()$name)
+  st <- list(list(step = "read", dataset = "ADTTE"))
+  # (a KM type's report switched to the layout `km`: its set on the data map)
+  p <- list(spec = list(outputs = list(`F-1` = list(id = "F-1", kind = "figure", template = list(name = "km"),
+                                                    data = list(population = "SAF", steps = st)))))
+  o <- .tpl_output(p, "F-1", list(population = "ITT", by = "TRT01A"))
+  expect_identical(o$data$population, "ITT")
+  expect_null(o$common$population)
+  expect_identical(.o_population(o), "ITT")
+  expect_identical(o$template$args$population, "ITT")
+  # (no data map: `common:` as before)
+  p$spec$outputs[["F-1"]]$data <- NULL
+  expect_identical(.tpl_output(p, "F-1", list(population = "ITT"))$common$population, "ITT")
+})
+
 test_that("a report's analysis set changed on the card is its toc line's too", {
   study <- tflspec::tfl_read_study_spec(system.file("extdata", "spec-yaml", package = "tflspec"))
   study$toc <- list(outputs = list(list(id = "F-1", kind = "figure", population = "SAF"),

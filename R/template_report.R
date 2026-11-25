@@ -1375,7 +1375,10 @@
   if (!is.null(name)) o$template$name <- name
   prm <- .tpl_params(o$template$name)
   args <- args[c(intersect(names(prm), names(args)), setdiff(names(args), names(prm)))]
-  if (!is.null(args$population)) o$common$population <- as.character(args$population)
+  # (the report's set written where its file has it -- a KM type's data map
+  # kept by a switch to the layout `km`, else `common:` -- never a second
+  # value beside it, .o_set_population(); #868)
+  if (!is.null(args$population)) o <- .o_set_population(o, as.character(args$population))
   # (a template whose analysis set is the report's population (demog) holds
   # it in `common:`, not in its arguments)
   if (.tpl_pop_of_report(prm)) args$population <- NULL
