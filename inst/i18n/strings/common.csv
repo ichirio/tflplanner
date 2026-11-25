@@ -1519,7 +1519,6 @@
 "One more column over all subjects, read from the ARD's overall rows: the analyses by the column variable are run once more without it (step 1, 'Also over all subjects'). No 'Total' arm is made up in the data.","全被験者の列を 1 つ足す。ARD の overall 行（列変数で分けた解析を、それなしでもう一度実行したもの：ARD 作成の「全体でも計算する」）から読む。データに「Total」という群は作らない。"
 "last","末尾"
 "first","先頭"
-"%d analyses are run over all subjects too: update the ARD, then Preview.","%d 本の解析を全体でも実行する：ARD を更新してから Preview。"
 "Also over all subjects","全体でも計算する"
 "ARD: not made yet (step 1, ""Generate this table's ARD"")","ARD: まだありません（ARD 作成の「この Table の ARD を生成」）"
 "column","列"

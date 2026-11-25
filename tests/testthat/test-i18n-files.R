@@ -42,3 +42,15 @@ test_that("a figure's layer is one word in Japanese (#870)", {
   expect_true(all(grepl("レイヤー", ja, fixed = TRUE)))
   expect_false(any(grepl("層", ja, fixed = TRUE)))
 })
+
+test_that("the Japanese names a translated button by its Japanese label (#871)", {
+  s <- .strings()
+  btn <- c("Preview", "Redraw", "Save", "Apply", "Copy", "Remove", "Add",
+           "Cancel", "Close", "Run", "Discard", "Replace")
+  btn <- btn[vapply(btn, function(w) !identical(tr(w, "ja"), w), logical(1))]
+  expect_true("Preview" %in% btn)
+  for (w in btn) {
+    hit <- s$ja[grepl(paste0("\\b", w, "\\b"), s$ja, perl = TRUE)]
+    expect_identical(hit, character(), info = w)
+  }
+})
