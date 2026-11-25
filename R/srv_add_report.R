@@ -652,13 +652,14 @@
   tpl_past <- new.env()
   tpl_iid <- function(name, a) paste0("tpl_", .tpl_id_part(name), "__", .tpl_id_part(a))
   # (`population`: the report's analysis set written too, after the steps --
-  # on the data map they make, .o_set_population(); NULL leaves it)
+  # on the data map they make, .o_set_population(); NULL leaves it.  The toc
+  # line always follows the report's set as written, also when an argument
+  # write moved it, so the list and the designer read the same set)
   tpl_write <- function(id, args, name = NULL, steps = NULL, redraw = TRUE, population = NULL) {
     o <- .tpl_output(rv$p, id, args, name = name)
     if (length(steps)) o$data$steps <- steps
     if (!is.null(population)) o <- .o_set_population(o, population)
-    p2 <- guarded(.spec_set_output(if (is.null(population)) rv$p else
-      .spec_set_toc_population(rv$p, id, .o_population(o)), id, o))
+    p2 <- guarded(.spec_set_output(.spec_set_toc_population(rv$p, id, .o_population(o)), id, o))
     if (is.null(p2)) return(invisible(FALSE))
     rv$p <- p2
     rv$bver <- rv$bver + 1L
