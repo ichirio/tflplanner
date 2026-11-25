@@ -886,9 +886,13 @@
   if (.tpl_asks_report_pop(prm_all)) {
     pop <- .tpl_value(raws[["population"]], "population", prm_all$population)
     if (inherits(pop, "tfl_unset")) pop <- NULL
-    if (is.null(pop) && .tpl_pop_of_report(prm_all)) return(structure(list(), missing = "population"))
+    # (required: a hidden one that is the report's alone (demog), or a shown
+    # one the template needs (forest_hr); not a KM type's, which may be left out)
+    if (is.null(pop) && isTRUE(prm_all[["population"]]$required) && !.tpl_own_data(prm_all)) {
+      return(structure(list(), missing = "population"))
+    }
   }
-  for (x in .tpl_shown(prm_all)) {
+  for (x in .tpl_dialog_shown(prm_all)) {
     raw <- raws[[x$name]]
     type <- .tpl_type(x)
     start <- .tpl_study_value(study, x) %||% x$default
@@ -918,7 +922,10 @@
     if (!is.null(sv) && identical(as.character(unlist(v)), as.character(unlist(sv)))) next
     args[[x$name]] <- v
   }
-  if (!is.null(pop)) attr(args, "population") <- pop
+  if (!is.null(pop)) {
+    attr(args, "population") <- pop
+    if (.tpl_pop_is_arg(prm_all)) args$population <- pop
+  }
   args
 }
 
@@ -1278,23 +1285,36 @@
   !is.null(p) && isTRUE(p$hidden) && isTRUE(p$required) && !.tpl_own_data(prm)
 }
 
-# Whether the template's analysis set is the report's `population:` field
-# alone: its `population` hidden, required, and not part of the report's own
-# data steps (demog, stf_t02_demog).  The add-report dialog asks for it, and
-# writes it as the report's population, not as an argument.
-.tpl_pop_of_report <- function(prm) {
-  p <- prm[["population"]]
-  !is.null(p) && isTRUE(p$hidden) && isTRUE(p$required) && !.tpl_own_data(prm)
+# Whether the add-report dialog asks the report's analysis set for a
+# template: every one does (#868, decided by coordinator 11-26 night): the
+# one control "This report's population", the study's populations only,
+# whatever the template says of its `population` -- hidden (demog, a KM
+# type), shown (forest_hr, tflspec_hierarchy) or not at all (tflspec_v1's
+# figures).  A `population` argument is never drawn as a field of its own
+# (.tpl_dialog_shown()); where the set is written: .tpl_pop_is_arg()
+.tpl_asks_report_pop <- function(prm) TRUE
+
+# The template's parameters the add-report dialog draws as fields: the
+# shown ones but `population`, which is the report's set control
+.tpl_dialog_shown <- function(prm) {
+  s <- .tpl_shown(prm)
+  s[!vapply(s, function(x) identical(x$name, "population"), NA)]
 }
 
-# Whether the add-report dialog asks the report's analysis set for a
-# template: one whose set is the report's population (demog, required), or
-# one whose data stage is the report's own (a KM type) with its `population`
-# hidden in it (may be left out; a shown one is an argument, asked in its
-# own field).  The same control for both, the study's populations only;
-# written as the report's set, not as an argument (#868)
-.tpl_asks_report_pop <- function(prm) {
-  .tpl_pop_of_report(prm) || (.tpl_own_data(prm) && isTRUE(prm[["population"]]$hidden))
+# The `population` parameter the set control stands for; a template with
+# none (tflspec_v1's figures) gets a bare one: optional, no default
+.tpl_pop_param <- function(prm) {
+  x <- prm[["population"]]
+  if (is.null(x)) list(name = "population", required = FALSE) else x
+}
+
+# Whether the template takes its set as a shown argument (forest_hr,
+# tflspec_hierarchy): the dialog's set control then also writes that
+# argument, as the field of it did; a hidden one, or none, is the report's
+# set alone
+.tpl_pop_is_arg <- function(prm) {
+  p <- prm[["population"]]
+  !is.null(p) && !isTRUE(p$hidden)
 }
 
 # A report's `data:` steps as the card's fields say them: the dataset

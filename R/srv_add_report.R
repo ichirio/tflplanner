@@ -272,10 +272,10 @@
           lapply(tp$name, function(nm) {
             prm_all <- .tpl_params(nm)
             prm <- .tpl_shown(prm_all)
-            req_p <- Filter(function(x) isTRUE(x$required), prm)
-            # (a template whose analysis set is the report's population:
-            # asked first, written as the report's population)
-            if (.tpl_pop_of_report(prm_all)) req_p <- c(prm_all["population"], req_p)
+            req_p <- Filter(function(x) isTRUE(x$required), .tpl_dialog_shown(prm_all))
+            # (the report's analysis set: one control for every template,
+            # asked first -- in the box here, in the data block of a KM type's)
+            if (!.tpl_own_data(prm_all)) req_p <- c(list(.tpl_pop_param(prm_all)), req_p)
             shiny::conditionalPanel(
               sprintf("input.modal_type == '%s' && input['%s'] == '%s'", kind, tpl_input(kind), nm),
               if (.tpl_own_data(prm_all)) tpl_modal_data_ui(nm),
@@ -299,11 +299,11 @@
   tpl_req_widgets <- function(nm, ds = NULL) {
     prm_all <- .tpl_params(nm)
     prm <- .tpl_shown(prm_all)
-    req_p <- Filter(function(x) isTRUE(x$required), prm)
+    req_p <- Filter(function(x) isTRUE(x$required), .tpl_dialog_shown(prm_all))
     shiny::tagList(
-      # (a hidden `population` param is the report's analysis set: still chosen
-      # in the dialog, asked first, as in the static list above)
-      if (.tpl_pop_of_report(prm_all)) tpl_pop_widget(nm),
+      # (the report's analysis set, asked first, as in the static list above;
+      # a template's `population` argument is no field of its own)
+      if (!.tpl_own_data(prm_all)) tpl_pop_widget(nm),
       lapply(req_p, function(x) {
         tpl_widget(tpl_arg_id(nm, x$name), x, .tpl_study_value(rv$p$spec$study, x),
                    dataset = ds %||% prm$data$default, params = prm, say_first = TRUE, tpl = nm,
@@ -311,27 +311,25 @@
       }))
   }
   # The report's analysis set in the dialog: one control for every template
-  # that asks it (.tpl_asks_report_pop(): a table's that hides it, a KM
-  # type's data stage) -- the study's populations only, its start the study's
-  # value else the template's default.  ADSL's Y/N flags no population says
-  # are told under it: a flag that is an analysis set is registered in the
+  # that asks it (.tpl_asks_report_pop(): every one) -- the study's
+  # populations only, its start the study's value else the template's
+  # default.  ADSL's Y/N flags no population says are told in its (i), not
+  # as lines under it: a flag that is an analysis set is registered in the
   # study first (#868)
   tpl_pop_widget <- function(nm) {
-    x <- .tpl_params(nm)[["population"]]
+    x <- .tpl_pop_param(.tpl_params(nm))
     # ("(not chosen)" is its none: no "(none: not passed)" item beside it)
     x$unset <- "stop"
+    fl <- .tpl_flags_undefined(tpl_data()[["ADSL"]], rv$p$ard$populations)
     lab <- shiny::span(
       t("This report's population"),
       if (isTRUE(x$required)) shiny::span(class = "text-danger", " *"),
-      help_tip(t("The report's analysis set: one of the study's populations (spec/data.yml populations). The report's subjects are its subjects.")))
-    fl <- .tpl_flags_undefined(tpl_data()[["ADSL"]], rv$p$ard$populations)
-    shiny::tagList(
-      tpl_widget(tpl_arg_id(nm, "population"), x, .tpl_study_value(rv$p$spec$study, x),
-                 label = lab, say_first = TRUE, tpl = nm),
-      if (length(fl)) shiny::p(
-        class = "small text-muted mt-n2",
-        sprintf(t("ADSL's Y/N flags %s are not study populations: a flag that is a real analysis set is registered as a study population (spec/data.yml populations) first, then chosen here."),
-                paste(fl, collapse = ", "))))
+      help_tip(c(
+        t("The report's analysis set: one of the study's populations (spec/data.yml populations). The report's subjects are its subjects."),
+        if (length(fl)) sprintf(t("ADSL's Y/N flags %s are not study populations: a flag that is a real analysis set is registered as a study population (spec/data.yml populations) first, then chosen here."),
+                                paste(fl, collapse = ", ")))))
+    tpl_widget(tpl_arg_id(nm, "population"), x, .tpl_study_value(rv$p$spec$study, x),
+               label = lab, say_first = TRUE, tpl = nm)
   }
   # (... drawn again, for a template with a `data` argument, when the dataset in
   # it changes: its columns and suggestions are the new dataset's; one output a
@@ -355,7 +353,7 @@
     nm <- tpl_chosen()
     shiny::req(nm)
     prm <- .tpl_shown(.tpl_params(nm))
-    opt <- Filter(function(x) !isTRUE(x$required), prm)
+    opt <- Filter(function(x) !isTRUE(x$required), .tpl_dialog_shown(.tpl_params(nm)))
     if (!length(opt)) return(NULL)
     # (the key arguments right under the required ones, open, with their marker;
     # the folded group holds the rest)
@@ -440,7 +438,7 @@
     raws <- list()
     nones <- list()
     if (.tpl_asks_report_pop(prm_all)) raws["population"] <- list(input[[tpl_arg_id(nm, "population")]])
-    for (x in .tpl_shown(prm_all)) {
+    for (x in .tpl_dialog_shown(prm_all)) {
       raws[x$name] <- list(tpl_picked(nm, x))
       nones[x$name] <- list(input[[paste0(tpl_arg_id(nm, x$name), "__none")]])
     }

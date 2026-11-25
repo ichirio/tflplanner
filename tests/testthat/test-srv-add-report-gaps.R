@@ -690,3 +690,95 @@ test_that("a KM template in the dialog: the report's set is the table's control,
     expect_null(o2$common$population)
   })
 })
+
+test_that("the dialog has one control for the report's set on every figure template: no population field, the flags note behind its (?) (#868, decided by coordinator 11-26 night)", {
+  id <- sample_for_add("KMP")
+  shown <- watch_add()
+  shiny::testServer(server_for(id), {
+    rv <- session$userData$rv
+    figs <- .tpl_list("figure")$name
+    want <- intersect(c("km_survival", "forest_hr", "tflspec_v1/forest_hr", "tflspec_v1/km_simple"), figs)
+    skip_if(!length(want), "no figure template to look at")
+    fl <- .tpl_flags_undefined(.tpl_data_cols(rv$study$path, rv$p)[["ADSL"]], rv$p$ard$populations)
+    for (i in seq_along(want)) {
+      nm <- want[i]
+      session$setInputs(add = i, modal_type = "figure", modal_how = "template",
+                        modal_tpl_figure = nm, modal_id = "")
+      session$flushReact()
+      box <- tryCatch(output[[sprintf("mtpl_%s___req_box", .tpl_id_part(nm))]]$html, error = function(e) NULL)
+      h <- paste0(add_html(add_modal(shown)), add_html(box), add_html(output$tpl_modal_more$html))
+      sel <- sprintf('<select id="mtpl_%s__population"', .tpl_id_part(nm))
+      expect_equal(lengths(regmatches(h, gregexpr(sel, h, fixed = TRUE))), 1L, info = nm)
+      # (the set control, not an argument: no field headed "(population)")
+      expect_false(grepl("Analysis set (population)", h, fixed = TRUE), info = nm)
+      # (the flags note is no line under it; it is in the (?) of the control)
+      expect_false(grepl('class="small text-muted mt-n2"', h, fixed = TRUE), info = nm)
+      if (length(fl)) {
+        expect_match(h, "is registered as a study population (spec/data.yml populations) first", fixed = TRUE)
+      }
+    }
+    # (the code dialog's control has its (?) too)
+    session$setInputs(add = length(want) + 1L, modal_type = "figure", modal_how = "code")
+    session$flushReact()
+    code <- add_html(add_modal(shown))
+    at <- regexpr('for="modal_pop"', code, fixed = TRUE)
+    if (at > 0L) expect_match(substr(code, at, at + 600L), "rp-tip", fixed = TRUE)
+  })
+})
+
+test_that("the dialog's set control writes where the template takes the set: a shown argument too, else the report's set alone (#868)", {
+  skip_if_not("forest_hr" %in% tflspec::tfl_templates()$name)
+  prm <- .tpl_params("forest_hr")
+  expect_true(.tpl_asks_report_pop(prm))
+  expect_false("population" %in% names(.tpl_dialog_shown(prm)))
+  a <- .tpl_dialog_args(prm, list(population = "SAF", param = "PFS"))
+  expect_null(attr(a, "missing"))
+  expect_identical(attr(a, "population"), "SAF")
+  expect_identical(a$population, "SAF")
+  # (required by the template: no set, no Create)
+  b <- .tpl_dialog_args(prm, list(population = "", param = "PFS"))
+  expect_identical(attr(b, "missing"), "population")
+  # (a template with no `population`: the report's set alone, optional)
+  v1 <- "tflspec_v1/forest_hr"
+  skip_if_not(v1 %in% .tpl_list("figure")$name)
+  p1 <- .tpl_params(v1)
+  expect_null(p1$population)
+  expect_identical(.tpl_pop_param(p1)$name, "population")
+  expect_false(isTRUE(.tpl_pop_param(p1)$required))
+  c1 <- .tpl_dialog_args(p1, list(population = "SAF", by = "TRT01A"))
+  expect_null(attr(c1, "missing"))
+  expect_identical(attr(c1, "population"), "SAF")
+  expect_null(c1$population)
+  d1 <- .tpl_dialog_args(p1, list(population = "", by = "TRT01A"))
+  expect_null(attr(d1, "missing"))
+  expect_null(attr(d1, "population"))
+})
+
+test_that("one set of labels for the same meaning in forest_hr and tflspec_v1/forest_hr: group, reference, compared, subgroup (#868)", {
+  head_of <- function(nm, a) .tpl_arg_heading(.tpl_params(nm)[[a]], identity)
+  ja <- function(en) tr(en, "ja")
+  expect_identical(ja("Group"), "群")
+  expect_identical(ja("Reference treatment group"), "基準群")
+  expect_identical(ja("Group compared with reference"), "基準群に対して示す群")
+  expect_identical(ja("Subgroup variables"), "部分集団")
+  expect_identical(.tpl_arg_labels[["group"]], "Group")
+  expect_identical(.tpl_arg_labels[["ref"]], "Reference treatment group")
+  expect_identical(.tpl_arg_labels[["comparison"]], "Group compared with reference")
+  expect_identical(.tpl_arg_labels[["subgroups"]], "Subgroup variables")
+  expect_identical(.tpl_arg_labels[["subgroup_vars"]], "Subgroup variables")
+  if ("forest_hr" %in% tflspec::tfl_templates()$name) {
+    expect_identical(head_of("forest_hr", "group"), "Group (group)")
+    expect_identical(head_of("forest_hr", "ref"), "Reference treatment group (ref)")
+    expect_identical(head_of("forest_hr", "comparison"), "Group compared with reference (comparison)")
+  }
+  v1 <- "tflspec_v1/forest_hr"
+  if (v1 %in% .tpl_list("figure")$name) {
+    expect_identical(head_of(v1, "by"), "Group (by)")
+    expect_identical(head_of(v1, "ref"), "Reference treatment group (ref)")
+    expect_identical(head_of(v1, "comparison"), "Group compared with reference (comparison)")
+    expect_identical(head_of(v1, "subgroup_vars"), "Subgroup variables (subgroup_vars)")
+  }
+  # (the (?) texts say the group, not the treatment arm alone)
+  expect_false(any(grepl("投与群", c(ja("The reference arm; empty for the first in the code list."),
+                                      ja("The arm compared against the reference")))))
+})
