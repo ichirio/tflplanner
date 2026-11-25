@@ -20,6 +20,24 @@
 }
 .pd_source_steps <- c("read", "join", "param", "flag", "time_unit")
 
+# The help behind a template argument's "?", where the argument means
+# something else in another template: keyed by the template (its kind) and
+# the argument.  `time_unit` is the unit the time axis is shown in; a KM
+# figure converts each record's time by AVALU, a swimmer plot reads a
+# duration column of ADSL (days), a spider plot its day variable (ADY).
+.tpl_arg_help <- function(tp, kind, arg, t = identity) {
+  if (identical(arg, "time_unit")) {
+    if (identical(kind, "swimmer")) {
+      return(t("The unit the durations are shown in; the duration column is read as days."))
+    }
+    if (identical(tp, "individual_spider")) {
+      return(t("The unit the time axis is shown in; the time variable (ADY) is read as days."))
+    }
+    return(t("The time axis is shown in this unit. The data's time is converted from each record's unit (AVALU); days when AVALU is missing."))
+  }
+  ""
+}
+
 # The data steps that make a statistic (a KM fit, summary statistics, a
 # function's result, the ARD's numbers): step 2 (ARD) shows them, from the
 # first one on -- the steps after it go on in its object; the steps before

@@ -661,6 +661,18 @@ test_that("a KM figure's time unit: the template's choices, its help behind the 
     "時間軸をこの単位で表示します。データの時間は各レコードの単位（AVALU）から換算します（AVALU が無ければ日数）。")
 })
 
+test_that("a template argument's help follows the template: the time unit of a swimmer plot is not the KM text", {
+  km <- .tpl_arg_help("km_simple", "km", "time_unit")
+  expect_match(km, "AVALU", fixed = TRUE)
+  sw <- .tpl_arg_help("swimmer_bar", "swimmer", "time_unit")
+  expect_false(grepl("AVALU", sw, fixed = TRUE))
+  expect_match(sw, "duration column is read as days", fixed = TRUE)
+  expect_match(.tpl_arg_help("individual_spider", "individual", "time_unit"), "ADY", fixed = TRUE)
+  ja <- function(x) tr(x, "ja")
+  expect_match(.tpl_arg_help("swimmer_bar", "swimmer", "time_unit", ja), "日数として読みます")
+  expect_false(grepl("AVALU", .tpl_arg_help("swimmer_bar", "swimmer", "time_unit", ja), fixed = TRUE))
+})
+
 test_that("a template figure has no population flag: a forest's analysis data is the report's set", {
   skip_on_cran()
   local_home()
