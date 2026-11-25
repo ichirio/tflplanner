@@ -1009,65 +1009,23 @@ report_setup_code <- function(x, date = Sys.Date()) {
 }
 
 .report_setup_code <- function(x, date = Sys.Date()) {
-  lay <- study_layout()
-  sp <- function() .spec_object_last(x, c(table_sheets(), report_sheets()),
-                                     unique(c(.study_keys$table, .study_keys$report)))
-  c(.banner(
-      paste("Program    :", file.path(lay[["programs_tfl"]], .report_setup_file)),
-      "The study's font, header, footer and tokens: every report program sources it.",
-      paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
-             ", ", format(date, "%Y-%m-%d")),
-      "",
-      "Written from spec/defaults.yml: change them there (the study tab),",
-      "then generate the programs again."),
-    "",
-    "# the study's setup: the company's, the study's folders and id, your own",
-    .source_study_setup(),
-    "",
-    local({
-      # (the study's spec: its defaults; else the sheets' default rows)
-      spec <- .code_spec(x)
-      own <- if (!is.null(spec$study)) tflspec::tfl_report_setup_code(spec$study) else
-        tflspec::tfl_report_setup_code(sp())
-      if (length(own)) c(own, "")
-    }),
-    .record_report_fun(),
-    "")
+  # (the study's spec: its defaults; else the sheets' default rows)
+  spec <- .code_spec(x)
+  study <- if (!is.null(spec$study)) spec$study else
+    .spec_object_last(x, c(table_sheets(), report_sheets()),
+                      unique(c(.study_keys$table, .study_keys$report)))
+  ctx <- .setup_context_args()
+  tflspec::tfl_setup_program("report_setup", study = study, attached = ctx$attached,
+                             study_code = ctx$study_code, layout = study_layout(),
+                             date = date, generator = .setup_generator())
 }
 
-# The small function a report program ends with, written in
-# report_setup.R: what was made, and with which study setup, into
-# output/tfl/report_status.csv (tflplanner reads it: a report made with
-# another programs/study_setup.R than the one there now is outdated), and
-# -- a listing says it -- whether the report has no rows (`empty`: "TRUE",
-# "FALSE", "" not said; the official run's batch.R reads it and notes an
-# empty report).
+# What a report program records in output/tfl/report_status.csv (its
+# record_report(), written in report_setup.R by tflspec): tflplanner reads
+# it -- a report made with another programs/study_setup.R than the one
+# there now is outdated; `empty` (a listing says it): whether the report
+# has no rows, which the official run notes
 .report_status_name <- "report_status.csv"
-.record_report_fun <- function() {
-  sf <- file.path(study_layout()[["tfl"]], .report_status_name)
-  c("# what was made, with which study setup, and -- a figure printing an",
-    "# ARD's numbers -- from which definition of that ARD (tflplanner reads it);",
-    "# `empty`: TRUE when the report has no rows (the official run notes it)",
-    "record_report <- function(output_id, ard = \"\", empty = NA) {",
-    paste0("  sf <- ", .r_string(sf)),
-    # the study setup's fingerprint on a line of its own
-    paste0("  setup <- ", .report_setup_hash_code()),
-    "  row <- data.frame(output_id = output_id,",
-    "                    built = format(Sys.time(), \"%Y-%m-%d %H:%M:%S\"),",
-    "                    setup = setup,",
-    "                    ard = ard,",
-    "                    empty = if (isTRUE(empty)) \"TRUE\" else if (isFALSE(empty)) \"FALSE\" else \"\",",
-    "                    stringsAsFactors = FALSE)",
-    "  dir.create(dirname(sf), recursive = TRUE, showWarnings = FALSE)",
-    "  st <- if (file.exists(sf)) utils::read.csv(sf, colClasses = \"character\")",
-    "  if (!is.null(st) && nrow(st)) {",
-    "    for (k in setdiff(names(row), names(st))) st[[k]] <- \"\"",
-    "    row <- rbind(st[st$output_id != output_id, names(row), drop = FALSE], row)",
-    "  }",
-    "  utils::write.csv(row, sf, row.names = FALSE)",
-    "  invisible(output_id)",
-    "}")
-}
 
 # the definition of the ARD each figure was made from, as its program
 # recorded it (NA: none recorded)
