@@ -342,12 +342,20 @@ test_that("a template listing: its data card writes the dataset's steps, keeps a
     expect_false(f$join)
     expect_identical(rv$p$spec$outputs[["L-ZZ-7"]]$data$population, "SAF")
     expect_null(rv$p$spec$outputs[["L-ZZ-7"]]$common$population)
-    # a flag the study does not define: a join of the report's own, no set
-    session$setInputs(tpl_data_pop = "flag:XXFL", tpl_data_apply = 3)
+    # a join of the report's own (its file's, on a flag the study does not
+    # define): offered as the report's own join, kept as it is -- no flag
+    # offered as a set (codex review 9)
+    o <- rv$p$spec$outputs[["L-ZZ-7"]]
+    o$data$steps <- .tpl_steps_from("ADAE", list(dataset = "ADSL", where = "XXFL == \"Y\""))
+    o <- .o_set_population(o, NA_character_)
+    rv$p <- .spec_set_output(rv$p, "L-ZZ-7", o)
     f <- .tpl_steps_fields(steps())
     expect_true(f$join)
-    expect_identical(f$join_where, "XXFL == \"Y\"")
-    expect_true(is.na(.o_population(rv$p$spec$outputs[["L-ZZ-7"]])))
+    ch <- tpl_data_pop_choices("L-ZZ-7", f)
+    expect_true(".own" %in% ch)
+    expect_false(any(startsWith(unname(ch), "flag:")))
+    expect_true(all(setdiff(unname(ch), c("", ".own")) %in% rv$p$ard$populations$population_id))
+    expect_identical(tpl_data_pop_sel("L-ZZ-7", f), ".own")
     # the report's own join, as it is: no population of the study
     session$setInputs(tpl_data_pop = ".own", tpl_data_apply = 4)
     expect_identical(.tpl_steps_fields(steps())$join_where, "XXFL == \"Y\"")

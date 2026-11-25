@@ -330,14 +330,21 @@
       t("This report's population"),
       if (isTRUE(x$required)) shiny::span(class = "text-danger", " *"),
       help_tip(t("The report's analysis set: one of the study's populations (spec/data.yml populations). The report's subjects are its subjects.")))
-    fl <- .tpl_flags_undefined(tpl_data()[["ADSL"]], rv$p$ard$populations)
     shiny::tagList(
       tpl_widget(tpl_arg_id(nm, "population"), x, .tpl_study_value(rv$p$spec$study, x),
                  label = lab, say_first = TRUE, tpl = nm),
-      if (length(fl)) shiny::p(
-        class = "small text-muted mt-n2",
-        sprintf(t("ADSL's Y/N flags %s are not study populations: a flag that is a real analysis set is registered as a study population (spec/data.yml populations) first, then chosen here."),
-                paste(fl, collapse = ", "))))
+      tpl_flags_note("small text-muted mt-n2"))
+  }
+  # ADSL's Y/N flags no study population says, told under a report's set
+  # control (the Create dialog's, the data step's): not offered -- a flag
+  # that is an analysis set is registered in the study first (#868, codex
+  # review 9).  NULL when there are none.
+  tpl_flags_note <- function(class = "small text-muted") {
+    fl <- .tpl_flags_undefined(tpl_data()[["ADSL"]], rv$p$ard$populations)
+    if (!length(fl)) return(NULL)
+    shiny::p(class = class,
+             sprintf(t("ADSL's Y/N flags %s are not study populations: a flag that is a real analysis set is registered as a study population (spec/data.yml populations) first, then chosen here."),
+                     paste(fl, collapse = ", ")))
   }
   # (... drawn again, for a template with a `data` argument, when the dataset in
   # it changes: its columns and suggestions are the new dataset's; one output a
@@ -936,6 +943,7 @@
       # DataSubset)
       shiny::selectInput("tpl_data_pop", t("Analysis set (population)"), tpl_data_pop_choices(id, f),
                          selected = tpl_data_pop_sel(id, f), width = "100%"),
+      tpl_flags_note("small text-muted mt-n2 mb-1"),
       shiny::textInput("tpl_data_filter", t("Record condition (filter)"), f$filter, width = "100%",
                        placeholder = t("an R condition on the records, e.g. AVAL > 0")),
       shiny::div(class = "small text-muted mb-1",
@@ -966,26 +974,23 @@
         shiny::tags$pre(class = "small mb-0", yaml::as.yaml(list(data = list(steps = steps))))))
   }
   # the card's analysis-set choice: the report's population, else its own
-  # join -- a flag ("flag:<variable>") or as it is (".own") -- else none
+  # join as it is (".own": a join its file has, on a flag or not), else none
   tpl_data_pop_sel <- function(id, f) {
     pid <- .o_population(rv$p$spec$outputs[[id]])
     if (!is.na(pid)) return(pid)
-    if (!f$join) return("")
-    fl <- .pop_flag(f$join_where)
-    if (!is.na(fl) && identical(toupper(f$join_dataset), "ADSL")) paste0("flag:", fl) else ".own"
+    if (f$join) ".own" else ""
   }
   tpl_data_pop_choices <- function(id, f) {
-    # (the study's populations: a flag that is an analysis set is
-    # registered in the study first, #868)
-    ch <- pop_choices()
-    # (the report's own join, when it has no population of the study)
+    # (the study's populations only, as the Create dialog offers them: a
+    # flag that is an analysis set is registered in the study first --
+    # tpl_flags_note(); #868, codex review 9.  The report's set kept a
+    # choice when the populations sheet has it not, as step 1's)
+    ch <- pop_choices(.o_population(rv$p$spec$outputs[[id]]))
+    # (the report's own join, when it has no population of the study: its
+    # file's, kept as it is -- no flag offered as a set)
     if (f$join && is.null(tpl_data_pop(id))) {
-      fl <- .pop_flag(f$join_where)
-      own <- if (!is.na(fl) && identical(toupper(f$join_dataset), "ADSL")) paste0("flag:", fl) else ".own"
-      if (!own %in% ch) {
-        ch <- c(ch, stats::setNames(own, sprintf("%s (%s: %s)", t("The report's own join"),
-                                                  f$join_dataset, f$join_where)))
-      }
+      ch <- c(ch, stats::setNames(".own", sprintf("%s (%s: %s)", t("The report's own join"),
+                                                   f$join_dataset, f$join_where)))
     }
     ch
   }
@@ -1012,14 +1017,12 @@
     f <- .tpl_steps_fields(o$data$steps)
     # the analysis set chosen: the study's -- the report's set, its data's
     # `population:`, whose subjects the program keeps (canon 11-15): no join
-    # step of it, an old one taken out -- a flag the study does not define or
-    # the report's own join as it is (".own"), kept as a join, or none
+    # step of it, an old one taken out -- or the report's own join as its
+    # file has it (".own"), kept as a join, or none
     sel <- input$tpl_data_pop %||% tpl_data_pop_sel(id, f)
     join <- NULL
     if (identical(sel, ".own")) {
       join <- list(dataset = f$join_dataset, where = f$join_where)
-    } else if (startsWith(sel, "flag:")) {
-      join <- list(dataset = "ADSL", where = sprintf("%s == \"Y\"", sub("^flag:", "", sel)))
     }
     steps <- .tpl_steps_from(input$tpl_data_ds, join, input$tpl_data_param %||% "",
                              input$tpl_data_filter %||% "")
