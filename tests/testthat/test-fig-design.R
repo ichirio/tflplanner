@@ -198,6 +198,16 @@ test_that("a template's defaults the data has not got are replaced by the data's
   fit <- .template_fit(d, x, adsl)
   expect_identical(fit[["param"]], "TTDE")
   expect_identical(fit[["group"]], "TRT01P")    # named: only ADSL has it
+  # the note names the template's default and what is used (#872)
+  was <- attr(fit, "was")
+  expect_identical(names(was), names(fit))
+  note <- .template_fit_notes(fit, "ADTTE")
+  expect_match(note[1L], sprintf("default %s is not in ADTTE; it uses TTDE", was[["param"]]),
+               fixed = TRUE)
+  expect_match(note[2L], sprintf("default %s is not in ADTTE", was[["group"]]), fixed = TRUE)
+  ja <- .template_fit_notes(fit, "ADTTE", function(k) tr(k, "ja"))
+  expect_match(ja[1L], was[["param"]], fixed = TRUE)
+  expect_match(ja[1L], "TTDE", fixed = TRUE)
   # what the user chose stays
   expect_length(.template_fit(d, x, adsl, given = c("param", "group")), 0L)
   # the data has the template's defaults: nothing to change

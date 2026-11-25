@@ -444,9 +444,7 @@
           d2 <- make(args)
           if (!is.null(d2)) {
             d <- .trim_join(d2, x)
-            notify(sprintf(t("The template's defaults are not in %s: it uses %s instead."),
-                           ds, paste(sprintf("%s = %s", names(fit), fit),
-                                     collapse = ", ")))
+            notify(paste(.template_fit_notes(fit, ds, t), collapse = " "))
           }
         }
       }

@@ -687,10 +687,11 @@ remove_fig_preset <- function(name, home = tflplanner_home()) {
 # data's `population:`, not a template's step: nothing to fit.)
 # `x` is the dataset, `adsl` ADSL (where the group may be);
 # `given` the names the user chose (param, group).  Returns the
-# arguments to give the template instead, named (empty when none).
+# arguments to give the template instead, named (empty when none); its
+# attribute "was" holds the template's own value of each.
 .template_fit <- function(d, x, adsl = NULL, given = character()) {
   cols <- unique(c(names(x), names(adsl)))
-  out <- character()
+  out <- was <- character()
   step_of <- function(s) Filter(function(z) identical(z$step, s), d$data)
   pick <- function(cands) {
     hit <- cands[cands %in% cols]
@@ -701,7 +702,10 @@ remove_fig_preset <- function(name, home = tflplanner_home()) {
     have <- unique(stats::na.omit(as.character(x$PARAMCD)))
     v <- if (length(p)) unlist(strsplit(paste(p[[1L]]$value, collapse = ","),
                                         "\\s*[|,]\\s*")) else character()
-    if (length(v) && !any(v %in% have) && length(have)) out[["param"]] <- sort(have)[1L]
+    if (length(v) && !any(v %in% have) && length(have)) {
+      out[["param"]] <- sort(have)[1L]
+      was[["param"]] <- paste(v, collapse = ", ")
+    }
   }
   # a variable the template reads: kept when the dataset has it; named
   # when only ADSL has it (so the caller joins ADSL); else the first of
@@ -718,9 +722,31 @@ remove_fig_preset <- function(name, home = tflplanner_home()) {
   if (!"group" %in% given) {
     g <- d$plot$colour_by %||% unlist(lapply(d$data, `[[`, "by"))[1L]
     v <- fit_var(g, c("TRT01P", "TRT01A", "TRTP", "TRTA", "ARM", "ACTARM"))
-    if (!is.na(v)) out[["group"]] <- v
+    if (!is.na(v)) {
+      out[["group"]] <- v
+      was[["group"]] <- g
+    }
   }
+  # (the template's own value of each, for the note that says what changed)
+  if (length(out)) attr(out, "was") <- was[names(out)]
   out
+}
+
+# The note on what .template_fit() changed, a sentence each: the template's
+# default, that `ds` has not got it, and what is used instead (or that it is
+# read from ADSL, when only ADSL has it).  `t` translates.
+.template_fit_notes <- function(fit, ds, t = identity) {
+  was <- attr(fit, "was")
+  lab <- c(param = t("Parameter"), group = t("Group"))
+  unname(vapply(names(fit), function(n) {
+    w <- if (n %in% names(was)) was[[n]] else ""
+    if (identical(w, fit[[n]]))
+      sprintf(t("%s: the template's default %s is not in %s; it is read from ADSL."),
+              lab[[n]], w, ds)
+    else
+      sprintf(t("%s: the template's default %s is not in %s; it uses %s instead."),
+              lab[[n]], w, ds, fit[[n]])
+  }, ""))
 }
 
 # A template joins ADSL for the variables the dataset lacks, but it names
