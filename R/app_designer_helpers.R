@@ -20,22 +20,29 @@
 }
 .pd_source_steps <- c("read", "join", "param", "flag", "time_unit")
 
-# The help behind a template argument's "?" (one rule, every argument of
-# every template): the template's own description of the argument --
-# tflspec's tfl_param() doc of it (or of its alias, .fig_tpl_arg_alias) in
-# the template's parameters, else in its kind's (km_simple is km's), shown
-# as .tpl_doc_shown() shows a doc (tflspec's Japanese, else the app's row
-# keyed by the doc's text) -- when it has one; else the argument's shared
-# text (.tpl_arg_shared_help); else "".  Never another template's doc: the
-# same argument may mean something else there.
-.tpl_arg_help <- function(tp, kind, arg, t = identity, lang = "en") {
+# A designer template's own parameter of an argument: tflspec's
+# tfl_param() of it -- or of its alias (.fig_tpl_arg_alias: the KM
+# template's group is `by`) -- in the template's parameters, else in its
+# kind's (km_simple is km's); NULL when neither has it.  Never another
+# template's (.fig_tpl_args() falls back to one for a field's heading): the
+# same argument may mean something else there, or have another default.
+.fig_tpl_own_arg <- function(tp, kind, arg) {
   for (nm in unique(c(tp, kind))) {
     p <- .tpl_params(nm)
-    for (a in stats::na.omit(c(arg, .fig_tpl_arg_alias[arg]))) {
-      prm <- p[[a]]
-      if (!is.null(prm) && nzchar(prm$doc %||% "")) return(.tpl_doc_shown(prm, t, lang))
-    }
+    for (a in stats::na.omit(c(arg, .fig_tpl_arg_alias[arg]))) if (!is.null(p[[a]])) return(p[[a]])
   }
+  NULL
+}
+
+# The help behind a template argument's "?" (one rule, every argument of
+# every template): the template's own description of the argument (its
+# own parameter's doc, .fig_tpl_own_arg()), shown as .tpl_doc_shown() shows
+# a doc (tflspec's Japanese, else the app's row keyed by the doc's text),
+# when it has one; else the argument's shared text (.tpl_arg_shared_help);
+# else "".
+.tpl_arg_help <- function(tp, kind, arg, t = identity, lang = "en") {
+  prm <- .fig_tpl_own_arg(tp, kind, arg)
+  if (!is.null(prm) && nzchar(prm$doc %||% "")) return(.tpl_doc_shown(prm, t, lang))
   sh <- .tpl_arg_shared_help[arg]
   if (!is.na(sh)) t(sh[[1L]]) else ""
 }

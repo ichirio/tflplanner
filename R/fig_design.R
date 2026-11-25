@@ -772,10 +772,12 @@ remove_fig_preset <- function(name, home = tflplanner_home()) {
 # treatment variable it has.  (The analysis set is the report's, its
 # data's `population:`, not a template's step: nothing to fit.)
 # `x` is the dataset, `adsl` ADSL (where the group may be);
-# `given` the names the user chose (param, group).  Returns the
-# arguments to give the template instead, named (empty when none); its
-# attribute "was" holds the template's own value of each.
-.template_fit <- function(d, x, adsl = NULL, given = character()) {
+# `given` the names the user chose (param, group); `group` the value of
+# the template's group argument as the template was applied (its
+# tfl_param() named group, or by: .fig_tpl_args()), NULL when it has none.
+# Returns the arguments to give the template instead, named (empty when
+# none); its attribute "was" holds the template's own value of each.
+.template_fit <- function(d, x, adsl = NULL, given = character(), group = NULL) {
   cols <- unique(c(names(x), names(adsl)))
   out <- was <- character()
   step_of <- function(s) Filter(function(z) identical(z$step, s), d$data)
@@ -805,16 +807,11 @@ remove_fig_preset <- function(name, home = tflplanner_home()) {
   }
   # (no population flag is fitted: a template has no flag step now -- the
   # figure's analysis set is its report's, read from the population's dataset)
-  if (!"group" %in% given) {
-    # the template's group argument: the colour variable, else the variable
-    # an ARD statistic is for (forest_hr); the `by` of an ard_stats step is
-    # its subgroups, not the group
-    nz1 <- function(v) if (length(v) && !is.na(v[[1L]]) && nzchar(v[[1L]])) v[[1L]]
-    g <- d$plot$colour_by %||%
-      nz1(unlist(lapply(Filter(function(z) identical(z$step, "ard_stats"), d$data),
-                        `[[`, "variable"))) %||%
-      unlist(lapply(Filter(function(z) !identical(z$step, "ard_stats"), d$data),
-                    `[[`, "by"))[1L]
+  # the group: the template's group argument as applied, never read from
+  # the design's steps (its colour, a step's `by` may be another variable:
+  # forest_hr's subgroups)
+  g <- if (length(group) && !is.na(group[[1L]]) && nzchar(group[[1L]])) group[[1L]]
+  if (!"group" %in% given && !is.null(g)) {
     v <- fit_var(g, c("TRT01P", "TRT01A", "TRTP", "TRTA", "ARM", "ACTARM"))
     if (!is.na(v)) {
       out[["group"]] <- v

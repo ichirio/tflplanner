@@ -190,12 +190,13 @@ test_that("a design's other parts (ggplot2 version, composed figures) are kept",
 })
 
 test_that("a template's defaults the data has not got are replaced by the data's own", {
-  d <- tflspec::tfl_fig_template("km_risk_table", data = "ADTTE")
+  # (the template applied with its group TRT01P: the group the fit reads)
+  d <- tflspec::tfl_fig_template("km_risk_table", data = "ADTTE", group = "TRT01P")
   # the dataset: no OS, no FASFL, the group only in ADSL
   x <- data.frame(USUBJID = "A", PARAMCD = c("TTDE", "TTDE"), AVAL = 1, CNSR = 0,
                   SAFFL = "Y")
   adsl <- data.frame(USUBJID = "A", TRT01P = "Placebo", SAFFL = "Y", ITTFL = "Y")
-  fit <- .template_fit(d, x, adsl)
+  fit <- .template_fit(d, x, adsl, group = "TRT01P")
   expect_identical(fit[["param"]], "TTDE")
   expect_identical(fit[["group"]], "TRT01P")    # named: only ADSL has it
   # the note names the template's default and what is used (#872)
@@ -209,10 +210,10 @@ test_that("a template's defaults the data has not got are replaced by the data's
   expect_match(ja[1L], was[["param"]], fixed = TRUE)
   expect_match(ja[1L], "TTDE", fixed = TRUE)
   # what the user chose stays
-  expect_length(.template_fit(d, x, adsl, given = c("param", "group")), 0L)
+  expect_length(.template_fit(d, x, adsl, given = c("param", "group"), group = "TRT01P"), 0L)
   # the data has the template's defaults: nothing to change
   ok <- data.frame(USUBJID = "A", PARAMCD = "OS", FASFL = "Y", TRT01P = "P")
-  expect_length(.template_fit(d, ok, adsl), 0L)
+  expect_length(.template_fit(d, ok, adsl, group = "TRT01P"), 0L)
   # the join takes from ADSL only what the dataset lacks
   d2 <- tflspec::tfl_fig_template("km_risk_table", data = "ADTTE", param = "TTDE",
                                   group = "TRT01P", join_adsl = TRUE)
@@ -223,20 +224,44 @@ test_that("a template's defaults the data has not got are replaced by the data's
   expect_length(j0, 0L)
 })
 
-test_that("the group fallback reads the template's group, not its subgroup variables (#872)", {
-  d <- tflspec::tfl_fig_template("forest_hr", data = "ADTTE")
-  # the dataset has OS and the group in ADSL; the subgroups (AGEGR1, SEX) are
-  # in neither the dataset: they are not the group
+test_that("the group fallback reads the template's group argument as applied, never the design (#872, M11)", {
+  figs <- .fig_tpl_registered()
+  skip_if_not(all(c("forest_hr", "km") %in% figs), "this tflspec has no forest_hr or km template")
   x <- data.frame(USUBJID = "A", PARAMCD = "OS", AVAL = 1, CNSR = 0)
-  adsl <- data.frame(USUBJID = "A", TRT01P = "P", AGEGR1 = "<65", SEX = "F")
-  fit <- .template_fit(d, x, adsl)
-  expect_false("group" %in% names(fit))
-  expect_length(.template_fit_notes(fit, "ADTTE"), 0L)
-  # the group is really missing: the note names the group's own default
-  adsl2 <- data.frame(USUBJID = "A", TRT01A = "P", AGEGR1 = "<65", SEX = "F")
-  fit2 <- .template_fit(d, x, adsl2)
-  expect_identical(fit2[["group"]], "TRT01A")
-  expect_identical(attr(fit2, "was")[["group"]], "TRT01P")
+  # (ADSL without the group applied, with another arm variable and the
+  # forest's subgroup variables)
+  adsl <- data.frame(USUBJID = "A", TRT01A = "P", AGEGR1 = "<65", SEX = "F")
+  # the template's group argument: forest_hr's own `group`, km_simple's the
+  # km template's `by` -- what the designer gives the group to, and the
+  # default it applies when none is chosen (the declared one)
+  expect_identical(.fig_tpl_own_arg("forest_hr", "forest", "group")$name, "group")
+  expect_identical(.fig_tpl_own_arg("km_simple", "km", "group")$name, "by")
+  # (never another template's: a template with no group argument of its own)
+  expect_null(.fig_tpl_own_arg("waterfall_plain", "waterfall", "group"))
+  for (tk in list(c("forest_hr", "forest"), c("km_simple", "km"))) {
+    d <- tflspec::tfl_fig_template(tk[1L], data = "ADTTE", group = "TRT01P")
+    # the group applied, missing: the data's arm variable instead, the note
+    # naming the one applied -- never a subgroup variable (forest_hr's
+    # ard_stats step has AGEGR1, SEX as its `by`)
+    fit <- .template_fit(d, x, adsl, group = "TRT01P")
+    expect_identical(fit[["group"]], "TRT01A", info = tk[1L])
+    expect_identical(attr(fit, "was")[["group"]], "TRT01P", info = tk[1L])
+    expect_match(.template_fit_notes(fit, "ADTTE"), "default TRT01P is not in ADTTE; it uses TRT01A",
+                 fixed = TRUE, all = FALSE)
+    # no group applied: none fitted, whatever the design colours or counts by
+    expect_false("group" %in% names(.template_fit(d, x, adsl)), info = tk[1L])
+    # the group chosen: kept
+    expect_false("group" %in% names(.template_fit(d, x, adsl, given = "group", group = "TRT01P")),
+                 info = tk[1L])
+  }
+  # forest_hr's declared default, applied when none is chosen, is the group read
+  gd <- .fig_tpl_own_arg("forest_hr", "forest", "group")$default
+  skip_if(is.null(gd), "this tflspec's forest_hr declares no group default")
+  d <- tflspec::tfl_fig_template("forest_hr", data = "ADTTE", group = gd)
+  adsl2 <- data.frame(USUBJID = "A", ARM = "P", AGEGR1 = "<65", SEX = "F")
+  fit <- .template_fit(d, x, adsl2, group = gd)
+  expect_identical(attr(fit, "was")[["group"]], gd)
+  expect_identical(fit[["group"]], "ARM")
 })
 
 test_that("the designer shows a piece's own lines of the design's code", {
