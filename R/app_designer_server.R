@@ -140,11 +140,13 @@
     d <- catalog()
     d$dataset[!is.na(d$path) & file.exists(.data_file(rv$study$path, d$path))]
   }
-  tpl_select <- function() {
+  # `current`: the design's template (chosen first when it is in the list)
+  tpl_select <- function(current = NULL) {
     tc <- .fig_template_choices(
       templates, data_present(),
       list(label = t, missing = t("needs data this study has not got"),
-           other = t("Other"), empty = t("Empty design")))
+           other = t("Other"), empty = t("Empty design")),
+      current = current)
     s <- shiny::selectInput("pd_tpl", t("Template"), tc$choices,
                             selected = tc$first, width = "100%")
     # the ones the data cannot draw: listed, but not to be chosen (the
@@ -159,8 +161,13 @@
     shiny::updateSelectizeInput(session, "pd_tpl_data",
                                 selected = if (is.na(ds)) "" else ds)
   })
-  start_inputs <- function() {
+  # `current`, `data`: the design's template and the dataset it reads, chosen
+  # first (the template's observer below does not fire when the template
+  # chosen is the one chosen last time, so the dataset is set here too)
+  start_inputs <- function(current = NULL, data = NULL) {
     ds_have <- data_present()
+    data <- ds_have[toupper(ds_have) %in% toupper(data)][1L]
+    if (is.na(data)) data <- ""
     pr <- fig_presets()
     shiny::tagList(
       shiny::radioButtons("pd_from", NULL, inline = TRUE,
@@ -171,8 +178,9 @@
         bslib::layout_columns(
           col_widths = c(6, 6),
           shiny::div(
-            tpl_select(),
+            tpl_select(current),
             shiny::selectizeInput("pd_tpl_data", t("Dataset"), c("", ds_have),
+                                  selected = data,
                                   options = list(placeholder = t("choose the data")))),
           shiny::uiOutput("pd_tpl_more"))),
       if (nrow(pr)) shiny::conditionalPanel(
@@ -379,7 +387,9 @@
       shiny::div(class = "alert alert-warning py-2 small",
                  sprintf(t("The current design (%d layers) is replaced by the template's."),
                          length(d$layers))),
-      start_inputs(),
+      # (the figure's own template first, not the list's first)
+      start_inputs(d$template, unlist(lapply(Filter(function(s) identical(s$step, "read"), d$data),
+                                             `[[`, "dataset"))[1L]),
       footer = shiny::tagList(shiny::modalButton(t("Cancel")),
                               .btn("pd_retpl_ok", t("Replace with the template"),
                                    class = "btn-danger"))))

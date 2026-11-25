@@ -128,8 +128,9 @@
 
 # The template choices: under their category (tflspec >= 0.0.24.9003; the
 # kind before), each with the data it reads; those the study's data cannot
-# draw stay listed but cannot be chosen, and say why.
-.fig_template_choices <- function(templates, have, words) {
+# draw stay listed but cannot be chosen, and say why.  `current`: the
+# design's own template, the one first chosen when the data can draw it.
+.fig_template_choices <- function(templates, have, words, current = NULL) {
   cat <- if ("category" %in% names(templates)) templates$category else templates$kind
   dat <- if ("data" %in% names(templates)) templates$data else rep(NA_character_, nrow(templates))
   ok <- vapply(dat, .fig_data_ok, NA, have = have, USE.NAMES = FALSE)
@@ -148,6 +149,8 @@
     length(intersect(setdiff(ds, "ADSL"), toupper(have)))
   }, 0L, USE.NAMES = FALSE)
   best <- if (any(ok)) which(ok)[which.max(used[ok])] else NA
+  own <- if (length(current) == 1L && !is.na(current)) which(templates$template == current & ok)
+  if (length(own)) best <- own[1L]
   list(choices = ch, off = templates$template[!ok],
        first = if (is.na(best)) "" else templates$template[best])
 }

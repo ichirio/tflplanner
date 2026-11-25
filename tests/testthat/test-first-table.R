@@ -240,6 +240,10 @@ test_that("a template says whether the study's data can draw it", {
                               category = "Efficacy", data = "ADSL"))
   tp3 <- tp3[c(3, 1, 2), ]
   expect_identical(.fig_template_choices(tp3, c("ADSL", "ADAE"), w)$first, "ae")
+  # a design's own template is chosen first, when the data can draw it (#865)
+  expect_identical(.fig_template_choices(tp3, c("ADSL", "ADAE"), w, current = "sw")$first, "sw")
+  expect_identical(.fig_template_choices(tp3, c("ADSL", "ADAE"), w, current = "km")$first, "ae")
+  expect_identical(.fig_template_choices(tp3, c("ADSL", "ADAE"), w, current = "gone")$first, "ae")
   # a tflspec without the columns: grouped by kind, nothing greyed
   tc2 <- .fig_template_choices(tp[c("template", "kind", "label")], character(), w)
   expect_identical(names(tc2$choices)[1:2], c("km", "ae_dot"))
