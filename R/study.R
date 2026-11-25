@@ -47,11 +47,8 @@
 #' names(study_layout())
 #' @export
 study_layout <- function() {
-  c(adam = "data/adam", sdtm = "data/sdtm", other = "data/other",
-    spec = "spec", programs_ard = "programs/ard",
-    programs_tfl = "programs/tfl", ard = "output/ard", tfl = "output/tfl",
-    ard_import = "input/ard", toc_import = "input/toc", runs = "runs", logs_preview = "logs/preview",
-    docs = "docs")
+  # (tflspec's: the study's program generator reads the same layout)
+  tflspec::tfl_study_layout()
 }
 
 .study_file <- "study.yml"
