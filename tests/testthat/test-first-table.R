@@ -692,6 +692,10 @@ test_that("a template figure has no population flag: a forest's analysis data is
     p2 <- rv$p
     p2$ard$populations <- p2$ard$populations[0L, , drop = FALSE]
     expect_match(.fig_subjects_line(p2, "F-HR"), "ITT is not one of the study's populations", fixed = TRUE)
+    # "kept by the lines below" only when the lines keep them: lines that
+    # make no subjects (none could be made, or no dataset is read) get no
+    # such line
+    expect_null(.fig_subjects_line(rv$p, "F-HR", c("plot <- ggplot()", "tfl_check(plot)")))
     # (the view's line only: not the design's code, which the program saves)
     d <- fig_design(rv$p, "F-HR")
     expect_false(any(grepl("# Subjects:", .fig_design_lines(rv$p, "F-HR", d), fixed = TRUE)))

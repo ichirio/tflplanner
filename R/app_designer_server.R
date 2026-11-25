@@ -1396,14 +1396,14 @@
     id <- current()
     d <- design()
     shiny::req(id, d)
-    # (the subjects are the report's set's, kept before this code: said here)
     # (the program's lines, written as the program is: with the study's
     # code options -- its folders' variables, no `pkg::` for what its setup
-    # attaches)
-    paste(tryCatch(c(.fig_subjects_line(rv$p, id),
-                     .with_study_code(.fig_design_lines(rv$p, id, d))),
-                   error = function(e) conditionMessage(e)),
-          collapse = "\n")
+    # attaches; the subjects they keep said first, from what they do)
+    paste(tryCatch({
+      code <- .with_study_code(.fig_design_lines(rv$p, id, d))
+      c(.fig_subjects_line(rv$p, id, code), code)
+    }, error = function(e) conditionMessage(e)),
+    collapse = "\n")
   })
   output$pd_yaml <- shiny::renderText({
     d <- design()

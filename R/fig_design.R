@@ -410,19 +410,27 @@ preview_figure <- function(study, output_id,
 }
 
 # The designer's code view's first line (not the saved program's): the
-# subjects the design's code gets -- the report's analysis set's, kept by
-# the report's program before it (A2-2), or all when the report has none.
-# A set the study's populations have not: said so, as .report_subjects_data()
-# keeps all subjects for it.
-.fig_subjects_line <- function(x, output_id) {
+# subjects the design's code gets, as the program's lines `lines`
+# (.fig_design_lines(), tflspec's writer) make them.  All when the report
+# has no set; a set the study's populations have not: said so (define it).
+# The report's set kept by the lines below only when they keep it (they
+# make its subjects: tflspec's heading of that part); otherwise no line --
+# the lines say what the program does (a design that reads no dataset, a
+# set whose subjects cannot be made: tflspec's stop() line, when it writes
+# one), and the view claims nothing for them.
+.fig_subjects_line <- function(x, output_id, lines = character()) {
   pop <- report_population(x, output_id)
   if (is.na(pop)) return("# Subjects: all -- the report has no analysis set.")
   if (!pop %in% x$ard$populations$population_id) {
     return(sprintf(paste0("# Subjects: the report's analysis set %s is not one of the study's ",
                           "populations (spec/data.yml): define it there."), pop))
   }
+  if (!any(startsWith(as.character(lines), .fig_subjects_heading))) return(NULL)
   sprintf("# Subjects: the report's analysis set %s (kept by the lines below).", pop)
 }
+# (the heading tflspec's report program puts on the part that makes the
+# report's subjects, .rp_fig_subjects_lines())
+.fig_subjects_heading <- "# the report's subjects: its analysis set"
 
 # preview_figure(), with the ARD to print from given: `ard` is
 # .fig_preview_ard()'s (the app's previews: an outdated ARD made again
