@@ -20,6 +20,20 @@
 }
 .pd_source_steps <- c("read", "join", "param", "flag", "time_unit")
 
+# Whether a designer template has a group argument (its form's group
+# field): every one but those of one group or none (a single-arm KM, a
+# spider plot of subjects, a waterfall, a swimmer plot)
+.fig_tpl_has_group <- function(tp, kind) {
+  !tp %in% c("km_single_arm", "individual_spider") && !kind %in% c("waterfall", "swimmer")
+}
+
+# ... and whether it needs one chosen: a template in parts that has one --
+# figure group / by have no default (PRINCIPLES 1.14); a whole-script
+# template passes it to its type's function only when given
+.fig_tpl_needs_group <- function(tp, kind, whole = FALSE) {
+  !isTRUE(whole) && .fig_tpl_has_group(tp, kind)
+}
+
 # A designer template's own parameter of an argument: tflspec's
 # tfl_param() of it -- or of its alias (.fig_tpl_arg_alias: the KM
 # template's group is `by`) -- in the template's parameters, else in its

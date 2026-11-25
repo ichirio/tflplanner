@@ -333,8 +333,19 @@
     lab <- function(a) .tpl_arg_heading(args[[a]], t)
     shiny::tagList(
       if (kind != "swimmer") sz("pd_tpl_param", lab("param"), prm),
-      if (!tp %in% c("km_single_arm", "individual_spider") && !kind %in% c("waterfall", "swimmer"))
-        sz("pd_tpl_group", lab("group"), .group_choices(cols)),
+      # the group: no default (PRINCIPLES 1.14) -- the study's
+      # settings.treatment grey in the field, written only when picked
+      # (1.15, 1.16); empty: required (a template in parts)
+      if (.fig_tpl_has_group(tp, kind)) {
+        sugg <- .tpl_suggest(tp, "group", names(cols), study = rv$p$spec$study)
+        if (length(sugg)) {
+          .tpl_suggest_select("pd_tpl_group", lab("group"), c("", .group_choices(cols)), sugg,
+                              FALSE, list(create = TRUE), t)
+        } else {
+          sz("pd_tpl_group", lab("group"), .group_choices(cols),
+             placeholder = if (whole) t("the template's default") else t("Required"))
+        }
+      },
       # (its choices and default: the template's tfl_param("time_unit"),
       # tfl_fig_template()'s own default when tflspec defines none; the
       # help behind "?", not in the label, #862)
@@ -391,6 +402,7 @@
   }
   applied <- function(d) {
     if (is.null(d)) return()
+    tpl_need(NULL)
     replace_design(d)
     notify(t("The template is applied: add to and change its layers in the designer."))
     # its numbers are the figure's own ARD (a forest plot's hazard ratios):
@@ -456,8 +468,17 @@
       empty_design()
     } else {
       ds <- nz(input$pd_tpl_data)
-      # the group: only the one chosen (no default, PRINCIPLES 1.14)
+      # the group: only the one chosen (no default, PRINCIPLES 1.14; the
+      # suggestion is not a value, 1.16).  A template in parts that is split
+      # by it is not applied without one: one item to check says so
       grp <- nz(input$pd_tpl_group)
+      kind <- templates$kind[templates$template == tp]
+      tpl_need(NULL)
+      if (is.null(grp) && .fig_tpl_needs_group(tp, kind, !templates$parts[templates$template == tp])) {
+        tpl_need(sprintf(t("Fill in %s: the template has no default for it."),
+                         .tpl_arg_heading(.fig_tpl_args(tp, kind)$group, t)))
+        return(NULL)
+      }
       # (no population flag: the figure's subjects are its report's analysis
       # set, the report's data `population:` -- canon 11-15)
       # the group from ADSL when the dataset has not got it
@@ -585,25 +606,38 @@
   # is not drawn again for them)
   checks_now <- shiny::reactive({
     r <- pv()
-    if (is.null(r)) return(NULL)
-    id <- current()
-    if (is.null(id) || !identical(r$id, id) || is.null(rv$study)) return(r$problems)
-    s <- rv$study
-    s$planner <- rv$p
-    .fig_problems_now(r, s, id, design())
+    need <- tpl_need()
+    pr <- if (!is.null(r)) {
+      id <- current()
+      if (is.null(id) || !identical(r$id, id) || is.null(rv$study)) r$problems else {
+        s <- rv$study
+        s$planner <- rv$p
+        .fig_problems_now(r, s, id, design())
+      }
+    }
+    # (a template not applied for a group not chosen: its item to check)
+    if (is.null(need)) return(pr)
+    row <- data.frame(part = "template", field = "group", problem = need, stringsAsFactors = FALSE)
+    if (is.null(pr) || !nrow(pr)) row else rbind(pr[c("part", "field", "problem")], row)
   })
+  # the sentence of a template not applied: its group argument is empty
+  # (NULL: none); a figure chosen again, or the template applied, clears it
+  tpl_need <- shiny::reactiveVal(NULL)
+  shiny::observeEvent(current(), tpl_need(NULL), ignoreInit = TRUE)
   # One check's row, wherever the checks are listed (the box over the
-  # picture, the Checks under it): the report with no analysis set is an
-  # item to check, its sentence and the way to the step that has the set;
-  # NULL for another check (each list shows it its own way).  (The button
-  # sets its input itself: the two lists show it at once, and an id is
-  # one element's.)
+  # picture, the Checks under it): a known cause is an item to check, its
+  # sentence -- the report with no analysis set, with the way to the step
+  # that has the set; a template's argument left empty (the form is in
+  # view) -- NULL for another check (each list shows it its own way).  (The
+  # button sets its input itself: the two lists show it at once, and an id
+  # is one element's.)
   check_row <- function(pr, i) {
-    if (!identical(pr$field[i], "population") || !identical(pr$part[i], "ard")) return(NULL)
+    pop <- identical(pr$field[i], "population") && identical(pr$part[i], "ard")
+    if (!pop && !identical(pr$part[i], "template")) return(NULL)
     shiny::div(
       class = "mb-1 d-flex justify-content-between align-items-start gap-2",
       shiny::div(shiny::span(class = "badge me-1 text-bg-warning", t("to check")), pr$problem[i]),
-      shiny::tags$button(
+      if (pop) shiny::tags$button(
         class = "btn btn-sm btn-outline-primary py-0 text-nowrap", type = "button",
         onclick = "Shiny.setInputValue('pd_goto_data', Math.random(), {priority: 'event'})",
         sprintf(t("Go to step %s"), .step_no("data"))))
@@ -615,7 +649,7 @@
   # is one); only the picture needs the drawing
   output$pd_overlay <- shiny::renderUI({
     r <- pv()
-    shiny::req(r)
+    shiny::req(!is.null(r) || !is.null(tpl_need()))
     a <- r$advice
     pr <- checks_now()
     n_bad <- if (is.null(pr)) 0L else nrow(pr)
@@ -1364,7 +1398,7 @@
   })
   output$pd_checks <- shiny::renderUI({
     r <- pv()
-    if (is.null(r)) return(shiny::p(class = "text-muted small", t("Not drawn yet.")))
+    if (is.null(r) && is.null(tpl_need())) return(shiny::p(class = "text-muted small", t("Not drawn yet.")))
     pr <- checks_now()
     items <- c(
       if (!is.null(pr) && nrow(pr)) lapply(seq_len(nrow(pr)), function(i) {
