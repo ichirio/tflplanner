@@ -720,6 +720,24 @@ test_that("a template figure has no population flag: a forest's analysis data is
     expect_identical(nrow(pr0), 1L)
     expect_match(pr0$problem, "analysis set|解析対象集団")
     expect_match(pr0$problem, "1")
+    # "apply the template again" only for a design from a template; one
+    # built by hand is told the step that has the set alone (M9)
+    d1 <- d0
+    d1$template <- NULL
+    no_tpl <- "This report has no analysis set. Choose one in step %s, 'This report's analysis set'."
+    expect_identical(pr0$problem, .fig_no_set_text(d0))
+    expect_identical(.fig_no_set_text(d1), sprintf(tr(no_tpl), .step_no("data")))
+    expect_false(identical(.fig_no_set_text(d0), .fig_no_set_text(d1)))
+    expect_false(grepl("\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8", tr(no_tpl, "ja"), fixed = TRUE))
+    expect_match(tr(no_tpl, "ja"), "\u9078\u3093\u3067\u304f\u3060\u3055\u3044", fixed = TRUE)
+    # ... and the checks list it to check, with the way to step 1, whether
+    # or not the figure could be drawn (only the picture needs a drawing)
+    draw()
+    for (h in list(output$pd_overlay$html, output$pd_checks$html)) {
+      expect_match(h, "pd_goto_data", fixed = TRUE)
+      expect_match(h, "to check", fixed = TRUE)
+      expect_match(h, sprintf("Go to step %s", .step_no("data")), fixed = TRUE)
+    }
     # the report's set, chosen in the figure's step 1 as a table's: the
     # analysis data's, and its name
     expect_match(output$fig_report_pop$html, "fig_report_pop_pick", fixed = TRUE)
@@ -741,6 +759,10 @@ test_that("a template figure has no population flag: a forest's analysis data is
     p2 <- rv$p
     p2$ard$populations <- p2$ard$populations[0L, , drop = FALSE]
     expect_match(.fig_subjects_line(p2, "F-HR"), "ITT is not one of the study's populations", fixed = TRUE)
+    # "kept by the lines below" only when the lines keep them: lines that
+    # make no subjects (none could be made, or no dataset is read) get no
+    # such line
+    expect_null(.fig_subjects_line(rv$p, "F-HR", c("plot <- ggplot()", "tfl_check(plot)")))
     # (the view's line only: not the design's code, which the program saves)
     d <- fig_design(rv$p, "F-HR")
     expect_false(any(grepl("# Subjects:", .fig_design_lines(rv$p, "F-HR", d), fixed = TRUE)))
