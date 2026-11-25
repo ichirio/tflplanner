@@ -208,7 +208,7 @@ test_that("the designer shows a piece's own lines of the design's code", {
   # the parameter: the filter line it is in (no population: the report's)
   fl <- lines_of(list(sec = "data", i = 2L))
   # (its pipe on: or ending there, the time unit's block after it -- tflspec #km)
-  expect_true(startsWith(trimws(fl), "filter(PARAMCD == \"TTDE\")"))
+  expect_true(startsWith(trimws(fl[1L]), "filter(PARAMCD == \"TTDE\")"))
   fit <- .piece_code(code, d, list(sec = "data", i = length(d$data)), make)
   expect_match(fit, "^fit <- survfit2[(]")
   plot <- .piece_code(code, d, list(sec = "plot", i = 1L), make)
