@@ -87,6 +87,7 @@ test_that("the result is set against the standard, ticked lines adopted into the
   expect_false(ticks[at("all", "stub_heading")])   # same
   expect_false(ticks[at("demog", "zero")])         # by hand
   expect_false(any(ticks[d$status == "not learned"]))
+  test_frame <- environment()  # (a mock inside testServer() is undone with this test)
   shiny::testServer(style_server, {
     session$setInputs(style_read = 1)
     h <- output$style_diff$html
@@ -123,7 +124,8 @@ test_that("the result is set against the standard, ticked lines adopted into the
     expect_match(built, "style_pack_open", fixed = TRUE)
     # its folder opened
     opened <- NULL
-    withr::local_options(tflplanner.open_folder = function(p) opened <<- p)
+    withr::local_options(tflplanner.open_folder = function(p) opened <<- p,
+                         .local_envir = test_frame)
     session$setInputs(style_pack_open = 1)
     expect_identical(normalizePath(opened, "/"), normalizePath(.ai_reference_home(), "/"))
   })
