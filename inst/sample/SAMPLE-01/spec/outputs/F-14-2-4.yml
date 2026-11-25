@@ -87,6 +87,7 @@ data:
       by: SEX, AGEGR1
     - step: code
       label: 'the rows to draw: the comparison arm, a heading row per subgroup'
+      out: est
       code: |-
         # an upper limit above this is a model that did not converge (an arm
         # with no event in the subgroup): its hazard ratio is NE
