@@ -1276,7 +1276,10 @@
           rv$ard_ver <- rv$ard_ver + 1L
         }
       }
-      g <- tflspec::tfl_content_run(r, d)
+      # (the study: the figure draws its report's set's subjects only, as
+      # its program does -- canon 11-15; a set tflspec cannot make them
+      # for stops with its message, said below as any error of the preview)
+      g <- tflspec::tfl_content_run(r, d, study = .content_study(r, p$spec$study))
       f <- tempfile("tplfig", fileext = ".png")
       save <- getExportedValue("ggplot2", "ggsave")
       save(f, g, width = 7.3, height = 4.2, dpi = 110)
@@ -1479,7 +1482,10 @@
       shiny::req(!is.null(o))
       code <- tryCatch({
         b <- tflspec::tfl_template_to_spec(o, sp$study)
-        paste(tflspec::tfl_content_code(tflspec::tfl_resolve_output(b, sp$study), pipe = "|>"),
+        # (with the study: a figure's code makes its set's subjects first,
+        # or says in a stop() line why it cannot)
+        r <- tflspec::tfl_resolve_output(b, sp$study)
+        paste(tflspec::tfl_content_code(r, pipe = "|>", study = .content_study(r, sp$study)),
               collapse = "\n")
       }, error = function(e) conditionMessage(e))
       shiny::tags$details(

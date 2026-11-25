@@ -224,7 +224,8 @@ report_info <- function(x, output_id) {
   if (!is.null(y)) {
     o <- .code_content(y)
     o$data <- list(source = "ard", object = "ard", steps = list(tflspec::tfl_r(.rework_mark)))
-    code <- tryCatch(tflspec::tfl_content_code(o, pipe = "|>"), error = function(e) NULL)
+    code <- tryCatch(tflspec::tfl_content_code(o, pipe = "|>", study = .content_study(o, y$study)),
+                     error = function(e) NULL)
     i <- match(.rework_mark, code)
     if (!is.na(i) && i > 1L) return(code[seq_len(i - 1L)])
   }
@@ -920,6 +921,16 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     })
   }
   r
+}
+
+# The study a content call of tflspec's (tfl_content_code(),
+# tfl_content_run()) is given for the report `o`: a figure's, the study the
+# program writer has -- every way a figure is made applies its report's set
+# (canon 11-15: its subjects made from the study, or a stop saying why);
+# NULL for a table's and a listing's, whose data part the program writes
+# apart (with the study tflspec would write it into the content's code)
+.content_study <- function(o, study) {
+  if (identical(o$kind, "figure")) study
 }
 
 # `report_id <- "<id>"`: what a report's program sets at its head, and a

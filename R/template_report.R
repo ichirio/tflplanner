@@ -1882,7 +1882,8 @@ $(document).on('shiny:connected', function() {
   o <- sp$outputs[[output_id]]
   if (is.null(o) || is.null(.tpl_spec_name(o))) return(character())
   res <- tryCatch(tflspec::tfl_resolve_output(o, sp$study), error = function(e) NULL)
-  code <- tryCatch(tflspec::tfl_content_code(res), error = function(e) character())
+  code <- tryCatch(tflspec::tfl_content_code(res, study = .content_study(res, sp$study)),
+                   error = function(e) character())
   in_call <- vapply(attr(res, "template")$rest %||% list(), function(it) {
     if (is.list(it) && !identical(it$from, "own") && is.character(it$fn) && length(it$fn) == 1L) it$fn else NA_character_
   }, "")
