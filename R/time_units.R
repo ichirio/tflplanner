@@ -10,13 +10,6 @@
 # (review rule D03)
 .program_constants <- function() names(tflspec::tfl_time_unit_days())
 
-# the setup code's lines, with tflspec's values
-.time_unit_lines <- function() {
-  d <- tflspec::tfl_time_unit_days()
-  # (as.character: not format(), which follows options(digits))
-  sprintf("%s <- %s", names(d), as.character(unname(d)))
-}
-
 # The values a study's programs use: the lines of its setup files that set
 # them, in the order a program runs them (company_setup.R, study_setup.R,
 # study_user.R; a study made before #910, its one study_setup.R) -- the
