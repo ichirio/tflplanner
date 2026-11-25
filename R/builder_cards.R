@@ -168,6 +168,12 @@ builder_card <- function(id, fn, label = NULL, from = "own", required = FALSE, o
 # switched off.  `schema` gives the arguments and their types (`args`,
 # `formals`, `aes`); an argument whose R switch is on is its R text.
 # `logical_false`: an unticked check is FALSE (not left out).
+# The R switch's two sides are one value: the side the switch shows is
+# read, the other only where the shown side is empty.  The page moves the
+# value across when the switch turns (.builder_cards_js, R/field_ui.R's
+# .r_carry()); a value it did not move is not lost -- the field's own
+# value under a switch turned on with its R box empty, the R left in the
+# box under a switch turned off with the field empty.
 #' @noRd
 builder_card_read <- function(input, id, schema = NULL, args = NULL, logical_false = FALSE) {
   get <- function(...) .input_value(input, paste(c(id, ...), collapse = "__"))
@@ -178,25 +184,14 @@ builder_card_read <- function(input, id, schema = NULL, args = NULL, logical_fal
   }
   out <- list()
   extra <- list()
-  for (a in setdiff(args, "...")) {
+  # one field's own value (its control, not its R box); NULL: blank
+  field_value <- function(a) {
     ty <- schema$args[[a]]$type
     kind <- .arg_kind(ty)
-    # ("(none)": `!unset`, the argument left out of the call)
-    if (isTRUE(get(a, "none"))) {
-      out[[a]] <- tflspec::tfl_unset()
-      next
-    }
-    if (isTRUE(get(a, "isr"))) {
-      txt <- get(a, "r")
-      if (!is.null(txt) && nzchar(trimws(txt))) out[[a]] <- tflspec::tfl_r(trimws(txt))
-      next
-    }
     # (a def's table of a map or rows: its state read back as the type says)
     # (a rows<...> with no columns to show was drawn as its R: read as R)
     if (identical(.def_input(schema$args[[a]]), "table") && .tbl_is_state(get(a))) {
-      v <- .tbl_read(get(a))
-      if (!is.null(v)) out[[a]] <- v
-      next
+      return(.tbl_read(get(a)))
     }
     if (kind == "map") {
       aes <- .map_keys(schema, a)
@@ -205,57 +200,121 @@ builder_card_read <- function(input, id, schema = NULL, args = NULL, logical_fal
         if (isTRUE(get(a, k, "isval"))) {
           v <- get(a, k, "val")
           # a constant goes to the argument of that name, not to the mapping
-          if (!is.null(v) && nzchar(v)) extra[[k]] <- .coerce_value(v, NULL)
+          if (!is.null(v) && nzchar(v)) extra[[k]] <<- .coerce_value(v, NULL)
           next
         }
         v <- get(a, k)
         if (!is.null(v) && length(v) && nzchar(v[[1L]])) m[[k]] <- v[[1L]]
       }
-      if (length(m)) out[[a]] <- m
-      next
+      return(if (length(m)) m)
     }
     v <- get(a)
-    if (is.null(v)) next
+    if (is.null(v)) return(NULL)
     # (a logical among other types drawn as a pick: TRUE / FALSE or the
     # other value picked; blank left out)
     if (.logical_pick(schema$args[[a]], ty)) {
       v <- v[nzchar(as.character(v))]
-      if (length(v)) out[[a]] <- .logical_pick_value(v[[1L]], ty)
-      next
+      return(if (length(v)) .logical_pick_value(v[[1L]], ty))
     }
     if (kind == "logical") {
       dflt <- schema$args[[a]]$default
       # unticked: FALSE when the default is TRUE, or when every logical is
       # wanted as it is (`logical_false`: a value over the study's default)
-      if (isTRUE(v)) out[[a]] <- TRUE else if (isTRUE(dflt) || logical_false) out[[a]] <- FALSE
-      next
+      return(if (isTRUE(v)) TRUE else if (isTRUE(dflt) || logical_false) FALSE)
     }
     if (kind %in% c("number", "integer")) {
       if (length(v) && !is.na(v) && nzchar(as.character(v))) {
-        out[[a]] <- if (kind == "integer") as.integer(v) else as.numeric(v)
+        return(if (kind == "integer") as.integer(v) else as.numeric(v))
       }
-      next
+      return(NULL)
     }
     v <- v[nzchar(as.character(v))]
-    if (!length(v)) next
-    if (kind == "list") {
-      out[[a]] <- as.character(v)
-    } else if (is.null(ty)) {
-      # no type known (a formal the schema does not describe): a literal
-      # typed is its value, anything else R
-      out[[a]] <- .text_value(trimws(as.character(v[[1L]])))
-    } else if (kind == "r") {
-      out[[a]] <- tflspec::tfl_r(trimws(as.character(v)))
-    } else if (kind == "call") {
-      # (a call drawn as its R -- its function has no fields to show,
-      # rtf_border(): .field_call() -- is R, not a text)
-      out[[a]] <- .text_value(trimws(as.character(v[[1L]])))
-    } else {
-      out[[a]] <- .coerce_value(v[[1L]], ty)
+    if (!length(v)) return(NULL)
+    if (kind == "list") return(as.character(v))
+    # no type known (a formal the schema does not describe): a literal
+    # typed is its value, anything else R
+    if (is.null(ty)) return(.text_value(trimws(as.character(v[[1L]]))))
+    if (kind == "r") return(tflspec::tfl_r(trimws(as.character(v))))
+    # (a call drawn as its R -- its function has no fields to show,
+    # rtf_border(): .field_call() -- is the call as the spec holds it where
+    # the text is one of the type's calls, else R)
+    if (kind == "call") return(.call_value(trimws(as.character(v[[1L]])), .type_call_fn(ty)))
+    .coerce_value(v[[1L]], ty)
+  }
+  for (a in setdiff(args, "...")) {
+    # ("(none)": `!unset`, the argument left out of the call)
+    if (isTRUE(get(a, "none"))) {
+      out[[a]] <- tflspec::tfl_unset()
+      next
     }
+    txt <- get(a, "r")
+    txt <- if (is.character(txt) && length(txt) == 1L && !is.na(txt)) trimws(txt) else ""
+    isr <- isTRUE(get(a, "isr"))
+    if (isr && nzchar(txt)) {
+      out[[a]] <- tflspec::tfl_r(txt)
+      next
+    }
+    v <- field_value(a)
+    # (the R switch on, its box empty: the field's value -- a check always
+    # says one, so not a check's)
+    if (isr && (!identical(.arg_kind(schema$args[[a]]$type), "logical") ||
+                  .logical_pick(schema$args[[a]]))) {
+      if (!is.null(v)) out[a] <- list(v)
+      next
+    }
+    if (isr) next
+    # (the switch off, the field empty: the R left in the box, as the
+    # field's text form holds it -- a call of the type's -- else as R)
+    if (is.null(v) && nzchar(txt)) v <- .r_kept_value(txt, schema$args[[a]]$type)
+    if (!is.null(v)) out[a] <- list(v)
   }
   for (k in setdiff(names(extra), names(out))) out[[k]] <- extra[[k]]
   out
+}
+
+# R text of a call to one of a call<fn>'s functions (`fns`), its arguments
+# named literals or such calls of their own types in turn: the call as the
+# spec holds it, tflspec::tfl_call() ({fn: rtf_border, args: {bottom:
+# single}}); any other text its literal or R (.text_value())
+.call_value <- function(txt, fns) {
+  e <- tryCatch(str2lang(txt), error = function(e) NULL)
+  v <- if (!is.null(e) && length(fns)) .call_from_r(e, fns)
+  if (is.null(v)) .text_value(txt) else v
+}
+
+# a call expression as a tfl_call when it is one of `fns` with named
+# literal arguments (an argument a call of the types its definition gives,
+# rtf_border(top = rtf_border_line(...)), in turn); NULL otherwise
+.call_from_r <- function(e, fns) {
+  if (!is.call(e)) return(NULL)
+  head <- e[[1L]]
+  # (rtfreporter::rtf_border(...): the function's name)
+  if (is.call(head) && identical(as.character(head[[1L]]), "::") && length(head) == 3L) head <- head[[3L]]
+  if (!is.symbol(head) || !as.character(head) %in% fns) return(NULL)
+  fn <- as.character(head)
+  a <- as.list(e)[-1L]
+  nm <- names(a)
+  if (length(a) && (is.null(nm) || !all(nzchar(nm)) || anyDuplicated(nm))) return(NULL)
+  defs <- .schema_of(fn)$args
+  args <- list()
+  for (k in names(a)) {
+    x <- a[[k]]
+    ty <- defs[[k]]$type
+    v <- if (is.call(x) && !is.null(ty)) .call_from_r(x, .type_call_fn(ty))
+    if (is.null(v)) {
+      v <- .arg_from_r(x)
+      if (!is.atomic(v) || is.null(v) || is.object(v)) return(NULL)
+    }
+    args[k] <- list(v)
+  }
+  tflspec::tfl_call(fn, args)
+}
+
+# the R left in a field's box with its switch off and the field empty: a
+# call of the type's as the spec holds it, else the R kept as R
+.r_kept_value <- function(txt, type) {
+  v <- if (identical(.arg_kind(type), "call")) .call_value(txt, .type_call_fn(type))
+  if (inherits(v, "tfl_call")) v else tflspec::tfl_r(txt)
 }
 
 # text typed where no type is known: a literal is its value (TRUE, 3,
