@@ -78,6 +78,7 @@ test_that("1-1: the report's code lists, copied in, a file read", {
                                         label = c("Placebo", "Drug X", "ALT")))
   p <- set_codelist(p, "T1", data.frame(variable = "COUNTRY", value = "JPN"))
   create_study("CL", planner = p)
+  test_frame <- environment()  # (a mock inside testServer() is undone with this test)
   shiny::testServer(server_for("CL"), {
     rv <- session$userData$rv
     session$setInputs(nav = "make", step = "ard", target = "T1")
@@ -104,7 +105,7 @@ test_that("1-1: the report's code lists, copied in, a file read", {
     d <- sheet_rows(rv$p, "codelists", "T1")
     expect_identical(d$value[d$variable == "SEX"], c("F", "M", "U"))
     # a file read into T1
-    f <- withr::local_tempfile(fileext = ".csv")
+    f <- withr::local_tempfile(fileext = ".csv", .local_envir = test_frame)
     writeLines(c("variable,value,label", "RACE,ASIAN,Asian"), f)
     session$setInputs(cl21_file = data.frame(name = "cl.csv", datapath = f))
     d <- sheet_rows(rv$p, "codelists", "T1")
