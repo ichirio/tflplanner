@@ -347,6 +347,8 @@ first_table <- function(x, output_id, path, data, population, group,
 #' * one `hierarchical` analysis by the group, over the hierarchy, its
 #'   denominator the analysis set (`over_variables = TRUE`: the "any event"
 #'   row, named in the table's `overall_label`: `"Any TEAE"`);
+#' * when the column header prints N (`{n}`): the subjects per group
+#'   (`BIGN`: the set's subjects counted by the group), which it reads;
 #' * the table: the group as columns, the outer terms as groups and the
 #'   innermost as rows, by frequency (most first) within each group;
 #' * the column header (the standards' `"Arm (N=n) n (%), SOC / PT"`), a
@@ -519,8 +521,31 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
       (!nrow(inh) || .is_blank(inh$pages_max_rows[1L]))) ly$pages_max_rows[1L] <- "22"
   x <- set_sheet_rows(x, "layout", id, ly)
 
+  # a header that prints N ({n}) reads it from the report's BIGN analysis
+  # (tflspec#969): the analysis set's subjects counted by the group, first
+  if (.header_asks_n(x, id)) {
+    bign <- an[0L, , drop = FALSE]
+    bign[1L, ] <- NA
+    bign$analysis_id <- "BIGN"
+    bign$label <- "Subjects per group"
+    bign$method <- "categorical"
+    bign$data <- subj
+    bign$variables <- group
+    x <- set_ard_rows(x, "analyses", id, rbind(bign, an))
+  }
+
   if (!is.na(total) && nzchar(trimws(total))) x <- set_total_column(x, id, total)
   x
+}
+
+# Does a report's column header print the subjects per group (`{n}`,
+# `{n1}`, `{n:sum}`)?  Its own lines, else the ones it takes from the
+# study.
+.header_asks_n <- function(x, output_id) {
+  h <- sheet_rows(x, "col_header", output_id)
+  if (!nrow(h)) h <- inherited_rows(x, "col_header", output_id)
+  txt <- h$text[!is.na(h$text)]
+  any(grepl("\\{n[0-9]*(:[^}]*)?\\}", txt))
 }
 
 # A grade's levels, mildest first: a factor's own, the usual severities

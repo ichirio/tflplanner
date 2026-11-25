@@ -120,9 +120,12 @@ test_that("an order by any statistic of the ARD, or a key of the user's", {
 test_that("a hierarchy counted of a denominator has the subjects per group", {
   p <- hier_planner()
   expect_true(.has_group_n(p, "T-AE", "TRT01A"))
+  # (the hierarchy alone, without the BIGN its header's N reads)
   a <- ard_rows(p, "analyses", "T-AE")
-  a$denominator <- NA
   a$output_id <- NULL
+  a <- a[a$analysis_id != "BIGN", , drop = FALSE]
+  expect_true(.has_group_n(set_ard_rows(p, "analyses", "T-AE", a), "T-AE", "TRT01A"))
+  a$denominator <- NA
   expect_false(.has_group_n(set_ard_rows(p, "analyses", "T-AE", a), "T-AE", "TRT01A"))
 })
 

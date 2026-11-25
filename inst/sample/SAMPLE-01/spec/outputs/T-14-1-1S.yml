@@ -23,6 +23,7 @@ ard:
       data: adsl_saf
       by:
         - TRT01A
+      args: !r .by_stats = FALSE
       purpose: PRIMARY OUTCOME MEASURE
     - id: CONT
       parent: DEMOG
