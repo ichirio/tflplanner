@@ -649,11 +649,11 @@ test_that("a KM template in the dialog: the report's set is the table's control,
     }
     sets <- as.character(stats::na.omit(rv$p$ard$populations$population_id))
     expect_setequal(sel_of(dlg, "mtpl_km_survival__population"), c("", sets))
-    expect_match(label_of(dlg, "mtpl_km_survival__population"), "This report&#39;s population", fixed = TRUE)
+    expect_match(label_of(dlg, "mtpl_km_survival__population"), "This report(&#39;|')s population")
     # (the table's: the same label and choices)
     session$setInputs(modal_type = "table", modal_tpl_table = "demog")
     req <- add_html(output$mtpl_demog___req_box$html)
-    expect_match(label_of(req, "mtpl_demog__population"), "This report&#39;s population", fixed = TRUE)
+    expect_match(label_of(req, "mtpl_demog__population"), "This report(&#39;|')s population")
     expect_setequal(sel_of(req, "mtpl_demog__population"), c("", sets))
     # (ADSL's Y/N flags no set says: told under it, to be registered in the study)
     fl <- .tpl_flags_undefined(.tpl_data_cols(rv$study$path, rv$p)[["ADSL"]], rv$p$ard$populations)
