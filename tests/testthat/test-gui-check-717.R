@@ -128,14 +128,14 @@ gc717_progress <- function(session) {
 test_that("#717 item 1: a series template's missing required arguments give one note naming them, and no ARD run", {
   # (the built-in demog's: test-tpl-args-missing-toast.R, #813.  This is the
   # same rule for the series template the screen check used; it holds once
-  # tflspec says which arguments tflspec_v1/demog needs -- the PR's open point)
+  # tflspec says which arguments tflspec_v1/tflspec_summary needs -- the PR's open point)
   skip_if_quick()
   home <- local_home()
   id <- gc717_study(home, "G717A", list(by = "TRT01A"))
   p <- open_study(id)$planner
   e <- tryCatch(tflspec::tfl_resolve_output(p$spec$outputs[["T-717-1"]], p$spec$study), error = identity)
   skip_if_not(inherits(e, "tflspec_template_args_missing"),
-              "tflspec_v1/demog with `by` only is no tflspec_template_args_missing error (tflplanner#717 open point)")
+              "tflspec_v1/tflspec_summary with `by` only is no tflspec_template_args_missing error (tflplanner#717 open point)")
   shown <- gc717_watch()
   ran <- 0L
   local_mocked_bindings(fetch_ard = function(...) {
@@ -156,24 +156,24 @@ test_that("#717 item 2: Add from a series template writes only what was filled i
   shown <- gc717_watch()
   shiny::testServer(server_for(id), {
     rv <- session$userData$rv
-    nm <- "tflspec_v1/demog"
+    nm <- "tflspec_v1/tflspec_summary"
     session$setInputs(add = 1, modal_type = "table", modal_how = "template", modal_tpl_table = nm,
                       modal_id = "ZZ-717", modal_desc = "", modal_section = "",
-                      mtpl_tflspec_v1_demog__population = "SAF", mtpl_tflspec_v1_demog__by = "TRT01A",
-                      mtpl_tflspec_v1_demog__continuous = "AGE",
+                      mtpl_tflspec_v1_tflspec_summary__population = "SAF", mtpl_tflspec_v1_tflspec_summary__by = "TRT01A",
+                      mtpl_tflspec_v1_tflspec_summary__continuous = "AGE",
                       # (the dialog's switch, left as drawn: off)
-                      mtpl_tflspec_v1_demog__total = FALSE)
+                      mtpl_tflspec_v1_tflspec_summary__total = FALSE)
     suppressMessages(session$setInputs(add_ok = 1))
     expect_false(is.null(.tpl_of(rv$p, "T-ZZ-717")))
     expect_false("total" %in% names(.tpl_of(rv$p, "T-ZZ-717")$args))
     # the card, drawn and echoed back by the page: still no edit, no "This table", no Revert
     session$setInputs(target = "T-ZZ-717", nav = "make", step = "ard", content_nav = "content")
     html <- suppressMessages(tpl_cards_html(output))
-    expect_match(html, "tpl_tflspec_v1_demog__total", fixed = TRUE)
-    session$setInputs(`tpl_tflspec_v1_demog__total` = FALSE)
+    expect_match(html, "tpl_tflspec_v1_tflspec_summary__total", fixed = TRUE)
+    session$setInputs(`tpl_tflspec_v1_tflspec_summary__total` = FALSE)
     expect_false("total" %in% names(.tpl_of(rv$p, "T-ZZ-717")$args))
     html <- suppressMessages(tpl_cards_html(output))
-    at <- regexpr("tpl_tflspec_v1_demog__total", html, fixed = TRUE)
+    at <- regexpr("tpl_tflspec_v1_tflspec_summary__total", html, fixed = TRUE)
     total <- substr(html, at, at + 1500L)
     expect_false(grepl("rp-tpl-badge-own", total, fixed = TRUE))
     expect_false(grepl("tpl_revert', 'total'", html, fixed = TRUE))
@@ -260,14 +260,14 @@ test_that("#717 item 6: the Add dialog in Japanese shows no series template's En
   })
 })
 
-test_that("#717 item 7: a series template's column field lists its data's columns only (demog: ADSL)", {
+test_that("#717 item 7: a series template's column field lists its data's columns only (tflspec_summary: ADSL)", {
   id <- gc717_sample("G717F")
   shiny::testServer(server_for(id), {
     rv <- session$userData$rv
     data <- .tpl_data_cols(rv$study$path, rv$p)
     skip_if(!all(c("ADSL", "ADAE") %in% names(data)), "the sample has no ADSL and ADAE")
     only_ae <- setdiff(names(data$ADAE), names(data$ADSL))
-    prm <- .tpl_params("tflspec_v1/demog")
+    prm <- .tpl_params("tflspec_v1/tflspec_summary")
     for (a in c("by", "continuous", "categorical")) {
       ds <- .tpl_vars_dataset(prm[[a]], data)
       expect_identical(ds, "ADSL", info = a)
