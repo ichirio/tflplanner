@@ -87,8 +87,9 @@ import_codelist <- function(x, from_output, output_id, variables = NULL) {
 
 #' @rdname import_codelist
 #' @noRd
-standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
-  cl <- company_standards(home)$codelists
+standard_codelists <- function(sets = NULL, home = tflplanner_home(),
+                               std = company_standards(home)) {
+  cl <- std$codelists
   if (is.null(cl) || !nrow(cl)) return(.builtin_standards()$codelists[0L, ])
   cl$set[is.na(cl$set)] <- cl$variable[is.na(cl$set)]
   if (!is.null(sets)) cl <- cl[cl$set %in% sets, , drop = FALSE]

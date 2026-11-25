@@ -284,19 +284,22 @@ create_study <- function(study_id, title = NA, compound = NA, phase = NA,
                created = format(Sys.Date()))
   .write_meta(meta, path)
   writeLines(.rproj, file.path(path, paste0(study_id, ".Rproj")))
+  # the company standards of this home, read once: the study defaults,
+  # analysis sets, data catalog, code lists and review depth all theirs
+  std <- company_standards(home)
   s <- .new_study(path, .read_meta(path)[.study_fields],
-                  planner %||% .standard_planner(study_id))
+                  planner %||% .standard_planner(study_id, std))
   # a study made from the company standards takes their code lists too
   # (defaults.yml `codelists:`); one made from a planner has that one's
   if (is.null(planner)) {
     s$planner <- .std_codelists_into_spec(s$planner, c(s$meta, created = meta$created),
-                                          home = home)
+                                          std = std)
   }
   s <- save_study(s, home = home)
   # the company's review depth of the AI agent into study.yml (the study's
   # own from now on), and the state told of the file as it is now
   if (file.exists(file.path(path, .study_file))) {
-    .ai_review_write(path, .ai_review_company())
+    .ai_review_write(path, .ai_review_company(std))
     rel <- .study_file
     if (!is.null(s$planner$spec$text[[rel]])) {
       s$planner$spec$text[[rel]] <- readLines(file.path(path, rel), encoding = "UTF-8", warn = FALSE)

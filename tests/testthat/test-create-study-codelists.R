@@ -104,3 +104,38 @@ test_that("the block: a list a set in the sheet's order, its values by order, a 
   expect_identical(.std_codelists_block(cl[0L, ]), character())
   expect_identical(.std_codelists_block(NULL), character())
 })
+
+test_that("create_study(home = ) takes the analysis sets, data catalog and code lists from that home alone", {
+  home_a <- local_home()
+  # home B: a company with one analysis set, one dataset, one code list and
+  # its own subject id
+  b <- .builtin_standards()
+  b$populations <- b$populations[b$populations$population_id == "SAF", , drop = FALSE]
+  b$populations$population_id <- "BSAF"
+  b$datasets <- b$datasets[b$datasets$dataset == "ADSL", , drop = FALSE]
+  b$codelists <- b$codelists[b$codelists$set == "SEX", , drop = FALSE]
+  b$settings$value[b$settings$key == "subject_id"] <- "SUBJID"
+  f <- file.path(withr_tempdir(), "home-b.xlsx")
+  writexl::write_xlsx(b, f)
+  home_b <- withr_tempdir()
+  # (home B set up, then home A the default again)
+  options(tflplanner.home = home_b)
+  suppressMessages(setup_tflplanner(studies_root = file.path(home_b, "ws"), standards = f))
+  options(tflplanner.home = home_a)
+  expect_true("RACE" %in% standard_codelists()$set)
+  expect_identical(unique(standard_codelists(home = home_b)$set), "SEX")
+  # a study of home B, made while home A is the default: all B's
+  s <- create_study("TWO-B", home = home_b)
+  expect_identical(s$planner$ard$populations$population_id, "BSAF")
+  expect_identical(s$planner$ard$datasets$dataset, "ADSL")
+  expect_identical(s$planner$ard$study$value[s$planner$ard$study$key == "id"], "SUBJID")
+  y <- yaml::read_yaml(file.path(s$path, "spec", "defaults.yml"))
+  expect_identical(names(y$codelists), "SEX")
+  # a study of home A: A's (the built-in standards)
+  a <- create_study("TWO-A")
+  expect_true(all(c("SAF", "FAS") %in% a$planner$ard$populations$population_id))
+  expect_false("BSAF" %in% a$planner$ard$populations$population_id)
+  expect_identical(a$planner$ard$study$value[a$planner$ard$study$key == "id"], "USUBJID")
+  ya <- yaml::read_yaml(file.path(a$path, "spec", "defaults.yml"))
+  expect_true(all(c("SEX", "RACE", "ETHNIC") %in% names(ya$codelists)))
+})
