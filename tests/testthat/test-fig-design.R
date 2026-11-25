@@ -112,7 +112,7 @@ test_that("the preview carries the advice, and a fix applies", {
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
   s <- suppressMessages(sample_study_copy())
   d <- tflspec::tfl_fig_template("km_simple", data = "ADTTE", param = "TTSKIN",
-                                  pop = "SAFFL", group = "TRT01A")
+                                  group = "TRT01A")
   r <- preview_figure(s, "F-14-2-2", d)
   expect_null(r$error)
   expect_true("km_risk" %in% r$advice$rule)
@@ -185,7 +185,7 @@ test_that("a template's defaults the data has not got are replaced by the data's
   expect_length(.template_fit(d, ok, adsl), 0L)
   # the join takes from ADSL only what the dataset lacks
   d2 <- tflspec::tfl_fig_template("km_risk_table", data = "ADTTE", param = "TTDE",
-                                  pop = "SAFFL", group = "TRT01P", join_adsl = TRUE)
+                                  group = "TRT01P", join_adsl = TRUE)
   j <- Filter(function(s) identical(s$step, "join"), .trim_join(d2, x)$data)
   expect_identical(j[[1L]]$vars, "TRT01P")
   j0 <- Filter(function(s) identical(s$step, "join"),
@@ -195,7 +195,7 @@ test_that("a template's defaults the data has not got are replaced by the data's
 
 test_that("the designer shows a piece's own lines of the design's code", {
   d <- tflspec::tfl_fig_template("km_simple", data = "ADTTE", param = "TTDE",
-                                 pop = "SAFFL", group = "TRT01A")
+                                 group = "TRT01A")
   make <- function(d, codelists = TRUE) .fig_design_script(d, "F-1")
   code <- make(d)
   # the lines the script has with the piece and not without it

@@ -601,3 +601,36 @@ test_that("a forest's blank comparison is left to the template: every other arm"
     expect_match(code(), "`comparison` (Xanomeline High Dose)", fixed = TRUE)
   })
 })
+
+test_that("a template figure has no population flag: a forest's analysis data is the report's set", {
+  skip_on_cran()
+  local_home()
+  s <- create_study("G3")
+  dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(cards::ADSL, file.path(s$path, "data/adam/adsl.rds"))
+  saveRDS(cards::ADTTE, file.path(s$path, "data/adam/adtte.rds"))
+  s$planner <- add_output(s$planner, "F-HR", type = "figure")
+  s$planner$ard$populations <- .normalize_ard_sheet(data.frame(
+    population_id = "ITT", dataset = "ADSL", where = "ITTFL == \"Y\""), "populations")
+  save_study(s)
+  shiny::testServer(server_for("G3"), {
+    session$setInputs(target = "F-HR", nav = "make", step = "content", content_nav = "content")
+    session$setInputs(pd_from = "template", pd_tpl = "forest_hr", pd_tpl_data = "ADTTE",
+                      pd_tpl_param = cards::ADTTE$PARAMCD[1L])
+    # (the figure's subjects are its report's analysis set: no flag to choose)
+    expect_false(grepl("pd_tpl_pop", output$pd_tpl_more$html, fixed = TRUE))
+    rv <- session$userData$rv
+    tte <- function() {
+      ad <- ard_rows(rv$p, "analysis_data", "F-HR")
+      ad[!is.na(ad$from) & ad$from == "ADTTE", c("data_id", "population_id")]
+    }
+    # no set on the report: the template's own is kept
+    session$setInputs(pd_start = 1)
+    expect_identical(tte()$population_id, "FASFL")
+    # the report's set: the analysis data's, and its name
+    rv$p <- set_report_population(rv$p, "F-HR", "ITT")
+    session$setInputs(pd_start = 2)
+    itt <- tte()[grepl("_itt_", tte()$data_id, fixed = TRUE), ]
+    expect_identical(itt$population_id, "ITT")
+  })
+})

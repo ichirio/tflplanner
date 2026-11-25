@@ -367,16 +367,6 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
   done()
 }
 
-# The study's analysis set whose condition is a flag (SAFFL: the set
-# `SAFFL == "Y"`), or NA
-.population_of_flag <- function(x, flag) {
-  po <- x$ard$populations
-  if (is.null(flag) || is.na(flag) || is.null(po) || !nrow(po)) return(NA_character_)
-  if (flag %in% po$population_id) return(flag)
-  k <- which(vapply(po$where, function(w) identical(.pop_flag(w), flag), NA))
-  if (length(k)) po$population_id[k[1L]] else NA_character_
-}
-
 #' A figure's own analyses, written from its design
 #'
 #' A design made from a template that brings its analyses -- the forest
