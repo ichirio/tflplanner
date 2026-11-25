@@ -407,10 +407,16 @@ preview_figure <- function(study, output_id,
 # The designer's code view's first line (not the saved program's): the
 # subjects the design's code gets -- the report's analysis set's, kept by
 # the report's program before it (A2-2), or all when the report has none.
+# A set the study's populations have not: said so, as .report_subjects_data()
+# keeps all subjects for it.
 .fig_subjects_line <- function(x, output_id) {
   pop <- report_population(x, output_id)
-  if (is.na(pop)) "# Subjects: all -- the report has no analysis set." else
-    sprintf("# Subjects: the report's analysis set %s (its program keeps them before this code).", pop)
+  if (is.na(pop)) return("# Subjects: all -- the report has no analysis set.")
+  if (!pop %in% x$ard$populations$population_id) {
+    return(sprintf(paste0("# Subjects: the report's analysis set %s is not one of the study's ",
+                          "populations (spec/data.yml): define it there."), pop))
+  }
+  sprintf("# Subjects: the report's analysis set %s (its program keeps them before this code).", pop)
 }
 
 # preview_figure(), with the ARD to print from given: `ard` is
