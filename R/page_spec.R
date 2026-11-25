@@ -79,17 +79,14 @@
     list(arg = "auto_title", label = "Title from the table's name", kind = "logical"),
     list(arg = "title_label_align", label = "Title's alignment", kind = "choice",
          choices = c("left", "center", "right"))),
-  rtf_figures = list(
-    list(arg = "width_twips", label = "Width (in)", kind = "inches"),
-    list(arg = "height_twips", label = "Height (in)", kind = "inches"),
-    list(arg = "align", label = "Alignment", kind = "choice", choices = c("left", "center", "right"))),
+  # (no rtf_figures card: a figure's size, alignment, dpi ... are its
+  # content's tfl_image, not the page's -- tflspec#874)
   rtf_titles = .pgs_band_fields,
   rtf_footnotes = .pgs_band_fields)
 
 # a card's meaning, its title "meaning (function())"
 .pgs_cards <- c(rtf_page = "Paper and margins", rtf_style = "Text defaults",
-                rtf_document = "Document", rtf_tables = "Table on the page",
-                rtf_figures = "Figure size")
+                rtf_document = "Document", rtf_tables = "Table on the page")
 
 # the call each card is in the program (tflspec writes rtf_page()'s
 # arguments as rtf_document(page = list(...)))
