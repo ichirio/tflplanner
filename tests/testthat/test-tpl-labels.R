@@ -98,7 +98,7 @@ test_that("the designer's template form heads its fields as the new report's dia
   expect_identical(head_of("comparison"), "Group compared with reference (comparison)")
   expect_identical(head_of("param", ja), "パラメータ（param）")
   expect_identical(head_of("group", ja), "群（group）")
-  expect_identical(head_of("subgroups", ja), "部分集団の変数（subgroups）")
+  expect_identical(head_of("subgroups", ja), "\u90e8\u5206\u96c6\u56e3\uff08subgroups\uff09")
   expect_identical(head_of("ref", ja), "基準群（ref）")
   expect_identical(head_of("comparison", ja), "基準群に対して示す群（comparison）")
   # a Kaplan-Meier figure (km_simple: the km template's): its group is `by`
