@@ -17,15 +17,15 @@ ard:
       variables:
         - TRT01A
       formats:
-        N: 0
-        mean: 2
-        sd: 3
-        median: 1
-        min: 0
-        max: 0
-        p: xx.x%
-        AGE:mean: 1
-        AGE:sd: 2
+        - N=0
+        - mean=2
+        - sd=3
+        - median=1
+        - min=0
+        - max=0
+        - p=xx.x%
+        - AGE:mean=1
+        - AGE:sd=2
     - id: AGE
       method: cards::ard_summary
       data: adsl_sub
@@ -41,15 +41,15 @@ ard:
         - min
         - max
       formats:
-        N: 0
-        mean: 2
-        sd: 3
-        median: 1
-        min: 0
-        max: 0
-        p: xx.x%
-        AGE:mean: 1
-        AGE:sd: 2
+        - N=0
+        - mean=2
+        - sd=3
+        - median=1
+        - min=0
+        - max=0
+        - p=xx.x%
+        - AGE:mean=1
+        - AGE:sd=2
     - id: AGEGR1
       method: cards::ard_tabulate
       data: adsl_sub
@@ -58,15 +58,15 @@ ard:
       variables:
         - AGEGR1
       formats:
-        N: 0
-        mean: 2
-        sd: 3
-        median: 1
-        min: 0
-        max: 0
-        p: xx.x%
-        AGE:mean: 1
-        AGE:sd: 2
+        - N=0
+        - mean=2
+        - sd=3
+        - median=1
+        - min=0
+        - max=0
+        - p=xx.x%
+        - AGE:mean=1
+        - AGE:sd=2
     - id: SEX
       method: cards::ard_tabulate
       data: adsl_sub
@@ -75,15 +75,15 @@ ard:
       variables:
         - SEX
       formats:
-        N: 0
-        mean: 2
-        sd: 3
-        median: 1
-        min: 0
-        max: 0
-        p: xx.x%
-        AGE:mean: 1
-        AGE:sd: 2
+        - N=0
+        - mean=2
+        - sd=3
+        - median=1
+        - min=0
+        - max=0
+        - p=xx.x%
+        - AGE:mean=1
+        - AGE:sd=2
     - id: RACE
       method: cards::ard_tabulate
       data: adsl_sub
@@ -92,15 +92,15 @@ ard:
       variables:
         - RACE
       formats:
-        N: 0
-        mean: 2
-        sd: 3
-        median: 1
-        min: 0
-        max: 0
-        p: xx.x%
-        AGE:mean: 1
-        AGE:sd: 2
+        - N=0
+        - mean=2
+        - sd=3
+        - median=1
+        - min=0
+        - max=0
+        - p=xx.x%
+        - AGE:mean=1
+        - AGE:sd=2
     - id: ECOGBL
       method: cards::ard_tabulate
       data: adsl_sub
@@ -109,15 +109,15 @@ ard:
       variables:
         - ECOGBL
       formats:
-        N: 0
-        mean: 2
-        sd: 3
-        median: 1
-        min: 0
-        max: 0
-        p: xx.x%
-        AGE:mean: 1
-        AGE:sd: 2
+        - N=0
+        - mean=2
+        - sd=3
+        - median=1
+        - min=0
+        - max=0
+        - p=xx.x%
+        - AGE:mean=1
+        - AGE:sd=2
 codelists:
   TRT01A:
     - value: Drug X
