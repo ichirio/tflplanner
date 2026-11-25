@@ -78,7 +78,8 @@ test_that("the report list names the datasets a report reads, and its title", {
   p <- suppressMessages(sample_study_copy())$planner
   # a table: its analyses' data and their population's
   expect_identical(.report_datasets(p, "T-14-1-1"), "ADSL")
-  expect_identical(.report_datasets(p, "T-14-3-1"), c("ADAE", "ADSL"))
+  # (its BIGN, of the analysis set's subjects, first: tflspec#969)
+  expect_identical(.report_datasets(p, "T-14-3-1"), c("ADSL", "ADAE"))
   # a listing: its dataset
   expect_identical(.report_datasets(p, "L-16-2-7"), "ADAE")
   # a figure: the datasets its row names, or its design reads

@@ -51,6 +51,8 @@ dr_batch <- function(s, name, status = "OK", excluded = NULL) {
                paste("Study :", yaml::read_yaml(file.path(s$path, "study.yml"))$study_id),
                if (!is.null(excluded)) paste("Excluded :", excluded),
                paste("Finished :", format(end, "%Y-%m-%d %H:%M:%S")),
+               # (a run counts with Kind : run and Verified : yes, as the runner writes)
+               "Kind : run",
                "Verified : yes"),
              file.path(d, "batch.txt"))
   d

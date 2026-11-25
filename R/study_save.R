@@ -236,40 +236,29 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
   ard_duplicate = "The output IDs %s and %s make the same ARD program %s (names that differ only in case are one file). Use output IDs whose ARD programs differ.")
 
 # What stops a save, from the report list alone: a list of problems, each
-# list(id, kind, args, sheet, field).  Names are compared in lower case
-# (Windows and macOS keep one file for T1.R and t1.R).  A report's program
-# is in programs/tfl/ and an ARD program in programs/ard/: each is compared
-# with its own folder's, and both with every name tflplanner writes, in any
-# folder of programs/ (one rule: a name is either a report's or tflplanner's).
+# list(id, kind, args, sheet, field).  tflspec checks the names
+# (tfl_study_program_files(): in lower case, as Windows and macOS keep one
+# file for T1.R and t1.R; a report's program against programs/tfl/'s, an ARD
+# program against programs/ard/'s, both against every name tflplanner
+# writes, in any folder of programs/); the cell each kind points at is
+# tflplanner's.
+.program_name_where <- list(
+  reserved = c("report", "program"), duplicate = c("report", "program"),
+  ard_reserved = c("_tflplanner", "output_id"),
+  ard_duplicate = c("_tflplanner", "output_id"))
+
 .program_name_problems <- function(p) {
   ids <- p$outputs$output_id
   ids <- ids[!is.na(ids) & nzchar(ids)]
-  out <- list()
-  add <- function(id, kind, args, sheet, field) {
-    out[[length(out) + 1L]] <<- list(id = id, kind = kind, args = as.character(args),
-                                     sheet = sheet, field = field)
-  }
-  reserved <- tolower(.generated_program_files())
-  one <- function(ids, names, kind, sheet, field) {
-    low <- tolower(names)
-    for (i in seq_along(ids)) {
-      if (is.na(names[i])) next
-      if (low[i] %in% reserved) {
-        add(ids[i], kind[1L], c(ids[i], names[i]), sheet, field)
-      }
-      j <- match(low[i], low[seq_len(i - 1L)])
-      if (!is.na(j)) {
-        add(ids[i], kind[2L], c(ids[j], ids[i], names[i]), sheet, field)
-      }
-    }
-  }
   prog <- vapply(ids, function(id)
     tryCatch(report_info(p, id)$program, error = function(e) NA_character_), "")
-  one(ids, unname(prog), c("reserved", "duplicate"), "report", "program")
-  ids <- unique(ids)
-  one(ids, .ard_prog_name(ids), c("ard_reserved", "ard_duplicate"),
-      "_tflplanner", "output_id")
-  out
+  names(prog) <- ids
+  files <- tflspec::tfl_study_program_files(prog, reserved = .generated_program_files(),
+                                            layout = study_layout())
+  lapply(attr(files, "problems"), function(x) {
+    w <- .program_name_where[[x$kind]]
+    list(id = x$id, kind = x$kind, args = x$args, sheet = w[1L], field = w[2L])
+  })
 }
 
 .program_name_message <- function(x) {

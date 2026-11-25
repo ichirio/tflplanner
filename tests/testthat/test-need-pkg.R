@@ -112,7 +112,8 @@ test_that("the analysis form: a function needing a missing package is marked, ch
   suppressWarnings(shiny::testServer(server_for("NP"), {
     rv <- session$userData$rv
     session$setInputs(nav = "make", step = "ard", target = "T1")
-    session$setInputs(hot_ard_analyses_select = list(select = list(r = 2L)))
+    # (CONT: after BIGN and STACK -- the study's header prints N)
+    session$setInputs(hot_ard_analyses_select = list(select = list(r = 3L)))
     st_env <- session$userData$st_env
     id <- function(x) paste0("st", st_env$n, "_", x)
     session$setInputs(ard_fn_opened = 1)
