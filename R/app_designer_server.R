@@ -616,9 +616,20 @@
       t(if (k %in% names(.pd_sections)) .pd_sections[[k]] else p)
     }
     items <- c(
-      if (n_bad) lapply(seq_len(nrow(pr)), function(i) shiny::div(
-        class = "mb-1", badge("error"),
-        shiny::span(class = "text-muted", pr$part[i], " "), pr$field[i], ": ", pr$problem[i])),
+      if (n_bad) lapply(seq_len(nrow(pr)), function(i) {
+        # the report has no analysis set: one item to check, the sentence
+        # and the way to the step that has the set
+        if (identical(pr$field[i], "population") && identical(pr$part[i], "ard")) {
+          return(shiny::div(
+            class = "mb-1 d-flex justify-content-between align-items-start gap-2",
+            shiny::div(shiny::span(class = "badge me-1 text-bg-warning", t("to check")), pr$problem[i]),
+            .btn("pd_goto_data", sprintf(t("Go to step %s"), .step_no("data")),
+                 class = "btn-sm btn-outline-primary py-0 text-nowrap")))
+        }
+        shiny::div(
+          class = "mb-1", badge("error"),
+          shiny::span(class = "text-muted", pr$part[i], " "), pr$field[i], ": ", pr$problem[i])
+      }),
       if (n_adv) lapply(seq_len(nrow(a)), function(i) shiny::div(
         class = "mb-1 d-flex justify-content-between align-items-start gap-2",
         shiny::div(badge(a$level[i]), shiny::span(class = "text-muted", part_label(a$part[i]), " "),
@@ -809,11 +820,23 @@
       if (stale()) shiny::div(class = "alert alert-warning py-1 px-2 small mb-2",
                               t("The steps have changed since: press Preview the data again.")),
       if (!is.null(r$error)) shiny::div(class = "alert alert-danger py-1 px-2 small mb-2",
-                                        shiny::strong(t("The steps stopped: ")), r$error),
+                                        error_ui(r$error, t("The steps stopped: "))),
       if (!length(ob)) shiny::p(class = "small text-muted mb-0", t("(nothing made)")),
       lapply(names(ob), function(nm) .pd_object_ui(nm, ob[[nm]], t)))
   })
   shiny::observeEvent(input$pd_goto_figure, bslib::nav_select("step", "content"))
+  # (the check "no analysis set" says where it is: step 1)
+  shiny::observeEvent(input$pd_goto_data, bslib::nav_select("step", "data"))
+  # a drawing's error: a known cause (the report has no analysis set) is
+  # said by its check's sentence, the R error kept for unknown causes (and
+  # behind "Details" for a known one)
+  error_ui <- function(err, lead) {
+    id <- current()
+    known <- !is.null(id) && .fig_no_set(rv$p, id, design())
+    if (!known) return(shiny::tagList(shiny::strong(lead), err))
+    shiny::tagList(.fig_no_set_text(),
+                   shiny::tags$details(class = "mt-1 text-muted", shiny::tags$summary(t("Details")), err))
+  }
   # a piece chosen, moved, removed
   shiny::observeEvent(input$pd_act, {
     a <- input$pd_act
@@ -1317,7 +1340,7 @@
     shiny::req(r)
     if (!is.null(r$error)) {
       return(shiny::div(class = "alert alert-danger py-2 small",
-                        shiny::strong(t("The figure could not be drawn: ")), r$error))
+                        error_ui(r$error, t("The figure could not be drawn: "))))
     }
     z <- r$size
     if (is.null(z)) return(NULL)

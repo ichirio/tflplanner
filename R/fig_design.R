@@ -190,6 +190,30 @@ set_fig_design <- function(x, output_id, design) {
     call)
 }
 
+# The subjects of the report's analysis set, as tflspec's report program
+# makes them (.fig_subjects_part(), internal: looked up in its namespace):
+# list(code, subjects), or NULL when the report has no set, the study's
+# populations do not define it, or tflspec cannot make them
+.fig_subjects_of <- function(x, output_id, adata = character()) {
+  pop <- report_population(x, output_id)
+  f <- get0(".fig_subjects_part", envir = asNamespace("tflspec"), mode = "function",
+            inherits = FALSE)
+  if (is.na(pop) || is.null(f) || is.null(x$ard)) return(NULL)
+  sj <- tryCatch(f(structure(x$ard, class = "tfl_ard_spec"), output_id, pop, data = adata),
+                 error = function(e) NULL)
+  drop <- get0(".drop_attached_ns", envir = asNamespace("tflspec"), mode = "function",
+               inherits = FALSE)
+  if (!is.null(sj) && !is.null(drop)) sj$code <- drop(sj$code)
+  sj
+}
+
+# ... its lines in the program, as tflspec's report program heads them
+.fig_subjects_lines <- function(sj, adata = character()) {
+  c(paste0("# the report's subjects: its analysis set (its data's population)",
+           if (length(adata)) ", and its analysis data (its ARD definition)"),
+    sj$code, "")
+}
+
 # A designed figure's data and plot sections, as its program has them
 # (#293): `# ---- data ----` -- the code lists, the datasets read (the
 # data catalog), the steps' pipes -- and `# ---- plot ----` -- the palette,
@@ -200,6 +224,18 @@ set_fig_design <- function(x, output_id, design) {
   code <- tflspec::tfl_fig_design_code(
     design, output_id, setup = TRUE, save = FALSE, name = "plot",
     codelists = codelists)
+  adata <- attr(code, "data") %||% character()
+  # a report with an analysis set: its subjects made in the data part, the
+  # datasets the design reads joined to them -- the lines tflspec's report
+  # program writes (.fig_subjects_part()): one writer for the designer's
+  # code view and the program
+  sj <- if (length(attr(code, "reads")) || length(adata)) .fig_subjects_of(x, output_id, adata)
+  if (!is.null(sj)) {
+    attr(design, "subjects") <- sj$subjects
+    code <- tflspec::tfl_fig_design_code(
+      design, output_id, setup = TRUE, save = FALSE, name = "plot",
+      codelists = codelists)
+  }
   reads <- attr(code, "reads") %||% character()
   lines <- .split_lines(as.character(code))
   read <- if (length(reads)) c(
@@ -208,8 +244,9 @@ set_fig_design <- function(x, output_id, design) {
     "")
   # the report's analysis data its reads name ({step: read, data: <id>}):
   # made first, as its ARD definition says (tflspec's data part)
-  adata <- attr(code, "data") %||% character()
-  if (length(adata)) {
+  if (!is.null(sj)) {
+    read <- c(read, .fig_subjects_lines(sj, adata))
+  } else if (length(adata)) {
     read <- c(read, "# the report's analysis data (its ARD definition)",
               .ard_spec_code(structure(x$ard, class = "tfl_ard_spec"),
                              output_id = output_id, part = "data", data = adata),
@@ -416,7 +453,7 @@ preview_figure <- function(study, output_id,
     return(sprintf(paste0("# Subjects: the report's analysis set %s is not one of the study's ",
                           "populations (spec/data.yml): define it there."), pop))
   }
-  sprintf("# Subjects: the report's analysis set %s (its program keeps them before this code).", pop)
+  sprintf("# Subjects: the report's analysis set %s (kept by the lines below).", pop)
 }
 
 # preview_figure(), with the ARD to print from given: `ard` is
@@ -533,6 +570,18 @@ preview_figure <- function(study, output_id,
 # `study` the study with the planner now.
 .fig_problems_now <- function(r, study, output_id, design, ard = r$ard_rows) {
   pr <- r$problems
+  # a report with no analysis set: the one check that says it (its design
+  # reads an ARD that no step can give); not the step 2 sentence
+  if (!is.null(design) && .fig_no_set(study$planner, output_id, design)) {
+    if (!is.null(pr)) {
+      gone <- (pr$part %in% "ard" & pr$field %in% "ard_source")
+      if (!is.null(r$ard_problems) && nrow(r$ard_problems)) gone <- gone | pr$problem %in% r$ard_problems$problem
+      pr <- pr[!gone, , drop = FALSE]
+    }
+    row <- data.frame(part = "ard", field = "population", problem = .fig_no_set_text(),
+                      stringsAsFactors = FALSE)
+    return(if (is.null(pr)) row else rbind(pr[c("part", "field", "problem")], row))
+  }
   if (is.null(design) || !.fig_reads_ard(design, output_id)) return(pr)
   now <- tryCatch(.fig_ard_problems(study, output_id, design, ard = ard),
                   error = function(e) NULL)
@@ -543,6 +592,22 @@ preview_figure <- function(study, output_id,
   if (!nrow(now)) return(pr)
   now <- now[c("part", "field", "problem")]
   if (is.null(pr)) now else rbind(pr, now)
+}
+
+# Whether a figure's design reads an ARD that its report cannot give: the
+# report has no analysis set (a template writes the figure's analyses for a
+# set) and the figure has no ARD source
+.fig_no_set <- function(x, output_id, design) {
+  !is.null(design) && is.na(report_population(x, output_id)) &&
+    .fig_reads_ard(design, output_id) &&
+    identical(.fig_ard_source(x, output_id)$kind, "none")
+}
+
+# its sentence (one for the check, the preview and step 1: a known cause is
+# said, not the R error it ends in)
+.fig_no_set_text <- function() {
+  sprintf(tr("This report has no analysis set. Choose one in step %s, 'This report's analysis set', then apply the template again."),
+          .step_no("data"))
 }
 
 # What an app's drawing of a figure is made from: its design, the
