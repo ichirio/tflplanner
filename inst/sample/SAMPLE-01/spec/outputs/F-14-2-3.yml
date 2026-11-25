@@ -1,11 +1,10 @@
 id: F-14-2-3
 kind: figure
 label: KM curves of the time to first skin disorder (designed)
-common:
-  population: SAF
 extends:
   - defaults
 data:
+  population: SAF
   source: code
   steps:
     - step: read

@@ -1,11 +1,10 @@
 id: F-14-2-2
 kind: figure
 label: KM plot of the time to first skin disorder
-common:
-  population: SAF
 extends:
   - defaults
 data:
+  population: SAF
   source: code
 content: !r |-
   arms <- c("Drug X", "Control")
