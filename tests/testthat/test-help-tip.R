@@ -48,3 +48,15 @@ test_that("a tip's text is text: a <placeholder> in it shows as it is", {
   html <- as.character(app_ui("ja"))
   expect_match(html, "runs/&lt;", fixed = TRUE)
 })
+
+test_that("a label that has its (i) takes no second one (subgroup_labels showed two)", {
+  one <- function(x) lengths(regmatches(x, gregexpr("rp-tip", x, fixed = TRUE)))
+  plain <- as.character(with_tip("Heading", "its help"))
+  expect_identical(one(plain), 1L)
+  twice <- as.character(with_tip(with_tip("Heading", "its help"), "the format"))
+  expect_identical(one(twice), 1L)
+  expect_match(twice, "its help", fixed = TRUE)
+  # a label with decoration around the first (i) too
+  deco <- shiny::span(with_tip("Heading", "its help"), " ", shiny::tags$small("key"))
+  expect_identical(one(as.character(with_tip(deco, "the format"))), 1L)
+})
