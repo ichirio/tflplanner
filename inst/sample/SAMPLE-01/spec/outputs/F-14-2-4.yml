@@ -2,8 +2,6 @@ id: F-14-2-4
 kind: figure
 label: Hazard ratio of the time to first skin disorder by subgroup (forest plot, its
   own ARD)
-common:
-  population: SAF
 extends:
   - defaults
 ard:
@@ -17,6 +15,7 @@ ard:
         - AGEGR1
     - id: adsl_saf
       from: ADSL
+      population: SAF
   analyses:
     - id: HR
       label: Hazard ratio, all subjects
