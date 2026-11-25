@@ -1397,7 +1397,11 @@
     d <- design()
     shiny::req(id, d)
     # (the subjects are the report's set's, kept before this code: said here)
-    paste(tryCatch(c(.fig_subjects_line(rv$p, id), .fig_design_lines(rv$p, id, d)),
+    # (the program's lines, written as the program is: with the study's
+    # code options -- its folders' variables, no `pkg::` for what its setup
+    # attaches)
+    paste(tryCatch(c(.fig_subjects_line(rv$p, id),
+                     .with_study_code(.fig_design_lines(rv$p, id, d))),
                    error = function(e) conditionMessage(e)),
           collapse = "\n")
   })

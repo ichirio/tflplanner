@@ -190,78 +190,46 @@ set_fig_design <- function(x, output_id, design) {
     call)
 }
 
-# The subjects of the report's analysis set, as tflspec's report program
-# makes them (.fig_subjects_part(), internal: looked up in its namespace):
-# list(code, subjects), or NULL when the report has no set, the study's
-# populations do not define it, or tflspec cannot make them
-.fig_subjects_of <- function(x, output_id, adata = character()) {
-  pop <- report_population(x, output_id)
-  f <- get0(".fig_subjects_part", envir = asNamespace("tflspec"), mode = "function",
-            inherits = FALSE)
-  if (is.na(pop) || is.null(f) || is.null(x$ard)) return(NULL)
-  sj <- tryCatch(f(structure(x$ard, class = "tfl_ard_spec"), output_id, pop, data = adata),
-                 error = function(e) NULL)
-  drop <- get0(".drop_attached_ns", envir = asNamespace("tflspec"), mode = "function",
-               inherits = FALSE)
-  if (!is.null(sj) && !is.null(drop)) sj$code <- drop(sj$code)
-  sj
-}
-
-# ... its lines in the program, as tflspec's report program heads them
-.fig_subjects_lines <- function(sj, adata = character()) {
-  c(paste0("# the report's subjects: its analysis set (its data's population)",
-           if (length(adata)) ", and its analysis data (its ARD definition)"),
-    sj$code, "")
-}
-
 # A designed figure's data and plot sections, as its program has them
 # (#293): `# ---- data ----` -- the code lists, the datasets read (the
-# data catalog), the steps' pipes -- and `# ---- plot ----` -- the palette,
-# the chain into `plot` (the report writes it) -- then the figure checks.
-# The study's figure setup (sourced at the program's top) attaches the
-# packages and gives the palette.
+# data catalog), the report's subjects (its analysis set's, every dataset
+# the design reads joined to them), the steps' pipes -- and `# ---- plot
+# ----` -- the palette, the chain into `plot` (the report writes it) --
+# then the figure checks and its size on the page.  The lines are
+# tflspec's report program's (.rp_fig_design_plot(), internal: looked up
+# in its namespace), from the report's values as its program takes them
+# (.fig_rp_context()): one writer for the program and the designer's code
+# view, its options (tflspec.attached ...) the caller's.
 .fig_design_plot <- function(design, output_id, codelists, x) {
-  code <- tflspec::tfl_fig_design_code(
-    design, output_id, setup = TRUE, save = FALSE, name = "plot",
-    codelists = codelists)
-  adata <- attr(code, "data") %||% character()
-  # a report with an analysis set: its subjects made in the data part, the
-  # datasets the design reads joined to them -- the lines tflspec's report
-  # program writes (.fig_subjects_part()): one writer for the designer's
-  # code view and the program
-  sj <- if (length(attr(code, "reads")) || length(adata)) .fig_subjects_of(x, output_id, adata)
-  if (!is.null(sj)) {
-    attr(design, "subjects") <- sj$subjects
-    code <- tflspec::tfl_fig_design_code(
-      design, output_id, setup = TRUE, save = FALSE, name = "plot",
-      codelists = codelists)
+  w <- get0(".rp_fig_design_plot", envir = asNamespace("tflspec"), mode = "function",
+            inherits = FALSE)
+  if (is.null(w)) {
+    stop(paste0("This tflspec has no writer of a designed figure's program ",
+                "(.rp_fig_design_plot()): install the tflspec this tflplanner is made for."),
+         call. = FALSE)
   }
-  reads <- attr(code, "reads") %||% character()
-  lines <- .split_lines(as.character(code))
-  read <- if (length(reads)) c(
-    paste0("# the data: ", paste(reads, collapse = ", "), " (data catalog)"),
-    unlist(lapply(reads, function(d) .read_dataset_lines(x, d))),
-    "")
-  # the report's analysis data its reads name ({step: read, data: <id>}):
-  # made first, as its ARD definition says (tflspec's data part)
-  if (!is.null(sj)) {
-    read <- c(read, .fig_subjects_lines(sj, adata))
-  } else if (length(adata)) {
-    read <- c(read, "# the report's analysis data (its ARD definition)",
-              .ard_spec_code(structure(x$ard, class = "tfl_ard_spec"),
-                             output_id = output_id, part = "data", data = adata),
-              "")
-  }
-  # after the section's line and the code lists (when there are)
-  at <- 1L
-  if (length(lines) > 1L && startsWith(lines[[2L]], "# ---- code lists")) {
-    blank <- which(lines == "")
-    at <- blank[blank > 2L][1L]
-  }
-  c(utils::head(lines, at), .fig_ard_lines(x, output_id, design), read, utils::tail(lines, -at),
-    "", "# the figure checks: dropped rows, colours against the standard",
-    "tfl_check(plot)",
-    .fig_sized_lines(x, output_id, "plot"))
+  w(.fig_rp_context(x, output_id), design, codelists)
+}
+
+# A figure report's values as tflspec's report program takes them
+# (tfl_report_program()'s `report`, `shared`, `standards`, `layout`): its
+# id, its analysis set (its data's `population:`), its ARD source (and the
+# step that chooses it), its size on the page and its saved design (its
+# dpi); the study's ARD definition and the study ARD's path; the company's
+# ARD catalogs; the study's folders
+.fig_rp_context <- function(x, output_id) {
+  pop <- report_population(x, output_id)
+  src <- .fig_ard_source(x, output_id)
+  src$step <- .step_no("ard")
+  list(
+    report = list(id = output_id, type = "figure",
+                  output = if (!is.na(pop)) list(data = list(population = pop)),
+                  ard_source = src, size = .fig_size_of(x, output_id),
+                  design = fig_design(x, output_id)),
+    shared = list(ard = if (!is.null(x$ard)) structure(x$ard, class = "tfl_ard_spec"),
+                  study_ard = .study_ard_rel(x$ard)),
+    standards = list(ard_statistics = .std_ard_statistics(), ard_methods = .std_ard_methods()),
+    layout = study_layout())
 }
 
 # one element a line; a blank line stays (strsplit would drop it)
