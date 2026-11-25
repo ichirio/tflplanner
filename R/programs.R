@@ -644,6 +644,13 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   report_part <- c(
     .section("report"),
     .report_code_lines(x, output_id, (table || tpl_listing) && identical(content, "plan"), content))
+  # a listing of `data` (as_rtftables(data, ...)): its program records
+  # whether `data` has no records, so the official run notes an empty
+  # listing (batch.R reads report_status.csv's `empty`)
+  if (identical(type, "listing") && any(grepl("as_rtftables[(]data,", c(data, report_part)))) {
+    report_part[report_part == "record_report(report_id)"] <-
+      "record_report(report_id, empty = nrow(data) == 0)"
+  }
 
   c(head,
     "",
@@ -1031,13 +1038,17 @@ report_setup_code <- function(x, date = Sys.Date()) {
 # The small function a report program ends with, written in
 # report_setup.R: what was made, and with which study setup, into
 # output/tfl/report_status.csv (tflplanner reads it: a report made with
-# another programs/study_setup.R than the one there now is outdated).
+# another programs/study_setup.R than the one there now is outdated), and
+# -- a listing says it -- whether the report has no rows (`empty`: "TRUE",
+# "FALSE", "" not said; the official run's batch.R reads it and notes an
+# empty report).
 .report_status_name <- "report_status.csv"
 .record_report_fun <- function() {
   sf <- file.path(study_layout()[["tfl"]], .report_status_name)
   c("# what was made, with which study setup, and -- a figure printing an",
-    "# ARD's numbers -- from which definition of that ARD (tflplanner reads it)",
-    "record_report <- function(output_id, ard = \"\") {",
+    "# ARD's numbers -- from which definition of that ARD (tflplanner reads it);",
+    "# `empty`: TRUE when the report has no rows (the official run notes it)",
+    "record_report <- function(output_id, ard = \"\", empty = NA) {",
     paste0("  sf <- ", .r_string(sf)),
     # the study setup's fingerprint on a line of its own
     paste0("  setup <- ", .report_setup_hash_code()),
@@ -1045,6 +1056,7 @@ report_setup_code <- function(x, date = Sys.Date()) {
     "                    built = format(Sys.time(), \"%Y-%m-%d %H:%M:%S\"),",
     "                    setup = setup,",
     "                    ard = ard,",
+    "                    empty = if (isTRUE(empty)) \"TRUE\" else if (isFALSE(empty)) \"FALSE\" else \"\",",
     "                    stringsAsFactors = FALSE)",
     "  dir.create(dirname(sf), recursive = TRUE, showWarnings = FALSE)",
     "  st <- if (file.exists(sf)) utils::read.csv(sf, colClasses = \"character\")",

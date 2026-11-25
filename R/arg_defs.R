@@ -268,6 +268,9 @@
       length(.choice_words(d$choices))) return("pick")
   if (identical(type, "logical")) return("flag")
   if (type %in% c("number", "integer")) return("number")
+  # (a sequence of plain values -- a heading's lines, sort keys, axis breaks:
+  # a value a line, never the "name | text" rows, which read a map)
+  if (grepl("^list<(string|number|integer)>$", type) && !identical(d$input, "pick")) return("lines")
   if (grepl("^list<", type)) return("list")
   "text"
 }

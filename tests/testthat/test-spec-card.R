@@ -653,3 +653,26 @@ test_that("a positional dots key's field takes the dots' label and help (tflspec
     expect_true(is.character(d$help) && nzchar(d$help), info = k[1L])
   }
 })
+
+test_that("a field the definitions keep above says so, and the page keeps it there", {
+  skip_on_cran()
+  # (user GUI check, 2026-11-24: plan_style's border, a key field, went to
+  # the fold when switched to R -- the page undid the server's rule)
+  f <- spec_card_fields("plan_style")
+  expect_true("keep" %in% names(f))
+  expect_true(f$keep[f$name == "border"])
+  expect_true(all(f$shown[f$keep]))
+  expect_true(all(f$keep[f$tier %in% c("required", "key")]))
+  h <- html(spec_card("c", "plan_style", list(fn = "plan_style", args = list())))
+  for (a in f$name) {
+    has <- grepl(sprintf('data-arg="%s"[^>]*data-keep-up="1"', a), h)
+    expect_identical(has, f$keep[f$name == a], info = a)
+  }
+  # the page: a kept field is never moved to the fold, and a field switched
+  # to R counts as being written (one rule, read from the attribute)
+  js <- .builder_cards_js
+  expect_match(js, "f.attr('data-keep-up') !== '1'", fixed = TRUE)
+  expect_match(js, "f.find('.rp-isr').is(':checked')", fixed = TRUE)
+  # (a press inside the field -- its R or (none) switch -- is not leaving it)
+  expect_match(js, "if (downIn && f[0].contains(downIn)) return;", fixed = TRUE)
+})
