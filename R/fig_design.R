@@ -735,7 +735,15 @@ remove_fig_preset <- function(name, home = tflplanner_home()) {
   # (no population flag is fitted: a template has no flag step now -- the
   # figure's analysis set is its report's, read from the population's dataset)
   if (!"group" %in% given) {
-    g <- d$plot$colour_by %||% unlist(lapply(d$data, `[[`, "by"))[1L]
+    # the template's group argument: the colour variable, else the variable
+    # an ARD statistic is for (forest_hr); the `by` of an ard_stats step is
+    # its subgroups, not the group
+    nz1 <- function(v) if (length(v) && !is.na(v[[1L]]) && nzchar(v[[1L]])) v[[1L]]
+    g <- d$plot$colour_by %||%
+      nz1(unlist(lapply(Filter(function(z) identical(z$step, "ard_stats"), d$data),
+                        `[[`, "variable"))) %||%
+      unlist(lapply(Filter(function(z) !identical(z$step, "ard_stats"), d$data),
+                    `[[`, "by"))[1L]
     v <- fit_var(g, c("TRT01P", "TRT01A", "TRTP", "TRTA", "ARM", "ACTARM"))
     if (!is.na(v)) {
       out[["group"]] <- v
