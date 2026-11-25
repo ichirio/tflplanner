@@ -81,7 +81,6 @@
 "Start: the ARD's summary statistics under the table","はじめる: ARD の要約統計量を Table の下に"
 "The part is written: update the preview to see its rows.","部分を書きました。プレビューを更新すると、その行が出ます。"
 "This part","この部分"
-"Arguments not in the code","コードに書かれない引数"
 "Editing:","編集の対象:"
 "Part: %s (plan_append)","部分: %s (plan_append)"
 "These cards edit the part ""%s"" (its rows print under the table).","このカードは部分「%s」を編集します（その行は Table の下に印刷されます）。"

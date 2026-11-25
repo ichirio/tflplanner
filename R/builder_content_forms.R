@@ -7,8 +7,8 @@
 
 # The cards whose body is the generator's (spec_card(); the verbs:
 # .plan_form_fns): their arguments as fields by the definitions' types,
-# those the code writes above, the rest folded under "Arguments not in the
-# code".  The names the builder has used for the generator's parts:
+# those the code writes above, the rest folded under "More settings".  The
+# names the builder has used for the generator's parts:
 .plan_form_schema <- function(fn) spec_card_defs(fn)
 .plan_form_main <- function(fn) spec_card_defs(fn)$visible
 .plan_form_body <- function(cid, fn, it, choices = NULL, lang = "en",
@@ -36,8 +36,9 @@
   spec_card(cid, fn, it, lang = lang, only = ex, class = "rp-special-more")
 }
 # ... read back: those fields' values (`set`; "(none)" its toggle on: `!unset`,
-# tflspec::tfl_unset()) and the fields emptied, or a check as the function's
-# default (`unset`: taken out of the arguments); NULL while they are not there
+# tflspec::tfl_unset()), the fields emptied (`unset`: taken out of the
+# arguments) and the checks as ticked (`check`, with the function: `fn`);
+# NULL while they are not there
 .special_read <- function(input, cid, fn) {
   ex <- .special_args(fn)
   seen <- ex[vapply(ex, function(k) {
@@ -46,26 +47,39 @@
   if (!length(seen)) return(NULL)
   sch <- .plan_form_schema(fn)
   r <- builder_card_read(input, cid, sch, args = seen, logical_false = TRUE)
-  out <- list(set = list(), unset = character())
+  out <- list(set = list(), unset = character(), check = list(), fn = fn)
   for (k in seen) {
     v <- r[[k]]
     if (.is_unset(v)) {
       out$set[[k]] <- v
       next
     }
-    d <- sch$args[[k]]$default
-    empty <- is.null(v) || !length(v) || (length(v) == 1L && (is.na(v) || identical(v, ""))) ||
-      (is.logical(v) && (if (is.null(d)) isFALSE(as.logical(v)) else
-        identical(as.logical(v), as.logical(d))))
+    # (a check, ticked or not: `check`, told from the item's own value by
+    # .special_args_put() -- an unticked check is not "empty", #818)
+    if (is.logical(v) && length(v) == 1L && !is.na(v)) {
+      out$check[[k]] <- v
+      next
+    }
+    empty <- is.null(v) || !length(v) || (length(v) == 1L && (is.na(v) || identical(v, "")))
     if (empty) out$unset <- c(out$unset, k) else out$set[[k]] <- .form_list_value(v, sch$args[[k]]$type)
   }
   out
 }
-# ... put into the item's arguments as they are now
+# ... put into the item's arguments as they are now.  A check is told from
+# the item's own value by the generated cards' rule (spec_card_args(), on
+# the checks only): one the same as the item says (its default where the
+# item says none) is no change, so FALSE written stays FALSE and a check
+# left unticked adds nothing; one changed is written as it is ticked.
 .special_args_put <- function(args, r) {
   args <- args %||% list()
   for (k in r$unset) args[[k]] <- NULL
   for (k in names(r$set)) args[[k]] <- r$set[[k]]
+  if (length(r$check)) {
+    defs <- spec_card_defs(r$fn)
+    # (only the checks' arguments: the rest are the form's, put above)
+    defs$formals <- names(r$check)
+    args <- spec_card_args(r$check, list(args = args), r$fn, defs = defs)
+  }
   args
 }
 

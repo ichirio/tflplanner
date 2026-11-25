@@ -77,7 +77,6 @@ test_that("every tflspec_v1 template's arguments, help tips and label have their
     x <- .tpl_params(paste0("tflspec_v1/", t))$analysis_ids
     if (x$doc %in% names(.tpl_doc_labels)) .tpl_doc_labels[[x$doc]] else .tpl_arg_labels[["analysis_ids"]]
   }
-  expect_identical(head_of("demog"), "Analysis ID of each variable")
   expect_identical(head_of("tflspec_summary"), "Analysis ID of each variable")
   expect_identical(head_of("tflspec_hierarchy"), "Analysis ID of each depth")
   # (the series card's unsaved mark)

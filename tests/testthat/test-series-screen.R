@@ -35,9 +35,9 @@ fake_series <- function(dir) {
     writeLines("name: tflspec_v1", file.path(dir, "spec", "series", "tflspec_v1", "series.yml"))
   }
   st$status <- data.frame(
-    series = "tflspec_v1", template = c(NA, "ae_soc_pt", "demog", "km_simple"),
-    file = "x", from = c("/pkg/series/tflspec_v1/series.yml", "/pkg/series/tflspec_v1/templates/ae_soc_pt.yml",
-                         "/pkg/series/tflspec_v1/templates/demog.yml", "/pkg/series/tflspec_v1/templates/km_simple.yml"),
+    series = "tflspec_v1", template = c(NA, "tflspec_hierarchy", "tflspec_summary", "km_simple"),
+    file = "x", from = c("/pkg/series/tflspec_v1/series.yml", "/pkg/series/tflspec_v1/templates/tflspec_hierarchy.yml",
+                         "/pkg/series/tflspec_v1/templates/tflspec_summary.yml", "/pkg/series/tflspec_v1/templates/km_simple.yml"),
     copied_at = "2026-11-20 10:00:00",
     status = c("same", "source_changed", "study_changed", "source_missing"), stringsAsFactors = FALSE)
   # what a value means: a text tflplanner translates, one it does not; the
@@ -407,17 +407,17 @@ test_that("the study's copies: each one's state in words, differences and a copy
     session$flushReact()
     h <- html_of(output$series_copies)
     expect_match(h, "This study's copies (spec/series/)", fixed = TRUE)
-    for (x in c("tflspec_v1/series.yml", "tflspec_v1/ae_soc_pt", "tflspec_v1/demog", "tflspec_v1/km_simple",
+    for (x in c("tflspec_v1/series.yml", "tflspec_v1/tflspec_hierarchy", "tflspec_v1/tflspec_summary", "tflspec_v1/km_simple",
                 "Same as the source", "The source has changed", "Changed in this study",
-                "The source is missing", "2026-11-20 10:00:00", "/pkg/series/tflspec_v1/templates/demog.yml")) {
+                "The source is missing", "2026-11-20 10:00:00", "/pkg/series/tflspec_v1/templates/tflspec_summary.yml")) {
       expect_match(h, x, fixed = TRUE, info = x)
     }
     # the buttons: on the two templates whose copy is not the source's and
     # whose source is there
     expect_identical(lengths(regmatches(h, gregexpr("Show the differences", h, fixed = TRUE))), 2L)
     expect_identical(lengths(regmatches(h, gregexpr("Copy again from the source", h, fixed = TRUE))), 2L)
-    expect_match(h, 'data-key="tflspec_v1/ae_soc_pt"', fixed = TRUE)
-    expect_match(h, 'data-key="tflspec_v1/demog"', fixed = TRUE)
+    expect_match(h, 'data-key="tflspec_v1/tflspec_hierarchy"', fixed = TRUE)
+    expect_match(h, 'data-key="tflspec_v1/tflspec_summary"', fixed = TRUE)
     expect_false(grepl('data-key="tflspec_v1/km_simple"', h, fixed = TRUE))
   })
   # the words for each state
@@ -433,30 +433,30 @@ test_that("the differences in a dialog; a copy again goes at once, or asks first
   shown <- watch_modals()
   shiny::testServer(series_app(f$dir, notes), {
     session$flushReact()
-    session$setInputs(series_diff = list(key = "tflspec_v1/demog", n = 1))
-    expect_identical(calls_of(f$st, "diff")[[1L]]$template, "tflspec_v1/demog")
+    session$setInputs(series_diff = list(key = "tflspec_v1/tflspec_summary", n = 1))
+    expect_identical(calls_of(f$st, "diff")[[1L]]$template, "tflspec_v1/tflspec_summary")
     m <- shown$modals[length(shown$modals)]
-    expect_match(m, "Differences of tflspec_v1/demog", fixed = TRUE)
+    expect_match(m, "Differences of tflspec_v1/tflspec_summary", fixed = TRUE)
     expect_match(m, "Changed in this study", fixed = TRUE)
     expect_match(m, '<div class="rp-diff-copy">-  by: TRT01P</div>', fixed = TRUE)
     expect_match(m, '<div class="rp-diff-source">+  by: TRT01A</div>', fixed = TRUE)
     expect_match(m, "Copy again from the source", fixed = TRUE)
     # source changed only: copied again at once
-    session$setInputs(series_recopy = list(key = "tflspec_v1/ae_soc_pt", n = 2))
-    expect_identical(calls_of(f$st, "recopy")[[1L]]$template, "tflspec_v1/ae_soc_pt")
-    expect_identical(notes$all[length(notes$all)], "message: Copied tflspec_v1/ae_soc_pt again from the source.")
+    session$setInputs(series_recopy = list(key = "tflspec_v1/tflspec_hierarchy", n = 2))
+    expect_identical(calls_of(f$st, "recopy")[[1L]]$template, "tflspec_v1/tflspec_hierarchy")
+    expect_identical(notes$all[length(notes$all)], "message: Copied tflspec_v1/tflspec_hierarchy again from the source.")
     expect_identical(f$st$status$status[2L], "same")
-    expect_false(grepl('data-key="tflspec_v1/ae_soc_pt"', html_of(output$series_copies), fixed = TRUE))
+    expect_false(grepl('data-key="tflspec_v1/tflspec_hierarchy"', html_of(output$series_copies), fixed = TRUE))
     # the study's own edits: asked first, nothing copied yet
     n <- length(shown$modals)
-    session$setInputs(series_recopy = list(key = "tflspec_v1/demog", n = 3))
+    session$setInputs(series_recopy = list(key = "tflspec_v1/tflspec_summary", n = 3))
     expect_identical(length(calls_of(f$st, "recopy")), 1L)
     expect_identical(length(shown$modals), n + 1L)
-    expect_match(shown$modals[n + 1L], "Copy tflspec_v1/demog again from the source?", fixed = TRUE)
+    expect_match(shown$modals[n + 1L], "Copy tflspec_v1/tflspec_summary again from the source?", fixed = TRUE)
     expect_match(shown$modals[n + 1L], "loses them", fixed = TRUE)
     session$setInputs(series_recopy_ok = 1L)
-    expect_identical(calls_of(f$st, "recopy")[[2L]]$template, "tflspec_v1/demog")
-    expect_identical(notes$all[length(notes$all)], "message: Copied tflspec_v1/demog again from the source.")
+    expect_identical(calls_of(f$st, "recopy")[[2L]]$template, "tflspec_v1/tflspec_summary")
+    expect_identical(notes$all[length(notes$all)], "message: Copied tflspec_v1/tflspec_summary again from the source.")
     expect_identical(f$st$status$status[3L], "same")
   })
   # no differences said as such
@@ -496,7 +496,7 @@ test_that("the app's server starts the card on the open study", {
     v <- html_of(output$series_values)
     expect_match(v, "Defaults shared by the tflspec_v1 series' templates (values:)", fixed = TRUE)
     expect_match(v, "This study has no copy of this series yet", fixed = TRUE)
-    expect_match(html_of(output$series_copies), "tflspec_v1/demog", fixed = TRUE)
+    expect_match(html_of(output$series_copies), "tflspec_v1/tflspec_summary", fixed = TRUE)
     # the template cards read from the open study
     expect_identical(.tpl_study_dir(), session$userData$rv$study$path)
   }))
@@ -514,16 +514,16 @@ test_that("a template copied into a study: said once, the cards read the copy, t
   dir <- withr::local_tempdir()
   withr::defer(.tpl_study_dir(NULL))
   withr::defer(.arg_defs_reset())
-  msg <- .tpl_copy_into_study(dir, "tflspec_v1/demog")
-  expect_match(msg, "Copied the template tflspec_v1/demog into this study", fixed = TRUE)
-  f <- .tpl_copy_file(dir, "tflspec_v1/demog")
+  msg <- .tpl_copy_into_study(dir, "tflspec_v1/tflspec_summary")
+  expect_match(msg, "Copied the template tflspec_v1/tflspec_summary into this study", fixed = TRUE)
+  f <- .tpl_copy_file(dir, "tflspec_v1/tflspec_summary")
   expect_true(file.exists(f))
   expect_true(file.exists(file.path(dir, "spec", "series", "tflspec_v1", "series.yml")))
   # a second time: there already, nothing said
-  expect_null(.tpl_copy_into_study(dir, "tflspec_v1/demog"))
+  expect_null(.tpl_copy_into_study(dir, "tflspec_v1/tflspec_summary"))
   # (a template of no series, or no study: nothing to copy)
-  expect_null(.tpl_copy_into_study(dir, "demog"))
-  expect_null(.tpl_copy_into_study(NULL, "tflspec_v1/demog"))
+  expect_null(.tpl_copy_into_study(dir, "tflspec_summary"))
+  expect_null(.tpl_copy_into_study(NULL, "tflspec_v1/tflspec_summary"))
   # the cards: the study's copy once the study is open, its edits too
   lines <- readLines(f, encoding = "UTF-8", warn = FALSE)
   at <- grep("^  by:$", lines)[1L]
@@ -533,9 +533,9 @@ test_that("a template copied into a study: said once, the cards read the copy, t
   writeLines(lines, f, useBytes = TRUE)
   .arg_defs_reset()
   .tpl_study_dir(NULL)
-  expect_false(identical(.tpl_params("tflspec_v1/demog")$by$doc, "The arm the study's copy says."))
+  expect_false(identical(.tpl_params("tflspec_v1/tflspec_summary")$by$doc, "The arm the study's copy says."))
   .tpl_study_dir(dir)
-  expect_identical(.tpl_params("tflspec_v1/demog")$by$doc, "The arm the study's copy says.")
+  expect_identical(.tpl_params("tflspec_v1/tflspec_summary")$by$doc, "The arm the study's copy says.")
   # the card: the copy's state, its differences
   notes <- new.env()
   shown <- watch_modals()
@@ -543,8 +543,8 @@ test_that("a template copied into a study: said once, the cards read the copy, t
     session$flushReact()
     h <- html_of(output$series_copies)
     expect_match(h, "Changed in this study", fixed = TRUE)
-    expect_match(h, 'data-key="tflspec_v1/demog"', fixed = TRUE)
-    session$setInputs(series_diff = list(key = "tflspec_v1/demog", n = 1))
+    expect_match(h, 'data-key="tflspec_v1/tflspec_summary"', fixed = TRUE)
+    session$setInputs(series_diff = list(key = "tflspec_v1/tflspec_summary", n = 1))
     # (the apostrophe as it is, or escaped: htmltools versions differ)
     expect_match(shown$modals[length(shown$modals)], "The arm the study(&#39;|')s copy says[.]")
     # a value of the study's copy, saved, read back
@@ -557,10 +557,10 @@ test_that("a template copied into a study: said once, the cards read the copy, t
                      "All arms")
     expect_identical(names(rv$saved), "total_label")
     # copied again, asked first: the study's edit of the template is gone
-    session$setInputs(series_recopy = list(key = "tflspec_v1/demog", n = 3))
+    session$setInputs(series_recopy = list(key = "tflspec_v1/tflspec_summary", n = 3))
     session$setInputs(series_recopy_ok = 1L)
     expect_match(html_of(output$series_copies), "Same as the source", fixed = TRUE)
-    expect_false(identical(.tpl_params("tflspec_v1/demog")$by$doc, "The arm the study's copy says."))
+    expect_false(identical(.tpl_params("tflspec_v1/tflspec_summary")$by$doc, "The arm the study's copy says."))
   })
 })
 
