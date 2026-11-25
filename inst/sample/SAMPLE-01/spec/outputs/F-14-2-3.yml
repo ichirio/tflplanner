@@ -4,14 +4,13 @@ label: KM curves of the time to first skin disorder (designed)
 extends:
   - defaults
 data:
+  population: SAF
   source: code
   steps:
     - step: read
       dataset: ADTTE
     - step: param
       value: TTSKIN
-    - step: flag
-      variable: SAFFL
     - step: time_unit
       variable: AVAL
       unit: days

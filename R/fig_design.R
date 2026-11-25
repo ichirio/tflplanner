@@ -378,6 +378,32 @@ preview_figure <- function(study, output_id,
   .preview_figure(study, output_id, design, max_px)
 }
 
+# The study's data `data` (a list by dataset name) kept to the subjects of
+# the report's analysis set (report_population(): the report's data
+# `population:`), as the report's program keeps them -- each dataset with
+# USUBJID; the set's rows by its `where` on its dataset.  No set, a set the
+# populations sheet has not, or a `where` that does not evaluate: `data` as
+# it is.
+.report_subjects_data <- function(study, output_id, data) {
+  pop <- report_population(study$planner, output_id)
+  po <- study$planner$ard$populations
+  k <- if (!is.na(pop) && !is.null(po)) match(pop, po$population_id) else NA_integer_
+  if (is.na(k)) return(data)
+  d0 <- po$dataset[k]
+  ds <- if (.is_blank(d0)) "ADSL" else toupper(d0)
+  base <- data[[ds]] %||% .study_data(study, ds)[[ds]]
+  if (is.null(base) || !"USUBJID" %in% names(base)) return(data)
+  w <- po$where[k]
+  keep <- if (.is_blank(w)) rep(TRUE, nrow(base)) else
+    tryCatch(eval(parse(text = w, keep.source = FALSE)[[1L]], base, baseenv()),
+             error = function(e) NULL)
+  if (!is.logical(keep) || length(keep) != nrow(base)) return(data)
+  ids <- unique(base$USUBJID[!is.na(keep) & keep])
+  lapply(data, function(x) {
+    if (is.data.frame(x) && "USUBJID" %in% names(x)) x[x$USUBJID %in% ids, , drop = FALSE] else x
+  })
+}
+
 # preview_figure(), with the ARD to print from given: `ard` is
 # .fig_preview_ard()'s (the app's previews: an outdated ARD made again
 # first); NULL reads the study ARD's rows as they are (.fig_ard_rows())
@@ -396,6 +422,8 @@ preview_figure <- function(study, output_id,
   ds <- .fig_design_datasets(design, output_id)
   # ADSL too: the advice counts the groups, which may be joined from it
   data <- .study_data(study, union(ds, "ADSL"))
+  # the report's analysis set's subjects, as its program keeps them
+  data <- .report_subjects_data(study, output_id, data)
   # a join of ADSL gives only what the dataset has not: a dataset that holds
   # TRT01A itself would get TRT01A.x and TRT01A.y
   rd <- Find(function(s) identical(s$step, "read"), design$data)$dataset
@@ -652,12 +680,13 @@ remove_fig_preset <- function(name, home = tflplanner_home()) {
   invisible(f)
 }
 
-# A template's own defaults (its parameter OS, its flag FASFL, its group
-# TRT01P) may not be in the study's data.  For each the user left blank,
-# the data's own when the default is not there: the first parameter of
-# the dataset, a population flag it has, a treatment variable it has.
-# `x` is the dataset, `adsl` ADSL (where flags and the group may be);
-# `given` the names the user chose (param, pop, group).  Returns the
+# A template's own defaults (its parameter OS, its group TRT01P) may not be
+# in the study's data.  For each the user left blank, the data's own when
+# the default is not there: the first parameter of the dataset, a
+# treatment variable it has.  (The analysis set is the report's, its
+# data's `population:`, not a template's step: nothing to fit.)
+# `x` is the dataset, `adsl` ADSL (where the group may be);
+# `given` the names the user chose (param, group).  Returns the
 # arguments to give the template instead, named (empty when none).
 .template_fit <- function(d, x, adsl = NULL, given = character()) {
   cols <- unique(c(names(x), names(adsl)))
@@ -684,13 +713,8 @@ remove_fig_preset <- function(name, home = tflplanner_home()) {
     hit <- c(cands[cands %in% names(x)], cands[cands %in% names(adsl)])
     if (length(hit)) hit[[1L]] else NA_character_
   }
-  if (!"pop" %in% given) {
-    f <- step_of("flag")
-    v <- fit_var(if (length(f)) f[[1L]]$variable,
-                 c("FASFL", "ITTFL", "SAFFL", "EFFFL", "RANDFL",
-                   sort(grep("FL$", cols, value = TRUE))))
-    if (!is.na(v)) out[["pop"]] <- v
-  }
+  # (no population flag is fitted: a template has no flag step now -- the
+  # figure's analysis set is its report's, read from the population's dataset)
   if (!"group" %in% given) {
     g <- d$plot$colour_by %||% unlist(lapply(d$data, `[[`, "by"))[1L]
     v <- fit_var(g, c("TRT01P", "TRT01A", "TRTP", "TRTA", "ARM", "ACTARM"))

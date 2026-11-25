@@ -83,6 +83,26 @@ test_that("a design is drawn on the study's data, as its program saves it", {
   expect_true(any(grepl("NOVAR", r$problems$problem)))
 })
 
+test_that("a figure's preview keeps its report's analysis set's subjects, as its program does", {
+  p <- add_output(new_planner(), "F1", type = "figure")
+  p$ard$populations <- .normalize_ard_sheet(data.frame(
+    population_id = c("SAF", "BAD"), dataset = "ADSL",
+    where = c("SAFFL == \"Y\"", "NOSUCH == 1")), "populations")
+  data <- list(
+    ADSL = data.frame(USUBJID = c("A", "B", "C"), SAFFL = c("Y", "N", "Y"), TRT01A = "P"),
+    ADTTE = data.frame(USUBJID = c("A", "A", "B", "C"), PARAMCD = "OS", AVAL = 1:4))
+  st <- list(planner = p, path = tempdir())
+  # no set: the data as it is
+  expect_identical(.report_subjects_data(st, "F1", data), data)
+  st$planner$outputs$population <- "SAF"
+  kept <- .report_subjects_data(st, "F1", data)
+  expect_identical(kept$ADSL$USUBJID, c("A", "C"))
+  expect_identical(kept$ADTTE$USUBJID, c("A", "A", "C"))
+  # a set whose condition does not evaluate: the data as it is (its check says why)
+  st$planner$outputs$population <- "BAD"
+  expect_identical(.report_subjects_data(st, "F1", data), data)
+})
+
 test_that("presets are kept with the company standards, and start a design", {
   home <- withr_tempdir()
   old <- options(tflplanner.home = home)
@@ -112,7 +132,7 @@ test_that("the preview carries the advice, and a fix applies", {
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
   s <- suppressMessages(sample_study_copy())
   d <- tflspec::tfl_fig_template("km_simple", data = "ADTTE", param = "TTSKIN",
-                                  pop = "SAFFL", group = "TRT01A")
+                                  group = "TRT01A")
   r <- preview_figure(s, "F-14-2-2", d)
   expect_null(r$error)
   expect_true("km_risk" %in% r$advice$rule)
@@ -177,16 +197,15 @@ test_that("a template's defaults the data has not got are replaced by the data's
   adsl <- data.frame(USUBJID = "A", TRT01P = "Placebo", SAFFL = "Y", ITTFL = "Y")
   fit <- .template_fit(d, x, adsl)
   expect_identical(fit[["param"]], "TTDE")
-  expect_identical(fit[["pop"]], "SAFFL")       # the dataset's own flag
   expect_identical(fit[["group"]], "TRT01P")    # named: only ADSL has it
   # what the user chose stays
-  expect_length(.template_fit(d, x, adsl, given = c("param", "pop", "group")), 0L)
+  expect_length(.template_fit(d, x, adsl, given = c("param", "group")), 0L)
   # the data has the template's defaults: nothing to change
   ok <- data.frame(USUBJID = "A", PARAMCD = "OS", FASFL = "Y", TRT01P = "P")
   expect_length(.template_fit(d, ok, adsl), 0L)
   # the join takes from ADSL only what the dataset lacks
   d2 <- tflspec::tfl_fig_template("km_risk_table", data = "ADTTE", param = "TTDE",
-                                  pop = "SAFFL", group = "TRT01P", join_adsl = TRUE)
+                                  group = "TRT01P", join_adsl = TRUE)
   j <- Filter(function(s) identical(s$step, "join"), .trim_join(d2, x)$data)
   expect_identical(j[[1L]]$vars, "TRT01P")
   j0 <- Filter(function(s) identical(s$step, "join"),
@@ -196,7 +215,7 @@ test_that("a template's defaults the data has not got are replaced by the data's
 
 test_that("the designer shows a piece's own lines of the design's code", {
   d <- tflspec::tfl_fig_template("km_simple", data = "ADTTE", param = "TTDE",
-                                 pop = "SAFFL", group = "TRT01A")
+                                 group = "TRT01A")
   make <- function(d, codelists = TRUE) .fig_design_script(d, "F-1")
   code <- make(d)
   # the lines the script has with the piece and not without it
@@ -206,10 +225,10 @@ test_that("the designer shows a piece's own lines of the design's code", {
   expect_true(startsWith(base[1L], "pal <- setNames("))
   expect_true(any(startsWith(base, "fig <- ggsurvfit(")))
   expect_false(any(grepl("^# ----|^library", base)))
-  # the flag: the filter line it is in
-  fl <- lines_of(list(sec = "data", i = 3L))
+  # the parameter: the filter line it is in (no population: the report's)
+  fl <- lines_of(list(sec = "data", i = 2L))
   # (its pipe on: or ending there, the time unit's block after it -- tflspec #km)
-  expect_true(startsWith(trimws(fl), "filter(PARAMCD == \"TTDE\", SAFFL == \"Y\")"))
+  expect_true(startsWith(trimws(fl[1L]), "filter(PARAMCD == \"TTDE\")"))
   fit <- .piece_code(code, d, list(sec = "data", i = length(d$data)), make)
   expect_match(fit, "^fit <- survfit2[(]")
   plot <- .piece_code(code, d, list(sec = "plot", i = 1L), make)

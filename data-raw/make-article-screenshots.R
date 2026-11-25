@@ -26,7 +26,7 @@ st$planner <- add_output(st$planner, "F-14-2-4", type = "figure",
                          description = "KM curves, made in this guide")
 st$planner <- add_output(st$planner, "F-14-2-5", type = "figure",
                          description = "Mean change from baseline in systolic blood pressure")
-mn <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", pop = "SAFFL",
+mn <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP",
                                 group = "TRT01A", value = "CHG", join_adsl = TRUE)
 mn$plot$y_label <- "Mean change from baseline (+/- SE), mmHg"
 adv <- tflspec::tfl_fig_advice(mn)
@@ -76,7 +76,6 @@ d$set_inputs(rep_nav = "content", wait_ = FALSE); Sys.sleep(3)
 d$set_inputs(pd_tpl = "km_simple", wait_ = FALSE); Sys.sleep(1)
 d$set_inputs(pd_tpl_data = "ADTTE", wait_ = FALSE); Sys.sleep(3)
 d$set_inputs(pd_tpl_param = "TTDE", wait_ = FALSE); Sys.sleep(0.5)
-d$set_inputs(pd_tpl_pop = "SAFFL", wait_ = FALSE); Sys.sleep(0.5)
 d$set_inputs(pd_tpl_group = "TRT01A", wait_ = FALSE); Sys.sleep(0.5)
 d$set_inputs(pd_tpl_unit = "days", wait_ = FALSE)
 d$set_window_size(1600, 2400); Sys.sleep(2)

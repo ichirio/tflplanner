@@ -4,6 +4,7 @@ label: Mean change from baseline in systolic blood pressure
 extends:
   - defaults
 data:
+  population: SAF
   source: code
 content: !r |-
   saf <- adsl$USUBJID[adsl$SAFFL == "Y"]

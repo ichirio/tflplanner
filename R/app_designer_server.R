@@ -286,8 +286,6 @@
     whole <- !templates$parts[templates$template == tp]
     shiny::tagList(
       if (kind != "swimmer") sz("pd_tpl_param", t("Parameter (PARAMCD)"), prm),
-      sz("pd_tpl_pop", t("Population flag"),
-         .labelled(grep("FL$", names(cols), value = TRUE), cols)),
       if (!tp %in% c("km_single_arm", "individual_spider") && !kind %in% c("waterfall", "swimmer"))
         sz("pd_tpl_group", t("Group (treatment)"), .group_choices(cols)),
       if (kind %in% c("km", "swimmer") || tp == "individual_spider")
@@ -332,6 +330,12 @@
     tflspec::tfl_fig_design(data = list(list(
       step = "read", dataset = if (is.null(ds) || !nzchar(ds)) "ADSL" else ds)))
   }
+  # the report's analysis set (its data's `population:`), NULL for none
+  report_pop <- function() {
+    id <- current()
+    v <- if (!is.null(id)) report_population(rv$p, id) else NA_character_
+    if (is.na(v)) NULL else v
+  }
   applied <- function(d) {
     if (is.null(d)) return()
     set_design(d)
@@ -341,15 +345,20 @@
     an <- attr(d, "analyses")
     id <- current()
     if (!is.null(an) && !is.null(id)) {
-      pop <- .population_of_flag(rv$p, an$analysis_data$population_id[1L])
+      # (the analysis data's set is the report's; a report with none gets no
+      # analyses: a template's default is a flag, not a set of the study)
+      pop <- report_pop()
+      if (is.null(pop)) {
+        notify(sprintf(
+          t("%s has no analysis set, so the analyses its figure needs are not written: choose the report's set in step %s (This report's population), then apply the template again."),
+          id, .step_no("data")), "warning")
+        return()
+      }
       p2 <- guarded(set_fig_own_analyses(rv$p, id, an, population_id = pop))
       if (!is.null(p2)) {
         rv$p <- p2
         notify(sprintf(t("Added analyses %s to step %s (remove them there if not wanted): update the ARD, then Preview."),
                        paste(attr(p2, "written"), collapse = ", "), .step_no("ard")))
-        if (is.na(pop %||% NA)) notify(sprintf(
-          t("No analysis set of the study is the flag %s: choose the analysis data's set in step %s."),
-          an$analysis_data$population_id[1L], .step_no("data")), "warning")
       }
     }
   }
@@ -393,14 +402,17 @@
     } else {
       ds <- nz(input$pd_tpl_data)
       grp <- nz(input$pd_tpl_group)
-      pop <- nz(input$pd_tpl_pop)
-      # the group and the flag from ADSL when the dataset has not got them
+      # (no population flag: the figure's subjects are its report's analysis
+      # set, the report's data `population:` -- canon 11-15)
+      # the group from ADSL when the dataset has not got it
       join <- if (!is.null(ds)) {
         x <- study_data(ds)[[toupper(ds)]]
-        !is.null(x) && !all(c(grp, pop) %in% names(x))
+        !is.null(x) && !all(grp %in% names(x))
       }
       # (a forest's reference arm; left from a forest chosen before: not for another)
       ref <- if (identical(templates$kind[templates$template == tp], "forest")) nz(input$pd_tpl_ref)
+      # (a forest's own analysis data is the report's set's, named by it)
+      pop <- if (identical(templates$kind[templates$template == tp], "forest")) report_pop()
       args <- list(tp, data = ds, param = nz(input$pd_tpl_param), pop = pop,
                    group = grp, join_adsl = if (isTRUE(join)) TRUE,
                    value = nz(input$pd_tpl_value), x = nz(input$pd_tpl_x), y = nz(input$pd_tpl_y),
@@ -422,13 +434,13 @@
       if (!is.null(d) && !is.null(ds)) {
         dat <- study_data(c(ds, "ADSL"))
         x <- dat[[toupper(ds)]]
-        given <- c(param = "param", pop = "pop", group = "group")[
-          !vapply(list(args$param, pop, grp), is.null, logical(1))]
+        given <- c(param = "param", group = "group")[
+          !vapply(list(args$param, grp), is.null, logical(1))]
         if (!is.null(x)) d <- .trim_join(d, x)
         fit <- if (!is.null(x)) .template_fit(d, x, dat$ADSL, given) else character()
         if (length(fit)) {
           args[names(fit)] <- as.list(fit)
-          args$join_adsl <- if (!all(c(args$group, args$pop) %in% names(x))) TRUE
+          args$join_adsl <- if (!all(args$group %in% names(x))) TRUE
           d2 <- make(args)
           if (!is.null(d2)) {
             d <- .trim_join(d2, x)
@@ -1172,7 +1184,9 @@
     }
     r$id <- id
     pv(r)
-    drawn(list(id = id, design = .fig_norm(unclass(d))))
+    # (with the report's analysis set: its subjects are the picture's)
+    drawn(list(id = id, design = .fig_norm(unclass(d)),
+               pop = report_population(shiny::isolate(rv$p), id)))
     drawing(FALSE)
   }
   # the form, the code and the checks first: the figure is drawn after the
@@ -1188,16 +1202,23 @@
     if (identical(form_on_page$id, shiny::isolate(current()))) draw_after() else
       form_on_page$waiting <- TRUE
   }
+  # the report's analysis set: another set, other subjects drawn
+  fig_pop <- shiny::reactive({
+    id <- current()
+    if (is.null(id)) NA_character_ else report_population(rv$p, id)
+  })
   stale <- shiny::reactive({
     d <- design()
     w <- drawn()
     !is.null(d) && (is.null(w) || !identical(w$id, current()) ||
-                      !identical(w$design, .fig_norm(unclass(d))))
+                      !identical(w$design, .fig_norm(unclass(d))) ||
+                      !identical(w$pop, fig_pop()))
   })
   design_d <- shiny::debounce(design, 600)
   shiny::observe({
     design_d()
     fig_id()
+    fig_pop()
     auto <- !identical(input$pd_auto, FALSE)
     if (on_tab() && shiny::isolate(stale()) &&
         (auto || !identical(shiny::isolate(drawn()$id), current()))) {

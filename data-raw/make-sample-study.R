@@ -765,7 +765,7 @@ p$lf$listing_cols <- .normalize_lf_sheet(tbl(
 # the median line, and the medians printed from T-14-2-2's ARD (its KM
 # analysis: prob 0.5, the estimate by arm; NE when not reached)
 km_design <- tflspec::tfl_fig_template("km_simple", data = "ADTTE",
-                                       param = "TTSKIN", pop = "SAFFL",
+                                       param = "TTSKIN",
                                        group = "TRT01A", time_unit = "days")
 km_design$plot$y_label <- "Probability of No Skin Disorder"
 km_design$layers <- c(km_design$layers, list(list(
@@ -900,7 +900,7 @@ p <- set_fig_design(p, "F-14-2-3", km_design)
 # a Cox model of all subjects and one within each subgroup (its analyses
 # come with the design; the population is the study's SAF)
 forest_design <- tflspec::tfl_fig_template(
-  "forest_hr", data = "ADTTE", param = "TTSKIN", pop = "SAFFL", group = "TRT01A",
+  "forest_hr", data = "ADTTE", param = "TTSKIN", group = "TRT01A",
   subgroups = "SEX, AGEGR1", comparison = "Drug X")
 forest_design$plot$x_label <- "Hazard Ratio (95% CI), Drug X vs Control"
 p <- set_fig_design(p, "F-14-2-4", forest_design)

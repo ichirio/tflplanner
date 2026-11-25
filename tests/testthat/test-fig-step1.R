@@ -80,7 +80,7 @@ test_that("what the steps make: kept short by the preview, shown in step 1 on de
 })
 
 test_that("a time-unit step on AVAL writes the one tte_time() line, in days too", {
-  d <- tflspec::tfl_fig_template("km_simple", data = "ADTTE", param = "TTDE", pop = "SAFFL",
+  d <- tflspec::tfl_fig_template("km_simple", data = "ADTTE", param = "TTDE",
                                  group = "TRT01A")
   i <- which(vapply(d$data, function(p) identical(p$step, "time_unit"), NA))
   make <- function(d, codelists = TRUE) .fig_design_script(d, "F1")

@@ -69,10 +69,12 @@
     shiny::uiOutput("pd_body"))
 }
 
-# A figure's step 1 (#293): the data steps of its design, their form
+# A figure's step 1 (#293): its report's analysis set (the subjects it
+# draws), then the data steps of its design, their form
 .designer_data_ui <- function() {
   shiny::conditionalPanel(
     "output.report_kind == 'figure'",
+    shiny::uiOutput("fig_report_pop"),
     shiny::uiOutput("pd_data_body"))
 }
 
