@@ -548,25 +548,30 @@
     }
     out
   }
-  output$ard_report_pop <- shiny::renderUI({
+  # the report's analysis set: one control, drawn in a table's step 1 and a
+  # figure's (a figure's subjects are its report's set; canon 11-15), each
+  # with its own input id
+  report_pop_ui <- function(pick) {
     tg <- ard_target()
     shiny::req(has_study(), tg)
     rv$ver
     now <- report_population(rv$p, tg)
     shiny::div(
       class = "d-flex flex-wrap align-items-baseline gap-2 mb-2",
-      shiny::tags$label(`for` = "ard_report_pop_pick", class = "small fw-bold mb-0",
+      shiny::tags$label(`for` = pick, class = "small fw-bold mb-0",
                         with_tip(t("This report's population"), t("The report's analysis set (the TOC's; also the header's <OUTPUT_POPULATION> text): one value for the report. Chosen, the data of its subjects (adsl_<set>) is made, and the report's analyses move to it; the analysis data and the analyses start from it. An analysis may still read another."))),
       shiny::div(style = "min-width: 16rem",
-                 .for_report(shiny::selectInput("ard_report_pop_pick", NULL, pop_choices(now),
+                 .for_report(shiny::selectInput(pick, NULL, pop_choices(now),
                                                 selected = if (is.na(now)) "" else now,
                                                 width = "100%"), tg)))
-  })
+  }
+  output$ard_report_pop <- shiny::renderUI(report_pop_ui("ard_report_pop_pick"))
+  output$fig_report_pop <- shiny::renderUI(report_pop_ui("fig_report_pop_pick"))
   # only the user's change, of the report the select was drawn for (#418)
-  shiny::observeEvent(input$ard_report_pop_pick_by, {
+  report_pop_pick <- function(ev) {
     tg <- ard_target()
     shiny::req(has_study(), tg)
-    v <- .report_pick(input$ard_report_pop_pick_by, tg)
+    v <- .report_pick(ev, tg)
     if (is.null(v)) return()
     v <- if (length(v)) v[1L] else ""
     now <- report_population(rv$p, tg)
@@ -581,7 +586,11 @@
     if (length(made)) notify(sprintf(t("%s made (save to keep it)."), paste(made, collapse = ", ")))
     if (length(left)) notify(sprintf(t("%s left as it is: change it in the analysis data if it should follow the population."),
                                      paste(left, collapse = ", ")), "warning")
-  }, ignoreInit = TRUE)
+  }
+  shiny::observeEvent(input$ard_report_pop_pick_by, report_pop_pick(input$ard_report_pop_pick_by),
+                      ignoreInit = TRUE)
+  shiny::observeEvent(input$fig_report_pop_pick_by, report_pop_pick(input$fig_report_pop_pick_by),
+                      ignoreInit = TRUE)
   output$ard_adata <- shiny::renderUI({
     tg <- ard_target()
     shiny::req(has_study(), tg)

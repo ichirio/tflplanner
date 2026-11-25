@@ -74,7 +74,7 @@
 "Reference arm","基準群"
 "Arm shown against the reference","基準群に対して示す群"
 "Added analyses %s to step %s (remove them there if not wanted): update the ARD, then Preview.","解析 %s を手順 %s に追加しました（不要ならそこで削除）。ARD を更新してから Preview してください。"
-"%s has no analysis set, so the analyses its figure needs are not written: give the report its set, then apply the template again.","%s に解析対象集団がないため、図に必要な解析は書いていません。帳票の解析対象集団を決めてから、テンプレートをもう一度適用してください。"
+"%s has no analysis set, so the analyses its figure needs are not written: choose the report's set in step %s (This report's population), then apply the template again.","%s に解析対象集団がないため、図に必要な解析は書いていません。手順 %s の「この帳票の解析対象集団」を選んでから、テンプレートをもう一度適用してください。"
 "data frame, %d rows x %d columns","データフレーム、%d 行 × %d 列"
 "its first rows","先頭の行"
 "The data steps are in step 1 (data).","データの手順は手順 1（data）にあります。"

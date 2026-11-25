@@ -629,8 +629,11 @@ test_that("a template figure has no population flag: a forest's analysis data is
     session$setInputs(pd_start = 1)
     expect_true(length(fig_design(rv$p, "F-HR")$layers) > 0L)
     expect_false(any(ard_rows(rv$p, "analysis_data", "F-HR")$from %in% "ADTTE"))
-    # the report's set: the analysis data's, and its name
-    rv$p <- set_report_population(rv$p, "F-HR", "ITT")
+    # the report's set, chosen in the figure's step 1 as a table's: the
+    # analysis data's, and its name
+    expect_match(output$fig_report_pop$html, "fig_report_pop_pick", fixed = TRUE)
+    session$setInputs(fig_report_pop_pick_by = list(report = "F-HR", value = "ITT"))
+    expect_identical(report_population(rv$p, "F-HR"), "ITT")
     session$setInputs(pd_start = 2)
     itt <- tte()[grepl("_itt_", tte()$data_id, fixed = TRUE), ]
     expect_identical(itt$population_id, "ITT")

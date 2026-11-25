@@ -350,8 +350,8 @@
       pop <- report_pop()
       if (is.null(pop)) {
         notify(sprintf(
-          t("%s has no analysis set, so the analyses its figure needs are not written: give the report its set, then apply the template again."),
-          id), "warning")
+          t("%s has no analysis set, so the analyses its figure needs are not written: choose the report's set in step %s (This report's population), then apply the template again."),
+          id, .step_no("data")), "warning")
         return()
       }
       p2 <- guarded(set_fig_own_analyses(rv$p, id, an, population_id = pop))
