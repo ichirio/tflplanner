@@ -211,7 +211,10 @@ report_population <- function(x, output_id) {
 #' analysis of a dataset and the old set to the new set.  An analysis data
 #' of another kind (made from another analysis data, written as R) is left
 #' as it is and named in attribute `left`.  Analysis data are the study's:
-#' none is removed.
+#' none is removed.  The set is written where the report's data keeps it:
+#' a listing's row (its `population_id`); in the study's YAML spec, a
+#' figure's and a listing's data (`data: population`), a table's `common:`,
+#' and the report's TOC line with it.
 #'
 #' @param x A `tflplanner`.
 #' @param output_id The report.
@@ -233,6 +236,80 @@ report_population <- function(x, output_id) {
 #' options(old)
 #' @export
 set_report_population <- function(x, output_id, population) {
+  if (length(output_id) != 1L) stop("One report at a time.", call. = FALSE)
+  .write_report_population(x, output_id, population)
+}
+
+# The one way a report's analysis set is written: the report list, step 1,
+# the TOC taken in, the Add dialog and a template report's writes all come
+# here (codex review 2026-11-26, 3B).  `output_id` the reports, `population`
+# their sets, one each (recycled; NA none).  The set goes where the
+# report's data keeps it:
+# - the planner's own (no `output`): the report list's column, a listing's
+#   rows (`population_id`: a save writes it onto the listing's data), the
+#   set's analysis data made and the report's analyses moved to it
+#   (.report_set_view(); attributes `made` and `left`, every report's);
+# - a report the YAML spec has: its file's set as .o_set_population() puts
+#   it (a figure's and a data map's on the data, else `common:`), its toc
+#   line following it (.spec_set_toc_population()), and the view's rows
+#   made again from the file (.spec_set_output()), so the save does not
+#   take it back.  The planner's own reports the spec has are written after
+#   one sync of the view's edits (the analyses moved); a report new to the
+#   view reaches the spec by the save, from the column and rows set here.
+#   (A report that shares its file with others: the save's, as before.)
+# `output`: one report's tfl_output written with its set (a template
+# report's argument or step write, what it writes beside the set as it
+# is); `population` NULL keeps the set it has.  Its analyses are its
+# template's: none moved, no data made.
+.write_report_population <- function(x, output_id, population = NULL, output = NULL) {
+  n <- length(output_id)
+  if (!is.null(output) && n != 1L) stop("One report's file is written at a time.", call. = FALSE)
+  if (!is.null(output) && is.null(x$spec)) stop("The planner has no YAML spec.", call. = FALSE)
+  pops <- NULL
+  if (!is.null(population)) {
+    pops <- as.character(rep_len(population, n))
+    pops[vapply(pops, .is_blank, NA)] <- NA_character_
+  }
+  if (is.null(output)) {
+    if (is.null(pops)) pops <- rep(NA_character_, n)
+    made <- left <- character()
+    for (k in seq_len(n)) {
+      x <- .report_set_view(x, output_id[k], pops[k])
+      made <- c(made, attr(x, "made"))
+      left <- c(left, attr(x, "left"))
+    }
+  }
+  if (!is.null(x$spec)) {
+    ids <- if (!is.null(output)) output_id else intersect(output_id, names(x$spec$outputs))
+    if (is.null(output) && length(ids)) {
+      # (the view's edits -- the analyses moved, the data made -- in the
+      # spec first: the file is written from it)
+      x <- .spec_sync(x, x$spec$meta)
+      attr(x, "changed") <- NULL
+    }
+    for (id in ids) {
+      o <- output %||% x$spec$outputs[[id]]
+      if (is.null(o)) next
+      if (is.null(output)) {
+        w <- x$spec$where
+        rel <- if (id %in% names(w)) w[[id]]
+        if (!is.null(rel) && sum(unlist(w) == rel) > 1L) next
+      }
+      if (!is.null(pops)) o <- .o_set_population(o, pops[match(id, output_id)])
+      x <- .spec_set_output(.spec_set_toc_population(x, id, .o_population(o)), id, o)
+    }
+  }
+  if (is.null(output)) {
+    attr(x, "made") <- unique(made)
+    attr(x, "left") <- unique(left)
+  }
+  x
+}
+
+# The planner's own part of .write_report_population() for one report:
+# the report list's column, a listing's rows, the set's data made and the
+# report's analyses moved (attributes `made`, `left`)
+.report_set_view <- function(x, output_id, population) {
   o <- x$outputs
   i <- match(output_id, o$output_id)
   if (is.na(i)) stop("No report '", output_id, "'.", call. = FALSE)
@@ -244,6 +321,15 @@ set_report_population <- function(x, output_id, population) {
   if (is.null(o$population)) o$population <- rep(NA_character_, nrow(o))
   o$population[i] <- new
   x$outputs <- o
+  # (a listing's row holds its set: the save writes it onto its data)
+  lr <- x$lf$listings
+  if (!is.null(lr) && "population_id" %in% names(lr)) {
+    mine <- !is.na(lr$output_id) & lr$output_id == output_id
+    if (any(mine)) {
+      lr$population_id[mine] <- new
+      x$lf$listings <- lr
+    }
+  }
   before <- .adata_rows(x, output_id)$data_id
   left <- character()
   if (!is.na(new)) {

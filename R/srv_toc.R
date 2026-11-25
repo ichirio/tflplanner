@@ -666,7 +666,9 @@
                            make_data = isTRUE(input[[toc_id("make_data")]]),
                            again = isTRUE(input[[toc_id("make_again")]])))
     made <- attr(p, "made")
-    if (!is.null(p)) attr(p, "made") <- NULL
+    # (the reports already there whose analysis set the TOC moved: a line each)
+    set_lines <- .toc_set_lines(attr(p, "set_moved"), t)
+    if (!is.null(p)) attr(p, "made") <- attr(p, "set_moved") <- NULL
     if (is.null(p)) return(toc_btn_ver(toc_btn_ver() + 1L))
     res <- toc_result()
     # the Topline batch into the report list's batches
@@ -713,7 +715,8 @@
         t("New reports: %s. Make their content from the list's buttons."),
         paste(new_ids, collapse = ", "))),
       if (length(made)) shiny::tagList(shiny::br(), sprintf(
-        t("Analysis data made for the reports' populations: %s."), paste(made, collapse = ", ")))))
+        t("Analysis data made for the reports' populations: %s."), paste(made, collapse = ", "))),
+      lapply(set_lines, function(s) shiny::tagList(shiny::br(), s))))
   })
   .srv_keep(environment())
 }

@@ -614,10 +614,11 @@
                              data = if (length(dat$steps)) list(steps = dat$steps))
     o <- .o_set_population(o, pop)
     # (straight into the spec: its toc line and its file, the view of
-    # that report alone -- .spec_add_output())
+    # that report alone -- .spec_add_output(); its set then written as every
+    # report's is, .write_report_population())
     p2 <- guarded(.spec_add_output(rv$p, o, label = desc,
-                                   section = if (nzchar(sec)) sec else NA_character_,
-                                   population = pop))
+                                   section = if (nzchar(sec)) sec else NA_character_))
+    if (!is.null(p2) && !.is_blank(pop)) p2 <- guarded(.write_report_population(p2, id, pop, output = o))
     .tpl_trace("written into the spec")
     if (is.null(p2)) {
       tpl_pending$id <- NULL
@@ -658,8 +659,7 @@
   tpl_write <- function(id, args, name = NULL, steps = NULL, redraw = TRUE, population = NULL) {
     o <- .tpl_output(rv$p, id, args, name = name)
     if (length(steps)) o$data$steps <- steps
-    if (!is.null(population)) o <- .o_set_population(o, population)
-    p2 <- guarded(.spec_set_output(.spec_set_toc_population(rv$p, id, .o_population(o)), id, o))
+    p2 <- guarded(.write_report_population(rv$p, id, population, output = o))
     if (is.null(p2)) return(invisible(FALSE))
     rv$p <- p2
     rv$bver <- rv$bver + 1L
@@ -1024,10 +1024,11 @@
     steps <- .tpl_steps_from(input$tpl_data_ds, join, input$tpl_data_param %||% "",
                              input$tpl_data_filter %||% "")
     if (is.null(steps)) o$data$steps <- NULL else o$data$steps <- steps
-    # (the set written after the steps: on the data map they make)
+    # (the set written after the steps: on the data map they make --
+    # .write_report_population())
     o <- .o_set_population(o, if (is.null(join) && nzchar(sel)) sel else NA_character_)
     if (!length(o$data)) o$data <- NULL
-    p2 <- guarded(.spec_set_output(.spec_set_toc_population(rv$p, id, .o_population(o)), id, o))
+    p2 <- guarded(.write_report_population(rv$p, id, output = o))
     if (is.null(p2)) return()
     rv$p <- p2
     rv$bver <- rv$bver + 1L
@@ -1045,8 +1046,8 @@
     sel <- input$tpl_report_pop %||% ""
     now <- .o_population(o)
     if (identical(sel, if (is.na(now)) "" else now)) return()
-    o <- .o_set_population(o, if (nzchar(sel)) sel else NA_character_)
-    p2 <- guarded(.spec_set_output(.spec_set_toc_population(rv$p, id, .o_population(o)), id, o))
+    p2 <- guarded(.write_report_population(rv$p, id, if (nzchar(sel)) sel else NA_character_,
+                                           output = o))
     if (is.null(p2)) return()
     rv$p <- p2
     rv$bver <- rv$bver + 1L

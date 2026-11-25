@@ -335,3 +335,74 @@ test_that("step 1: a population not in the populations sheet stays a choice (#41
     expect_match(h, "<option value=\"FAS\" selected>", fixed = TRUE)
   })
 })
+
+test_that("a listing's analysis set is on its row too: what a save writes onto its data (codex review 3B)", {
+  p <- add_output(pop_planner(), "L1", type = "listing")
+  p <- set_lf_rows(p, "listings", "L1", data.frame(dataset = "ADAE", population_id = "SAF"))
+  q <- set_report_population(p, "L1", "ITT")
+  expect_identical(lf_rows(q, "listings", "L1")$population_id, "ITT")
+  expect_identical(report_population(q, "L1"), "ITT")
+  q2 <- set_report_population(q, "L1", NA)
+  expect_true(is.na(lf_rows(q2, "listings", "L1")$population_id))
+  # a table has no such row: its column alone
+  expect_identical(report_population(set_report_population(q, "T1", "SAF"), "T1"), "SAF")
+  expect_error(set_report_population(q, c("T1", "L1"), "SAF"), "One report")
+})
+
+test_that("a TOC taken in moves a report's set where its data keeps it, its toc line with it, and says so (codex review 3B)", {
+  local_home()
+  s <- suppressMessages(sample_study_copy())
+  p <- s$planner
+  expect_false(is.null(p$spec))
+  expect_identical(lf_rows(p, "listings", "L-16-2-7")$population_id, "SAF")
+  f <- tempfile(fileext = ".csv")
+  writeLines(c("No.,Kind,Title",
+               "L-16-2-7,Listing,Severe TEAEs",
+               "F-14-2-3,Figure,KM curves",
+               "T-14-1-1,Table,Demographics",
+               "T-14-1-2,Table,Disposition",
+               "T-99,Table,A new one"), f)
+  sp <- tflspec::tfl_read_toc(f, map = c(output_id = "No.", type = "Kind", title = "Title"))
+  pops <- c(`L-16-2-7` = "SCRF", `F-14-2-3` = "SCRF", `T-14-1-1` = "SCRF",
+            `T-14-1-2` = report_population(p, "T-14-1-2"), `T-99` = "SAF")
+  q <- toc_apply(p, sp, toc_changes(p, sp), populations = pops)
+  toc_pop <- function(study, id) {
+    e <- Filter(function(e) identical(e$id, id), study$toc$outputs)
+    if (length(e)) e[[1L]]$population
+  }
+  # the listing: its row, its data's set, its toc line (L-16-2-7 kept SAF before)
+  expect_identical(lf_rows(q, "listings", "L-16-2-7")$population_id, "SCRF")
+  o <- q$spec$outputs[["L-16-2-7"]]
+  expect_identical(o$data$population, "SCRF")
+  expect_null(o$common$population)
+  expect_identical(toc_pop(q$spec$study, "L-16-2-7"), "SCRF")
+  expect_identical(report_population(q, "L-16-2-7"), "SCRF")
+  # a figure's set on its data, a table's in common:
+  f3 <- q$spec$outputs[["F-14-2-3"]]
+  expect_identical(f3$data$population, "SCRF")
+  expect_null(f3$common$population)
+  expect_identical(toc_pop(q$spec$study, "F-14-2-3"), "SCRF")
+  t1 <- q$spec$outputs[["T-14-1-1"]]
+  expect_identical(t1$common$population, "SCRF")
+  expect_identical(toc_pop(q$spec$study, "T-14-1-1"), "SCRF")
+  # the view's edits taken in, as a save takes them: the sets stay
+  now <- .spec_now(q)
+  expect_identical(now$outputs[["L-16-2-7"]]$data$population, "SCRF")
+  expect_identical(now$outputs[["F-14-2-3"]]$data$population, "SCRF")
+  expect_identical(toc_pop(now$study, "L-16-2-7"), "SCRF")
+  # the summary: a line for each report already there whose set moved
+  mv <- attr(q, "set_moved")
+  expect_setequal(mv$output_id, c("L-16-2-7", "F-14-2-3", "T-14-1-1"))
+  expect_identical(mv$from[mv$output_id == "L-16-2-7"], "SAF")
+  expect_true(all(mv$to == "SCRF"))
+  lines <- .toc_set_lines(mv)
+  expect_length(lines, 3L)
+  expect_true("L-16-2-7: set SAF -> SCRF" %in% lines)
+  # the same set (T-14-1-2) and a new report (T-99): no line
+  expect_false(any(c("T-14-1-2", "T-99") %in% mv$output_id))
+  expect_identical(report_population(q, "T-99"), "SAF")
+  # taken in again with the same sets: nothing moves, no line
+  q2 <- toc_apply(q, sp, toc_changes(q, sp), populations = pops)
+  expect_null(attr(q2, "set_moved"))
+  expect_length(.toc_set_lines(attr(q2, "set_moved")), 0L)
+})
