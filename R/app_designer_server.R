@@ -80,6 +80,29 @@
     if (is.null(id) || is.null(d)) return()
     rv$p <- .fig_ard_steps_rows(set_fig_design(rv$p, id, d), id, d)
   }
+  # a design put in place of the one there (a template, a preset, empty):
+  # its pieces are not the old ones, so the form starts on the settings
+  replace_design <- function(d) {
+    if (is.null(d)) return()
+    pd$gen <- pd$gen + 1L
+    set_design(d)
+    sel(list(sec = "plot", i = 1L))
+    redraw_form()
+  }
+  # The form follows the design: drawn again whenever the design changes
+  # other than by the form itself (a template or preset put in its place,
+  # the Spec edited, the review's fix ...).  pd$own is the design as the
+  # form was drawn from it or last wrote it; pd$gen counts the designs
+  # come from elsewhere (what was typed for the one before is not written).
+  pd$own <- NULL
+  pd$gen <- 0L
+  shiny::observeEvent(design(), {
+    d <- design()
+    if (is.null(d) || is.null(pd$own) || identical(.fig_norm(unclass(d)), pd$own)) return()
+    pd$gen <- pd$gen + 1L
+    if (is.null(piece_now(d, sel()))) sel(list(sec = "plot", i = 1L))
+    redraw_form()
+  }, ignoreInit = TRUE)
 
   # the study's data, read once a file (and again when it changes)
   study_data <- function(ds) {
@@ -346,7 +369,7 @@
   }
   applied <- function(d) {
     if (is.null(d)) return()
-    set_design(d)
+    replace_design(d)
     notify(t("The template is applied: add to and change its layers in the designer."))
     # its numbers are the figure's own ARD (a forest plot's hazard ratios):
     # the analyses it needs go to step 1, and the figure's ARD is its own
@@ -376,7 +399,7 @@
   })
   shiny::observeEvent(input$pd_empty, {
     shiny::req(current())
-    set_design(empty_design())
+    replace_design(empty_design())
   })
   # a template on a design already there: it replaces the design, asked first
   shiny::observeEvent(input$pd_retpl, {
@@ -877,6 +900,7 @@
     }
     d <- shiny::isolate(design())
     shiny::req(d)
+    pd$own <- .fig_norm(unclass(d))
     s <- shiny::isolate(sel())
     pn <- piece_now(d, s)
     shiny::req(pn)
@@ -1110,7 +1134,7 @@
           if (fa$kind[i] %in% c("variables", "param")) "variables" else fa$kind[i], v[[1L]]))
       }
       shiny::req(length(raw))
-      return(list(sel = pd$sel, fields = out, raw = raw, whole = TRUE))
+      return(list(sel = pd$sel, fields = out, raw = raw, whole = TRUE, gen = pd$gen))
     }
     for (i in seq_len(nrow(f))) {
       v <- moved(f$field[i])
@@ -1118,13 +1142,16 @@
       out[f$field[i]] <- list(.pd_value(f$kind[i], v[[1L]]))
     }
     shiny::req(length(raw))
-    list(sel = pd$sel, fields = out, raw = raw)
+    list(sel = pd$sel, fields = out, raw = raw, gen = pd$gen)
   })
   pd_values_d <- shiny::debounce(pd_values, 500)
   shiny::observeEvent(pd_values_d(), {
     v <- pd_values_d()
     d <- design()
     if (is.null(d) || !identical(pd$id, current())) return()
+    # (values typed for a design replaced since -- a template, the Spec --
+    # are the old design's: not written into the new one)
+    if (!identical(v$gen, pd$gen)) return()
     s <- v$sel
     old <- if (s$sec == "plot") d$plot else if (s$i <= length(d[[s$sec]])) d[[s$sec]][[s$i]]
     if (is.null(old)) return()
@@ -1146,6 +1173,7 @@
     if (s$sec == "plot") d$plot <- new else d[[s$sec]][[s$i]] <- new
     if (identical(.fig_norm(unclass(d)), .fig_norm(unclass(design())))) return()
     set_design(d)
+    pd$own <- .fig_norm(unclass(fig_design(rv$p, current())))
     # another dataset changes what the forms offer; another function, the
     # arguments its form names
     # (a join's how: whether its variables are asked)

@@ -300,6 +300,46 @@ test_that("step 2, the figure designer: what it cannot show stays as written", {
   })
 })
 
+test_that("the designer's form follows a design put in place of the one there (#866)", {
+  local_home()
+  p <- add_output(new_planner(), "F1", type = "figure")
+  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP")
+  d$plot$x_label <- "Old label"
+  p <- set_fig_design(p, "F1", d)
+  create_study("S1", planner = p)
+  shiny::testServer(server_for("S1"), {
+    rv <- session$userData$rv
+    pd <- session$userData$pd
+    session$setInputs(target = "F1", nav = "make", step = "content",
+                      content_nav = "content")
+    expect_match(output$pd_form$html, "Old label", fixed = TRUE)
+    n0 <- pd$n
+    # the design changed outside the form (a template, the Spec, a fix):
+    # the form is drawn again, with the new values
+    d2 <- fig_design(rv$p, "F1")
+    d2$plot$x_label <- "New label"
+    rv$p <- set_fig_design(rv$p, "F1", d2)
+    session$flushReact()
+    h <- output$pd_form$html
+    expect_match(h, "New label", fixed = TRUE)
+    expect_false(grepl("Old label", h, fixed = TRUE))
+    expect_gt(pd$n, n0)
+    # typed into the form, then the design replaced before it is written:
+    # the old form's value is not written into the new design
+    n1 <- pd$n
+    id <- function(x) paste0("pd", n1, "_", x)
+    v <- list()
+    v[[id("x_label")]] <- "New label"
+    do.call(session$setInputs, v)
+    v[[id("x_label")]] <- "Typed"
+    do.call(session$setInputs, v)
+    session$setInputs(pd_empty = 1)
+    session$elapse(1000)
+    expect_false(identical(fig_design(rv$p, "F1")$plot$x_label, "Typed"))
+    expect_false(grepl("New label", output$pd_form$html, fixed = TRUE))
+  })
+})
+
 # Spaces at the start or end of a text (tflspec's rule: kept only inside
 # quotes, so a pasted cell's stray spaces do not print)
 test_that("a form keeps the spaces typed: quoted in the sheet, shown without", {
