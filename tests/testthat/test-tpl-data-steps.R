@@ -59,7 +59,7 @@ test_that("a join no longer the analysis set's is told", {
   expect_false(.tpl_join_stale(.tpl_steps_fields(.tpl_steps_from("ADSL", saf)), saf))
 })
 
-test_that("the study's treatment is the `by`, and ADSL's flags no population says are offered", {
+test_that("the study's treatment is the `by`, and ADSL's flags no population says are found (to be told, #868)", {
   skip_if_not("km_survival" %in% tflspec::tfl_templates()$name)
   study <- list(study = list(settings = list(treatment = "TRT01P")))
   prm <- .tpl_params("km_survival")
@@ -71,6 +71,42 @@ test_that("the study's treatment is the `by`, and ADSL's flags no population say
   pops <- data.frame(population_id = "SAF", dataset = "ADSL", where = "SAFFL == \"Y\"")
   expect_identical(.tpl_flags_undefined(adsl, pops), c("ITTFL", "EFFFL"))
   expect_identical(.tpl_flags_undefined(NULL), character())
+})
+
+test_that("a KM type's analysis set is asked as the report's set, not an argument, and may be left out (#868)", {
+  skip_if_not("km_survival" %in% tflspec::tfl_templates()$name)
+  prm <- .tpl_params("km_survival")
+  expect_true(.tpl_asks_report_pop(prm))
+  expect_false(.tpl_pop_of_report(prm))
+  # (the layout `km` takes it as a shown argument: not asked as the report's)
+  expect_false(.tpl_asks_report_pop(.tpl_params("km")))
+  a <- .tpl_dialog_args(prm, list(population = "SAF", by = "TRT01A"))
+  expect_null(attr(a, "missing"))
+  expect_identical(attr(a, "population"), "SAF")
+  expect_null(a$population)
+  b <- .tpl_dialog_args(prm, list(population = "", by = "TRT01A"))
+  expect_null(attr(b, "missing"))
+  expect_null(attr(b, "population"))
+})
+
+test_that("a report's analysis set is read and set where its file has it: the data map's, else common: (#868)", {
+  o <- list(data = list(population = "SAF", steps = list(list(step = "read", dataset = "ADTTE"))))
+  expect_identical(.o_population(o), "SAF")
+  o2 <- .o_set_population(o, "ITT")
+  expect_identical(o2$data$population, "ITT")
+  expect_null(o2$common)
+  expect_identical(.o_population(o2), "ITT")
+  # (a data map with the set in `common:`: moved onto the data)
+  o3 <- .o_set_population(list(common = list(population = "SAF"), data = list(steps = list())), "ITT")
+  expect_identical(o3$data$population, "ITT")
+  expect_null(o3$common)
+  expect_null(.o_set_population(o, NA_character_)$data$population)
+  # (no data map -- a table's rows, or none: `common:` as before)
+  t1 <- .o_set_population(list(data = list(list(id = "adsl_sub", from = "ADSL"))), "SAF")
+  expect_identical(t1$common$population, "SAF")
+  expect_identical(.o_population(t1), "SAF")
+  expect_null(.o_set_population(t1, "")$common)
+  expect_true(is.na(.o_population(list())))
 })
 
 test_that("a report's analysis set changed on the card is its toc line's too", {

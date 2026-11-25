@@ -1,11 +1,28 @@
 # app_server(): add report -- moved from R/app.R as it was.  Run in
 # app_server()'s environment (.srv_part()); what it makes is copied back
 # there for the parts after it (.srv_keep()).
-# A report's `common: population` set (NA: taken out, and the empty
-# `common:` with it)
+# A report's analysis set as its file says it: its data map's `population`
+# (a KM type's `data: {population:, steps:}`, canon 11-15), else `common:
+# population`; NA none
+.o_population <- function(o) {
+  d <- o$data
+  map <- is.list(d) && !is.null(names(d))
+  v <- if (map && !is.null(d[["population"]])) d[["population"]] else o$common[["population"]]
+  v <- as.character(v %||% NA_character_)[1L]
+  if (is.na(v) || !nzchar(v)) NA_character_ else v
+}
+# A report's analysis set set (NA: taken out): on its data map when it has
+# one (no `common:` beside it), else `common: population` -- the empty
+# `common:` taken out
 .o_set_population <- function(o, population) {
   has <- length(population) && !is.na(population[1L]) && nzchar(population[1L])
-  o$common$population <- if (has) population[1L]
+  d <- o$data
+  if (is.list(d) && !is.null(names(d))) {
+    o$data$population <- if (has) population[1L]
+    o$common$population <- NULL
+  } else {
+    o$common$population <- if (has) population[1L]
+  }
   if (!length(o$common)) o$common <- NULL
   o
 }
@@ -283,14 +300,38 @@
     prm_all <- .tpl_params(nm)
     prm <- .tpl_shown(prm_all)
     req_p <- Filter(function(x) isTRUE(x$required), prm)
-    # (a hidden `population` param is the report's analysis set: still chosen
-    # in the dialog, asked first, as in the static list above)
-    if (.tpl_pop_of_report(prm_all)) req_p <- c(prm_all["population"], req_p)
-    lapply(req_p, function(x) {
-      tpl_widget(tpl_arg_id(nm, x$name), x, .tpl_study_value(rv$p$spec$study, x),
-                 dataset = ds %||% prm$data$default, params = prm, say_first = TRUE, tpl = nm,
-                 rows = .tpl_data_rows(nm, params = prm_all))
-    })
+    shiny::tagList(
+      # (a hidden `population` param is the report's analysis set: still chosen
+      # in the dialog, asked first, as in the static list above)
+      if (.tpl_pop_of_report(prm_all)) tpl_pop_widget(nm),
+      lapply(req_p, function(x) {
+        tpl_widget(tpl_arg_id(nm, x$name), x, .tpl_study_value(rv$p$spec$study, x),
+                   dataset = ds %||% prm$data$default, params = prm, say_first = TRUE, tpl = nm,
+                   rows = .tpl_data_rows(nm, params = prm_all))
+      }))
+  }
+  # The report's analysis set in the dialog: one control for every template
+  # that asks it (.tpl_asks_report_pop(): a table's that hides it, a KM
+  # type's data stage) -- the study's populations only, its start the study's
+  # value else the template's default.  ADSL's Y/N flags no population says
+  # are told under it: a flag that is an analysis set is registered in the
+  # study first (#868)
+  tpl_pop_widget <- function(nm) {
+    x <- .tpl_params(nm)[["population"]]
+    # ("(not chosen)" is its none: no "(none: not passed)" item beside it)
+    x$unset <- "stop"
+    lab <- shiny::span(
+      t("This report's population"),
+      if (isTRUE(x$required)) shiny::span(class = "text-danger", " *"),
+      help_tip(t("The report's analysis set: one of the study's populations (spec/data.yml populations). The report's subjects are its subjects.")))
+    fl <- .tpl_flags_undefined(tpl_data()[["ADSL"]], rv$p$ard$populations)
+    shiny::tagList(
+      tpl_widget(tpl_arg_id(nm, "population"), x, .tpl_study_value(rv$p$spec$study, x),
+                 label = lab, say_first = TRUE, tpl = nm),
+      if (length(fl)) shiny::p(
+        class = "small text-muted mt-n2",
+        sprintf(t("ADSL's Y/N flags %s are not study populations: a flag that is a real analysis set is registered as a study population (spec/data.yml populations) first, then chosen here."),
+                paste(fl, collapse = ", "))))
   }
   # (... drawn again, for a template with a `data` argument, when the dataset in
   # it changes: its columns and suggestions are the new dataset's; one output a
@@ -336,8 +377,9 @@
   # (bound while the dialog fades in, it counts as hidden: drawn anyway)
   shiny::outputOptions(output, "tpl_modal_more", suspendWhenHidden = FALSE)
   # a template whose data stage is the report's (a KM type): the report's
-  # data asked in the dialog -- the dataset, its parameter, the analysis
-  # set -- written as its `data:` steps
+  # data asked in the dialog -- its analysis set (the control a table's
+  # report set has, tpl_pop_widget()), the dataset, its parameter --
+  # written as its `data:`: the set its `population:`, the rest its steps
   tpl_modal_data_ui <- function(nm) {
     d <- tpl_data()
     ds_all <- sort(unique(c(names(d), toupper(stats::na.omit(rv$p$ard$datasets$dataset)))))
@@ -358,6 +400,7 @@
     shiny::div(
       class = "border rounded p-2 mb-2",
       shiny::h6(t("Data (the report's data: steps)")),
+      if (!is.null(.tpl_params(nm)[["population"]])) tpl_pop_widget(nm),
       shiny::div(
         class = "d-flex flex-wrap gap-2",
         shiny::div(style = "flex: 1 1 140px",
@@ -366,39 +409,19 @@
         shiny::div(style = "flex: 1 1 140px",
                    shiny::selectizeInput(pid, t("Parameter (param)"),
                                          c(stats::setNames("", t("(not chosen)")), pcd),
-                                         width = "100%", options = list(create = TRUE))),
-        shiny::div(style = "flex: 1 1 140px",
-                   shiny::selectInput(tpl_arg_id(nm, ".data_pop"), t("Analysis set"),
-                                      tpl_pop_choices(), width = "100%"))))
+                                         width = "100%", options = list(create = TRUE)))))
   }
-  # the dialog's data as `data:` steps and the population (NULL: not a
-  # template of the report's data; `missing`: what is still to say)
+  # the dialog's data as `data:` steps (NULL: not a template of the report's
+  # data; `missing`: what is still to say).  Its analysis set is no step:
+  # the report's `population:` (tpl_modal_args()), whose subjects tflspec
+  # keeps itself
   tpl_modal_data <- function(nm) {
     if (!.tpl_own_data(.tpl_params(nm))) return(NULL)
     ds <- toupper(trimws(input[[tpl_arg_id(nm, ".data_ds")]] %||% ""))
     par <- trimws(input[[tpl_arg_id(nm, ".data_param")]] %||% "")
-    pid <- input[[tpl_arg_id(nm, ".data_pop")]] %||% ""
     if (!nzchar(ds)) return(structure(list(), missing = t("Dataset (read)")))
     if (ds != "ADSL" && !nzchar(par)) return(structure(list(), missing = t("Parameter (param)")))
-    # (a flag the study does not define: the report's own join on it, no
-    # population)
-    if (startsWith(pid, "flag:")) {
-      fl <- sub("^flag:", "", pid)
-      pop <- list(population_id = NA_character_, dataset = "ADSL", where = sprintf("%s == \"Y\"", fl))
-      return(list(steps = .tpl_steps_from(ds, pop, par), population = NULL))
-    }
-    pops <- rv$p$ard$populations
-    k <- if (!is.null(pops) && nzchar(pid)) match(pid, pops$population_id) else NA
-    pop <- if (!is.na(k)) as.list(pops[k, intersect(c("population_id", "dataset", "where"), names(pops)),
-                                       drop = FALSE])
-    list(steps = .tpl_steps_from(ds, pop, par), population = if (nzchar(pid)) pid)
-  }
-  # the study's populations, then ADSL's Y/N flags none of them says
-  # ("flag:<variable>", marked: not defined in the study)
-  tpl_pop_choices <- function() {
-    fl <- .tpl_flags_undefined(tpl_data()[["ADSL"]], rv$p$ard$populations)
-    c(pop_choices(), stats::setNames(paste0("flag:", fl),
-                                     sprintf("%s == \"Y\" %s", fl, t("(not defined in the study)"))))
+    list(steps = .tpl_steps_from(ds, NULL, par))
   }
   # what is in an argument's field (a picked "Add all suggested" is the suggestion)
   tpl_picked <- function(nm, x) {
@@ -416,7 +439,7 @@
     prm_all <- .tpl_params(nm)
     raws <- list()
     nones <- list()
-    if (.tpl_pop_of_report(prm_all)) raws["population"] <- list(input[[tpl_arg_id(nm, "population")]])
+    if (.tpl_asks_report_pop(prm_all)) raws["population"] <- list(input[[tpl_arg_id(nm, "population")]])
     for (x in .tpl_shown(prm_all)) {
       raws[x$name] <- list(tpl_picked(nm, x))
       nones[x$name] <- list(input[[paste0(tpl_arg_id(nm, x$name), "__none")]])
@@ -573,14 +596,18 @@
     tpl_mode_send(TRUE, kind, ready = FALSE, id = id)
     tpl_pending$id <- id
     if (identical(kind, "table")) tpl_autoprev$want <- id
-    # (a KM type: its data the report's own `data:` steps, from the dialog)
+    # (a KM type: its data the report's own `data:`, from the dialog -- its
+    # analysis set the data's `population:`, no `common:` and no step of it,
+    # canon 11-15; #868)
     dat <- tpl_modal_data(nm)
-    pop <- as.character(dat$population %||% attr(args, "population") %||% args$population %||% NA_character_)
+    pop <- as.character(attr(args, "population") %||% args$population %||% NA_character_)
     attr(args, "population") <- NULL
+    own <- if (!is.null(dat)) c(if (!is.na(pop)) list(population = pop),
+                                if (length(dat$steps)) list(steps = dat$steps))
     o <- tflspec::tfl_output(id, kind, label = if (is.na(desc)) NA_character_ else desc,
-                             common = if (!is.na(pop)) list(population = pop) else list(),
+                             common = if (is.null(dat) && !is.na(pop)) list(population = pop) else list(),
                              template = .tpl_write_args(list(name = nm), args, by_step = TRUE),
-                             data = if (length(dat$steps)) list(steps = dat$steps))
+                             data = if (length(own)) own)
     # (straight into the spec: its toc line and its file, the view of
     # that report alone -- .spec_add_output())
     p2 <- guarded(.spec_add_output(rv$p, o, label = desc,
@@ -887,7 +914,9 @@
                  } else if (is.null(pop)) t("Analysis set: none (the report has no population).") else
                    sprintf(t("Analysis set: %s (%s: %s), its subjects kept (join)."),
                            pop$population_id, pop$dataset, pop$where %||% "")),
-      if (nzchar(f$dataset) && .tpl_join_stale(f, pop)) shiny::div(
+      # (no join in the steps: the analysis set's subjects are kept by the
+      # template itself from the report's set -- nothing stale, #868)
+      if (nzchar(f$dataset) && f$join && .tpl_join_stale(f, pop)) shiny::div(
         class = "alert alert-warning py-1 small",
         t("The analysis set changed: Match the analysis set writes the new join.")),
       # (an action, not a save: the data: steps written from these fields,
@@ -902,14 +931,16 @@
   # the card's analysis-set choice: the report's population, else its own
   # join -- a flag ("flag:<variable>") or as it is (".own") -- else none
   tpl_data_pop_sel <- function(id, f) {
-    pid <- rv$p$spec$outputs[[id]]$common$population
-    if (length(pid) && !is.na(pid[1L]) && nzchar(pid[1L])) return(as.character(pid[1L]))
+    pid <- .o_population(rv$p$spec$outputs[[id]])
+    if (!is.na(pid)) return(pid)
     if (!f$join) return("")
     fl <- .pop_flag(f$join_where)
     if (!is.na(fl) && identical(toupper(f$join_dataset), "ADSL")) paste0("flag:", fl) else ".own"
   }
   tpl_data_pop_choices <- function(id, f) {
-    ch <- tpl_pop_choices()
+    # (the study's populations: a flag that is an analysis set is
+    # registered in the study first, #868)
+    ch <- pop_choices()
     # (the report's own join, when it has no population of the study)
     if (f$join && is.null(tpl_data_pop(id))) {
       fl <- .pop_flag(f$join_where)
@@ -922,9 +953,9 @@
     ch
   }
   tpl_data_pop <- function(id) {
-    pid <- rv$p$spec$outputs[[id]]$common$population
+    pid <- .o_population(rv$p$spec$outputs[[id]])
     pops <- rv$p$ard$populations
-    if (is.null(pid) || is.null(pops) || !nrow(pops)) return(NULL)
+    if (is.na(pid) || is.null(pops) || !nrow(pops)) return(NULL)
     k <- match(as.character(pid)[1L], pops$population_id)
     if (is.na(k)) return(NULL)
     as.list(pops[k, intersect(c("population_id", "dataset", "where"), names(pops)), drop = FALSE])
@@ -966,7 +997,7 @@
                              input$tpl_data_filter %||% "")
     if (is.null(steps)) o$data$steps <- NULL else o$data$steps <- steps
     if (!length(o$data)) o$data <- NULL
-    p2 <- guarded(.spec_set_output(.spec_set_toc_population(rv$p, id, o$common$population), id, o))
+    p2 <- guarded(.spec_set_output(.spec_set_toc_population(rv$p, id, .o_population(o)), id, o))
     if (is.null(p2)) return()
     rv$p <- p2
     rv$bver <- rv$bver + 1L
@@ -982,10 +1013,10 @@
     if (is.null(tp) || !.tpl_pop_of_report(.tpl_params(tp$name))) return()
     o <- rv$p$spec$outputs[[id]]
     sel <- input$tpl_report_pop %||% ""
-    now <- as.character(o$common$population %||% "")[1L]
+    now <- .o_population(o)
     if (identical(sel, if (is.na(now)) "" else now)) return()
     o <- .o_set_population(o, if (nzchar(sel)) sel else NA_character_)
-    p2 <- guarded(.spec_set_output(.spec_set_toc_population(rv$p, id, o$common$population), id, o))
+    p2 <- guarded(.spec_set_output(.spec_set_toc_population(rv$p, id, .o_population(o)), id, o))
     if (is.null(p2)) return()
     rv$p <- p2
     rv$bver <- rv$bver + 1L
@@ -1033,7 +1064,7 @@
     # where a value comes from: this report / the study standard / the
     # function's default (and the report's over the study's, said)
     filled <- .tpl_filled(p, id)
-    rows <- .tpl_args_rows(tp$name, study, p$spec$outputs[[id]]$common$population)
+    rows <- .tpl_args_rows(tp$name, study, .o_population(p$spec$outputs[[id]]))
     from_of <- function(a) {
       b <- .tpl_badge_of(a, args, rows)
       # (a required argument with no value and no default: nothing to say the origin of)

@@ -617,6 +617,76 @@ test_that("a KM template's data card: its button says what it does, an action, n
                       tpl_data_filter = "", tpl_data_apply = 1)
     f <- .tpl_steps_fields(rv$p$spec$outputs[["F-KMB-1"]]$data$steps)
     expect_true(f$join)
-    expect_identical(rv$p$spec$outputs[["F-KMB-1"]]$common$population, "SAF")
+    # (the set on the report's data, as the dialog writes it: no `common:`, #868)
+    expect_identical(rv$p$spec$outputs[["F-KMB-1"]]$data$population, "SAF")
+    expect_null(rv$p$spec$outputs[["F-KMB-1"]]$common$population)
+  })
+})
+
+test_that("a KM template in the dialog: the report's set is the table's control, the study's sets only; Create writes the data's population, no common: and no join (#868)", {
+  skip_if_not("km_survival" %in% tflspec::tfl_templates()$name)
+  id <- sample_for_add("KMD")
+  shown <- watch_add()
+  shiny::testServer(server_for(id), {
+    rv <- session$userData$rv
+    session$setInputs(add = 1, modal_type = "figure", modal_how = "template",
+                      modal_tpl_figure = "km_survival", modal_id = "")
+    dlg <- add_html(add_modal(shown))
+    # (no control of its own, no flag choices)
+    expect_false(grepl("___data_pop", dlg, fixed = TRUE))
+    expect_false(grepl('value="flag:', dlg, fixed = TRUE))
+    # the control a table's report set has: its id, its label, the study's sets
+    sel_of <- function(html, input_id) {
+      m <- regmatches(html, regexpr(sprintf('(?s)<select id="%s".*?</select>', input_id), html, perl = TRUE))
+      expect_length(m, 1L)
+      v <- regmatches(m, gregexpr('value="[^"]*"', m))[[1L]]
+      sub('^value="([^"]*)"$', "\\1", v)
+    }
+    label_of <- function(html, input_id) {
+      at <- as.integer(regexpr(sprintf('for="%s"', input_id), html, fixed = TRUE))
+      expect_gt(at, 0L)
+      substr(html, at, at + 400L)
+    }
+    sets <- as.character(stats::na.omit(rv$p$ard$populations$population_id))
+    expect_setequal(sel_of(dlg, "mtpl_km_survival__population"), c("", sets))
+    expect_match(label_of(dlg, "mtpl_km_survival__population"), "This report&#39;s population", fixed = TRUE)
+    # (the table's: the same label and choices)
+    session$setInputs(modal_type = "table", modal_tpl_table = "demog")
+    req <- add_html(output$mtpl_demog___req_box$html)
+    expect_match(label_of(req, "mtpl_demog__population"), "This report&#39;s population", fixed = TRUE)
+    expect_setequal(sel_of(req, "mtpl_demog__population"), c("", sets))
+    # (ADSL's Y/N flags no set says: told under it, to be registered in the study)
+    fl <- .tpl_flags_undefined(.tpl_data_cols(rv$study$path, rv$p)[["ADSL"]], rv$p$ard$populations)
+    if (length(fl)) {
+      expect_match(dlg, "is registered as a study population (spec/data.yml populations) first", fixed = TRUE)
+    }
+    # Create: the set on the report's data, the steps the dataset's and its parameter's
+    session$setInputs(modal_type = "figure", modal_tpl_figure = "km_survival", modal_id = "KM-1",
+                      modal_desc = "", modal_section = "",
+                      mtpl_km_survival___data_ds = "ADTTE", mtpl_km_survival___data_param = "TTSKIN",
+                      mtpl_km_survival__population = "SAF", mtpl_km_survival__by = "TRT01A")
+    suppressMessages(session$setInputs(add_ok = 1))
+    o <- rv$p$spec$outputs[["F-KM-1"]]
+    expect_false(is.null(o))
+    expect_identical(o$data$population, "SAF")
+    expect_null(o$common$population)
+    expect_identical(vapply(o$data$steps, function(s) s$step, ""), c("read", "param"))
+    expect_null(o$template$args$population)
+    txt <- paste(rv$p$spec$text[["spec/outputs/F-KM-1.yml"]], collapse = "\n")
+    expect_false(grepl("common:", txt, fixed = TRUE))
+    expect_false(grepl("join", txt, fixed = TRUE))
+    # (the toc line's set, which the report list reads)
+    toc <- Filter(function(e) identical(e$id, "F-KM-1"), rv$p$spec$study$toc$outputs)
+    expect_identical(toc[[1L]]$population, "SAF")
+    # no set chosen: none written (a KM type may have none)
+    session$setInputs(add = 2, modal_type = "figure", modal_how = "template", modal_tpl_figure = "km_survival",
+                      modal_id = "KM-2", modal_desc = "", modal_section = "",
+                      mtpl_km_survival___data_ds = "ADTTE", mtpl_km_survival___data_param = "TTSKIN",
+                      mtpl_km_survival__population = "", mtpl_km_survival__by = "TRT01A")
+    suppressMessages(session$setInputs(add_ok = 2))
+    o2 <- rv$p$spec$outputs[["F-KM-2"]]
+    expect_false(is.null(o2))
+    expect_null(o2$data$population)
+    expect_null(o2$common$population)
   })
 })

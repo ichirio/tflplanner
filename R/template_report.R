@@ -872,18 +872,21 @@
 # The arguments the add-report dialog writes for template `prm_all`
 # (.tpl_params()), from what its fields send: `raws` by argument name (a
 # pick's "Add all suggested" already expanded; `population` the report's
-# population field where the template hides it), `nones` by name a
+# population field where the template hides it, .tpl_asks_report_pop();
+# returned as attribute "population"), `nones` by name a
 # switch's <id>__none input, `study` the study SPEC (its values prefill the
 # fields).  An optional argument is written only when its field says other
 # than what it sent untouched (.tpl_field_arg()); a required one empty
 # gives no args and attribute "missing" (its name).  No Shiny.
 .tpl_dialog_args <- function(prm_all, raws, study = NULL, nones = list()) {
   args <- list()
-  # (the report's population, for a template that hides it: not an argument)
+  # (the report's population, for a template that hides it: not an argument;
+  # required for one whose set is the report's alone, demog)
   pop <- NULL
-  if (.tpl_pop_of_report(prm_all)) {
+  if (.tpl_asks_report_pop(prm_all)) {
     pop <- .tpl_value(raws[["population"]], "population", prm_all$population)
-    if (is.null(pop)) return(structure(list(), missing = "population"))
+    if (inherits(pop, "tfl_unset")) pop <- NULL
+    if (is.null(pop) && .tpl_pop_of_report(prm_all)) return(structure(list(), missing = "population"))
   }
   for (x in .tpl_shown(prm_all)) {
     raw <- raws[[x$name]]
@@ -1282,6 +1285,15 @@
 .tpl_pop_of_report <- function(prm) {
   p <- prm[["population"]]
   !is.null(p) && isTRUE(p$hidden) && isTRUE(p$required) && !.tpl_own_data(prm)
+}
+
+# Whether the add-report dialog asks the report's analysis set for a
+# template: one whose set is the report's population (demog, required), or
+# one whose data stage is the report's own (a KM type) with a `population`
+# in it (may be left out).  The same control for both, the study's
+# populations only; written as the report's set, not as an argument (#868)
+.tpl_asks_report_pop <- function(prm) {
+  .tpl_pop_of_report(prm) || (.tpl_own_data(prm) && !is.null(prm[["population"]]))
 }
 
 # A report's `data:` steps as the card's fields say them: the dataset
