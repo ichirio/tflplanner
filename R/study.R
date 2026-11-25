@@ -185,7 +185,12 @@ study_layout <- function() {
   f <- file.path(path, .study_file)
   if (!file.exists(f)) stop("Not a study folder (no study.yml): ", path,
                             call. = FALSE)
-  m <- yaml::read_yaml(f)
+  .meta_fields(yaml::read_yaml(f))
+}
+
+# `m` with each study field one string, NA when not given (or empty): as
+# study.yml is read back
+.meta_fields <- function(m) {
   for (k in .study_fields) {
     v <- as.character(m[[k]] %||% NA_character_)
     m[[k]] <- if (length(v) != 1L || is.na(v) || !nzchar(v)) NA_character_ else
@@ -270,28 +275,31 @@ create_study <- function(study_id, title = NA, compound = NA, phase = NA,
   if (file.exists(path)) {
     stop("A folder '", study_id, "' is already there: ", path, call. = FALSE)
   }
-  .make_dir(path)
-  for (d in study_layout()) {
-    dir.create(file.path(path, d), recursive = TRUE, showWarnings = FALSE)
-  }
   meta <- list(study_id = study_id, title = as.character(title),
                short_title = as.character(short_title),
                compound = as.character(compound), phase = as.character(phase),
                description = as.character(description),
                created = format(Sys.Date()))
-  .write_meta(meta, path)
-  writeLines(.rproj, file.path(path, paste0(study_id, ".Rproj")))
-  # the company standards of this home, read once: the study defaults,
-  # analysis sets, data catalog, code lists and review depth all theirs
+  # the whole new planner first, the folder after: what can stop (the
+  # company standards, their code lists) stops before anything is written,
+  # so a failed create leaves no folder and the same call can be run again.
+  # The company standards of this home, read once: the study defaults,
+  # analysis sets, data catalog, code lists and review depth all theirs.
   std <- company_standards(home)
-  s <- .new_study(path, .read_meta(path)[.study_fields],
-                  planner %||% .standard_planner(study_id, std))
+  p <- .study_spec_keys(planner %||% .standard_planner(study_id, std))
   # a study made from the company standards takes their code lists too
   # (defaults.yml `codelists:`); one made from a planner has that one's
   if (is.null(planner)) {
-    s$planner <- .std_codelists_into_spec(s$planner, c(s$meta, created = meta$created),
-                                          std = std)
+    p <- .std_codelists_into_spec(p, c(.meta_fields(meta)[.study_fields],
+                                       created = meta$created), std = std)
   }
+  .make_dir(path)
+  for (d in study_layout()) {
+    dir.create(file.path(path, d), recursive = TRUE, showWarnings = FALSE)
+  }
+  .write_meta(meta, path)
+  writeLines(.rproj, file.path(path, paste0(study_id, ".Rproj")))
+  s <- .new_study(path, .read_meta(path)[.study_fields], p)
   s <- save_study(s, home = home)
   # the company's review depth of the AI agent into study.yml (the study's
   # own from now on), and the state told of the file as it is now
