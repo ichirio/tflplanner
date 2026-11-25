@@ -1277,15 +1277,6 @@
   !is.null(p) && isTRUE(p$hidden) && isTRUE(p$required) && !.tpl_own_data(prm)
 }
 
-# Whether the template's analysis set is the report's `population:` field
-# alone: its `population` hidden, required, and not part of the report's own
-# data steps (demog, stf_t02_demog).  The add-report dialog asks for it, and
-# writes it as the report's population, not as an argument.
-.tpl_pop_of_report <- function(prm) {
-  p <- prm[["population"]]
-  !is.null(p) && isTRUE(p$hidden) && isTRUE(p$required) && !.tpl_own_data(prm)
-}
-
 # Whether the add-report dialog asks the report's analysis set for a
 # template: one whose set is the report's population (demog, required), or
 # one whose data stage is the report's own (a KM type) with its `population`
