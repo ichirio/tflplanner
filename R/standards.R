@@ -145,30 +145,9 @@
     figure_settings = .tflspec_fig_style()$settings,
     figure_colors = .tflspec_fig_style()$colors,
     figure_markers = .tflspec_fig_style()$markers,
-    code_templates = .df(
-      name = c("table_data", "table_process", "figure_plot", "setup"),
-      code = c(paste(
-        "# this report's rows of the study ARD (made by {ARD_PROGRAM})",
-        "ard <- readRDS(\"{ARD}\") |>",
-        "  dplyr::filter(output_id == report_id) |>",
-        "  dplyr::select(-c(output_id, analysis_id, population_id))",
-        "if (!nrow(ard)) {",
-        "  stop(\"The study ARD has no rows for \", report_id, \": run {ARD_PROGRAM} first.\")",
-        "}",
-        sep = "\n"),
-        "data <- normalize_ard(ard)",
-        paste(
-        "# TODO: the plot (ggplot2), in the figure style of the company standards, e.g.",
-        "#   plot <- ggplot2::ggplot(adsl, ggplot2::aes(AGE, fill = TRT01A)) +",
-        "#     ggplot2::geom_histogram() + scale_fill_tfl(\"treatment\", levels(adsl$TRT01A)) +",
-        "#     theme_tfl()",
-        sep = "\n"),
-        NA),
-      note = c(
-        "a table's data code when it has none: its rows of the study ARD",
-        "a table's normalization when it has none: after table_data",
-        "a figure's plot before it is written (a stop() follows it)",
-        "the setup code every report of a new study runs first (blank: none)")),
+    # (tflspec's: the report programs it makes write them where a report says
+    # none)
+    code_templates = tflspec::tfl_builtin_standards()$code_templates,
     # a new study's programs/company_setup.R (copied when the study is made;
     # every program runs it first): one line of R a row (tflspec's)
     setup_code = tflspec::tfl_builtin_standards()$setup_code,

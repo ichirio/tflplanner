@@ -116,11 +116,6 @@ study_helpers_code <- function(date = Sys.Date()) {
   f
 }
 
-# the line a setup file starts with
-.source_study_setup <- function() {
-  sprintf("source(%s)", encodeString(.study_setup_path(), quote = "\""))
-}
-
 .setup_marker <- c(
   standard = "^# ==== tflplanner: company standard",
   study = "^# ==== tflplanner: study",
