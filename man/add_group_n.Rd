@@ -19,8 +19,12 @@ The \code{tflplanner}.
 \description{
 Adds to the report's ARD analyses the subjects per group, which clinical
 reporting calls big N (\code{BIGN}: the group counted, by nothing) -- what
-the column headers' \code{(N={n})} read --
-with the data and analysis set of its first analysis.
+the column headers' \code{(N={n})} read, and the only analysis they read it
+from -- with the data and analysis set of its first analysis (its
+denominator, when it has one).  A stack by the group then does not count
+them again (\code{.by_stats = FALSE}).  A report whose \code{BIGN} counts the
+group already is left as it is; one whose \code{BIGN} counts something else
+is an error.
 }
 \examples{
 # a home in the temporary folder: used in this R session only, nothing

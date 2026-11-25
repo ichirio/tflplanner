@@ -142,7 +142,9 @@ catalog_name_clashes <- function(x, files) {
 #' `== "Y"`, added when missing), one analysis of the numeric variables
 #' (summarized) and one of the rest (counted), the report (a Table, added when missing)
 #' and its `tables` row (the group as columns, one group per variable) and
-#' `variables` rows (their order, and the data's labels).
+#' `variables` rows (their order, and the data's labels).  The subjects per
+#' group (`BIGN`), which a column header's N (`{n}`) reads, when the
+#' analyses are one by one, or when the report's header prints N.
 #'
 #' @param x A `tflplanner`.
 #' @param output_id The report.
@@ -154,8 +156,9 @@ catalog_name_clashes <- function(x, files) {
 #' @param description The report's description.
 #' @param stack Run the analyses together, with `cards::ard_stack()` (a
 #'   `STACK` analysis with the data, analysis set and group, the numeric and
-#'   the other variables inside it; it counts the subjects per group and in
-#'   all), rather than one by one (`BIGN`, `CONT`, `CAT`).  Not when a
+#'   the other variables inside it; it counts the subjects in all, and per
+#'   group unless the report has `BIGN`: `.by_stats = FALSE`), rather than
+#'   one by one (`BIGN`, `CONT`, `CAT`).  Not when a
 #'   subject of the analysis set has no group: `ard_stack()` leaves them
 #'   out (the result's attribute `group_missing` says how many).
 #' @return The `tflplanner`.
@@ -195,8 +198,7 @@ first_table <- function(x, output_id, path, data, population, group,
   x <- .first_population(x, dsn, population)
   pop <- attr(x, "population_id")
 
-  # the report; the subjects per group (the N of the column headers), then
-  # one analysis per call: the numeric variables together (CONT), the
+  # the report; one analysis per call: the numeric variables together (CONT), the
   # categorical ones together (CAT) -- the table's rows keep the order the
   # variables were chosen in (the variables sheet's `order`)
   if (!id %in% x$outputs$output_id) {
@@ -228,15 +230,18 @@ first_table <- function(x, output_id, path, data, population, group,
       stringsAsFactors = FALSE, row.names = NULL)
   } else {
     data.frame(
-      analysis_id = c("BIGN", names(groups)),
-      label = c("Subjects per group", rep(NA, length(groups))),
-      method = c("cards::ard_tabulate", methods),
-      dataset = dsn, population_id = pop,
-      by = c(NA, rep(group, length(groups))),
-      variables = c(group, vars),
+      analysis_id = names(groups), label = rep(NA_character_, length(groups)),
+      method = unname(methods), dataset = dsn, population_id = pop,
+      by = group, variables = unname(vars),
       stringsAsFactors = FALSE, row.names = NULL)
   }
   x <- set_ard_rows(x, "analyses", id, an)
+  # the subjects per group (BIGN): what a header's N reads -- one by one
+  # always, a stack when the header prints N (it then does not count them
+  # itself)
+  # (written as the cards function, as the others here)
+  x <- .starter_bign(x, id, group, list(dataset = dsn, population_id = pop),
+                     method = "cards::ard_tabulate", always = !isTRUE(stack))
 
   # the table: the group as columns, one group per variable
   tb <- sheet_rows(x, "tables", id)
@@ -521,18 +526,8 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
       (!nrow(inh) || .is_blank(inh$pages_max_rows[1L]))) ly$pages_max_rows[1L] <- "22"
   x <- set_sheet_rows(x, "layout", id, ly)
 
-  # a header that prints N ({n}) reads it from the report's BIGN analysis
-  # (tflspec#969): the analysis set's subjects counted by the group, first
-  if (.header_asks_n(x, id)) {
-    bign <- an[0L, , drop = FALSE]
-    bign[1L, ] <- NA
-    bign$analysis_id <- "BIGN"
-    bign$label <- "Subjects per group"
-    bign$method <- "categorical"
-    bign$data <- subj
-    bign$variables <- group
-    x <- set_ard_rows(x, "analyses", id, rbind(bign, an))
-  }
+  # a header that prints N ({n}): the analysis set's subjects (BIGN)
+  x <- .starter_bign(x, id, group, list(data = subj))
 
   if (!is.na(total) && nzchar(trimws(total))) x <- set_total_column(x, id, total)
   x
@@ -548,6 +543,44 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
   any(grepl("\\{n[0-9]*(:[^}]*)?\\}", txt))
 }
 
+# The header's N is the report's BIGN analysis, and only BIGN's
+# (tflspec#969): the subjects counted by the group, first among the
+# report's analyses (`from`: where the subjects are -- `data`, an analysis
+# data, or `dataset` and `population_id`; `method`: the keyword, or the
+# cards function a starter writes its analyses as).  A stack by the group
+# then does not count them again (`.by_stats = FALSE`, as stack_group()
+# writes it: two counts are review rule A13).  Written when the report's
+# header asks for N, or `always`; a report with a BIGN keeps it.
+.starter_bign <- function(x, output_id, group, from, method = "categorical",
+                          always = FALSE) {
+  if (!always && !.header_asks_n(x, output_id)) return(x)
+  a <- ard_rows(x, "analyses", output_id)
+  a$output_id <- NULL
+  for (cn in c(names(from), "parent", "args", "by")) {
+    if (!cn %in% names(a)) a[[cn]] <- rep(NA_character_, nrow(a))
+  }
+  st <- which(a$method %in% .stack_fn & .is_blank_v(a$parent) &
+                vapply(a$by, function(v) group %in% .split_bar(v), NA))
+  st <- st[vapply(st, function(i) isTRUE(.stack_flags_of(a$args[i])$flags[[".by_stats"]]), NA)]
+  if ("BIGN" %in% a$analysis_id && !length(st)) return(x)
+  for (i in st) {
+    f <- .stack_flags_of(a$args[i])
+    f$flags[[".by_stats"]] <- FALSE
+    a$args[i] <- .stack_args(f$flags, f$other)
+  }
+  if (!"BIGN" %in% a$analysis_id) {
+    b <- a[0L, , drop = FALSE]
+    b[1L, ] <- NA
+    b$analysis_id <- "BIGN"
+    b$label <- "Subjects per group"
+    b$method <- method
+    for (cn in names(from)) b[[cn]] <- from[[cn]]
+    b$variables <- group
+    a <- rbind(b, a)
+  }
+  set_ard_rows(x, "analyses", output_id, a)
+}
+
 # A grade's levels, mildest first: a factor's own, the usual severities
 # (MILD < MODERATE < SEVERE, LIFE THREATENING, FATAL), numbers by value,
 # else by name
@@ -561,32 +594,28 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
   sort(u)
 }
 
-# Does a report's ARD count the subjects per group (the N of the column
-# headers)?  An analysis of the group itself, not by anything, or a
-# total_n by the group.
+# Does a report's ARD give the column headers their N, the subjects per
+# group?  The header's N is the report's BIGN analysis, and only BIGN's
+# (tflspec#969): a BIGN that counts the group (in its variables or its
+# by).  A stack or a hierarchy that counts them too is not read for it.
 .has_group_n <- function(x, output_id, group) {
   a <- ard_rows(x, "analyses", output_id)
   if (!nrow(a) || is.na(group)) return(FALSE)
-  stacks <- a$method %in% .stack_fn & a$by %in% group
-  stacks[stacks] <- vapply(a$args[stacks], function(g)
-    isTRUE(.stack_flags_of(g)$flags[[".by_stats"]]), NA)
-  kw <- .method_kw(a$method)
-  # (a hierarchy counted of a denominator: its rows count the
-  # denominator's subjects per group too)
-  den <- if (is.null(a$denominator)) rep(NA_character_, nrow(a)) else a$denominator
-  hier <- kw %in% c("hierarchical", "cards::ard_stack_hierarchical") &
-    vapply(a$by, function(b) group %in% .split_bar(b), NA) & !is.na(den) & nzchar(den)
-  any((kw %in% c("categorical", "subjects") & a$variables %in% group &
-         is.na(a$by)) |
-        (kw %in% "total_n" & a$by %in% group) | stacks | hier)
+  b <- a[a$analysis_id %in% "BIGN", , drop = FALSE]
+  any(vapply(seq_len(nrow(b)), function(i)
+    group %in% c(.split_bar(b$variables[i]), .split_bar(b$by[i])), NA))
 }
 
 #' Count the subjects per group for a report's column headers
 #'
 #' Adds to the report's ARD analyses the subjects per group, which clinical
 #' reporting calls big N (`BIGN`: the group counted, by nothing) -- what
-#' the column headers' `(N={n})` read --
-#' with the data and analysis set of its first analysis.
+#' the column headers' `(N={n})` read, and the only analysis they read it
+#' from -- with the data and analysis set of its first analysis (its
+#' denominator, when it has one).  A stack by the group then does not count
+#' them again (`.by_stats = FALSE`).  A report whose `BIGN` counts the
+#' group already is left as it is; one whose `BIGN` counts something else
+#' is an error.
 #'
 #' @param x A `tflplanner`.
 #' @param output_id The report.
@@ -608,20 +637,20 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
 add_group_n <- function(x, output_id, group) {
   a <- ard_rows(x, "analyses", output_id)
   if (!nrow(a)) stop("'", output_id, "' has no analyses.", call. = FALSE)
-  id <- "BIGN"
-  while (id %in% a$analysis_id) id <- paste0(id, "_")
+  # (one BIGN a report: the header reads the one named so)
+  if ("BIGN" %in% a$analysis_id && !.has_group_n(x, output_id, group)) {
+    stop("'", output_id, "' has a BIGN that does not count ", group, ": count it by ",
+         group, " in step ", .step_no("ard"), " (analysis).", call. = FALSE)
+  }
+  # the subjects: the first analysis's denominator, else its own data
   first <- a[1L, , drop = FALSE]
-  new <- a[0L, , drop = FALSE]
-  new[1L, ] <- NA
-  new$analysis_id <- id
-  new$label <- "Subjects per group"
-  new$method <- "cards::ard_tabulate"
-  new$dataset <- first$dataset
-  new$population_id <- first$population_id
-  new$variables <- group
-  new$output_id <- NULL
-  a$output_id <- NULL
-  set_ard_rows(x, "analyses", output_id, rbind(new, a))
+  den <- first$denominator %||% NA_character_
+  from <- if (!.is_blank(den)) list(data = den) else {
+    f <- list(dataset = first$dataset, population_id = first$population_id,
+              data = first$data %||% NA_character_)
+    f[!vapply(f, .is_blank, NA)]
+  }
+  .starter_bign(x, output_id, group, from, method = "cards::ard_tabulate", always = TRUE)
 }
 
 #' A Total column for a report
