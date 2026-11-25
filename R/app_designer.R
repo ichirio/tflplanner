@@ -205,6 +205,23 @@
   }), fields)
 }
 
+# The template form's line under the Dataset (#863): the report's analysis
+# set -- every figure's subjects, whatever the template: the report's
+# program keeps them before the design's code (A2-2, .fig_subjects_line()),
+# and forest_hr's own analyses read it too -- or none, in the warning
+# colour, with the step that sets it.  `pop`: the set's id, NULL for none.
+.fig_pop_line <- function(pop, t = identity) {
+  step <- .step_no("data")
+  none <- length(pop) != 1L || is.na(pop) || !nzchar(pop)
+  shiny::div(
+    class = paste("small mb-2", if (none) "text-warning-emphasis" else "text-muted"),
+    with_tip(
+      if (none) sprintf(t("This report's analysis set: none (choose it in step %s)"), step) else
+        sprintf(t("This report's analysis set: %s"), pop),
+      sprintf(t("A figure's subjects are the report's analysis set (the data's `population:`). Change it in step %s, in This report's population."),
+              step)))
+}
+
 # tflspec's figure templates (tfl_templates(), kind figure), in its order
 .fig_tpl_registered <- function() {
   x <- tryCatch(tflspec::tfl_templates(), error = function(e) NULL)

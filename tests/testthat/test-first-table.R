@@ -674,6 +674,13 @@ test_that("a template figure has no population flag: a forest's analysis data is
                       pd_tpl_param = cards::ADTTE$PARAMCD[1L])
     # (the figure's subjects are its report's analysis set: no flag to choose)
     expect_false(grepl("pd_tpl_pop", output$pd_tpl_more$html, fixed = TRUE))
+    # the line under the Dataset says so: none yet, in the warning colour,
+    # and the step that sets it (#863)
+    pop_line <- function() output$pd_tpl_pop$html
+    expect_match(pop_line(), sprintf("analysis set: none (choose it in step %s)", .step_no("data")),
+                 fixed = TRUE)
+    expect_match(pop_line(), "text-warning", fixed = TRUE)
+    expect_match(pop_line(), "rp-tip", fixed = TRUE)
     rv <- session$userData$rv
     tte <- function() {
       ad <- ard_rows(rv$p, "analysis_data", "F-HR")
@@ -691,6 +698,10 @@ test_that("a template figure has no population flag: a forest's analysis data is
     expect_match(output$fig_report_pop$html, "fig_report_pop_pick", fixed = TRUE)
     session$setInputs(fig_report_pop_pick_by = list(report = "F-HR", value = "ITT"))
     expect_identical(report_population(rv$p, "F-HR"), "ITT")
+    # (the line follows the set chosen in step 1, the form not opened again)
+    expect_match(pop_line(), "analysis set: ITT", fixed = TRUE)
+    expect_false(grepl("text-warning", pop_line(), fixed = TRUE))
+    expect_match(pop_line(), "text-muted", fixed = TRUE)
     session$setInputs(pd_start = 2)
     itt <- tte()[grepl("_itt_", tte()$data_id, fixed = TRUE), ]
     expect_identical(itt$population_id, "ITT")
@@ -699,4 +710,25 @@ test_that("a template figure has no population flag: a forest's analysis data is
     d <- fig_design(rv$p, "F-HR")
     expect_false(any(grepl("# Subjects:", .fig_design_lines(rv$p, "F-HR", d), fixed = TRUE)))
   })
+})
+
+test_that("the template form's analysis-set line in Japanese, and the form's new texts' rows (#861-#863)", {
+  ja <- function(x) tr(x, "ja")
+  expect_match(as.character(.fig_pop_line("SAF", ja)), "この帳票の解析対象集団: SAF", fixed = TRUE)
+  none <- as.character(.fig_pop_line(NULL, ja))
+  expect_match(none, sprintf("この帳票の解析対象集団: なし（手順 %s で選びます）", .step_no("data")),
+               fixed = TRUE)
+  expect_match(none, "text-warning", fixed = TRUE)
+  expect_match(as.character(.fig_pop_line(NA_character_)), "none (choose it in step", fixed = TRUE)
+  # every text the change added: its Japanese, with as many %s
+  s <- .strings()
+  new <- c("Variable on the x axis", "Variable on the y axis", "Duration in days", "Visit shown",
+           "The time axis is shown in this unit. The data's time is converted from each record's unit (AVALU); days when AVALU is missing.",
+           "This report's analysis set: %s", "This report's analysis set: none (choose it in step %s)",
+           "A figure's subjects are the report's analysis set (the data's `population:`). Change it in step %s, in This report's population.")
+  expect_identical(setdiff(new, s$en), character())
+  jp <- s$ja[match(new, s$en)]
+  expect_true(all(nzchar(jp) & jp != new))
+  n_s <- function(x) lengths(regmatches(x, gregexpr("%s", x, fixed = TRUE)))
+  expect_identical(n_s(jp), n_s(new))
 })

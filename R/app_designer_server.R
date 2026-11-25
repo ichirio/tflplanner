@@ -206,7 +206,9 @@
             tpl_select(current),
             shiny::selectizeInput("pd_tpl_data", t("Dataset"), c("", ds_have),
                                   selected = data,
-                                  options = list(placeholder = t("choose the data")))),
+                                  options = list(placeholder = t("choose the data"))),
+            # (whose subjects: the report's analysis set, #863)
+            shiny::uiOutput("pd_tpl_pop")),
           shiny::uiOutput("pd_tpl_more"))),
       if (nrow(pr)) shiny::conditionalPanel(
         "input.pd_from == 'preset'",
@@ -296,6 +298,9 @@
     shiny::updateSelectizeInput(session, "pd_tpl_comparison", choices = c("", rest),
                                 selected = if (!is.null(cur) && cur %in% rest) cur else "")
   }, ignoreInit = TRUE)
+  # the report's analysis set under the Dataset: every figure's subjects,
+  # whatever the template (it follows a set chosen in step 1, #863)
+  output$pd_tpl_pop <- shiny::renderUI(.fig_pop_line(report_pop(), t))
   output$pd_tpl_more <- shiny::renderUI(tryCatch(pd_tpl_more_ui(), error = function(e) {
     if (inherits(e, "shiny.silent.error")) stop(e)
     message("tflplanner: template form: ", conditionMessage(e))
