@@ -432,8 +432,10 @@ test_that("a template that takes the set as an argument: every write of the repo
   for (id in names(tpls)) {
     kind <- if (startsWith(id, "F-")) "figure" else "table"
     # (an older file: the argument alone, no set where the data keeps it)
+    # (a figure's group has no default: the report says it, PRINCIPLES 1.14)
+    args <- c(list(population = "SAF"), if (identical(kind, "figure")) list(group = "TRT01A"))
     o <- tflspec::tfl_output(id, kind, label = id,
-                             template = list(name = tpls[[id]], args = list(population = "SAF")))
+                             template = list(name = tpls[[id]], args = args))
     p <- .spec_add_output(p, o, label = id)
     expect_true(is.na(set_of(p, id)))
     # a write of its template (no set given): the argument's set taken as

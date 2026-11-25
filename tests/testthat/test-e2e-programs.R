@@ -184,7 +184,8 @@ test_that("every template of tflspec makes its report in an official run", {
                    !is.na(dat$adlb$AVISIT) & dat$adlb$AVISIT != "BASELINE", ]
   visit <- names(sort(table(as.character(lb$AVISIT)), decreasing = TRUE))[1L]
   # what the dialog's fields would hold, as typed
-  typed <- list(population = "SAF", hierarchy = c("AEBODSYS", "AEDECOD"), by = "TRT01A", visit = visit,
+  typed <- list(population = "SAF", hierarchy = c("AEBODSYS", "AEDECOD"), by = "TRT01A",
+                group = "TRT01A", visit = visit,
                 params = as.character(unique(dat$adlb$PARAMCD))[1:2], variable = "AGE",
                 columns = "USUBJID\nAEDECOD\nAESEV")
   param_of <- list(ancova = first(dat$adlb$PARAMCD), mean_ci = first(dat$adlb$PARAMCD),

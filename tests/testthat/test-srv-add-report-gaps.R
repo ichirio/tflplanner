@@ -777,7 +777,8 @@ test_that("Create for a figure template with a shown `population`: the set on th
     skip_if(is.null(prm$population) || isTRUE(prm$population$hidden), "mean_se shows no population")
     session$setInputs(add = 1, modal_type = "figure", modal_how = "template", modal_tpl_figure = "mean_se",
                       modal_id = "FP-1", modal_desc = "", modal_section = "",
-                      mtpl_mean_se__param = "SYSBP", mtpl_mean_se__population = "SAF")
+                      mtpl_mean_se__param = "SYSBP", mtpl_mean_se__population = "SAF",
+                      mtpl_mean_se__group = "TRT01A")
     suppressWarnings(suppressMessages(session$setInputs(add_ok = 1)))
     o <- rv$p$spec$outputs[["F-FP-1"]]
     expect_false(is.null(o))
@@ -877,7 +878,8 @@ test_that("a card's `population` argument write of a figure template: the report
     skip_if(is.na(other), "the sample study has one population")
     session$setInputs(add = 1, modal_type = "figure", modal_how = "template", modal_tpl_figure = "mean_se",
                       modal_id = "FW-1", modal_desc = "", modal_section = "",
-                      mtpl_mean_se__param = "SYSBP", mtpl_mean_se__population = "SAF")
+                      mtpl_mean_se__param = "SYSBP", mtpl_mean_se__population = "SAF",
+                      mtpl_mean_se__group = "TRT01A")
     suppressWarnings(suppressMessages(session$setInputs(add_ok = 1)))
     toc_pop <- function() {
       Filter(function(e) identical(e$id, "F-FW-1"), rv$p$spec$study$toc$outputs)[[1L]]$population
@@ -1054,7 +1056,8 @@ test_that("forest_hr made in the dialog, then its set changed in step 1: its dat
     # the dialog's set control: the set on the report's data, and the argument
     session$setInputs(add = 1, modal_type = "figure", modal_how = "template", modal_tpl_figure = "forest_hr",
                       modal_id = "H5-1", modal_desc = "", modal_section = "",
-                      mtpl_forest_hr__param = "TTSKIN", mtpl_forest_hr__population = "SAF")
+                      mtpl_forest_hr__param = "TTSKIN", mtpl_forest_hr__population = "SAF",
+                      mtpl_forest_hr__group = "TRT01A")
     suppressWarnings(suppressMessages(session$setInputs(add_ok = 1)))
     agree("SAF")
     # step 1's control (set_report_population()): both move
