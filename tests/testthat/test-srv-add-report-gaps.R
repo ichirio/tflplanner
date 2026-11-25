@@ -746,3 +746,39 @@ test_that("a KM template in the dialog: the report's set is the table's control,
     expect_null(o2$common$population)
   })
 })
+
+test_that("a switch to a KM type writes no join: the report's set goes on its data, the dialog says so (canon 11-15)", {
+  skip_if_not("km_survival" %in% tflspec::tfl_templates()$name)
+  id <- sample_for_add("KMS")
+  shown <- watch_add()
+  shiny::testServer(server_for(id), {
+    rv <- session$userData$rv
+    # (the layout `km`: its analysis set a shown argument)
+    session$setInputs(add = 1, modal_type = "figure", modal_how = "template", modal_tpl_figure = "km",
+                      modal_id = "KS-1", modal_desc = "", modal_section = "",
+                      mtpl_km__by = "TRT01A", mtpl_km__param = "OS", mtpl_km__population = "SAF")
+    suppressWarnings(suppressMessages(session$setInputs(add_ok = 1)))
+    expect_identical(.tpl_of(rv$p, "F-KS-1")$name, "km")
+    expect_identical(.o_population(rv$p$spec$outputs[["F-KS-1"]]), "SAF")
+    session$setInputs(target = "F-KS-1", nav = "make", step = "content", content_nav = "content")
+    session$setInputs(tpl_switch = "km_survival")
+    dlg <- add_text(add_modal(shown))
+    expect_match(dlg, "To the report's data: steps: param", fixed = TRUE)
+    expect_match(dlg, "Analysis set SAF: the report's data: population, whose subjects the program keeps (no join step).",
+                 fixed = TRUE)
+    expect_false(grepl("steps: param, population", dlg, fixed = TRUE))
+    expect_false(grepl("Arguments dropped:[^.]*population", dlg))
+    suppressWarnings(suppressMessages(session$setInputs(tpl_switch_ok = 1)))
+    o <- rv$p$spec$outputs[["F-KS-1"]]
+    expect_identical(.tpl_of(rv$p, "F-KS-1")$name, "km_survival")
+    expect_identical(vapply(o$data$steps, function(s) s$step, ""), c("read", "param"))
+    expect_identical(o$data$population, "SAF")
+    expect_null(o$common$population)
+    expect_null(o$template$args$population)
+    txt <- paste(rv$p$spec$text[["spec/outputs/F-KS-1.yml"]], collapse = "\n")
+    expect_false(grepl("join", txt, fixed = TRUE))
+    expect_false(grepl("common:", txt, fixed = TRUE))
+    toc <- Filter(function(e) identical(e$id, "F-KS-1"), rv$p$spec$study$toc$outputs)
+    expect_identical(toc[[1L]]$population, "SAF")
+  })
+})

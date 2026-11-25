@@ -646,10 +646,14 @@
   # (per report, template and argument: the values its writes replaced, and when)
   tpl_past <- new.env()
   tpl_iid <- function(name, a) paste0("tpl_", .tpl_id_part(name), "__", .tpl_id_part(a))
-  tpl_write <- function(id, args, name = NULL, steps = NULL, redraw = TRUE) {
+  # (`population`: the report's analysis set written too, after the steps --
+  # on the data map they make, .o_set_population(); NULL leaves it)
+  tpl_write <- function(id, args, name = NULL, steps = NULL, redraw = TRUE, population = NULL) {
     o <- .tpl_output(rv$p, id, args, name = name)
     if (length(steps)) o$data$steps <- steps
-    p2 <- guarded(.spec_set_output(rv$p, id, o))
+    if (!is.null(population)) o <- .o_set_population(o, population)
+    p2 <- guarded(.spec_set_output(if (is.null(population)) rv$p else
+      .spec_set_toc_population(rv$p, id, .o_population(o)), id, o))
     if (is.null(p2)) return(invisible(FALSE))
     rv$p <- p2
     rv$bver <- rv$bver + 1L
@@ -781,20 +785,28 @@
     if (is.null(tp) || !length(to) || !nzchar(to) || identical(to, tp$name)) return()
     to_prm <- .tpl_params(to)
     keep <- intersect(names(tp$args), names(.tpl_shown(to_prm)))
-    # (to a KM type: the data stage goes to the report's `data:` steps)
-    moved <- if (.tpl_own_data(to_prm)) intersect(names(tp$args), c("data", "param", "population"))
+    # (to a KM type: the data stage goes to the report's `data:` steps, its
+    # analysis set to the data's `population:` -- the report's set, else the
+    # old `population` argument (tpl_switch_set()); an argument that is not
+    # the set is dropped)
+    moved <- if (.tpl_own_data(to_prm)) setdiff(intersect(names(tp$args), c("data", "param")), keep)
+    set <- tpl_switch_set(tp, to_prm, id)
     # (to a template whose analysis set is the report's population (demog):
     # its `population` argument stays as the report's `population:`; back
     # from one, the report's population becomes the argument)
     to_pop <- if (.tpl_pop_of_report(to_prm)) intersect(names(tp$args), "population")
     from_pop <- if (tpl_pop_back(tp, to_prm, id)) "population"
-    drop <- setdiff(names(tp$args), c(keep, moved, to_pop))
+    set_arg <- if (!is.na(set) && identical(as.character(tp$args$population %||% "")[1L], set)) "population"
+    drop <- setdiff(names(tp$args), c(keep, moved, to_pop, set_arg))
     shiny::showModal(shiny::modalDialog(
       title = sprintf(t("Change the template to %s"), to),
       shiny::p(t("Arguments kept:"), " ",
                if (length(keep)) shiny::code(paste(keep, collapse = ", ")) else t("(none)")),
       if (length(moved)) shiny::p(t("To the report's data: steps:"), " ",
                                   shiny::code(paste(moved, collapse = ", "))),
+      if (!is.na(set)) shiny::p(sprintf(
+        t("Analysis set %s: the report's data: population, whose subjects the program keeps (no join step)."),
+        set)),
       if (length(to_pop)) shiny::p(t("To the report's population:"), " ", shiny::code(to_pop)),
       if (length(from_pop)) shiny::p(t("From the report's population:"), " ", shiny::code(from_pop)),
       shiny::p(t("Arguments dropped:"), " ",
@@ -816,6 +828,16 @@
       !.tpl_own_data(to_prm) && "population" %in% names(.tpl_shown(to_prm)) &&
       is.null(tp$args$population) && length(pid) && !is.na(pid[1L]) && nzchar(pid[1L])
   }
+  # (to a template whose data stage is the report's (a KM type) that shows
+  # no `population`: the report's analysis set written on its data -- the
+  # report's set, else the old template's `population` argument; NA none.
+  # Its subjects the program keeps: no join step of it, canon 11-15)
+  tpl_switch_set <- function(tp, to_prm, id) {
+    if (!.tpl_own_data(to_prm) || "population" %in% names(.tpl_shown(to_prm))) return(NA_character_)
+    pid <- .o_population(rv$p$spec$outputs[[id]])
+    if (is.na(pid)) pid <- as.character(tp$args$population %||% NA_character_)[1L]
+    if (is.na(pid) || !nzchar(pid)) NA_character_ else pid
+  }
   shiny::observeEvent(input$tpl_switch_cancel, tpl_ver(tpl_ver() + 1L))
   shiny::observeEvent(input$tpl_switch_ok, {
     shiny::removeModal()
@@ -832,10 +854,12 @@
       args$population <- as.character(rv$p$spec$outputs[[id]]$common$population)[1L]
     }
     # (to a KM type: the old template's data stage -- its dataset, its
-    # parameter, the report's analysis set -- becomes the report's `data:`
-    # steps, written with the template in one go; steps of the report's
-    # own that say a parameter are kept)
+    # parameter -- becomes the report's `data:` steps, and the report's
+    # analysis set the data's `population:` (no join step of it, no
+    # `common:`), written with the template in one go; steps of the
+    # report's own that say a parameter are kept)
     steps <- NULL
+    set <- tpl_switch_set(tp, to_prm, id)
     if (.tpl_own_data(to_prm)) {
       have <- rv$p$spec$outputs[[id]]$data$steps
       f <- .tpl_steps_fields(have)
@@ -848,10 +872,10 @@
           return(notify(sprintf(t("%s takes the report's data: fill in param (the PARAMCD) first."), to),
                         "warning"))
         }
-        steps <- .tpl_steps_from(ds, tpl_data_pop(id), par)
+        steps <- .tpl_steps_from(ds, NULL, par)
       }
     }
-    tpl_write(id, args, name = to, steps = steps)
+    tpl_write(id, args, name = to, steps = steps, population = if (!is.na(set)) set)
   })
   # the card drawn: "Loading ..." taken away when it is the report opened,
   # and a new template report's preview started after it

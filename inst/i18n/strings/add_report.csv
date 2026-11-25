@@ -34,6 +34,7 @@
 "The steps written","書き込まれた手順"
 "Choose the dataset.","データセットを選んでください。"
 "To the report's data: steps:","帳票の data: の手順へ:"
+"Analysis set %s: the report's data: population, whose subjects the program keeps (no join step).","解析対象集団 %s: 帳票の data: の population に書きます。プログラムがその被験者だけを残します（join の手順は書きません）。"
 "To the report's population:","帳票の population へ:"
 "From the report's population:","帳票の population から:"
 "%s takes the report's data: fill in param (the PARAMCD) first.","%s は帳票のデータを使います。先に param（PARAMCD）を入れてください。"
