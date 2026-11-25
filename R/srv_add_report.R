@@ -400,7 +400,7 @@
     shiny::div(
       class = "border rounded p-2 mb-2",
       shiny::h6(t("Data (the report's data: steps)")),
-      if (!is.null(.tpl_params(nm)[["population"]])) tpl_pop_widget(nm),
+      if (.tpl_asks_report_pop(.tpl_params(nm))) tpl_pop_widget(nm),
       shiny::div(
         class = "d-flex flex-wrap gap-2",
         shiny::div(style = "flex: 1 1 140px",

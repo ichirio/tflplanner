@@ -1289,11 +1289,12 @@
 
 # Whether the add-report dialog asks the report's analysis set for a
 # template: one whose set is the report's population (demog, required), or
-# one whose data stage is the report's own (a KM type) with a `population`
-# in it (may be left out).  The same control for both, the study's
-# populations only; written as the report's set, not as an argument (#868)
+# one whose data stage is the report's own (a KM type) with its `population`
+# hidden in it (may be left out; a shown one is an argument, asked in its
+# own field).  The same control for both, the study's populations only;
+# written as the report's set, not as an argument (#868)
 .tpl_asks_report_pop <- function(prm) {
-  .tpl_pop_of_report(prm) || (.tpl_own_data(prm) && !is.null(prm[["population"]]))
+  .tpl_pop_of_report(prm) || (.tpl_own_data(prm) && isTRUE(prm[["population"]]$hidden))
 }
 
 # A report's `data:` steps as the card's fields say them: the dataset

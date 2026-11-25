@@ -89,6 +89,13 @@ test_that("a KM type's analysis set is asked as the report's set, not an argumen
   expect_null(attr(b, "population"))
 })
 
+test_that("a report's own data stage asks the report's set only when its `population` is hidden: a shown one is an argument, its own field (#868)", {
+  own <- list(data = list(name = "data", hidden = TRUE, step = "data"))
+  expect_true(.tpl_asks_report_pop(c(own, list(population = list(name = "population", hidden = TRUE, step = "data")))))
+  expect_false(.tpl_asks_report_pop(c(own, list(population = list(name = "population", step = "data")))))
+  expect_false(.tpl_asks_report_pop(own))
+})
+
 test_that("a report's analysis set is read and set where its file has it: the data map's, else common: (#868)", {
   o <- list(data = list(population = "SAF", steps = list(list(step = "read", dataset = "ADTTE"))))
   expect_identical(.o_population(o), "SAF")
