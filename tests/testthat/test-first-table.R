@@ -624,9 +624,11 @@ test_that("a template figure has no population flag: a forest's analysis data is
       ad <- ard_rows(rv$p, "analysis_data", "F-HR")
       ad[!is.na(ad$from) & ad$from == "ADTTE", c("data_id", "population_id")]
     }
-    # no set on the report: the template's own is kept
+    # no set on the report: the design, but no analyses (a template's
+    # default is a flag, not a set of the study)
     session$setInputs(pd_start = 1)
-    expect_identical(tte()$population_id, "FASFL")
+    expect_true(length(fig_design(rv$p, "F-HR")$layers) > 0L)
+    expect_false(any(ard_rows(rv$p, "analysis_data", "F-HR")$from %in% "ADTTE"))
     # the report's set: the analysis data's, and its name
     rv$p <- set_report_population(rv$p, "F-HR", "ITT")
     session$setInputs(pd_start = 2)

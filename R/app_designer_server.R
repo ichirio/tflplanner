@@ -345,16 +345,20 @@
     an <- attr(d, "analyses")
     id <- current()
     if (!is.null(an) && !is.null(id)) {
-      # (the analysis data's set is the report's: none, the template's is kept)
+      # (the analysis data's set is the report's; a report with none gets no
+      # analyses: a template's default is a flag, not a set of the study)
       pop <- report_pop()
+      if (is.null(pop)) {
+        notify(sprintf(
+          t("%s has no analysis set, so the analyses its figure needs are not written: give the report its set, then apply the template again."),
+          id), "warning")
+        return()
+      }
       p2 <- guarded(set_fig_own_analyses(rv$p, id, an, population_id = pop))
       if (!is.null(p2)) {
         rv$p <- p2
         notify(sprintf(t("Added analyses %s to step %s (remove them there if not wanted): update the ARD, then Preview."),
                        paste(attr(p2, "written"), collapse = ", "), .step_no("ard")))
-        if (is.null(pop)) notify(sprintf(
-          t("%s has no analysis set: choose the report's set in step %s, then apply the template again."),
-          id, .step_no("data")), "warning")
       }
     }
   }
