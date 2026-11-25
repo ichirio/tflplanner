@@ -947,12 +947,19 @@ test_that("the dialog's set control gives the report's set alone, never an argum
   # (required by the template: no set, no Create)
   b <- .tpl_dialog_args(prm, list(population = "", param = "PFS"))
   expect_identical(attr(b, "missing"), "population")
-  # (a template with no `population`: the report's set alone, optional)
+  # (tflspec_v1/forest_hr: a tflspec before A2-2 declares no `population`
+  # -- a bare one then, optional, the report's set alone; A2-2 declares it
+  # as a parameter -- the setter writes the argument too.  Either way the
+  # dialog gives the set alone, optional)
   v1 <- "tflspec_v1/forest_hr"
   skip_if_not(v1 %in% .tpl_list("figure")$name)
   p1 <- .tpl_params(v1)
-  expect_null(p1$population)
-  expect_identical(.tpl_pop_param(p1)$name, "population")
+  if (is.null(p1$population)) {
+    expect_identical(.tpl_pop_param(p1)$name, "population")
+    expect_false(.tpl_pop_is_arg(p1))
+  } else {
+    expect_true(.tpl_pop_is_arg(p1))
+  }
   expect_false(isTRUE(.tpl_pop_param(p1)$required))
   c1 <- .tpl_dialog_args(p1, list(population = "SAF", by = "TRT01A"))
   expect_null(attr(c1, "missing"))
@@ -961,6 +968,64 @@ test_that("the dialog's set control gives the report's set alone, never an argum
   d1 <- .tpl_dialog_args(p1, list(population = "", by = "TRT01A"))
   expect_null(attr(d1, "missing"))
   expect_null(attr(d1, "population"))
+})
+
+test_that("tflspec_v1's forest_hr, km_simple and km_cards made in the dialog with a set: the set on the report's data, and its `population` argument where the template declares one; the report resolves on that set (review H4)", {
+  skip_on_cran()
+  id <- sample_for_add("H4V")
+  shown <- watch_add()
+  shiny::testServer(server_for(id), {
+    rv <- session$userData$rv
+    want <- c(`H4-1` = "tflspec_v1/forest_hr", `H4-2` = "tflspec_v1/km_simple", `H4-3` = "tflspec_v1/km_cards")
+    want <- want[want %in% .tpl_list("figure")$name]
+    skip_if(!length(want), "this tflspec has no tflspec_v1 figure template")
+    for (i in seq_along(want)) {
+      nm <- want[[i]]
+      part <- .tpl_id_part(nm)
+      ins <- list(add = i, modal_type = "figure", modal_how = "template", modal_tpl_figure = nm,
+                  modal_id = names(want)[i], modal_desc = "", modal_section = "")
+      ins[[sprintf("mtpl_%s__by", part)]] <- "TRT01A"
+      if (!is.null(.tpl_params(nm)$param)) ins[[sprintf("mtpl_%s__param", part)]] <- "TTSKIN"
+      ins[[sprintf("mtpl_%s__population", part)]] <- "SAF"
+      do.call(session$setInputs, ins)
+      suppressWarnings(suppressMessages(session$setInputs(add_ok = i)))
+      rid <- paste0("F-", names(want)[i])
+      o <- rv$p$spec$outputs[[rid]]
+      expect_false(is.null(o), info = nm)
+      # (the report's set: the data's `population:`, no common:, no join step)
+      expect_identical(o$data$population, "SAF", info = nm)
+      expect_null(o$common$population, info = nm)
+      txt <- paste(rv$p$spec$text[[sprintf("spec/outputs/%s.yml", rid)]], collapse = "\n")
+      expect_false(grepl("common:", txt, fixed = TRUE), info = nm)
+      expect_false(grepl("join", txt, fixed = TRUE), info = nm)
+      # (the template's `population` argument, the same set, where it declares one)
+      if (.tpl_pop_is_arg(.tpl_params(nm))) {
+        expect_identical(.tpl_of(rv$p, rid)$args$population, "SAF", info = nm)
+      } else {
+        expect_null(.tpl_of(rv$p, rid)$args$population, info = nm)
+      }
+      toc <- Filter(function(e) identical(e$id, rid), rv$p$spec$study$toc$outputs)
+      expect_identical(toc[[1L]]$population, "SAF", info = nm)
+      expect_identical(add_row(rv$p, rid)$population, "SAF", info = nm)
+    }
+    # the resolve is tflspec's: a tflspec whose tflspec_v1 figures declare
+    # `population` (A2-2) builds them on the report's set
+    skip_if_not(all(vapply(want, function(nm) !is.null(.tpl_params(nm)$population), NA)),
+                "this tflspec's tflspec_v1 figures declare no `population` (tflspec A2-2): the resolve is not checked")
+    pops_in <- function(x) {
+      if (!is.list(x)) return(character())
+      own <- if (!is.null(names(x)) && is.character(x[["population"]])) x[["population"]] else character()
+      c(own, unlist(lapply(unname(x), pops_in)))
+    }
+    sp <- .code_spec(rv$p)
+    for (i in seq_along(want)) {
+      rid <- paste0("F-", names(want)[i])
+      r <- tflspec::tfl_resolve_output(sp$outputs[[rid]], sp$study)
+      got <- unique(pops_in(r))
+      expect_true("SAF" %in% got, info = want[[i]])
+      expect_identical(setdiff(got, "SAF"), character(), info = want[[i]])
+    }
+  })
 })
 
 test_that("forest_hr made in the dialog, then its set changed in step 1: its data's set and its `population` argument agree after each (review H5)", {
