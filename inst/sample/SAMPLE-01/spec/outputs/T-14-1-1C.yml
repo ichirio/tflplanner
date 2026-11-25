@@ -154,11 +154,6 @@ content:
       max_rows: 30
       split: group_safe
 page:
-  titles:
-    '1':
-      center: Table 14.1.1
-    '2':
-      center: Demographic Characteristics
   footnotes:
     '1':
       left: SD = Standard Deviation.

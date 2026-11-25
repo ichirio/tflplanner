@@ -37,11 +37,6 @@ template:
       Min, Max: '{min}, {max}'
     max_rows: 30
 page:
-  titles:
-    '1':
-      center: Table 14.1.1
-    '2':
-      center: Demographic Characteristics
   footnotes:
     '1':
       left: SD = Standard Deviation.

@@ -458,7 +458,10 @@ run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE, data = FALSE,
   # home so an app opened later finds it (live_runs.R)
   px <- processx::process$new(
     file.path(R.home("bin"), "Rscript"),
-    c(prog, if (!code) "--no-code", if (isTRUE(data)) "--data", only,
+    # the run's R reads neither the user's .Rprofile nor .Renviron (B2, the
+    # user's decision 2026-11-24): its library paths are this R's (R_LIBS)
+    c("--no-init-file", "--no-environ", prog,
+      if (!code) "--no-code", if (isTRUE(data)) "--data", only,
       if (length(exclude)) paste0("--exclude=", .batch_exclude(study$planner, exclude)),
       if (length(batch)) c("--batch", batch)),
     wd = study$path,
