@@ -344,4 +344,4 @@
   }
   list(p = p, notice = notice)
 }
-.adam_levels_dropped_msg <- "The ADaM levels setting changed. Choose a file in [Data] -> [ADaM levels] and apply it."
+.adam_levels_dropped_msg <- "The ADaM levels setting changed. Choose a file in [Data] -> [ADaM pre-processing] and apply it."

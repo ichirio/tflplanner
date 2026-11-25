@@ -17,10 +17,10 @@
 # visibly as the issues are closed.
 
 .walk_skips <- data.frame(
-  what = c("plan_cells"),
-  arg = c("notes"),
-  step = c("read"),
-  issue = c("tflplanner#818"),
+  what = character(),
+  arg = character(),
+  step = character(),
+  issue = character(),
   stringsAsFactors = FALSE)
 
 # the issue a case is skipped for (NA: none)
