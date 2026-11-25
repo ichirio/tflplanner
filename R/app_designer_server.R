@@ -158,6 +158,8 @@
 
   # ---- starting: a template, filled in for the study's data --------------
   templates <- tflspec::tfl_fig_templates()
+  # (each listed by the line the new report's dialog gives it)
+  templates$label <- .fig_template_label(templates$template, templates$label)
   # the catalog's datasets whose file is there
   data_present <- function() {
     d <- catalog()

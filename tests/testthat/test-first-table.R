@@ -244,6 +244,23 @@ test_that("a template says whether the study's data can draw it", {
   expect_identical(.fig_template_choices(tp3, c("ADSL", "ADAE"), w, current = "sw")$first, "sw")
   expect_identical(.fig_template_choices(tp3, c("ADSL", "ADAE"), w, current = "km")$first, "ae")
   expect_identical(.fig_template_choices(tp3, c("ADSL", "ADAE"), w, current = "gone")$first, "ae")
+  # the headings in the app's language (#864)
+  wj <- w
+  wj$label <- function(x) tr(x, "ja")
+  tp4 <- tp
+  tp4$category <- c("Efficacy: time to event", "Safety")
+  expect_identical(names(.fig_template_choices(tp4, c("ADSL", "ADAE"), wj)$choices)[1:2],
+                   tr(c("Efficacy: time to event", "Safety"), "ja"))
+  expect_false(identical(tr("Efficacy: time to event", "ja"), "Efficacy: time to event"))
+  # a template's line: the new report's dialog's for the same name (a series
+  # template's label first, the app's own next), else its own label (#864)
+  ser <- data.frame(name = c("s1/forest_hr", "s1/demog"), kind = c("figure", "table"),
+                    label = c("Forest plot, hazard ratio by subgroup", "Demog"))
+  lab <- .fig_template_label(c("forest_hr", "mean_se", "demog", "zz"),
+                             c("Forest: own", "Mean SE", "Demog own", "ZZ"), ser)
+  expect_identical(lab, c("Forest plot, hazard ratio by subgroup", .tpl_desc_of("mean_se", ser),
+                          .tpl_desc_of("demog", ser), "ZZ"))
+  expect_false(identical(tr(lab[1L], "ja"), lab[1L]))
   # a tflspec without the columns: grouped by kind, nothing greyed
   tc2 <- .fig_template_choices(tp[c("template", "kind", "label")], character(), w)
   expect_identical(names(tc2$choices)[1:2], c("km", "ae_dot"))

@@ -137,6 +137,8 @@
   lab <- paste0(words$label(templates$label),
                 ifelse(is.na(dat), "", paste0("  \u00b7 ", dat)),
                 ifelse(ok, "", paste0("  \u2014 ", words$missing)))
+  # (the categories are tflspec's words: in the app's language)
+  cat <- words$label(cat)
   ch <- split(stats::setNames(templates$template, lab),
               factor(cat, levels = unique(cat)))
   ch <- lapply(ch, as.list)
@@ -153,6 +155,20 @@
   if (length(own)) best <- own[1L]
   list(choices = ch, off = templates$template[!ok],
        first = if (is.na(best)) "" else templates$template[best])
+}
+
+# A figure template's line in the designer's list: the one the new report's
+# dialog shows for the template of the same name -- a series template
+# ("<series>/<name>") first, then the app's own line (.tpl_desc_of()) --
+# else the figure template's own label.  English; the list translates it.
+.fig_template_label <- function(template, label, series = .tpl_series_templates()) {
+  fig <- series[series$kind %in% "figure", , drop = FALSE]
+  vapply(seq_along(template), function(i) {
+    nm <- c(fig$name[sub("^.*/", "", fig$name) == template[i]], template[i])
+    d <- vapply(nm, .tpl_desc_of, "", series = series)
+    d <- d[nzchar(d)]
+    if (length(d)) d[[1L]] else label[i]
+  }, "", USE.NAMES = FALSE)
 }
 
 # the value an input gives, as a field: NULL = not set (the default)
