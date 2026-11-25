@@ -351,6 +351,14 @@ test_that("a template listing: its data card writes the dataset's steps, keeps a
     rv$p <- .spec_set_output(rv$p, "L-ZZ-7", o)
     f <- .tpl_steps_fields(steps())
     expect_true(f$join)
+    # (the card's two helpers are functions of the server's environment, not of this one)
+    srv_fn <- function(name) {
+      env <- Filter(function(e) is.environment(e) && exists(name, envir = e),
+                    lapply(session$userData, function(x) if (is.function(x)) environment(x) else x))
+      get(name, envir = env[[1L]])
+    }
+    tpl_data_pop_choices <- srv_fn("tpl_data_pop_choices")
+    tpl_data_pop_sel <- srv_fn("tpl_data_pop_sel")
     ch <- tpl_data_pop_choices("L-ZZ-7", f)
     expect_true(".own" %in% ch)
     expect_false(any(startsWith(unname(ch), "flag:")))
