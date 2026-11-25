@@ -242,13 +242,14 @@ setup_code <- function(study_id = NA, standards = company_standards()) {
   .setup_catalog_used(s, x)
 }
 
-# The datasets the study's reports use (their analyses, populations,
+# The datasets the study's reports use (their analyses, populations --
+# a report's own set too: a figure's program makes its subjects from it --
 # listings' data, figures' reads and code steps' registers), upper case.
 .reports_datasets <- function(x) {
   po <- x$ard$populations
   ad <- .adata_rows(x)
   l <- x$lf$listings
-  pops <- unique(c(x$ard$analyses$population_id, l$population_id))
+  pops <- unique(c(x$ard$analyses$population_id, l$population_id, x$outputs$population))
   ids <- unique(c(x$ard$analyses$data, x$ard$analyses$denominator, l$data))
   ds <- c(unlist(lapply(x$outputs$output_id, function(id)
             tryCatch(.report_datasets(x, id), error = function(e) character()))),
