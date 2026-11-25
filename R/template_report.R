@@ -1116,8 +1116,7 @@
   if (is.null(tp)) return(character())
   miss <- .tpl_missing(tp$name, tp$args, p$spec$study)
   if (.tpl_pop_of_report(.tpl_params(tp$name))) {
-    pid <- as.character(p$spec$outputs[[output_id]]$common$population %||% "")[1L]
-    if (is.na(pid) || !nzchar(pid)) miss <- c("population", miss)
+    if (is.na(.o_population(p$spec$outputs[[output_id]]))) miss <- c("population", miss)
   }
   if (!length(miss)) {
     rule <- .tpl_rule_missing(p, output_id)
@@ -1376,9 +1375,9 @@
   if (!is.null(name)) o$template$name <- name
   prm <- .tpl_params(o$template$name)
   args <- args[c(intersect(names(prm), names(args)), setdiff(names(args), names(prm)))]
-  # (the report's set written where its file has it -- a KM type's data map
-  # kept by a switch to the layout `km`, else `common:` -- never a second
-  # value beside it, .o_set_population(); #868)
+  # (the report's set written where the report's set lives -- a figure's
+  # data `population:` (canon 11-15), a data map's, else `common:` -- never
+  # a second value beside it, .o_set_population(); #868)
   if (!is.null(args$population)) o <- .o_set_population(o, as.character(args$population))
   # (a template whose analysis set is the report's population (demog) holds
   # it in `common:`, not in its arguments)
@@ -1737,12 +1736,13 @@ $(document).on('shiny:connected', function() {
 }
 
 # A template report's analysis set, for its data step (#751 item 6): the
-# report's own (`common: population`) and the analysis data the template
+# report's own (.o_population(): a figure's data `population:`, else
+# `common: population`) and the analysis data the template
 # makes with the population each has as tflspec resolves it (a template
 # row's own, else the report's) -- a data frame id, from, population; NULL
 # rows when it cannot be resolved
 .tpl_pop_view <- function(p, output_id) {
-  pid <- as.character(p$spec$outputs[[output_id]]$common$population %||% NA_character_)[1L]
+  pid <- .o_population(p$spec$outputs[[output_id]])
   ad <- .tpl_resolved(p, output_id)$ard$analysis_data
   rows <- if (length(ad)) data.frame(
     id = vapply(ad, function(x) as.character(x$id %||% NA_character_)[1L], ""),
@@ -1760,7 +1760,7 @@ $(document).on('shiny:connected', function() {
     class = "small mb-2",
     shiny::div(class = "mb-1",
                with_tip(shiny::span(shiny::strong(t("Analysis set (population)")), ": ", shiny::code(pop)),
-                        t("The report's analysis set (common: population), set on the report list. The template's analysis data read it unless their own row names one."))),
+                        t("The report's analysis set (its population:), set on the report list. The template's analysis data read it unless their own row names one."))),
     if (NROW(pv$rows)) shiny::tags$table(
       class = "table table-sm small mb-0",
       shiny::tags$thead(shiny::tags$tr(

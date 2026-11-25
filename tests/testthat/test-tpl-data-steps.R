@@ -114,6 +114,28 @@ test_that("a report's analysis set is read and set where its file has it: the da
   expect_identical(.o_population(t1), "SAF")
   expect_null(.o_set_population(t1, "")$common)
   expect_true(is.na(.o_population(list())))
+  # (a figure: its set on its data always, a map made for it -- canon 11-15)
+  f1 <- .o_set_population(list(id = "F-1", kind = "figure", common = list(), data = NULL), "SAF")
+  expect_identical(f1$data, list(population = "SAF"))
+  expect_null(f1$common)
+  expect_identical(names(f1), c("id", "kind", "data"))
+  expect_identical(.o_population(f1), "SAF")
+  f0 <- .o_set_population(f1, NA_character_)
+  expect_null(f0$data)
+  expect_true(is.na(.o_population(f0)))
+  # (an old figure: its set in `common:`, its steps with the set's join --
+  # read as it is; set again, the set goes on the data, `common:` out)
+  old <- list(id = "F-2", kind = "figure", common = list(population = "SAF"),
+              data = list(steps = .tpl_steps_from("ADTTE", list(dataset = "ADSL", where = "SAFFL == \"Y\""))))
+  expect_identical(.o_population(old), "SAF")
+  o4 <- .o_set_population(old, "SAF")
+  expect_identical(names(o4$data), c("population", "steps"))
+  expect_identical(o4$data$steps, old$data$steps)
+  expect_null(o4$common)
+  # (a table with no data map: `common:` still -- S1's move, not this rule)
+  t2 <- .o_set_population(list(id = "T-1", kind = "table"), "SAF")
+  expect_identical(t2$common$population, "SAF")
+  expect_null(t2$data)
 })
 
 test_that("a template's `population` argument is the report's set where its file has it: no second value beside it (#868)", {
@@ -127,9 +149,11 @@ test_that("a template's `population` argument is the report's set where its file
   expect_null(o$common$population)
   expect_identical(.o_population(o), "ITT")
   expect_identical(o$template$args$population, "ITT")
-  # (no data map: `common:` as before)
+  # (a figure with no data map: its set on its data still, canon 11-15)
   p$spec$outputs[["F-1"]]$data <- NULL
-  expect_identical(.tpl_output(p, "F-1", list(population = "ITT"))$common$population, "ITT")
+  o2 <- .tpl_output(p, "F-1", list(population = "ITT"))
+  expect_identical(o2$data$population, "ITT")
+  expect_null(o2$common$population)
 })
 
 test_that("a report's analysis set changed on the card is its toc line's too", {

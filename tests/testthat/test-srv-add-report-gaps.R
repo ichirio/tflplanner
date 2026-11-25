@@ -747,6 +747,39 @@ test_that("a KM template in the dialog: the report's set is the table's control,
   })
 })
 
+test_that("Create for a figure template with a shown `population`: the set on the report's data, not in common: (canon 11-15)", {
+  skip_if_not("mean_se" %in% tflspec::tfl_templates()$name)
+  id <- sample_for_add("FGP")
+  shown <- watch_add()
+  shiny::testServer(server_for(id), {
+    rv <- session$userData$rv
+    prm <- .tpl_params("mean_se")
+    skip_if(is.null(prm$population) || isTRUE(prm$population$hidden), "mean_se shows no population")
+    session$setInputs(add = 1, modal_type = "figure", modal_how = "template", modal_tpl_figure = "mean_se",
+                      modal_id = "FP-1", modal_desc = "", modal_section = "",
+                      mtpl_mean_se__param = "SYSBP", mtpl_mean_se__population = "SAF")
+    suppressWarnings(suppressMessages(session$setInputs(add_ok = 1)))
+    o <- rv$p$spec$outputs[["F-FP-1"]]
+    expect_false(is.null(o))
+    expect_identical(o$data$population, "SAF")
+    expect_null(o$common$population)
+    expect_identical(.o_population(o), "SAF")
+    txt <- paste(rv$p$spec$text[["spec/outputs/F-FP-1.yml"]], collapse = "\n")
+    expect_false(grepl("common:", txt, fixed = TRUE))
+    expect_false(grepl("join", txt, fixed = TRUE))
+    toc <- Filter(function(e) identical(e$id, "F-FP-1"), rv$p$spec$study$toc$outputs)
+    expect_identical(toc[[1L]]$population, "SAF")
+    # (a table's set stays in `common:` -- not this rule's)
+    session$setInputs(add = 2, modal_type = "table", modal_how = "template", modal_tpl_table = "demog",
+                      modal_id = "FP-2", modal_desc = "", modal_section = "",
+                      mtpl_demog__population = "SAF", mtpl_demog__by = "TRT01A",
+                      mtpl_demog__continuous = "AGE")
+    suppressMessages(session$setInputs(add_ok = 2))
+    expect_identical(rv$p$spec$outputs[["T-FP-2"]]$common$population, "SAF")
+    expect_null(rv$p$spec$outputs[["T-FP-2"]]$data$population)
+  })
+})
+
 test_that("a switch to a KM type writes no join: the report's set goes on its data, the dialog says so (canon 11-15)", {
   skip_if_not("km_survival" %in% tflspec::tfl_templates()$name)
   id <- sample_for_add("KMS")

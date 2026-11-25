@@ -11,14 +11,20 @@
   v <- as.character(v %||% NA_character_)[1L]
   if (is.na(v) || !nzchar(v)) NA_character_ else v
 }
-# A report's analysis set set (NA: taken out): on its data map when it has
-# one (no `common:` beside it), else `common: population` -- the empty
-# `common:` taken out
+# A report's analysis set set (NA: taken out): on its data map -- a
+# figure's always (canon 11-15: a figure's subjects are its report's set,
+# its data's `population:`), any report's that has a data map -- with no
+# `common:` beside it; else (a table or listing with no data map, or data
+# entries) `common: population`.  The empty `common:` and data map taken out
 .o_set_population <- function(o, population) {
   has <- length(population) && !is.na(population[1L]) && nzchar(population[1L])
   d <- o$data
-  if (is.list(d) && !is.null(names(d))) {
-    o$data$population <- if (has) population[1L]
+  map <- is.list(d) && !is.null(names(d))
+  if (map || (identical(o$kind, "figure") && !length(d))) {
+    # (the set first in the map, as the YAML reads it; `data` kept in its place)
+    rest <- if (map) d[setdiff(names(d), "population")] else list()
+    dd <- c(if (has) list(population = population[1L]), rest)
+    o["data"] <- list(if (length(dd)) dd)
     o$common$population <- NULL
   } else {
     o$common$population <- if (has) population[1L]
@@ -596,18 +602,17 @@
     tpl_mode_send(TRUE, kind, ready = FALSE, id = id)
     tpl_pending$id <- id
     if (identical(kind, "table")) tpl_autoprev$want <- id
-    # (a KM type: its data the report's own `data:`, from the dialog -- its
-    # analysis set the data's `population:`, no `common:` and no step of it,
-    # canon 11-15; #868)
+    # (a KM type: its data the report's own `data:` steps, from the dialog.
+    # The analysis set where the report's set lives, .o_set_population(): a
+    # figure's on its data's `population:` -- no `common:` and no step of it,
+    # canon 11-15 -- a table's in `common:`; #868)
     dat <- tpl_modal_data(nm)
     pop <- as.character(attr(args, "population") %||% args$population %||% NA_character_)
     attr(args, "population") <- NULL
-    own <- if (!is.null(dat)) c(if (!is.na(pop)) list(population = pop),
-                                if (length(dat$steps)) list(steps = dat$steps))
     o <- tflspec::tfl_output(id, kind, label = if (is.na(desc)) NA_character_ else desc,
-                             common = if (is.null(dat) && !is.na(pop)) list(population = pop) else list(),
                              template = .tpl_write_args(list(name = nm), args, by_step = TRUE),
-                             data = if (length(own)) own)
+                             data = if (length(dat$steps)) list(steps = dat$steps))
+    o <- .o_set_population(o, pop)
     # (straight into the spec: its toc line and its file, the view of
     # that report alone -- .spec_add_output())
     p2 <- guarded(.spec_add_output(rv$p, o, label = desc,
@@ -823,10 +828,9 @@
   # that takes it as a shown argument, not given: the report's population
   # is carried over)
   tpl_pop_back <- function(tp, to_prm, id) {
-    pid <- rv$p$spec$outputs[[id]]$common$population
     .tpl_pop_of_report(.tpl_params(tp$name)) && !.tpl_pop_of_report(to_prm) &&
       !.tpl_own_data(to_prm) && "population" %in% names(.tpl_shown(to_prm)) &&
-      is.null(tp$args$population) && length(pid) && !is.na(pid[1L]) && nzchar(pid[1L])
+      is.null(tp$args$population) && !is.na(.o_population(rv$p$spec$outputs[[id]]))
   }
   # (to a template whose data stage is the report's (a KM type) that shows
   # no `population`: the report's analysis set written on its data -- the
@@ -851,7 +855,7 @@
     # (back from a template that takes the report's population: the
     # population an argument again)
     if (tpl_pop_back(tp, to_prm, id)) {
-      args$population <- as.character(rv$p$spec$outputs[[id]]$common$population)[1L]
+      args$population <- .o_population(rv$p$spec$outputs[[id]])
     }
     # (to a KM type: the old template's data stage -- its dataset, its
     # parameter -- becomes the report's `data:` steps, and the report's
@@ -1076,7 +1080,7 @@
     # the data step, written as the report's `population:`)
     pop_of_report <- part %in% c("data", "head") && .tpl_pop_of_report(prm_all)
     if (pop_of_report) {
-      pid <- as.character(p$spec$outputs[[id]]$common$population %||% "")[1L]
+      pid <- .o_population(p$spec$outputs[[id]])
       if (is.na(pid)) pid <- ""
       if (!nzchar(pid)) {
         miss <- c("population", miss)
