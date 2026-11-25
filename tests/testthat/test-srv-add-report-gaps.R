@@ -711,8 +711,11 @@ test_that("the dialog has one control for the report's set on every figure templ
       expect_equal(lengths(regmatches(h, gregexpr(sel, h, fixed = TRUE))), 1L, info = nm)
       # (the set control, not an argument: no field headed "(population)")
       expect_false(grepl("Analysis set (population)", h, fixed = TRUE), info = nm)
-      # (the flags note is no line under it; it is in the (?) of the control)
-      expect_false(grepl('class="small text-muted mt-n2"', h, fixed = TRUE), info = nm)
+      # (the flags note is no line under it; it is in the (?) of the control.
+      # The dialog's own small lines -- the report type's note, .type_notes --
+      # are not it: no small text-muted line says the flags)
+      lines <- regmatches(h, gregexpr('(?s)<p class="small text-muted[^"]*">.*?</p>', h, perl = TRUE))[[1L]]
+      expect_false(any(grepl("Y/N flags", lines, fixed = TRUE)), info = nm)
       if (length(fl)) {
         expect_match(h, "is registered as a study population (spec/data.yml populations) first", fixed = TRUE)
       }
