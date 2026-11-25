@@ -83,6 +83,26 @@ test_that("a design is drawn on the study's data, as its program saves it", {
   expect_true(any(grepl("NOVAR", r$problems$problem)))
 })
 
+test_that("a figure's preview keeps its report's analysis set's subjects, as its program does", {
+  p <- add_output(new_planner(), "F1", type = "figure")
+  p$ard$populations <- .normalize_ard_sheet(data.frame(
+    population_id = c("SAF", "BAD"), dataset = "ADSL",
+    where = c("SAFFL == \"Y\"", "NOSUCH == 1")), "populations")
+  data <- list(
+    ADSL = data.frame(USUBJID = c("A", "B", "C"), SAFFL = c("Y", "N", "Y"), TRT01A = "P"),
+    ADTTE = data.frame(USUBJID = c("A", "A", "B", "C"), PARAMCD = "OS", AVAL = 1:4))
+  st <- list(planner = p, path = tempdir())
+  # no set: the data as it is
+  expect_identical(.report_subjects_data(st, "F1", data), data)
+  st$planner$outputs$population <- "SAF"
+  kept <- .report_subjects_data(st, "F1", data)
+  expect_identical(kept$ADSL$USUBJID, c("A", "C"))
+  expect_identical(kept$ADTTE$USUBJID, c("A", "A", "C"))
+  # a set whose condition does not evaluate: the data as it is (its check says why)
+  st$planner$outputs$population <- "BAD"
+  expect_identical(.report_subjects_data(st, "F1", data), data)
+})
+
 test_that("presets are kept with the company standards, and start a design", {
   home <- withr_tempdir()
   old <- options(tflplanner.home = home)

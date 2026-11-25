@@ -378,6 +378,32 @@ preview_figure <- function(study, output_id,
   .preview_figure(study, output_id, design, max_px)
 }
 
+# The study's data `data` (a list by dataset name) kept to the subjects of
+# the report's analysis set (report_population(): the report's data
+# `population:`), as the report's program keeps them -- each dataset with
+# USUBJID; the set's rows by its `where` on its dataset.  No set, a set the
+# populations sheet has not, or a `where` that does not evaluate: `data` as
+# it is.
+.report_subjects_data <- function(study, output_id, data) {
+  pop <- report_population(study$planner, output_id)
+  po <- study$planner$ard$populations
+  k <- if (!is.na(pop) && !is.null(po)) match(pop, po$population_id) else NA_integer_
+  if (is.na(k)) return(data)
+  d0 <- po$dataset[k]
+  ds <- if (.is_blank(d0)) "ADSL" else toupper(d0)
+  base <- data[[ds]] %||% .study_data(study, ds)[[ds]]
+  if (is.null(base) || !"USUBJID" %in% names(base)) return(data)
+  w <- po$where[k]
+  keep <- if (.is_blank(w)) rep(TRUE, nrow(base)) else
+    tryCatch(eval(parse(text = w, keep.source = FALSE)[[1L]], base, baseenv()),
+             error = function(e) NULL)
+  if (!is.logical(keep) || length(keep) != nrow(base)) return(data)
+  ids <- unique(base$USUBJID[!is.na(keep) & keep])
+  lapply(data, function(x) {
+    if (is.data.frame(x) && "USUBJID" %in% names(x)) x[x$USUBJID %in% ids, , drop = FALSE] else x
+  })
+}
+
 # preview_figure(), with the ARD to print from given: `ard` is
 # .fig_preview_ard()'s (the app's previews: an outdated ARD made again
 # first); NULL reads the study ARD's rows as they are (.fig_ard_rows())
@@ -396,6 +422,8 @@ preview_figure <- function(study, output_id,
   ds <- .fig_design_datasets(design, output_id)
   # ADSL too: the advice counts the groups, which may be joined from it
   data <- .study_data(study, union(ds, "ADSL"))
+  # the report's analysis set's subjects, as its program keeps them
+  data <- .report_subjects_data(study, output_id, data)
   # a join of ADSL gives only what the dataset has not: a dataset that holds
   # TRT01A itself would get TRT01A.x and TRT01A.y
   rd <- Find(function(s) identical(s$step, "read"), design$data)$dataset
