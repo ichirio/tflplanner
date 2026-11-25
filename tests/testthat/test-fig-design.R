@@ -177,10 +177,9 @@ test_that("a template's defaults the data has not got are replaced by the data's
   adsl <- data.frame(USUBJID = "A", TRT01P = "Placebo", SAFFL = "Y", ITTFL = "Y")
   fit <- .template_fit(d, x, adsl)
   expect_identical(fit[["param"]], "TTDE")
-  expect_identical(fit[["pop"]], "SAFFL")       # the dataset's own flag
   expect_identical(fit[["group"]], "TRT01P")    # named: only ADSL has it
   # what the user chose stays
-  expect_length(.template_fit(d, x, adsl, given = c("param", "pop", "group")), 0L)
+  expect_length(.template_fit(d, x, adsl, given = c("param", "group")), 0L)
   # the data has the template's defaults: nothing to change
   ok <- data.frame(USUBJID = "A", PARAMCD = "OS", FASFL = "Y", TRT01P = "P")
   expect_length(.template_fit(d, ok, adsl), 0L)
@@ -206,10 +205,10 @@ test_that("the designer shows a piece's own lines of the design's code", {
   expect_true(startsWith(base[1L], "pal <- setNames("))
   expect_true(any(startsWith(base, "fig <- ggsurvfit(")))
   expect_false(any(grepl("^# ----|^library", base)))
-  # the flag: the filter line it is in
-  fl <- lines_of(list(sec = "data", i = 3L))
+  # the parameter: the filter line it is in (no population: the report's)
+  fl <- lines_of(list(sec = "data", i = 2L))
   # (its pipe on: or ending there, the time unit's block after it -- tflspec #km)
-  expect_true(startsWith(trimws(fl), "filter(PARAMCD == \"TTDE\", SAFFL == \"Y\")"))
+  expect_true(startsWith(trimws(fl), "filter(PARAMCD == \"TTDE\")"))
   fit <- .piece_code(code, d, list(sec = "data", i = length(d$data)), make)
   expect_match(fit, "^fit <- survfit2[(]")
   plot <- .piece_code(code, d, list(sec = "plot", i = 1L), make)

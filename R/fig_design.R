@@ -684,13 +684,8 @@ remove_fig_preset <- function(name, home = tflplanner_home()) {
     hit <- c(cands[cands %in% names(x)], cands[cands %in% names(adsl)])
     if (length(hit)) hit[[1L]] else NA_character_
   }
-  if (!"pop" %in% given) {
-    f <- step_of("flag")
-    v <- fit_var(if (length(f)) f[[1L]]$variable,
-                 c("FASFL", "ITTFL", "SAFFL", "EFFFL", "RANDFL",
-                   sort(grep("FL$", cols, value = TRUE))))
-    if (!is.na(v)) out[["pop"]] <- v
-  }
+  # (no population flag is fitted: a template has no flag step now -- the
+  # figure's analysis set is its report's, read from the population's dataset)
   if (!"group" %in% given) {
     g <- d$plot$colour_by %||% unlist(lapply(d$data, `[[`, "by"))[1L]
     v <- fit_var(g, c("TRT01P", "TRT01A", "TRTP", "TRTA", "ARM", "ACTARM"))

@@ -77,8 +77,6 @@ data:
       dataset: ADTTE
     - step: param
       value: TTSKIN
-    - step: flag
-      variable: SAFFL
     - step: ard_stats
       name: est
       analysis_id: HR, HR_SEX, HR_AGEGR1
