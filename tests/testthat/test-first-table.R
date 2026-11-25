@@ -667,6 +667,14 @@ test_that("a template figure has no population flag: a forest's analysis data is
     expect_identical(nrow(pr0), 1L)
     expect_match(pr0$problem, "analysis set|解析対象集団")
     expect_match(pr0$problem, "1")
+    # ... and the checks list it to check, with the way to step 1, whether
+    # or not the figure could be drawn (only the picture needs a drawing)
+    draw()
+    for (h in list(output$pd_overlay$html, output$pd_checks$html)) {
+      expect_match(h, "pd_goto_data", fixed = TRUE)
+      expect_match(h, "to check", fixed = TRUE)
+      expect_match(h, sprintf("Go to step %s", .step_no("data")), fixed = TRUE)
+    }
     # the report's set, chosen in the figure's step 1 as a table's: the
     # analysis data's, and its name
     expect_match(output$fig_report_pop$html, "fig_report_pop_pick", fixed = TRUE)

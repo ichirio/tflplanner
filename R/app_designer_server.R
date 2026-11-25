@@ -576,11 +576,30 @@
     s$planner <- rv$p
     .fig_problems_now(r, s, id, design())
   })
+  # One check's row, wherever the checks are listed (the box over the
+  # picture, the Checks under it): the report with no analysis set is an
+  # item to check, its sentence and the way to the step that has the set;
+  # NULL for another check (each list shows it its own way).  (The button
+  # sets its input itself: the two lists show it at once, and an id is
+  # one element's.)
+  check_row <- function(pr, i) {
+    if (!identical(pr$field[i], "population") || !identical(pr$part[i], "ard")) return(NULL)
+    shiny::div(
+      class = "mb-1 d-flex justify-content-between align-items-start gap-2",
+      shiny::div(shiny::span(class = "badge me-1 text-bg-warning", t("to check")), pr$problem[i]),
+      shiny::tags$button(
+        class = "btn btn-sm btn-outline-primary py-0 text-nowrap", type = "button",
+        onclick = "Shiny.setInputValue('pd_goto_data', Math.random(), {priority: 'event'})",
+        sprintf(t("Go to step %s"), .step_no("data"))))
+  }
   overlay_open <- shiny::reactiveVal(TRUE)
   shiny::observeEvent(input$pd_overlay_toggle, overlay_open(!overlay_open()))
+  # the checks and advice: whether or not the figure could be drawn (a
+  # drawing that failed has its checks too: a report with no analysis set
+  # is one); only the picture needs the drawing
   output$pd_overlay <- shiny::renderUI({
     r <- pv()
-    shiny::req(r, r$png)
+    shiny::req(r)
     a <- r$advice
     pr <- checks_now()
     n_bad <- if (is.null(pr)) 0L else nrow(pr)
@@ -603,15 +622,8 @@
     }
     items <- c(
       if (n_bad) lapply(seq_len(nrow(pr)), function(i) {
-        # the report has no analysis set: one item to check, the sentence
-        # and the way to the step that has the set
-        if (identical(pr$field[i], "population") && identical(pr$part[i], "ard")) {
-          return(shiny::div(
-            class = "mb-1 d-flex justify-content-between align-items-start gap-2",
-            shiny::div(shiny::span(class = "badge me-1 text-bg-warning", t("to check")), pr$problem[i]),
-            .btn("pd_goto_data", sprintf(t("Go to step %s"), .step_no("data")),
-                 class = "btn-sm btn-outline-primary py-0 text-nowrap")))
-        }
+        row <- check_row(pr, i)
+        if (!is.null(row)) return(row)
         shiny::div(
           class = "mb-1", badge("error"),
           shiny::span(class = "text-muted", pr$part[i], " "), pr$field[i], ": ", pr$problem[i])
@@ -1339,9 +1351,12 @@
     if (is.null(r)) return(shiny::p(class = "text-muted small", t("Not drawn yet.")))
     pr <- checks_now()
     items <- c(
-      if (!is.null(pr) && nrow(pr)) lapply(seq_len(nrow(pr)), function(i)
+      if (!is.null(pr) && nrow(pr)) lapply(seq_len(nrow(pr)), function(i) {
+        row <- check_row(pr, i)
+        if (!is.null(row)) return(shiny::tags$li(class = "list-unstyled", row))
         shiny::tags$li(class = "text-danger",
-                       shiny::strong(pr$part[i], " ", pr$field[i]), ": ", pr$problem[i])),
+                       shiny::strong(pr$part[i], " ", pr$field[i]), ": ", pr$problem[i])
+      }),
       lapply(r$warnings, function(w) shiny::tags$li(class = "text-warning", w)))
     shiny::div(
       shiny::h6(class = "mt-2", t("Checks")),
