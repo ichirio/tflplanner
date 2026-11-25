@@ -172,24 +172,16 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
 
 # programs/tfl/fig_setup.R: the study's setup, the packages the figures'
 # code uses (the designed figures': ggsurvfit for a KM ...), the figure
-# style of the company standards (tflspec), and report_content()
+# style of the company standards, and report_content() -- tflspec writes
+# it (tfl_setup_program(), G5-1b)
 .fig_setup_code <- function(p = NULL) {
-  code <- .with_study_code(tflspec::tfl_fig_setup_code(.std_fig_style()))
-  # after its banner (the comment lines it starts with)
-  at <- match(FALSE, grepl("^#", code), nomatch = length(code) + 1L) - 1L
-  rest <- utils::tail(code, length(code) - at)
-  rest <- rest[cumsum(nzchar(rest)) > 0L]
-  c(utils::head(code, at),
-    if (at) "",
-    "# the study's setup: the company's, the study's folders and id, your own",
-    .source_study_setup(),
-    "",
-    "# the packages the figures' code uses",
-    paste0("library(", .fig_setup_libs(p), ")"),
-    "",
-    rest,
-    "",
-    .report_content_fun)
+  s <- company_standards()
+  ctx <- .setup_context_args()
+  libs <- .fig_setup_libs(p)
+  tflspec::tfl_setup_program(
+    "fig_setup", standards = s[c("figure_settings", "figure_colors", "figure_markers")],
+    attached = ctx$attached, study_code = ctx$study_code, fig_libs = libs,
+    layout = study_layout())
 }
 
 # ggplot2, patchwork, dplyr, and what the study's designed figures use

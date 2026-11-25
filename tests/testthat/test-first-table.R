@@ -422,9 +422,18 @@ test_that("a new figure starts from a template the study's data can draw", {
     expect_match(h, "spec/outputs/F-AGE.yml", fixed = TRUE)
     expect_match(h, "Spec (YAML)", fixed = TRUE)
     expect_match(h, "pd_retpl")
+    # the figure keeps a level order and an ARD source outside its design
+    rv <- session$userData$rv
+    rv$p <- set_codelist(rv$p, "F-AGE", data.frame(variable = "TRT01A", value = c("A", "B")))
+    rv$p <- set_fig_ard_source(rv$p, "F-AGE", "own")
+    expect_length(.fig_replace_items(rv$p, "F-AGE"), 2L)
     # a template again: asked first, then the design is replaced
     session$setInputs(pd_retpl = 1)
     session$setInputs(pd_tpl = "", pd_retpl_ok = 1)
+    # ... and the replace clears them: the report keeps what is its own
+    expect_length(.fig_replace_items(rv$p, "F-AGE"), 0L)
+    expect_identical(.fig_ard_source(rv$p, "F-AGE")$kind, "none")
+    expect_true("F-AGE" %in% output_ids(rv$p))
     expect_length(fig_design(session$userData$rv$p, "F-AGE")$layers, 0L)
   })
 })
