@@ -790,27 +790,23 @@
   })
   shiny::observeEvent(input$tpl_preview, do_preview())
   # another template: the arguments of the same name kept, the others
-  # dropped -- said by name before; the report's own items stay
+  # dropped -- said by name before; the report's own items stay.  The
+  # report's set is no argument kept or dropped: it stays the report's,
+  # written by the one setter where the new template reads it (its data,
+  # `common:`, and its `population` argument where it takes one --
+  # .write_report_population(); review M12)
   shiny::observeEvent(input$tpl_switch, {
     id <- current()
     tp <- .tpl_of(rv$p, id %||% "")
     to <- input$tpl_switch
     if (is.null(tp) || !length(to) || !nzchar(to) || identical(to, tp$name)) return()
     to_prm <- .tpl_params(to)
-    keep <- intersect(names(tp$args), names(.tpl_shown(to_prm)))
-    # (to a KM type: the data stage goes to the report's `data:` steps, its
-    # analysis set to the data's `population:` -- the report's set, else the
-    # old `population` argument (tpl_switch_set()); an argument that is not
-    # the set is dropped)
+    keep <- tpl_switch_keep(tp, to_prm)
+    # (to a KM type: the data stage goes to the report's `data:` steps; an
+    # argument that is not the set is dropped)
     moved <- if (.tpl_own_data(to_prm)) setdiff(intersect(names(tp$args), c("data", "param")), keep)
-    set <- tpl_switch_set(tp, to_prm, id)
-    # (to a template whose analysis set is the report's population (demog):
-    # its `population` argument stays as the report's `population:`; back
-    # from one, the report's population becomes the argument)
-    to_pop <- if (.tpl_pop_of_report(to_prm)) intersect(names(tp$args), "population")
-    from_pop <- if (tpl_pop_back(tp, to_prm, id)) "population"
-    set_arg <- if (!is.na(set) && identical(as.character(tp$args$population %||% "")[1L], set)) "population"
-    drop <- setdiff(names(tp$args), c(keep, moved, to_pop, set_arg))
+    set <- tpl_switch_set(tp, id)
+    drop <- setdiff(names(tp$args), c(keep, moved, "population"))
     shiny::showModal(shiny::modalDialog(
       title = sprintf(t("Change the template to %s"), to),
       shiny::p(t("Arguments kept:"), " ",
@@ -818,10 +814,8 @@
       if (length(moved)) shiny::p(t("To the report's data: steps:"), " ",
                                   shiny::code(paste(moved, collapse = ", "))),
       if (!is.na(set)) shiny::p(sprintf(
-        t("Analysis set %s: the report's data: population, whose subjects the program keeps (no join step)."),
+        t("Analysis set %s: the report's, kept: the new template takes it where it reads the set."),
         set)),
-      if (length(to_pop)) shiny::p(t("To the report's population:"), " ", shiny::code(to_pop)),
-      if (length(from_pop)) shiny::p(t("From the report's population:"), " ", shiny::code(from_pop)),
       shiny::p(t("Arguments dropped:"), " ",
                if (length(drop)) shiny::code(paste(drop, collapse = ", ")) else t("(none)")),
       shiny::p(class = "small text-muted", t("The report's own cards are kept.")),
@@ -832,20 +826,18 @@
         .btn("tpl_switch_ok", "OK", class = "btn-primary")),
       easyClose = FALSE))
   })
-  # (from a template whose analysis set is the report's population to one
-  # that takes it as a shown argument, not given: the report's population
-  # is carried over)
-  tpl_pop_back <- function(tp, to_prm, id) {
-    .tpl_pop_of_report(.tpl_params(tp$name)) && !.tpl_pop_of_report(to_prm) &&
-      !.tpl_own_data(to_prm) && "population" %in% names(.tpl_shown(to_prm)) &&
-      is.null(tp$args$population) && !is.na(.o_population(rv$p$spec$outputs[[id]]))
+  # (the arguments of the same name the new template shows, but the set:
+  # the report's, not an argument to carry)
+  tpl_switch_keep <- function(tp, to_prm) {
+    setdiff(intersect(names(tp$args), names(.tpl_shown(to_prm))), "population")
   }
-  # (to a template whose data stage is the report's (a KM type) that shows
-  # no `population`: the report's analysis set written on its data -- the
-  # report's set, else the old template's `population` argument; NA none.
-  # Its subjects the program keeps: no join step of it, canon 11-15)
-  tpl_switch_set <- function(tp, to_prm, id) {
-    if (!.tpl_own_data(to_prm) || "population" %in% names(.tpl_shown(to_prm))) return(NA_character_)
+  # (the report's set, kept over the switch, whatever the two templates say
+  # of it: as its file says it, .o_population() -- else, an older file's,
+  # the old template's `population` argument; NA none.  The setter writes
+  # it for the new template: on a figure's data (no join step, canon 11-15),
+  # in a table's `common:`, and as its `population` argument where it takes
+  # one)
+  tpl_switch_set <- function(tp, id) {
     pid <- .o_population(rv$p$spec$outputs[[id]])
     if (is.na(pid)) pid <- as.character(tp$args$population %||% NA_character_)[1L]
     if (is.na(pid) || !nzchar(pid)) NA_character_ else pid
@@ -859,19 +851,13 @@
     if (is.null(tp) || is.null(to)) return()
     if (!tpl_copy(to)) return(tpl_ver(tpl_ver() + 1L))
     to_prm <- .tpl_params(to)
-    args <- tp$args[intersect(names(tp$args), names(.tpl_shown(to_prm)))]
-    # (back from a template that takes the report's population: the
-    # population an argument again)
-    if (tpl_pop_back(tp, to_prm, id)) {
-      args$population <- .o_population(rv$p$spec$outputs[[id]])
-    }
+    args <- tp$args[tpl_switch_keep(tp, to_prm)]
     # (to a KM type: the old template's data stage -- its dataset, its
-    # parameter -- becomes the report's `data:` steps, and the report's
-    # analysis set the data's `population:` (no join step of it, no
-    # `common:`), written with the template in one go; steps of the
-    # report's own that say a parameter are kept)
+    # parameter -- becomes the report's `data:` steps, written with the
+    # template in one go; steps of the report's own that say a parameter
+    # are kept.  The report's set: the setter's, tpl_write(population =))
     steps <- NULL
-    set <- tpl_switch_set(tp, to_prm, id)
+    set <- tpl_switch_set(tp, id)
     if (.tpl_own_data(to_prm)) {
       have <- rv$p$spec$outputs[[id]]$data$steps
       f <- .tpl_steps_fields(have)

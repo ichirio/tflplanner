@@ -276,7 +276,9 @@ test_that("a template card: an edit is written, a value just replaced is not an 
     session$setInputs(tpl_switch = to)
     dlg <- add_text(add_modal(shown))
     expect_match(dlg, "Change the template to lab_shift", fixed = TRUE)
-    expect_match(dlg, "Arguments kept: population", fixed = TRUE)
+    # (the set is no argument kept or dropped: the report's, kept -- review M12)
+    expect_match(dlg, "Analysis set SAF: the report's, kept", fixed = TRUE)
+    expect_false(grepl("Arguments kept:[^.]*population", dlg))
     expect_match(dlg, "Arguments dropped: analysis_id", fixed = TRUE)
     # (nothing is written before OK)
     expect_identical(.tpl_of(rv$p, "T-ZZ-6")$name, "shift")
@@ -284,7 +286,8 @@ test_that("a template card: an edit is written, a value just replaced is not an 
     expect_identical(.tpl_of(rv$p, "T-ZZ-6")$name, "shift")
     suppressWarnings(session$setInputs(tpl_switch_ok = 1))
     expect_identical(.tpl_of(rv$p, "T-ZZ-6")$name, to)
-    expect_identical(add_args(rv$p, "T-ZZ-6")$population, "SAF")
+    expect_identical(.tpl_of(rv$p, "T-ZZ-6")$args$population, "SAF")
+    expect_identical(.o_population(rv$p$spec$outputs[["T-ZZ-6"]]), "SAF")
     expect_null(add_args(rv$p, "T-ZZ-6")$analysis_id)
   })
 })
@@ -476,7 +479,7 @@ test_that("the dialog writes only the optional arguments changed in it: demog an
   })
 })
 
-test_that("a switch to demog keeps population as the report's population; back from demog it is the argument again", {
+test_that("a switch keeps the report's set by one rule: to demog the report's population alone, back from demog the argument again, the same set (review M12)", {
   id <- sample_for_add()
   shown <- watch_add()
   shiny::testServer(server_for(id), {
@@ -489,7 +492,7 @@ test_that("a switch to demog keeps population as the report's population; back f
     invisible(suppressMessages(output$tpl_card$html))
     session$setInputs(tpl_switch = "demog")
     dlg <- add_text(add_modal(shown))
-    expect_match(dlg, "To the report's population: population", fixed = TRUE)
+    expect_match(dlg, "Analysis set SAF: the report's, kept", fixed = TRUE)
     expect_false(grepl("Arguments dropped:[^.]*population", dlg))
     suppressWarnings(suppressMessages(session$setInputs(tpl_switch_ok = 1)))
     expect_identical(.tpl_of(rv$p, "T-ZZ-7")$name, "demog")
@@ -498,10 +501,11 @@ test_that("a switch to demog keeps population as the report's population; back f
     # (back: the report's population is the argument again)
     session$setInputs(tpl_switch = "shift")
     dlg <- add_text(add_modal(shown))
-    expect_match(dlg, "From the report's population: population", fixed = TRUE)
+    expect_match(dlg, "Analysis set SAF: the report's, kept", fixed = TRUE)
     suppressWarnings(suppressMessages(session$setInputs(tpl_switch_ok = 2)))
     expect_identical(.tpl_of(rv$p, "T-ZZ-7")$name, "shift")
-    expect_identical(add_args(rv$p, "T-ZZ-7")$population, "SAF")
+    expect_identical(.tpl_of(rv$p, "T-ZZ-7")$args$population, "SAF")
+    expect_identical(rv$p$spec$outputs[["T-ZZ-7"]]$common$population, "SAF")
   })
 })
 
@@ -813,8 +817,7 @@ test_that("a switch to a KM type writes no join: the report's set goes on its da
     session$setInputs(tpl_switch = "km_survival")
     dlg <- add_text(add_modal(shown))
     expect_match(dlg, "To the report's data: steps: param", fixed = TRUE)
-    expect_match(dlg, "Analysis set SAF: the report's data: population, whose subjects the program keeps (no join step).",
-                 fixed = TRUE)
+    expect_match(dlg, "Analysis set SAF: the report's, kept", fixed = TRUE)
     expect_false(grepl("steps: param, population", dlg, fixed = TRUE))
     expect_false(grepl("Arguments dropped:[^.]*population", dlg))
     suppressWarnings(suppressMessages(session$setInputs(tpl_switch_ok = 1)))
@@ -828,6 +831,36 @@ test_that("a switch to a KM type writes no join: the report's set goes on its da
     expect_false(grepl("join", txt, fixed = TRUE))
     expect_false(grepl("common:", txt, fixed = TRUE))
     toc <- Filter(function(e) identical(e$id, "F-KS-1"), rv$p$spec$study$toc$outputs)
+    expect_identical(toc[[1L]]$population, "SAF")
+  })
+})
+
+test_that("a switch from a KM type (its set on its data) to forest_hr: the report's set is forest_hr's `population` argument too, its card has it (review M12)", {
+  skip_if_not(all(c("km_survival", "forest_hr") %in% tflspec::tfl_templates()$name))
+  skip_if_not(.tpl_pop_is_arg(.tpl_params("forest_hr")), "forest_hr takes no set argument")
+  id <- sample_for_add("KMF")
+  shown <- watch_add()
+  shiny::testServer(server_for(id), {
+    rv <- session$userData$rv
+    session$setInputs(add = 1, modal_type = "figure", modal_how = "template", modal_tpl_figure = "km_survival",
+                      modal_id = "KF-1", modal_desc = "", modal_section = "",
+                      mtpl_km_survival___data_ds = "ADTTE", mtpl_km_survival___data_param = "TTSKIN",
+                      mtpl_km_survival__population = "SAF", mtpl_km_survival__by = "TRT01A")
+    suppressWarnings(suppressMessages(session$setInputs(add_ok = 1)))
+    rid <- "F-KF-1"
+    expect_identical(rv$p$spec$outputs[[rid]]$data$population, "SAF")
+    expect_null(.tpl_of(rv$p, rid)$args$population)
+    session$setInputs(target = rid, nav = "make", step = "content", content_nav = "content")
+    session$setInputs(tpl_switch = "forest_hr")
+    dlg <- add_text(add_modal(shown))
+    expect_match(dlg, "Analysis set SAF: the report's, kept", fixed = TRUE)
+    suppressWarnings(suppressMessages(session$setInputs(tpl_switch_ok = 1)))
+    expect_identical(.tpl_of(rv$p, rid)$name, "forest_hr")
+    o <- rv$p$spec$outputs[[rid]]
+    expect_identical(o$data$population, "SAF")
+    expect_null(o$common$population)
+    expect_identical(.tpl_of(rv$p, rid)$args$population, "SAF")
+    toc <- Filter(function(e) identical(e$id, rid), rv$p$spec$study$toc$outputs)
     expect_identical(toc[[1L]]$population, "SAF")
   })
 })
