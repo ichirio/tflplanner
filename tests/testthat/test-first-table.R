@@ -656,6 +656,17 @@ test_that("a template figure has no population flag: a forest's analysis data is
     expect_false(any(ard_rows(rv$p, "analysis_data", "F-HR")$from %in% "ADTTE"))
     # the code view says whose subjects the code gets (#873)
     expect_match(output$pd_code, "^# Subjects: all -- the report has no analysis set")
+    # the design reads an ARD that no step can give: ONE check says it (not
+    # the step 2 sentence), with the way to step 1
+    d0 <- fig_design(rv$p, "F-HR")
+    expect_true(.fig_no_set(rv$p, "F-HR", d0))
+    r0 <- list(problems = data.frame(part = "ard", field = "ard_source", problem = "step 2",
+                                     stringsAsFactors = FALSE), ard_problems = NULL)
+    pr0 <- .fig_problems_now(r0, list(planner = rv$p), "F-HR", d0)
+    expect_identical(pr0$field, "population")
+    expect_identical(nrow(pr0), 1L)
+    expect_match(pr0$problem, "analysis set|解析対象集団")
+    expect_match(pr0$problem, "1")
     # the report's set, chosen in the figure's step 1 as a table's: the
     # analysis data's, and its name
     expect_match(output$fig_report_pop$html, "fig_report_pop_pick", fixed = TRUE)
@@ -665,6 +676,10 @@ test_that("a template figure has no population flag: a forest's analysis data is
     itt <- tte()[grepl("_itt_", tte()$data_id, fixed = TRUE), ]
     expect_identical(itt$population_id, "ITT")
     expect_match(output$pd_code, "^# Subjects: the report's analysis set ITT ")
+    # ... and the lines that keep them, as the report's program writes them
+    # (one writer): the subjects made, the records joined to them
+    expect_match(output$pd_code, "inner_join", fixed = TRUE)
+    expect_false(.fig_no_set(rv$p, "F-HR", fig_design(rv$p, "F-HR")))
     # a set the study's populations have not: said so (its subjects are all)
     p2 <- rv$p
     p2$ard$populations <- p2$ard$populations[0L, , drop = FALSE]
