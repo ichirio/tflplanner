@@ -383,7 +383,7 @@ test_that("the names tflplanner gives: <dataset>_<population>[_<PARAMCD>], one r
   expect_identical(.adata_suggest(p, "DM", "ADAE", NA, 'AESER == "Y"'), "adae")
 })
 
-test_that("1-1's analysis set: the Population field, from the study's sets and the data's flags", {
+test_that("1-1's analysis set: the Population field, the study's sets only; the data's flags told (codex review 9)", {
   expect_identical(.population_id_for("PPROTFL"), "PP")
   expect_identical(.population_id_for("SAFFL", "SAF"), "SAF2")
   expect_identical(.adata_name_from("ADAE", NA, pop = "SAF"), "adae_saf")
@@ -402,11 +402,18 @@ test_that("1-1's analysis set: the Population field, from the study's sets and t
     expect_match(f, "<option value=\"pop:SAF\" selected>", fixed = TRUE)
     cond <- session$userData$adata_cond
     expect_true(is.na(shiny::isolate(cond$value())))
-    # the data's flags that are no analysis set: offered as well
-    expect_match(f, "flag:PPROTFL", fixed = TRUE)
-    expect_false(grepl("flag:\"", f, fixed = TRUE))
-    session$setInputs(adata_from = "ADSL", adata_pop = "flag:PPROTFL")
-    expect_true(is.na(shiny::isolate(cond$value())))
+    # the data's flags that are no analysis set: not offered, told (a flag
+    # that is an analysis set is registered as a study population first)
+    expect_false(grepl("value=\"flag:", f, fixed = TRUE))
+    session$setInputs(adata_from = "ADSL")
+    note <- output$adata_flag_note$html
+    expect_match(note, "PPROTFL", fixed = TRUE)
+    expect_match(note, "spec/data.yml populations", fixed = TRUE)
+    expect_false(grepl("SAFFL", note, fixed = TRUE))
+    # a condition on such a flag: the filter's, as any condition
+    session$setInputs(adata_pop = ".none")
+    cond$value('PPROTFL == "Y"')
+    cond$key(shiny::isolate(cond$key()) + 1L)
     # saved: the condition, no population_id
     session$setInputs(adata_id = "adsl_pp", adata_subj = "", adata_add = NULL,
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL, adata_code = "")

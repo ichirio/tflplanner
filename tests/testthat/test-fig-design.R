@@ -10,7 +10,7 @@ test_that("a figure's design is kept, saved as YAML, and makes its plot", {
   s$planner <- set_step_code(s$planner, "F-14-2-1", "content", NA)
   # (the sample's setup code has its library() lines: not the design's)
   s$planner$setup <- NA_character_
-  d <- tflspec::tfl_fig_template("mean_ci", data = "ADVS", param = "SYSBP",
+  d <- tflspec::tfl_fig_template("mean_ci", data = "ADVS", param = "SYSBP", group = "TRT01A",
                                   value = "CHG", title = "SBP: mean change")
   d$plot$dpi <- 150
   s$planner <- set_fig_design(s$planner, "F-14-2-1", d)
@@ -68,7 +68,7 @@ test_that("a design is drawn on the study's data, as its program saves it", {
   on.exit(options(old), add = TRUE)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
   s <- suppressMessages(sample_study_copy())
-  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP",
+  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", group = "TRT01A",
                                   value = "CHG")
   r <- preview_figure(s, "F-14-2-1", d)
   expect_null(r$error)
@@ -76,11 +76,31 @@ test_that("a design is drawn on the study's data, as its program saves it", {
   expect_equal(nrow(r$problems), 0L)
   expect_equal(r$size$dpi, 300)
   # the design against the data
-  bad <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "NOPE",
+  bad <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "NOPE", group = "TRT01A",
                                     value = "NOVAR")
   r <- preview_figure(s, "F-14-2-1", bad)
   expect_true(any(grepl("no PARAMCD NOPE", r$problems$problem)))
   expect_true(any(grepl("NOVAR", r$problems$problem)))
+})
+
+test_that("a figure's preview keeps its report's analysis set's subjects, as its program does", {
+  p <- add_output(new_planner(), "F1", type = "figure")
+  p$ard$populations <- .normalize_ard_sheet(data.frame(
+    population_id = c("SAF", "BAD"), dataset = "ADSL",
+    where = c("SAFFL == \"Y\"", "NOSUCH == 1")), "populations")
+  data <- list(
+    ADSL = data.frame(USUBJID = c("A", "B", "C"), SAFFL = c("Y", "N", "Y"), TRT01A = "P"),
+    ADTTE = data.frame(USUBJID = c("A", "A", "B", "C"), PARAMCD = "OS", AVAL = 1:4))
+  st <- list(planner = p, path = tempdir())
+  # no set: the data as it is
+  expect_identical(.report_subjects_data(st, "F1", data), data)
+  st$planner$outputs$population <- "SAF"
+  kept <- .report_subjects_data(st, "F1", data)
+  expect_identical(kept$ADSL$USUBJID, c("A", "C"))
+  expect_identical(kept$ADTTE$USUBJID, c("A", "A", "C"))
+  # a set whose condition does not evaluate: the data as it is (its check says why)
+  st$planner$outputs$population <- "BAD"
+  expect_identical(.report_subjects_data(st, "F1", data), data)
 })
 
 test_that("presets are kept with the company standards, and start a design", {
@@ -112,7 +132,7 @@ test_that("the preview carries the advice, and a fix applies", {
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
   s <- suppressMessages(sample_study_copy())
   d <- tflspec::tfl_fig_template("km_simple", data = "ADTTE", param = "TTSKIN",
-                                  pop = "SAFFL", group = "TRT01A")
+                                  group = "TRT01A")
   r <- preview_figure(s, "F-14-2-2", d)
   expect_null(r$error)
   expect_true("km_risk" %in% r$advice$rule)
@@ -127,7 +147,8 @@ test_that("a designed figure is copied to other parameters", {
   on.exit(options(old), add = TRUE)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
   s <- suppressMessages(sample_study_copy())
-  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", value = "CHG")
+  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", group = "TRT01A",
+                                  value = "CHG")
   p <- set_fig_design(.set_report_type(s$planner, "F-14-2-1", "figure"), "F-14-2-1", d)
   p$outputs$description[p$outputs$output_id == "F-14-2-1"] <- "Mean change in SYSBP"
   p2 <- copy_fig_to_params(p, "F-14-2-1", c("DIABP", "PULSE"))
@@ -147,7 +168,8 @@ test_that("a preview for the screen is smaller, and says the saved size", {
   on.exit(options(old), add = TRUE)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
   s <- suppressMessages(sample_study_copy())
-  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", value = "CHG")
+  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", group = "TRT01A",
+                                  value = "CHG")
   full <- preview_figure(s, "F-14-2-1", d)
   small <- preview_figure(s, "F-14-2-1", d, max_px = 800)
   expect_null(small$error)
@@ -163,30 +185,40 @@ test_that("a preview for the screen is smaller, and says the saved size", {
 
 test_that("a design's other parts (ggplot2 version, composed figures) are kept", {
   skip_if_not("ggplot2_version" %in% names(formals(tflspec::tfl_fig_design)))
-  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP")
+  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", group = "TRT01A")
   d$ggplot2_version <- "3.5"
   p <- set_fig_design(new_planner(), "F1", d)
   expect_equal(fig_design(p, "F1")$ggplot2_version, "3.5")
 })
 
 test_that("a template's defaults the data has not got are replaced by the data's own", {
-  d <- tflspec::tfl_fig_template("km_risk_table", data = "ADTTE")
+  # (the template applied with its group TRT01P: the group the fit reads)
+  d <- tflspec::tfl_fig_template("km_risk_table", data = "ADTTE", group = "TRT01P")
   # the dataset: no OS, no FASFL, the group only in ADSL
   x <- data.frame(USUBJID = "A", PARAMCD = c("TTDE", "TTDE"), AVAL = 1, CNSR = 0,
                   SAFFL = "Y")
   adsl <- data.frame(USUBJID = "A", TRT01P = "Placebo", SAFFL = "Y", ITTFL = "Y")
-  fit <- .template_fit(d, x, adsl)
+  fit <- .template_fit(d, x, adsl, group = "TRT01P")
   expect_identical(fit[["param"]], "TTDE")
-  expect_identical(fit[["pop"]], "SAFFL")       # the dataset's own flag
   expect_identical(fit[["group"]], "TRT01P")    # named: only ADSL has it
+  # the note names the template's default and what is used (#872)
+  was <- attr(fit, "was")
+  expect_identical(names(was), names(fit))
+  note <- .template_fit_notes(fit, "ADTTE")
+  expect_match(note[1L], sprintf("default %s is not in ADTTE; it uses TTDE", was[["param"]]),
+               fixed = TRUE)
+  expect_match(note[2L], sprintf("default %s is not in ADTTE", was[["group"]]), fixed = TRUE)
+  ja <- .template_fit_notes(fit, "ADTTE", function(k) tr(k, "ja"))
+  expect_match(ja[1L], was[["param"]], fixed = TRUE)
+  expect_match(ja[1L], "TTDE", fixed = TRUE)
   # what the user chose stays
-  expect_length(.template_fit(d, x, adsl, given = c("param", "pop", "group")), 0L)
+  expect_length(.template_fit(d, x, adsl, given = c("param", "group"), group = "TRT01P"), 0L)
   # the data has the template's defaults: nothing to change
   ok <- data.frame(USUBJID = "A", PARAMCD = "OS", FASFL = "Y", TRT01P = "P")
-  expect_length(.template_fit(d, ok, adsl), 0L)
+  expect_length(.template_fit(d, ok, adsl, group = "TRT01P"), 0L)
   # the join takes from ADSL only what the dataset lacks
   d2 <- tflspec::tfl_fig_template("km_risk_table", data = "ADTTE", param = "TTDE",
-                                  pop = "SAFFL", group = "TRT01P", join_adsl = TRUE)
+                                  group = "TRT01P", join_adsl = TRUE)
   j <- Filter(function(s) identical(s$step, "join"), .trim_join(d2, x)$data)
   expect_identical(j[[1L]]$vars, "TRT01P")
   j0 <- Filter(function(s) identical(s$step, "join"),
@@ -194,9 +226,49 @@ test_that("a template's defaults the data has not got are replaced by the data's
   expect_length(j0, 0L)
 })
 
+test_that("the group fallback reads the template's group argument as applied, never the design (#872, M11)", {
+  figs <- .fig_tpl_registered()
+  skip_if_not(all(c("forest_hr", "km") %in% figs), "this tflspec has no forest_hr or km template")
+  x <- data.frame(USUBJID = "A", PARAMCD = "OS", AVAL = 1, CNSR = 0)
+  # (ADSL without the group applied, with another arm variable and the
+  # forest's subgroup variables)
+  adsl <- data.frame(USUBJID = "A", TRT01A = "P", AGEGR1 = "<65", SEX = "F")
+  # the template's group argument: forest_hr's own `group`, km_simple's the
+  # km template's `by` -- what the designer gives the group to, and the
+  # default it applies when none is chosen (the declared one)
+  expect_identical(.fig_tpl_own_arg("forest_hr", "forest", "group")$name, "group")
+  expect_identical(.fig_tpl_own_arg("km_simple", "km", "group")$name, "by")
+  # (never another template's: a template with no group argument of its own)
+  expect_null(.fig_tpl_own_arg("waterfall_plain", "waterfall", "group"))
+  for (tk in list(c("forest_hr", "forest"), c("km_simple", "km"))) {
+    d <- tflspec::tfl_fig_template(tk[1L], data = "ADTTE", group = "TRT01P")
+    # the group applied, missing: the data's arm variable instead, the note
+    # naming the one applied -- never a subgroup variable (forest_hr's
+    # ard_stats step has AGEGR1, SEX as its `by`)
+    fit <- .template_fit(d, x, adsl, group = "TRT01P")
+    expect_identical(fit[["group"]], "TRT01A", info = tk[1L])
+    expect_identical(attr(fit, "was")[["group"]], "TRT01P", info = tk[1L])
+    expect_match(.template_fit_notes(fit, "ADTTE"), "default TRT01P is not in ADTTE; it uses TRT01A",
+                 fixed = TRUE, all = FALSE)
+    # no group applied: none fitted, whatever the design colours or counts by
+    expect_false("group" %in% names(.template_fit(d, x, adsl)), info = tk[1L])
+    # the group chosen: kept
+    expect_false("group" %in% names(.template_fit(d, x, adsl, given = "group", group = "TRT01P")),
+                 info = tk[1L])
+  }
+  # forest_hr's declared default, applied when none is chosen, is the group read
+  gd <- .fig_tpl_own_arg("forest_hr", "forest", "group")$default
+  skip_if(is.null(gd), "this tflspec's forest_hr declares no group default")
+  d <- tflspec::tfl_fig_template("forest_hr", data = "ADTTE", group = gd)
+  adsl2 <- data.frame(USUBJID = "A", ARM = "P", AGEGR1 = "<65", SEX = "F")
+  fit <- .template_fit(d, x, adsl2, group = gd)
+  expect_identical(attr(fit, "was")[["group"]], gd)
+  expect_identical(fit[["group"]], "ARM")
+})
+
 test_that("the designer shows a piece's own lines of the design's code", {
   d <- tflspec::tfl_fig_template("km_simple", data = "ADTTE", param = "TTDE",
-                                 pop = "SAFFL", group = "TRT01A")
+                                 group = "TRT01A")
   make <- function(d, codelists = TRUE) .fig_design_script(d, "F-1")
   code <- make(d)
   # the lines the script has with the piece and not without it
@@ -206,10 +278,10 @@ test_that("the designer shows a piece's own lines of the design's code", {
   expect_true(startsWith(base[1L], "pal <- setNames("))
   expect_true(any(startsWith(base, "fig <- ggsurvfit(")))
   expect_false(any(grepl("^# ----|^library", base)))
-  # the flag: the filter line it is in
-  fl <- lines_of(list(sec = "data", i = 3L))
+  # the parameter: the filter line it is in (no population: the report's)
+  fl <- lines_of(list(sec = "data", i = 2L))
   # (its pipe on: or ending there, the time unit's block after it -- tflspec #km)
-  expect_true(startsWith(trimws(fl), "filter(PARAMCD == \"TTDE\", SAFFL == \"Y\")"))
+  expect_true(startsWith(trimws(fl[1L]), "filter(PARAMCD == \"TTDE\")"))
   fit <- .piece_code(code, d, list(sec = "data", i = length(d$data)), make)
   expect_match(fit, "^fit <- survfit2[(]")
   plot <- .piece_code(code, d, list(sec = "plot", i = 1L), make)
@@ -244,7 +316,7 @@ test_that("a design saved before #293 (its statistics apart) reads as one data l
 })
 
 test_that("a design with R code in it (tfl_r, !r) is saved in the state and read back", {
-  d <- tflspec::tfl_fig_template("km_simple")
+  d <- tflspec::tfl_fig_template("km_simple", group = "TRT01P")
   d$plot$add <- list(list(fn = "scale_y_continuous",
                           args = list(labels = tflspec::tfl_r("scales::label_percent()"))))
   # as the study keeps it (set_fig_design())

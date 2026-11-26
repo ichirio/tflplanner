@@ -73,6 +73,18 @@ test_that("the SPEC | Code | Result tabs are not a card around the sheets' card"
   expect_false(grepl("card-header", before, fixed = TRUE))
 })
 
+test_that("a dialog's open list closes with Esc and with the dialog, not left floating (#869)", {
+  js <- .modal_scroll_js
+  # (every selectize in a dialog draws its list in <body>)
+  expect_match(js, "opts.dropdownParent = 'body'", fixed = TRUE)
+  # Esc with a list open: the list closes, the dialog stays
+  expect_match(js, "if (s && s.isOpen) { s.close(); e.preventDefault(); e.stopPropagation(); }",
+               fixed = TRUE)
+  # a dialog closing closes its lists
+  expect_match(js, "on('hide.bs.modal'", fixed = TRUE)
+  expect_match(as.character(app_ui()), "hide.bs.modal", fixed = TRUE)
+})
+
 test_that("R's error output becomes one line and, when known, the next step", {
   out <- c("Loading ...",
            "Error in library(rtfreporter) : there is no package called 'rtfreporter'",
@@ -128,7 +140,9 @@ test_that("every sentence the app shows has its Japanese", {
   # (app.R and its parts since the split: app_ui.R, app_helpers.R, srv_*.R)
   r_dir <- test_path("..", "..", "R")
   skip_if_not(file.exists(file.path(r_dir, "app.R")), "source not available (installed package)")
-  src <- c(file.path(r_dir, c("app.R", "app_ui.R", "app_helpers.R", "app_designer.R")),
+  # (the designer's server and helpers too: its template form's texts, #861)
+  src <- c(file.path(r_dir, c("app.R", "app_ui.R", "app_helpers.R", "app_designer.R",
+                              "app_designer_server.R", "app_designer_helpers.R")),
            list.files(r_dir, "^srv_.*[.]R$", full.names = TRUE))
   expect_gt(length(src), 10L)
   code <- unlist(lapply(src, readLines, encoding = "UTF-8", warn = FALSE))

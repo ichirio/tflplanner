@@ -290,7 +290,7 @@ test_that("every study folder has its note on the study tab", {
 test_that("a study folder registered again keeps its designed figures", {
   local_home()
   p <- add_output(new_planner(), "F-1", type = "figure")
-  p <- set_fig_design(p, "F-1", tflspec::tfl_fig_template("km_simple", data = "ADTTE"))
+  p <- set_fig_design(p, "F-1", tflspec::tfl_fig_template("km_simple", data = "ADTTE", group = "TRT01P"))
   s <- create_study("FD", planner = p)
   expect_true(file.exists(file.path(s$path, "spec/outputs/F-1.yml")))
   unregister_study("FD")

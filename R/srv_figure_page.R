@@ -705,7 +705,10 @@
         placeholder = t("blank: from the ID")),
       if (type && nrow(rv$p$ard$populations)) shiny::conditionalPanel(
         "input.modal_how != 'template'", shiny::selectInput(
-        "modal_pop", t("This report's population"), pop_choices(), width = "100%",
+        "modal_pop", shiny::span(
+          t("This report's population"),
+          help_tip(t("The report's analysis set: one of the study's populations (spec/data.yml populations). The report's subjects are its subjects."))),
+        pop_choices(), width = "100%",
         selected = {
           v <- report_population(rv$p, current() %||% "")
           if (is.na(v)) "" else v

@@ -10,8 +10,6 @@ data:
       dataset: ADTTE
     - step: param
       value: TTSKIN
-    - step: flag
-      variable: SAFFL
     - step: time_unit
       variable: AVAL
       unit: days
