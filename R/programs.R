@@ -196,13 +196,22 @@ report_info <- function(x, output_id) {
 
 # A table's Rework as its program writes it: `data <- ard |>
 # normalize_ard(...)` (the table's own arguments), then the code, which
-# starts from `data` and leaves `data`.  The code is written as it is: an
-# old one that normalizes itself (`data <- normalize_ard(ard)`) overwrites
-# the line before it with the same data.  `code` the table's ARD code: one
-# that makes `data` itself has no `ard` to normalize.
+# starts from `data` and leaves `data`.  The code is written as tflspec
+# writes SPEC R into a program (.rework_code()): an old one that normalizes
+# itself (`data <- normalize_ard(ard)`) overwrites the line before it with
+# the same data.  `code` the table's ARD code: one that makes `data` itself
+# has no `ard` to normalize.
 .rework_lines <- function(x, output_id, code, proc) {
   c(if (is.na(code) || !.makes_data(code)) .rework_normalize_lines(x, output_id),
-    .code_block(proc))
+    .rework_code(proc))
+}
+
+# A Rework (a table's, a template listing's) as tflspec writes the data's
+# steps into a program, one element a line (tflspec A1): one expression
+# that assigns only `data` as it is, any other code in a scope of its own
+# that leaves `data`, local({ }), so what else it assigns stays there
+.rework_code <- function(proc) {
+  .tflspec_fn(".content_steps_code")(.code_block(proc))
 }
 
 # The check tflspec makes of a Rework, in its words: it names `data`
@@ -224,7 +233,8 @@ report_info <- function(x, output_id) {
   if (!is.null(y)) {
     o <- .code_content(y)
     o$data <- list(source = "ard", object = "ard", steps = list(tflspec::tfl_r(.rework_mark)))
-    code <- tryCatch(tflspec::tfl_content_code(o, pipe = "|>"), error = function(e) NULL)
+    code <- tryCatch(tflspec::tfl_content_code(o, pipe = "|>", study = .content_study(o, y$study)),
+                     error = function(e) NULL)
     i <- match(.rework_mark, code)
     if (!is.na(i) && i > 1L) return(code[seq_len(i - 1L)])
   }
@@ -365,7 +375,7 @@ data_lines <- function(x, output_id, todo = TRUE) {
     }
     if (!is.null(recs)) {
       return(c(setup, "# the listing's records", recs,
-               if (!is.na(proc)) c("", "# its rework", .code_block(proc))))
+               if (!is.na(proc)) c("", "# its rework", .rework_code(proc))))
     }
   }
   # a listing defined in rows: its process code is a rework of `data`
@@ -857,7 +867,8 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   i <- match(output_id, x$outputs$output_id)
   add <- list()
   if (!is.na(i)) {
-    pop <- if (!is.null(x$outputs$population)) x$outputs$population[i] else NA_character_
+    # (the report's set as its one reader says it: a listing's row first, S5)
+    pop <- report_population(x, output_id)
     if (!.is_blank(pop) && !"OUTPUT_POPULATION" %in% said) {
       add$OUTPUT_POPULATION <- .pop_label(x, pop)
     }
@@ -920,6 +931,16 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     })
   }
   r
+}
+
+# The study a content call of tflspec's (tfl_content_code(),
+# tfl_content_run()) is given for the report `o`: a figure's, the study the
+# program writer has -- every way a figure is made applies its report's set
+# (canon 11-15: its subjects made from the study, or a stop saying why);
+# NULL for a table's and a listing's, whose data part the program writes
+# apart (with the study tflspec would write it into the content's code)
+.content_study <- function(o, study) {
+  if (identical(o$kind, "figure")) study
 }
 
 # `report_id <- "<id>"`: what a report's program sets at its head, and a

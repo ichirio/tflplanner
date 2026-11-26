@@ -785,7 +785,8 @@ km_design$layers <- c(km_design$layers, list(list(
   digits = 2, x = "Inf", y = 0.15, hjust = 1.02, vjust = -0.6)))
 
 plot_code <- c(
-  "saf <- adsl$USUBJID[adsl$SAFFL == \"Y\"]",
+  "# adsl_sub: the subjects of the report's analysis set, made before this code",
+  "saf <- adsl_sub$USUBJID",
   "d <- advs[advs$PARAMCD == \"SYSBP\" & advs$USUBJID %in% saf &",
   "            advs$AVISITN > 0 & advs$AVISITN <= 8 & !is.na(advs$CHG), ]",
   "m <- aggregate(CHG ~ TRTA + AVISITN, data = d, FUN = function(x)",
@@ -811,7 +812,8 @@ plot_code <- c(
 
 km_code <- c(
   "arms <- c(\"Drug X\", \"Control\")",
-  "km_df <- adtte[adtte$PARAMCD == \"TTSKIN\" & adtte$SAFFL == \"Y\", ]",
+  "# adsl_sub: the subjects of the report's analysis set, made before this code",
+  "km_df <- adtte[adtte$PARAMCD == \"TTSKIN\" & adtte$USUBJID %in% adsl_sub$USUBJID, ]",
   "km_df$TRT01A <- factor(km_df$TRT01A, levels = arms)",
   "km_fit <- survfit2(Surv(AVAL, 1 - CNSR) ~ TRT01A, data = km_df)",
   "",
@@ -913,6 +915,13 @@ for (o in setdiff(unique(p$ard$analyses$output_id), c("T-14-0-1", "T-14-1-4", "T
 p <- set_report_population(p, "T-14-1-4", "SCRF")
 p <- set_report_population(p, "T-14-1-5", "ENR")
 p <- set_report_population(p, "T-14-1-6", "ENR")
+# the figures that read subjects' records: their analysis set on their data
+# (`data: population: SAF`); the code of F-14-2-1 and F-14-2-2 reads its
+# subjects, adsl_sub, which the program makes before the code.  (The report
+# list's column, not set_report_population(): that would give each figure
+# analysis data of the set's subjects, which none of them reads.)
+fig_set <- c("F-14-2-1", "F-14-2-2", "F-14-2-3")
+p$outputs$population[match(fig_set, p$outputs$output_id)] <- "SAF"
 # each analysis's purpose, as the CDISC ARS export needs it: the CI of the
 # mean and the hazard ratios secondary, the rest primary
 p$ard$analyses$purpose <- ifelse(

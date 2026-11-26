@@ -44,7 +44,8 @@
   labels = "Variable headings",
   order = "Variable order",
   cells = "Row statistics",
-  # (a figure's groups: a variable, not always the treatment, #861)
+  # (a figure's groups: a variable, not always the treatment, #861; the same
+  # word for the same meaning in every template, #868)
   group = "Group",
   subgroups = "Subgroup variables",
   comparison = "Group compared with reference",
@@ -194,7 +195,7 @@
   border_group = "Rule under each block",
   style = "Style set",
   conditions = "Analysis rows",
-  subgroup_vars = "Variables the subgroup rows read",
+  subgroup_vars = "Subgroup variables",
   responder = "Response category",
   overall_label = "Any-record row label",
   days_per_month = "Days per month",
@@ -218,5 +219,6 @@
     "Analysis ID of each parameter",
   "The subgroup rows, one a subgroup level, after the ALL row." = "Subgroup rows",
   "The group variable; one curve a group." = "Variable that splits the curves",
+  "The treatment variable compared." = "Group",
   "The breaks of the time axis (and the times of the number at risk); none for ggplot2's." = "Time axis ticks"
 )

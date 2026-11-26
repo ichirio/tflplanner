@@ -83,7 +83,7 @@ test_that("the report list names the datasets a report reads, and its title", {
   expect_identical(.report_datasets(p, "L-16-2-7"), "ADAE")
   # a figure: the datasets its row names, or its design reads
   expect_identical(.report_datasets(p, "F-14-2-2"), "ADTTE")
-  d <- tflspec::tfl_fig_template("mean_ci", data = "ADVS", param = "SYSBP",
+  d <- tflspec::tfl_fig_template("mean_ci", data = "ADVS", param = "SYSBP", group = "TRT01A",
                                   value = "CHG")
   # (the sample's F-14-2-1 is user code: a figure again, to be designed)
   p2 <- set_fig_design(.set_report_type(p, "F-14-2-1", "figure"), "F-14-2-1", d)
@@ -253,4 +253,26 @@ test_that("a report's ARD read by its own name (data.object), ard by default", {
   # (a name R cannot use: ard)
   p$spec$outputs$PK$data$object <- "1x"
   expect_identical(.ard_object(p, "PK"), "ard")
+})
+
+test_that("tflspec's content calls get the study for a figure (its set's subjects), none for a table or a listing (canon 11-15)", {
+  st <- structure(list(dir = "study"), class = "tfl_study_spec")
+  expect_identical(.content_study(list(id = "F1", kind = "figure"), st), st)
+  expect_null(.content_study(list(id = "T1", kind = "table"), st))
+  expect_null(.content_study(list(id = "L1", kind = "listing"), st))
+  expect_null(.content_study(NULL, st))
+  # the content pages of the builder's preview: the same rule (a table's
+  # call given none)
+  p <- suppressMessages(sample_study_copy())$planner
+  seen <- new.env()
+  local_mocked_bindings(
+    tfl_content_run = function(output, data, study = NULL) {
+      seen$kind <- output$kind
+      seen$study <- study
+      stop("watched")
+    },
+    .package = "tflspec")
+  expect_error(.preview_content_pages(p, "T-14-1-1", list()), "watched", fixed = TRUE)
+  expect_identical(seen$kind, "table")
+  expect_null(seen$study)
 })

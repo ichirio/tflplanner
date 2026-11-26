@@ -531,18 +531,19 @@
   # The report's analysis set: the report list's, the TOC's -- one value.
   # Chosen here, it is written there, the data of its subjects (adsl_<set>)
   # is made, and the report's analyses move to the new set's data.
-  # `now`, the report's set when the populations sheet does not have it,
-  # stays a choice: a select without it would show "(not chosen)" and send
-  # it (#418)
+  # The study's analysis sets only (.study_set_rows(): every control of a
+  # report's set offers them; a study that registers none offers none and
+  # says so in the "none" item).  `now`, the report's set when the
+  # populations sheet does not have it, stays a choice, marked: a select
+  # without it would show "(not chosen)" and send it (#418)
   pop_choices <- function(now = NA) {
-    po <- rv$p$ard$populations
-    po <- po[!is.na(po$population_id), , drop = FALSE]
+    po <- .study_set_rows(rv$p)
     adsl <- tryCatch(an_data(po$dataset[1L] %||% "ADSL"), error = function(e) NULL)
     lab <- vapply(po$population_id, function(id) {
       l <- .pop_label(rv$p, id, adsl)
       if (identical(l, id)) id else sprintf("%s \u2014 %s", id, l)
     }, "")
-    out <- c(stats::setNames("", t("(not chosen)")), stats::setNames(po$population_id, lab))
+    out <- c(stats::setNames("", .study_sets_none_label(po, t)), stats::setNames(po$population_id, lab))
     if (!.is_blank(now) && !now %in% po$population_id) {
       out <- c(out, stats::setNames(now, sprintf(t("%s (not in the populations sheet)"), now)))
     }

@@ -150,8 +150,11 @@ listing_types <- function() company_standards()$listing_types
 # the part of a listing's program between its setup and its report (part
 # "data": its data only; "content": laid out from a `data` made before)
 .listing_lines <- function(x, output_id, rework = NA, part = "all") {
+  if (!nrow(lf_rows(x, "listings", output_id))) return(NULL)
+  # (its set as the report's one reader says it, report_population(): its
+  # row's, else the report's -- the set tflspec writes onto its data; S5)
+  x$lf <- .lf_with_report_set(x, output_id)
   l <- lf_rows(x, "listings", output_id)
-  if (!nrow(l)) return(NULL)
   # a listing of the report's analysis data, or of an analysis set's
   # subjects: its program starts with their part of the ARD definition
   own <- any(!is.na(c(l$data[1L] %||% NA, l$population_id[1L] %||% NA)))
