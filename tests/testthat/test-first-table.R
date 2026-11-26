@@ -654,7 +654,10 @@ test_that("a figure template's group has no default: the study's treatment grey,
     n <- 0L
     for (case in list(c("F-HR", "forest_hr", "Group (group)"),
                       c("F-KM", "km_simple", "Variable that splits the curves (by)"))) {
-      session$setInputs(target = case[1L], nav = "make", step = "content", content_nav = "content")
+      # (the first figure's design is not saved: the app asks before it
+      # opens the second, and the test keeps it -- open_report())
+      open_report(session, case[1L], nav = "make", step = "content", content_nav = "content")
+      expect_identical(shiny::isolate(session$userData$current()), case[1L])
       session$setInputs(pd_from = "template", pd_tpl = case[2L], pd_tpl_data = "ADTTE",
                         pd_tpl_param = cards::ADTTE$PARAMCD[1L], pd_tpl_group = "")
       h <- output$pd_tpl_more$html
