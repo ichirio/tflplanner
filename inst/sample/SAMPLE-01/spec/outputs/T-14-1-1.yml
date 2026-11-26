@@ -75,14 +75,7 @@ codelists:
     - value: OTHER
       label: Other
   ETHNIC:
-    - value: HISPANIC OR LATINO
-      label: Hispanic or Latino
-    - value: NOT HISPANIC OR LATINO
-      label: Not Hispanic or Latino
-    - value: NOT REPORTED
-      label: Not reported
-    - value: UNKNOWN
-      label: Unknown
+    list: ETHNIC
 content:
   - table_plan:
       cols: TRT01A
