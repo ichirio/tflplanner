@@ -151,7 +151,8 @@ set_codelist <- function(x, output_id, rows) {
 
 # The study's settings no workbook sheet holds: written into study.yml's
 # `settings:` by the app itself (.spec_bridge()) -- `treatment`, the
-# treatment variable a template's by / group reads (settings.treatment),
+# treatment variable the planner suggests (grey) for a template's by / group
+# (settings.treatment; a report writes its own by),
 # `sd_missing`, what a Mean (SD) cell prints for a group with no SD
 # (settings.sd_missing), and the ADaM levels (#742): `adam_levels`, the
 # source whose levels study$adam gets (define_xml or define_spec; not set:

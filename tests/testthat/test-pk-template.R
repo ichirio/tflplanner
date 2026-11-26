@@ -25,7 +25,7 @@ test_that("a pk_conc report's program makes its records and runs: the subjects o
   p$ard$datasets <- rbind(p$ard$datasets, data.frame(dataset = "ADPC", level = "ADaM",
                                                      path = "data/adam/adpc.rds", derive = NA_character_))
   o <- tflspec::tfl_output("X-PK", "table", label = "pk", common = list(population = "SAF"),
-                           template = list(name = "pk_conc", args = list(population = "SAF")))
+                           template = list(name = "pk_conc", args = list(population = "SAF", by = c("PARAM", "TRT01A"))))
   s$planner <- .spec_add_output(p, o, label = "pk", population = "SAF")
   s <- suppressWarnings(suppressMessages(save_study(s, home = home)))
   prog <- readLines(file.path(s$path, "programs", "tfl", "X-PK.R"), warn = FALSE)

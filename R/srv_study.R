@@ -1469,7 +1469,7 @@
         shiny::selectizeInput(
           "study_treatment",
           with_tip(t("Treatment variable (settings.treatment)"),
-                   t("The variable of the treatment groups a template's by / group takes when the report does not say it (study.yml settings: treatment:). Blank: the template's own, TRT01A.")),
+                   t("The treatment variable the planner suggests (shown in grey) for a template's by / group (study.yml settings: treatment:). A report always writes its own by; it is never filled in from here.")),
           choices = unique(c("", now, adsl)), selected = now,
           options = list(create = TRUE, placeholder = "TRT01A"))
       }),

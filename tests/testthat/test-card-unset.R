@@ -53,7 +53,7 @@ test_that("a flag's (none) stays when the card is drawn again, its default TRUE 
   home <- local_home()
   s <- suppressMessages(sample_study_copy(home))
   o <- tflspec::tfl_output("T-TPL", "table", label = "AEs", common = list(population = "SAF"),
-                           template = list(name = "ae_soc_pt", args = list(population = "SAF")))
+                           template = list(name = "ae_soc_pt", args = list(population = "SAF", by = "TRT01A")))
   s$planner <- .spec_add_output(s$planner, o, label = "AEs", population = "SAF")
   s <- suppressWarnings(suppressMessages(save_study(s, home = home)))
   # (each write says the template's flags override the study standard's)
