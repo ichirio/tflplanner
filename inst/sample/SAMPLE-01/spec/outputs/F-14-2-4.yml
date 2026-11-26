@@ -15,7 +15,6 @@ ard:
         - AGEGR1
     - id: adsl_saf
       from: ADSL
-      population: SAF
   analyses:
     - id: HR
       label: Hazard ratio, all subjects
@@ -132,6 +131,7 @@ data:
             txt = ifelse(head, "", txt),
             y = rev(row_number())
           )
+  population: SAF
 codelists:
   TRT01A:
     - value: Control
