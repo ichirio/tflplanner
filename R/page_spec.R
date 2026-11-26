@@ -558,7 +558,7 @@ $", "", yaml::as.yaml(list(tokens = tokens))), "
 # (tfl_write_study_part() writes the layer and the styles only; the others,
 # `codelists:`, `adam_meta:`, `figure_style:`, `options:`, `ai:` ..., are read
 # by tflspec or written by hand, by tflspec or the AI kit), see
-# .keep_study_blocks(). A block the writer writes replaces the old one.
+# .keep_study_blocks(); one the writer writes too is the old one.
 .study_part_lines <- function(study, part, name = NULL, old = NULL) {
   f <- tempfile("tflplanner-part", fileext = ".yml")
   on.exit(unlink(f), add = TRUE)
@@ -573,7 +573,11 @@ $", "", yaml::as.yaml(list(tokens = tokens))), "
 # lines just above the key included (those just above the next key belong to
 # that one). The writer's own keys (content, page, data, styles) are not
 # kept: the writer leaves one out when it is empty, so the old one is gone.
-# A block `lines` has replaces the old one. The kept blocks keep their old
+# A block of `old` that `lines` has too is the old one: a writer may write
+# it -- the bridge writes the study's code lists, tfl_write_study_part()
+# copies the blocks from the file on disk (tflspec#977) -- but `old` (the
+# spec's text) is the newer (an unsaved ADaM levels block) and has its
+# comments and form. The kept blocks keep their old
 # order and their place relative to `styles:`: those before the old
 # `styles:` (all, when it has none) go just before the new `styles:` (at the
 # end when there is none), those after it at the end.
@@ -582,6 +586,8 @@ $", "", yaml::as.yaml(list(tokens = tokens))), "
   key_of <- function(x) sub(":.*$", "", x)
   top <- is_key(old)
   keys <- ifelse(top, key_of(old), NA_character_)
+  # (the writer's copies of the old blocks: out, the old ones go back)
+  for (k in setdiff(keys[top], c("content", "page", "data", "styles"))) lines <- .set_study_block(lines, k)
   skip <- c(key_of(lines[is_key(lines)]), "content", "page", "data", "styles")
   st <- which(keys %in% "styles")[1L]
   before <- character()

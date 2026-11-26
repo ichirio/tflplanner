@@ -390,14 +390,17 @@ toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)
 #'   `changes`).
 #' @param populations The reports' analysis sets, a population_id named by
 #'   report (see `toc_populations()`): each one that differs from the
-#'   report's is set with [set_report_population()] (its data made, its
-#'   analyses moved).
+#'   report's is set as [set_report_population()] sets it (its data made,
+#'   its analyses moved, the set written where the report's data keeps it,
+#'   its TOC line with it); the reports already there whose set moved are
+#'   in attribute `set_moved` (`output_id`, `from`, `to`).
 #' @param make_data Make the analysis data of each new report's datasets
 #'   (the TOC's `datasets`): `<dataset>_<set>`, kept to the subjects of its
 #'   analysis set (`adsl_<set>`), found or made.
 #' @param again With `make_data`, also for the reports taken in before
 #'   (those deleted since are made again).
-#' @return The `tflplanner`.
+#' @return The `tflplanner`, with attributes `made` (the analysis data
+#'   made) and `set_moved`.
 #' @examples
 #' # a home in the temporary folder: used in this R session only, nothing
 #' # is written to your settings
@@ -436,12 +439,22 @@ toc_apply <- function(x, spec, changes, use_toc = character(), types = character
   }
   # the reports' analysis sets, as the TOC says them (one value with the
   # report list's and step 1's: a change moves the report's analyses)
+  # (all in one write, .write_report_population(): where each report's data
+  # keeps its set, its toc line with it; an existing report's set moved is
+  # said, attribute `set_moved`)
   made <- character()
-  for (id in intersect(names(populations), x$outputs$output_id)) {
-    v <- populations[[id]]
-    if (.is_blank(v) || identical(report_population(x, id), v)) next
-    x <- set_report_population(x, id, v)
+  ids <- intersect(names(populations), x$outputs$output_id)
+  new_pop <- vapply(ids, function(id) as.character(populations[[id]])[1L], "")
+  was <- vapply(ids, function(id) report_population(x, id), "")
+  go <- !vapply(new_pop, .is_blank, NA) & (is.na(was) | was != new_pop)
+  moved <- data.frame(output_id = character(), from = character(), to = character(),
+                      stringsAsFactors = FALSE)
+  if (any(go)) {
+    x <- .write_report_population(x, ids[go], unname(new_pop[go]))
     made <- c(made, attr(x, "made"))
+    old <- go & !ids %in% rep$output_id[rep$status == "new"]
+    moved <- data.frame(output_id = ids[old], from = unname(was[old]), to = unname(new_pop[old]),
+                        stringsAsFactors = FALSE)
   }
   attr(x, "made") <- attr(x, "left") <- NULL
   # the reports' datasets as the TOC says them (the report list shows them
@@ -526,7 +539,18 @@ toc_apply <- function(x, spec, changes, use_toc = character(), types = character
       }
     }
   }
+  attr(x, "set_moved") <- if (nrow(moved)) moved
   x
+}
+
+# The import summary's lines of the reports already there whose analysis
+# set the TOC moved (toc_apply()'s attribute `set_moved`): "<id>: set <old>
+# -> <new>", one a report; none when no set moved
+.toc_set_lines <- function(moved, t = identity) {
+  if (is.null(moved) || !nrow(moved)) return(character())
+  none <- t("(none)")
+  sprintf(t("%s: set %s -> %s"), moved$output_id,
+          ifelse(is.na(moved$from), none, moved$from), ifelse(is.na(moved$to), none, moved$to))
 }
 
 #' What a TOC said, kept for the next time one is taken in

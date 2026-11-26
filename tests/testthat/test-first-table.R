@@ -240,6 +240,27 @@ test_that("a template says whether the study's data can draw it", {
                               category = "Efficacy", data = "ADSL"))
   tp3 <- tp3[c(3, 1, 2), ]
   expect_identical(.fig_template_choices(tp3, c("ADSL", "ADAE"), w)$first, "ae")
+  # a design's own template is chosen first, when the data can draw it (#865)
+  expect_identical(.fig_template_choices(tp3, c("ADSL", "ADAE"), w, current = "sw")$first, "sw")
+  expect_identical(.fig_template_choices(tp3, c("ADSL", "ADAE"), w, current = "km")$first, "ae")
+  expect_identical(.fig_template_choices(tp3, c("ADSL", "ADAE"), w, current = "gone")$first, "ae")
+  # the headings in the app's language (#864)
+  wj <- w
+  wj$label <- function(x) tr(x, "ja")
+  tp4 <- tp
+  tp4$category <- c("Efficacy: time to event", "Safety")
+  expect_identical(names(.fig_template_choices(tp4, c("ADSL", "ADAE"), wj)$choices)[1:2],
+                   tr(c("Efficacy: time to event", "Safety"), "ja"))
+  expect_false(identical(tr("Efficacy: time to event", "ja"), "Efficacy: time to event"))
+  # a template's line: the new report's dialog's for the same name (a series
+  # template's label first, the app's own next), else its own label (#864)
+  ser <- data.frame(name = c("s1/forest_hr", "s1/demog"), kind = c("figure", "table"),
+                    label = c("Forest plot, hazard ratio by subgroup", "Demog"))
+  lab <- .fig_template_label(c("forest_hr", "mean_se", "demog", "zz"),
+                             c("Forest: own", "Mean SE", "Demog own", "ZZ"), ser)
+  expect_identical(lab, c("Forest plot, hazard ratio by subgroup", .tpl_desc_of("mean_se", ser),
+                          .tpl_desc_of("demog", ser), "ZZ"))
+  expect_false(identical(tr(lab[1L], "ja"), lab[1L]))
   # a tflspec without the columns: grouped by kind, nothing greyed
   tc2 <- .fig_template_choices(tp[c("template", "kind", "label")], character(), w)
   expect_identical(names(tc2$choices)[1:2], c("km", "ae_dot"))
@@ -404,6 +425,10 @@ test_that("a new figure starts from a template the study's data can draw", {
     # ADTTE templates are listed but cannot be chosen, and say why
     expect_match(h, "needs data this study has not got")
     expect_match(h, 'value="km_risk_table" disabled')
+    # the Dataset starts on the data of the template chosen first, drawn
+    # with it (the template's observer does not fire for the template
+    # chosen last time)
+    expect_match(h, '<option value="ADAE" selected>', fixed = TRUE)
     # the first step: a template or empty, both the designer's layers
     expect_match(h, "First step")
     expect_match(h, "pd_empty")
@@ -633,10 +658,15 @@ test_that("a forest's blank comparison is left to the template: every other arm"
   shiny::testServer(server_for("G2"), {
     session$setInputs(target = "F-HR", nav = "make", step = "content", content_nav = "content")
     session$setInputs(pd_from = "template", pd_tpl = "forest_hr", pd_tpl_data = "ADTTE",
-                      pd_tpl_param = cards::ADTTE$PARAMCD[1L], pd_tpl_ref = "Placebo",
-                      pd_tpl_comparison = "")
+                      pd_tpl_param = cards::ADTTE$PARAMCD[1L], pd_tpl_group = "TRT01P",
+                      pd_tpl_ref = "Placebo", pd_tpl_comparison = "")
     # the comparison box says what blank means
     expect_match(output$pd_tpl_more$html, "every other arm", fixed = TRUE)
+    # each field "meaning (argument)", as the new report's dialog heads it (#861)
+    for (h in c("Parameter (param)", "Group (group)", "Subgroup variables (subgroups)",
+                "Reference treatment group (ref)", "Group compared with reference (comparison)")) {
+      expect_match(output$pd_tpl_more$html, h, fixed = TRUE)
+    }
     code <- function() {
       session$setInputs(pd_start = 1)
       paste(unlist(fig_design(session$userData$rv$p, "F-HR")$data), collapse = "
@@ -648,4 +678,229 @@ test_that("a forest's blank comparison is left to the template: every other arm"
     session$setInputs(pd_tpl_comparison = "Xanomeline High Dose")
     expect_match(code(), "`comparison` (Xanomeline High Dose)", fixed = TRUE)
   })
+})
+
+test_that("a figure template's group has no default: the study's treatment grey, not written; empty, one item to check", {
+  # (PRINCIPLES 1.14: group / by have no default; 1.15: the suggestion is
+  # the study's settings.treatment; 1.16: grey in the field, written only
+  # when picked)
+  skip_on_cran()
+  skip_if_not(all(c("forest_hr", "km") %in% .fig_tpl_registered()), "this tflspec has no forest_hr or km template")
+  local_home()
+  s <- create_study("G6")
+  dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(cards::ADSL, file.path(s$path, "data/adam/adsl.rds"))
+  saveRDS(cards::ADTTE, file.path(s$path, "data/adam/adtte.rds"))
+  s$planner <- add_output(s$planner, "F-HR", type = "figure")
+  s$planner <- add_output(s$planner, "F-KM", type = "figure")
+  save_study(s)
+  shiny::testServer(server_for("G6"), {
+    rv <- session$userData$rv
+    p <- rv$p
+    p$spec$study$study$settings$treatment <- "TRT01A"
+    rv$p <- p
+    n <- 0L
+    for (case in list(c("F-HR", "forest_hr", "Group (group)"),
+                      c("F-KM", "km_simple", "Variable that splits the curves (by)"))) {
+      # (the first figure's design is not saved: the app asks before it
+      # opens the second, and the test keeps it -- open_report())
+      open_report(session, case[1L], nav = "make", step = "content", content_nav = "content")
+      expect_identical(shiny::isolate(session$userData$current()), case[1L])
+      session$setInputs(pd_from = "template", pd_tpl = case[2L], pd_tpl_data = "ADTTE",
+                        pd_tpl_param = cards::ADTTE$PARAMCD[1L], pd_tpl_group = "")
+      h <- output$pd_tpl_more$html
+      # the study's treatment, grey in the group's field: not its value
+      expect_match(h, "Suggested: TRT01A", fixed = TRUE, info = case[2L])
+      expect_false(grepl('<option value="TRT01A" selected', h, fixed = TRUE), info = case[2L])
+      # applied with the group empty: nothing written, one item to check
+      # naming the argument by its heading
+      n <- n + 1L
+      session$setInputs(pd_start = n)
+      expect_null(fig_design(rv$p, case[1L]))
+      for (o in list(output$pd_overlay$html, output$pd_checks$html)) {
+        expect_match(o, "to check", fixed = TRUE, info = case[2L])
+        expect_match(o, case[3L], fixed = TRUE, info = case[2L])
+      }
+      # a group chosen: written
+      n <- n + 1L
+      session$setInputs(pd_tpl_group = "TRT01A", pd_start = n)
+      d <- fig_design(rv$p, case[1L])
+      expect_false(is.null(d), info = case[2L])
+      expect_true("TRT01A" %in% unlist(d), info = case[2L])
+    }
+  })
+})
+
+test_that("a KM figure's time unit: the template's choices, its help behind the ? (#862)", {
+  skip_on_cran()
+  km <- .tpl_params("km")$time_unit
+  skip_if(is.null(km$choices), "this tflspec's km template has no time_unit choices")
+  local_home()
+  s <- create_study("G4")
+  dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(cards::ADSL, file.path(s$path, "data/adam/adsl.rds"))
+  saveRDS(cards::ADTTE, file.path(s$path, "data/adam/adtte.rds"))
+  s$planner <- add_output(s$planner, "F-KM", type = "figure")
+  save_study(s)
+  shiny::testServer(server_for("G4"), {
+    session$setInputs(target = "F-KM", nav = "make", step = "content", content_nav = "content")
+    session$setInputs(pd_from = "template", pd_tpl = "km_simple", pd_tpl_data = "ADTTE")
+    h <- output$pd_tpl_more$html
+    # the label is the meaning and the argument; the note is the tip's
+    expect_match(h, "Time unit (time_unit)", fixed = TRUE)
+    expect_false(grepl("Time shown in", h, fixed = TRUE))
+    # (the help: the km template's own description of time_unit, M10)
+    expect_match(h, htmltools::htmlEscape(.tpl_arg_help("km_simple", "km", "time_unit")), fixed = TRUE)
+    expect_match(h, "rp-tip", fixed = TRUE)
+    # the choices and the default: tflspec's tfl_param("time_unit")
+    for (u in km$choices) expect_match(h, sprintf('<option value="%s"', u), fixed = TRUE)
+    expect_match(h, sprintf('<option value="%s" selected>', km$default), fixed = TRUE)
+  })
+})
+
+test_that("a template argument's help is the template's own description, else the argument's shared text (M10)", {
+  # km_simple: the km template's tfl_param("time_unit") doc, as a doc is shown
+  km <- .tpl_params("km")$time_unit
+  skip_if(is.null(km) || !nzchar(km$doc %||% ""), "this tflspec's km template has no time_unit doc")
+  expect_identical(.tpl_arg_help("km_simple", "km", "time_unit"), .tpl_doc_shown(km))
+  ja <- function(x) tr(x, "ja")
+  expect_identical(.tpl_arg_help("km_simple", "km", "time_unit", ja, "ja"), .tpl_doc_shown(km, ja, "ja"))
+  # a template that does not describe it (swimmer, spider): the argument's
+  # shared text -- never another template's doc (KM's AVALU)
+  shared <- .tpl_arg_shared_help[["time_unit"]]
+  for (tk in list(c("swimmer_bar", "swimmer"), c("individual_spider", "individual"))) {
+    if (!is.null(.tpl_params(tk[1L])$time_unit) || !is.null(.tpl_params(tk[2L])$time_unit)) next
+    expect_identical(.tpl_arg_help(tk[1L], tk[2L], "time_unit"), shared)
+    expect_identical(.tpl_arg_help(tk[1L], tk[2L], "time_unit", ja, "ja"), ja(shared))
+  }
+  expect_false(grepl("AVALU", shared, fixed = TRUE))
+  expect_false(identical(ja(shared), shared))
+  # an argument with neither: no help
+  expect_identical(.tpl_arg_help("swimmer_bar", "swimmer", "no_such_argument"), "")
+})
+
+test_that("a template figure has no population flag: a forest's analysis data is the report's set", {
+  skip_on_cran()
+  local_home()
+  s <- create_study("G3")
+  dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(cards::ADSL, file.path(s$path, "data/adam/adsl.rds"))
+  saveRDS(cards::ADTTE, file.path(s$path, "data/adam/adtte.rds"))
+  s$planner <- add_output(s$planner, "F-HR", type = "figure")
+  s$planner$ard$populations <- .normalize_ard_sheet(data.frame(
+    population_id = "ITT", dataset = "ADSL", where = "ITTFL == \"Y\""), "populations")
+  save_study(s)
+  shiny::testServer(server_for("G3"), {
+    session$setInputs(target = "F-HR", nav = "make", step = "content", content_nav = "content")
+    session$setInputs(pd_from = "template", pd_tpl = "forest_hr", pd_tpl_data = "ADTTE",
+                      pd_tpl_param = cards::ADTTE$PARAMCD[1L], pd_tpl_group = "TRT01P")
+    # (the figure's subjects are its report's analysis set: no flag to choose)
+    expect_false(grepl("pd_tpl_pop", output$pd_tpl_more$html, fixed = TRUE))
+    # the line under the Dataset says so: none yet, in the warning colour,
+    # and the step that sets it (#863)
+    pop_line <- function() output$pd_tpl_pop$html
+    expect_match(pop_line(), sprintf("analysis set: none (choose it in step %s)", .step_no("data")),
+                 fixed = TRUE)
+    expect_match(pop_line(), "text-warning", fixed = TRUE)
+    expect_match(pop_line(), "rp-tip", fixed = TRUE)
+    rv <- session$userData$rv
+    tte <- function() {
+      ad <- ard_rows(rv$p, "analysis_data", "F-HR")
+      ad[!is.na(ad$from) & ad$from == "ADTTE", c("data_id", "population_id")]
+    }
+    # no set on the report: the design, but no analyses (a template's
+    # default is a flag, not a set of the study)
+    session$setInputs(pd_start = 1)
+    expect_true(length(fig_design(rv$p, "F-HR")$layers) > 0L)
+    expect_false(any(ard_rows(rv$p, "analysis_data", "F-HR")$from %in% "ADTTE"))
+    # the code view says whose subjects the code gets (#873)
+    expect_match(output$pd_code, "^# Subjects: all -- the report has no analysis set")
+    # the design reads an ARD that no step can give: ONE check says it (not
+    # the step 2 sentence), with the way to step 1
+    d0 <- fig_design(rv$p, "F-HR")
+    expect_true(.fig_no_set(rv$p, "F-HR", d0))
+    r0 <- list(problems = data.frame(part = "ard", field = "ard_source", problem = "step 2",
+                                     stringsAsFactors = FALSE), ard_problems = NULL)
+    pr0 <- .fig_problems_now(r0, list(planner = rv$p), "F-HR", d0)
+    expect_identical(pr0$field, "population")
+    expect_identical(nrow(pr0), 1L)
+    expect_match(pr0$problem, "analysis set|解析対象集団")
+    expect_match(pr0$problem, "1")
+    # "apply the template again" only for a design from a template; one
+    # built by hand is told the step that has the set alone (M9)
+    d1 <- d0
+    d1$template <- NULL
+    no_tpl <- "This report has no analysis set. Choose one in step %s, 'This report's analysis set'."
+    expect_identical(pr0$problem, .fig_no_set_text(d0))
+    expect_identical(.fig_no_set_text(d1), sprintf(tr(no_tpl), .step_no("data")))
+    expect_false(identical(.fig_no_set_text(d0), .fig_no_set_text(d1)))
+    expect_false(grepl("\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8", tr(no_tpl, "ja"), fixed = TRUE))
+    expect_match(tr(no_tpl, "ja"), "\u9078\u3093\u3067\u304f\u3060\u3055\u3044", fixed = TRUE)
+    # ... and the checks list it to check, with the way to step 1, whether
+    # or not the figure could be drawn (only the picture needs a drawing)
+    session$setInputs(pd_redraw = 1)
+    for (h in list(output$pd_overlay$html, output$pd_checks$html)) {
+      expect_match(h, "pd_goto_data", fixed = TRUE)
+      expect_match(h, "to check", fixed = TRUE)
+      expect_match(h, sprintf("Go to step %s", .step_no("data")), fixed = TRUE)
+    }
+    # the report's set, chosen in the figure's step 1 as a table's: the
+    # analysis data's, and its name
+    expect_match(output$fig_report_pop$html, "fig_report_pop_pick", fixed = TRUE)
+    session$setInputs(fig_report_pop_pick_by = list(report = "F-HR", value = "ITT"))
+    expect_identical(report_population(rv$p, "F-HR"), "ITT")
+    # (the line follows the set chosen in step 1, the form not opened again)
+    expect_match(pop_line(), "analysis set: ITT", fixed = TRUE)
+    expect_false(grepl("text-warning", pop_line(), fixed = TRUE))
+    expect_match(pop_line(), "text-muted", fixed = TRUE)
+    session$setInputs(pd_start = 2)
+    itt <- tte()[grepl("_itt_", tte()$data_id, fixed = TRUE), ]
+    expect_identical(itt$population_id, "ITT")
+    expect_match(output$pd_code, "^# Subjects: the report's analysis set ITT ")
+    # ... and the lines that keep them, as the report's program writes them
+    # (one writer): the subjects made, the records joined to them
+    expect_match(output$pd_code, "inner_join", fixed = TRUE)
+    expect_false(.fig_no_set(rv$p, "F-HR", fig_design(rv$p, "F-HR")))
+    # a set the study's populations have not: said so (its subjects are all)
+    p2 <- rv$p
+    p2$ard$populations <- p2$ard$populations[0L, , drop = FALSE]
+    expect_match(.fig_subjects_line(p2, "F-HR"), "ITT is not one of the study's populations", fixed = TRUE)
+    # "kept by the lines below" only when the lines keep them: lines that
+    # make no subjects (none could be made, or no dataset is read) get no
+    # such line
+    expect_null(.fig_subjects_line(rv$p, "F-HR", c("plot <- ggplot()", "tfl_check(plot)")))
+    # (the view's line only: not the design's code, which the program saves)
+    d <- fig_design(rv$p, "F-HR")
+    expect_false(any(grepl("# Subjects:", .fig_design_lines(rv$p, "F-HR", d), fixed = TRUE)))
+  })
+})
+
+test_that("the template form's analysis-set line in Japanese, and the form's new texts' rows (#861-#863)", {
+  ja <- function(x) tr(x, "ja")
+  expect_match(as.character(.fig_pop_line("SAF", ja)), "この帳票の解析対象集団: SAF", fixed = TRUE)
+  none <- as.character(.fig_pop_line(NULL, ja))
+  expect_match(none, sprintf("この帳票の解析対象集団: なし（手順 %s で選びます）", .step_no("data")),
+               fixed = TRUE)
+  expect_match(none, "text-warning", fixed = TRUE)
+  expect_match(as.character(.fig_pop_line(NA_character_)), "none (choose it in step", fixed = TRUE)
+  # every text the change added: its Japanese, with as many %s
+  s <- .strings()
+  new <- c("Variable on the x axis", "Variable on the y axis", "Duration in days", "Visit shown",
+           "The unit the time axis is shown in; the data's days are converted to it.",
+           "This report's analysis set: %s", "This report's analysis set: none (choose it in step %s)",
+           "A figure's subjects are the report's analysis set (the data's `population:`). Change it in step %s, in This report's population.")
+  expect_identical(setdiff(new, s$en), character())
+  jp <- s$ja[match(new, s$en)]
+  expect_true(all(nzchar(jp) & jp != new))
+  n_s <- function(x) lengths(regmatches(x, gregexpr("%s", x, fixed = TRUE)))
+  expect_identical(n_s(jp), n_s(new))
+})
+
+test_that("the no-analysis-set sentence is the checks list's, not a toast (#867)", {
+  s <- .strings()
+  # the toast's row is gone; the check's sentence has its Japanese
+  expect_false(any(grepl("so the analyses its figure needs are not written", s$en, fixed = TRUE)))
+  chk <- "This report has no analysis set. Choose one in step %s, 'This report's analysis set', then apply the template again."
+  expect_true(chk %in% s$en)
+  expect_true(nzchar(s$ja[match(chk, s$en)]))
 })

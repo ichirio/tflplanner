@@ -178,6 +178,9 @@
       s$planner <- .pattern_marker(s$planner, paste0("@", nm))
     }
   }
+  # (a report's list that is one of the study's: its rows as the study's
+  # lists are now -- spec/defaults.yml read again, R/codelist_refs.R)
+  s$planner <- .spec_codelist_refs(s$planner)
   s$planner <- .spec_rebase(s$planner, s$meta)
   s
 }
@@ -186,10 +189,13 @@
 
 # The files the bridge writes from a view: their text by path (study.yml
 # as tflspec writes it, without the study's own lines), and the folder
-# they are in (the caller removes it)
-.spec_bridge <- function(body, meta, style = NULL) {
+# they are in (the caller removes it).  `codelists`: the study's lists
+# (the spec's study$codelists), which a report's `list` cell names: the
+# bridge reads its rows from them (defaults.yml's `codelists:` text itself
+# is the spec's, .spec_sync_run())
+.spec_bridge <- function(body, meta, style = NULL, codelists = NULL) {
   tmp <- tempfile("tflplanner-yaml")
-  tflspec::tfl_yaml_from_sheets(.planner_sheets(body, meta, style), tmp, overwrite = TRUE)
+  tflspec::tfl_yaml_from_sheets(.planner_sheets(body, meta, style, codelists), tmp, overwrite = TRUE)
   .study_yml_own_settings(file.path(tmp, .study_file), body$study)
   rel <- list.files(tmp, recursive = TRUE)
   rel <- setdiff(rel, file.path(study_layout()[["spec"]], "_not_converted.yml"))
@@ -203,8 +209,8 @@
 # them is bridged without the reports' rows (#749: a title edit bridged all
 # the reports twice).  The folder holds the rest the bridge wrote of the
 # study (data, defaults, patterns, toc), for .spec_load().
-.spec_bridge_study <- function(body, meta, style = NULL) {
-  sh <- .planner_sheets(body, meta, style)
+.spec_bridge_study <- function(body, meta, style = NULL, codelists = NULL) {
+  sh <- .planner_sheets(body, meta, style, codelists)
   own <- function(d) {
     if (!is.data.frame(d) || !"output_id" %in% names(d)) return(d)
     o <- d$output_id
@@ -299,13 +305,15 @@
 # plan_cells() card asks for the spec at each edit, twice, and a bridge
 # writes the whole study -- a select took a minute, #738)
 .spec_sync_cache <- new.env(parent = emptyenv())
-.spec_sync <- function(p, meta) {
+.spec_sync <- function(p, meta, codelists = NULL) {
   k <- .spec_sync_cache
-  if (!is.null(k$out) && identical(k$meta, meta) && identical(k$p, p)) return(k$out)
-  out <- .spec_sync_run(p, meta)
+  if (!is.null(k$out) && identical(k$meta, meta) && identical(k$p, p) &&
+      identical(k$codelists, codelists)) return(k$out)
+  out <- .spec_sync_run(p, meta, codelists)
   k$out <- NULL
   k$p <- p
   k$meta <- meta
+  k$codelists <- codelists
   k$out <- out
   out
 }
@@ -325,9 +333,9 @@
   k$entries <- ents[seq_len(min(length(ents), .spec_base_keep))]
   invisible(was)
 }
-.spec_bridge_base <- function(base, meta, style) {
+.spec_bridge_base <- function(base, meta, style, codelists = NULL) {
   k <- .spec_base_cache
-  key <- list(base, .spec_meta(meta), style)
+  key <- list(base, .spec_meta(meta), style, codelists)
   for (i in seq_along(k$entries)) {
     e <- k$entries[[i]]
     if (identical(e$key, key) && dir.exists(e$was$dir)) {
@@ -337,7 +345,7 @@
   }
   near <- .spec_bridge_base_near(key)
   if (!is.null(near)) return(.spec_base_put(key, near))
-  .spec_base_put(key, .spec_bridge(base, meta, style))
+  .spec_base_put(key, .spec_bridge(base, meta, style, codelists))
 }
 
 # The bridge of a base from a kept one that differs from it only in what
@@ -348,17 +356,19 @@
 # the kept bridge's study.yml is what .spec_bridge_study() writes for it
 # (the two writers agree for that base); else NULL, and the base is bridged
 # whole.  Cache key: the kept entry's key list(base, fields, style), the
-# same style and core required.
+# same style, study lists and core required.
 .spec_bridge_base_near <- function(key) {
   core <- .planner_core(key[[1L]])
   for (e in .spec_base_cache$entries) {
-    if (!identical(e$key[[3L]], key[[3L]]) || !dir.exists(e$was$dir) ||
+    if (!identical(e$key[[3L]], key[[3L]]) || !identical(e$key[4L], key[4L]) || !dir.exists(e$was$dir) ||
         !identical(.planner_core(e$key[[1L]]), core)) next
-    old <- tryCatch(.spec_bridge_study(e$key[[1L]], e$key[[2L]], key[[3L]]), error = function(err) NULL)
+    old <- tryCatch(.spec_bridge_study(e$key[[1L]], e$key[[2L]], key[[3L]], key[4L][[1L]]),
+                    error = function(err) NULL)
     if (is.null(old)) return(NULL)
     unlink(old$dir, recursive = TRUE)
     if (!identical(old$text[[.study_file]], e$was$text[[.study_file]])) return(NULL)
-    now <- tryCatch(.spec_bridge_study(key[[1L]], key[[2L]], key[[3L]]), error = function(err) NULL)
+    now <- tryCatch(.spec_bridge_study(key[[1L]], key[[2L]], key[[3L]], key[4L][[1L]]),
+                    error = function(err) NULL)
     if (is.null(now)) return(NULL)
     on.exit(unlink(now$dir, recursive = TRUE), add = TRUE)
     tmp <- tempfile("tflplanner-yaml")
@@ -377,7 +387,9 @@
   NULL
 }
 
-.spec_sync_run <- function(p, meta) {
+# (`codelists`: the study's code lists for a planner with no spec -- the
+# study folder's, .save_yaml_spec(); a spec's are its own)
+.spec_sync_run <- function(p, meta, codelists = NULL) {
   sp <- p$spec
   body <- .planner_body(p)
   m <- .spec_meta(meta)
@@ -387,18 +399,20 @@
   }
   # (the study's default page configuration travels with the sheets)
   style <- sp$study$study$settings$style
+  # (and the study's code lists: a report's `list` cell names one)
+  scl <- if (!is.null(sp)) sp$study$codelists %||% list() else codelists
   # (the view the same, the study's fields not: study.yml alone can change;
   # a study the cut bridge cannot write is bridged whole, as before)
   # (the same but for the study's own settings -- the ADaM levels, the
   # treatment variable: study.yml alone too, .planner_core(), #738)
   study_only <- !is.null(sp) && !is.null(sp$base) &&
     (identical(body, sp$base) || identical(.planner_core(body), .planner_core(sp$base)))
-  now <- if (study_only) tryCatch(.spec_bridge_study(body, meta, style), error = function(e) NULL)
-  was <- if (!is.null(now)) tryCatch(.spec_bridge_study(sp$base, sp$meta, style), error = function(e) NULL)
+  now <- if (study_only) tryCatch(.spec_bridge_study(body, meta, style, scl), error = function(e) NULL)
+  was <- if (!is.null(now)) tryCatch(.spec_bridge_study(sp$base, sp$meta, style, scl), error = function(e) NULL)
   if (is.null(now) || is.null(was)) {
     for (d in c(now$dir, was$dir)) unlink(d, recursive = TRUE)
     study_only <- FALSE
-    now <- .spec_bridge(body, meta, style)
+    now <- .spec_bridge(body, meta, style, scl)
   }
   # (the view's bridge, as the bridge wrote it: the base's once in step)
   keep_now <- if (!study_only) now
@@ -411,7 +425,7 @@
     if (study_only) {
       on.exit(unlink(was$dir, recursive = TRUE), add = TRUE)
     } else {
-      was <- .spec_bridge_base(sp$base, sp$meta, style)
+      was <- .spec_bridge_base(sp$base, sp$meta, style, scl)
     }
     rels <- union(names(was$text), names(now$text))
     changed <- rels[!vapply(rels, function(r) identical(was$text[[r]], now$text[[r]]), NA)]
@@ -504,7 +518,9 @@
           if (!identical(mine, new$study[[part$kind]]) || styles_kept) {
             sp$text[[r]] <- .study_part_lines(sp$study, part$kind, old = old_text)
           }
-          # (the bridge's file has no `codelists:` / `adam_meta:`: the spec's stay)
+          # (the bridge's file has no `adam_meta:`, and its `codelists:` is
+          # the study's lists as the writer writes them: the spec's text of
+          # both stays, its comments and form)
           if (identical(part$kind, "defaults") && length(old_text)) {
             sp$text[[r]] <- .keep_study_blocks(sp$text[[r]], old_text)
           }
@@ -526,7 +542,7 @@
     if (!is.null(keep_now$text[[.study_file]])) {
       writeLines(keep_now$text[[.study_file]], file.path(now$dir, .study_file), useBytes = TRUE)
     }
-    .spec_base_put(list(p$spec$base, p$spec$meta, style), keep_now)
+    .spec_base_put(list(p$spec$base, p$spec$meta, style, scl), keep_now)
     kept_now <- TRUE
   }
   attr(p, "changed") <- changed

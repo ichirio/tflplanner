@@ -20,6 +20,16 @@ ard:
       data: adsl_saf
       variables:
         - TRT01A
+      formats:
+        - N=0
+        - mean=2
+        - sd=3
+        - median=1
+        - min=0
+        - max=0
+        - p=xx.x%
+        - AGE:mean=1
+        - AGE:sd=2
     - id: AE
       label: TEAE by SOC / PT
       method: hierarchical
@@ -30,6 +40,16 @@ ard:
         - AEBODSYS
         - AEDECOD
       denominator: adsl_saf
+      formats:
+        - N=0
+        - mean=2
+        - sd=3
+        - median=1
+        - min=0
+        - max=0
+        - p=xx.x%
+        - AGE:mean=1
+        - AGE:sd=2
       args: !r over_variables = TRUE
       purpose: PRIMARY OUTCOME MEASURE
       analysis_per: level

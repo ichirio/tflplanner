@@ -72,6 +72,9 @@
         data = p$ard$analysis_data$data_id,
         dataset = p$ard$datasets$dataset,
         population_id = p$ard$populations$population_id,
+        # (tflspec B-5: the object an item reads: an analysis data, a named
+        # item or a dataset)
+        from = .ard_from_choices(p$ard),
         by = cols, strata = cols, variables = cols,
         # (tflspec >= 0.0.24.9186: yes, the variables the data lack skipped)
         optional = c("yes", "no"),

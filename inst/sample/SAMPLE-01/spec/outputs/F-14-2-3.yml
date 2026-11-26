@@ -10,8 +10,6 @@ data:
       dataset: ADTTE
     - step: param
       value: TTSKIN
-    - step: flag
-      variable: SAFFL
     - step: time_unit
       variable: AVAL
       unit: days
@@ -20,6 +18,7 @@ data:
       time: AVAL
       censor: CNSR
       by: TRT01A
+  population: SAF
 content:
   - km_curve:
       linewidth: 0.3

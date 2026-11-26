@@ -37,7 +37,7 @@
 #' s <- create_sample_study(run = FALSE)
 #' x <- s$planner
 #' fig_design(x, "F-14-2-1")  # NULL: this figure is written by hand
-#' x <- set_fig_design(x, "F-14-2-1", tflspec::tfl_fig_template("km_simple"))
+#' x <- set_fig_design(x, "F-14-2-1", tflspec::tfl_fig_template("km_simple", group = "TRT01P"))
 #' class(fig_design(x, "F-14-2-1"))
 #' }
 #' options(old)
@@ -164,39 +164,44 @@ set_fig_design <- function(x, output_id, design) {
 
 # A designed figure's data and plot sections, as its program has them
 # (#293): `# ---- data ----` -- the code lists, the datasets read (the
-# data catalog), the steps' pipes -- and `# ---- plot ----` -- the palette,
-# the chain into `plot` (the report writes it) -- then the figure checks.
-# The study's figure setup (sourced at the program's top) attaches the
-# packages and gives the palette.
+# data catalog), the report's subjects (its analysis set's, every dataset
+# the design reads joined to them), the steps' pipes -- and `# ---- plot
+# ----` -- the palette, the chain into `plot` (the report writes it) --
+# then the figure checks and its size on the page.  The lines are
+# tflspec's report program's (.rp_fig_design_plot(), internal: looked up
+# in its namespace), from the report's values as its program takes them
+# (.fig_rp_context()): one writer for the program and the designer's code
+# view, its options (tflspec.attached ...) the caller's.
 .fig_design_plot <- function(design, output_id, codelists, x) {
-  code <- tflspec::tfl_fig_design_code(
-    design, output_id, setup = TRUE, save = FALSE, name = "plot",
-    codelists = codelists)
-  reads <- attr(code, "reads") %||% character()
-  lines <- .split_lines(as.character(code))
-  read <- if (length(reads)) c(
-    paste0("# the data: ", paste(reads, collapse = ", "), " (data catalog)"),
-    unlist(lapply(reads, function(d) .read_dataset_lines(x, d))),
-    "")
-  # the report's analysis data its reads name ({step: read, data: <id>}):
-  # made first, as its ARD definition says (tflspec's data part)
-  adata <- attr(code, "data") %||% character()
-  if (length(adata)) {
-    read <- c(read, "# the report's analysis data (its ARD definition)",
-              .ard_spec_code(structure(x$ard, class = "tfl_ard_spec"),
-                             output_id = output_id, part = "data", data = adata),
-              "")
+  w <- get0(".rp_fig_design_plot", envir = asNamespace("tflspec"), mode = "function",
+            inherits = FALSE)
+  if (is.null(w)) {
+    stop(paste0("This tflspec has no writer of a designed figure's program ",
+                "(.rp_fig_design_plot()): install the tflspec this tflplanner is made for."),
+         call. = FALSE)
   }
-  # after the section's line and the code lists (when there are)
-  at <- 1L
-  if (length(lines) > 1L && startsWith(lines[[2L]], "# ---- code lists")) {
-    blank <- which(lines == "")
-    at <- blank[blank > 2L][1L]
-  }
-  c(utils::head(lines, at), .fig_ard_lines(x, output_id, design), read, utils::tail(lines, -at),
-    "", "# the figure checks: dropped rows, colours against the standard",
-    "tfl_check(plot)",
-    .fig_sized_lines(x, output_id, "plot"))
+  w(.fig_rp_context(x, output_id), design, codelists)
+}
+
+# A figure report's values as tflspec's report program takes them
+# (tfl_report_program()'s `report`, `shared`, `standards`, `layout`): its
+# id, its analysis set (its data's `population:`), its ARD source (and the
+# step that chooses it), its size on the page and its saved design (its
+# dpi); the study's ARD definition and the study ARD's path; the company's
+# ARD catalogs; the study's folders
+.fig_rp_context <- function(x, output_id) {
+  pop <- report_population(x, output_id)
+  src <- .fig_ard_source(x, output_id)
+  src$step <- .step_no("ard")
+  list(
+    report = list(id = output_id, type = "figure",
+                  output = if (!is.na(pop)) list(data = list(population = pop)),
+                  ard_source = src, size = .fig_size_of(x, output_id),
+                  design = fig_design(x, output_id)),
+    shared = list(ard = if (!is.null(x$ard)) structure(x$ard, class = "tfl_ard_spec"),
+                  study_ard = .study_ard_rel(x$ard)),
+    standards = list(ard_statistics = .std_ard_statistics(), ard_methods = .std_ard_methods()),
+    layout = study_layout())
 }
 
 # one element a line; a blank line stays (strsplit would drop it)
@@ -350,6 +355,55 @@ preview_figure <- function(study, output_id,
   .preview_figure(study, output_id, design, max_px)
 }
 
+# The study's data `data` (a list by dataset name) kept to the subjects of
+# the report's analysis set (report_population(): the report's data
+# `population:`), as the report's program keeps them -- each dataset with
+# USUBJID; the set's rows by its `where` on its dataset.  No set, a set the
+# populations sheet has not, or a `where` that does not evaluate: `data` as
+# it is.
+.report_subjects_data <- function(study, output_id, data) {
+  pop <- report_population(study$planner, output_id)
+  po <- study$planner$ard$populations
+  k <- if (!is.na(pop) && !is.null(po)) match(pop, po$population_id) else NA_integer_
+  if (is.na(k)) return(data)
+  d0 <- po$dataset[k]
+  ds <- if (.is_blank(d0)) "ADSL" else toupper(d0)
+  base <- data[[ds]] %||% .study_data(study, ds)[[ds]]
+  if (is.null(base) || !"USUBJID" %in% names(base)) return(data)
+  w <- po$where[k]
+  keep <- if (.is_blank(w)) rep(TRUE, nrow(base)) else
+    tryCatch(eval(parse(text = w, keep.source = FALSE)[[1L]], base, baseenv()),
+             error = function(e) NULL)
+  if (!is.logical(keep) || length(keep) != nrow(base)) return(data)
+  ids <- unique(base$USUBJID[!is.na(keep) & keep])
+  lapply(data, function(x) {
+    if (is.data.frame(x) && "USUBJID" %in% names(x)) x[x$USUBJID %in% ids, , drop = FALSE] else x
+  })
+}
+
+# The designer's code view's first line (not the saved program's): the
+# subjects the design's code gets, as the program's lines `lines`
+# (.fig_design_lines(), tflspec's writer) make them.  All when the report
+# has no set; a set the study's populations have not: said so (define it).
+# The report's set kept by the lines below only when they keep it (they
+# make its subjects: tflspec's heading of that part); otherwise no line --
+# the lines say what the program does (a design that reads no dataset, a
+# set whose subjects cannot be made: tflspec's stop() line, when it writes
+# one), and the view claims nothing for them.
+.fig_subjects_line <- function(x, output_id, lines = character()) {
+  pop <- report_population(x, output_id)
+  if (is.na(pop)) return("# Subjects: all -- the report has no analysis set.")
+  if (!pop %in% x$ard$populations$population_id) {
+    return(sprintf(paste0("# Subjects: the report's analysis set %s is not one of the study's ",
+                          "populations (spec/data.yml): define it there."), pop))
+  }
+  if (!any(startsWith(as.character(lines), .fig_subjects_heading))) return(NULL)
+  sprintf("# Subjects: the report's analysis set %s (kept by the lines below).", pop)
+}
+# (the heading tflspec's report program puts on the part that makes the
+# report's subjects, .rp_fig_subjects_lines())
+.fig_subjects_heading <- "# the report's subjects: its analysis set"
+
 # preview_figure(), with the ARD to print from given: `ard` is
 # .fig_preview_ard()'s (the app's previews: an outdated ARD made again
 # first); NULL reads the study ARD's rows as they are (.fig_ard_rows())
@@ -368,6 +422,8 @@ preview_figure <- function(study, output_id,
   ds <- .fig_design_datasets(design, output_id)
   # ADSL too: the advice counts the groups, which may be joined from it
   data <- .study_data(study, union(ds, "ADSL"))
+  # the report's analysis set's subjects, as its program keeps them
+  data <- .report_subjects_data(study, output_id, data)
   # a join of ADSL gives only what the dataset has not: a dataset that holds
   # TRT01A itself would get TRT01A.x and TRT01A.y
   rd <- Find(function(s) identical(s$step, "read"), design$data)$dataset
@@ -379,6 +435,7 @@ preview_figure <- function(study, output_id,
   # its ARD (#293): the rows of its source, in `ard`; their problems
   reads_ard <- isTRUE(attr(tflspec::tfl_fig_design_code(saved, output_id, setup = TRUE,
                                                          save = FALSE), "ard"))
+  ap <- NULL
   ard_given <- ard
   ard <- if (reads_ard) {
     if (!is.null(ard_given)) ard_given$rows else .fig_ard_rows(study, output_id)
@@ -447,7 +504,64 @@ preview_figure <- function(study, output_id,
   }
   list(png = png, size = size, problems = problems, advice = advice, warnings = warns,
        error = err, code = code,
+       # (the ARD's own problems and the rows they were read from: the app
+       # reads them again from the figure's state now, .fig_problems_now())
+       ard_problems = ap, ard_rows = ard,
        objects = .fig_objects_glance(e, .fig_design_objects(saved)))
+}
+
+# A drawing's problems with the figure's ARD ones read from its state now.
+# A drawing is kept until the design changes, but the figure's ARD source
+# (its own analyses chosen, a table's ARD) and its analyses are the study's,
+# not the design's: a drawing made before them says "the figure has none"
+# after the figure has its own.  `r` is the drawing (.preview_figure()),
+# `study` the study with the planner now.
+.fig_problems_now <- function(r, study, output_id, design, ard = r$ard_rows) {
+  pr <- r$problems
+  # a report with no analysis set: the one check that says it (its design
+  # reads an ARD that no step can give); not the step 2 sentence
+  if (!is.null(design) && .fig_no_set(study$planner, output_id, design)) {
+    if (!is.null(pr)) {
+      gone <- (pr$part %in% "ard" & pr$field %in% "ard_source")
+      if (!is.null(r$ard_problems) && nrow(r$ard_problems)) gone <- gone | pr$problem %in% r$ard_problems$problem
+      pr <- pr[!gone, , drop = FALSE]
+    }
+    row <- data.frame(part = "ard", field = "population", problem = .fig_no_set_text(design),
+                      stringsAsFactors = FALSE)
+    return(if (is.null(pr)) row else rbind(pr[c("part", "field", "problem")], row))
+  }
+  if (is.null(design) || !.fig_reads_ard(design, output_id)) return(pr)
+  now <- tryCatch(.fig_ard_problems(study, output_id, design, ard = ard),
+                  error = function(e) NULL)
+  if (is.null(now)) return(pr)
+  if (!is.null(pr) && !is.null(r$ard_problems) && nrow(r$ard_problems)) {
+    pr <- pr[!pr$problem %in% r$ard_problems$problem, , drop = FALSE]
+  }
+  if (!nrow(now)) return(pr)
+  now <- now[c("part", "field", "problem")]
+  if (is.null(pr)) now else rbind(pr, now)
+}
+
+# Whether a figure's design reads an ARD that its report cannot give: the
+# report has no analysis set (a template writes the figure's analyses for a
+# set) and the figure has no ARD source
+.fig_no_set <- function(x, output_id, design) {
+  !is.null(design) && is.na(report_population(x, output_id)) &&
+    .fig_reads_ard(design, output_id) &&
+    identical(.fig_ard_source(x, output_id)$kind, "none")
+}
+
+# its sentence (one for the check, the preview and step 1: a known cause is
+# said, not the R error it ends in): the step that has the set; "apply the
+# template again" only for a design that came from a template (it writes
+# the figure's analyses for the set it is applied with)
+.fig_no_set_text <- function(design = NULL) {
+  tpl <- design$template
+  from_tpl <- length(tpl) == 1L && !is.na(tpl) && nzchar(tpl)
+  sprintf(tr(if (from_tpl)
+    "This report has no analysis set. Choose one in step %s, 'This report's analysis set', then apply the template again."
+  else "This report has no analysis set. Choose one in step %s, 'This report's analysis set'."),
+  .step_no("data"))
 }
 
 # What an app's drawing of a figure is made from: its design, the
@@ -624,16 +738,20 @@ remove_fig_preset <- function(name, home = tflplanner_home()) {
   invisible(f)
 }
 
-# A template's own defaults (its parameter OS, its flag FASFL, its group
-# TRT01P) may not be in the study's data.  For each the user left blank,
-# the data's own when the default is not there: the first parameter of
-# the dataset, a population flag it has, a treatment variable it has.
-# `x` is the dataset, `adsl` ADSL (where flags and the group may be);
-# `given` the names the user chose (param, pop, group).  Returns the
-# arguments to give the template instead, named (empty when none).
-.template_fit <- function(d, x, adsl = NULL, given = character()) {
+# A template's own defaults (its parameter OS, its group TRT01P) may not be
+# in the study's data.  For each the user left blank, the data's own when
+# the default is not there: the first parameter of the dataset, a
+# treatment variable it has.  (The analysis set is the report's, its
+# data's `population:`, not a template's step: nothing to fit.)
+# `x` is the dataset, `adsl` ADSL (where the group may be);
+# `given` the names the user chose (param, group); `group` the value of
+# the template's group argument as the template was applied (its
+# tfl_param() named group, or by: .fig_tpl_args()), NULL when it has none.
+# Returns the arguments to give the template instead, named (empty when
+# none); its attribute "was" holds the template's own value of each.
+.template_fit <- function(d, x, adsl = NULL, given = character(), group = NULL) {
   cols <- unique(c(names(x), names(adsl)))
-  out <- character()
+  out <- was <- character()
   step_of <- function(s) Filter(function(z) identical(z$step, s), d$data)
   pick <- function(cands) {
     hit <- cands[cands %in% cols]
@@ -644,7 +762,10 @@ remove_fig_preset <- function(name, home = tflplanner_home()) {
     have <- unique(stats::na.omit(as.character(x$PARAMCD)))
     v <- if (length(p)) unlist(strsplit(paste(p[[1L]]$value, collapse = ","),
                                         "\\s*[|,]\\s*")) else character()
-    if (length(v) && !any(v %in% have) && length(have)) out[["param"]] <- sort(have)[1L]
+    if (length(v) && !any(v %in% have) && length(have)) {
+      out[["param"]] <- sort(have)[1L]
+      was[["param"]] <- paste(v, collapse = ", ")
+    }
   }
   # a variable the template reads: kept when the dataset has it; named
   # when only ADSL has it (so the caller joins ADSL); else the first of
@@ -656,19 +777,39 @@ remove_fig_preset <- function(name, home = tflplanner_home()) {
     hit <- c(cands[cands %in% names(x)], cands[cands %in% names(adsl)])
     if (length(hit)) hit[[1L]] else NA_character_
   }
-  if (!"pop" %in% given) {
-    f <- step_of("flag")
-    v <- fit_var(if (length(f)) f[[1L]]$variable,
-                 c("FASFL", "ITTFL", "SAFFL", "EFFFL", "RANDFL",
-                   sort(grep("FL$", cols, value = TRUE))))
-    if (!is.na(v)) out[["pop"]] <- v
-  }
-  if (!"group" %in% given) {
-    g <- d$plot$colour_by %||% unlist(lapply(d$data, `[[`, "by"))[1L]
+  # (no population flag is fitted: a template has no flag step now -- the
+  # figure's analysis set is its report's, read from the population's dataset)
+  # the group: the template's group argument as applied, never read from
+  # the design's steps (its colour, a step's `by` may be another variable:
+  # forest_hr's subgroups)
+  g <- if (length(group) && !is.na(group[[1L]]) && nzchar(group[[1L]])) group[[1L]]
+  if (!"group" %in% given && !is.null(g)) {
     v <- fit_var(g, c("TRT01P", "TRT01A", "TRTP", "TRTA", "ARM", "ACTARM"))
-    if (!is.na(v)) out[["group"]] <- v
+    if (!is.na(v)) {
+      out[["group"]] <- v
+      was[["group"]] <- g
+    }
   }
+  # (the template's own value of each, for the note that says what changed)
+  if (length(out)) attr(out, "was") <- was[names(out)]
   out
+}
+
+# The note on what .template_fit() changed, a sentence each: the template's
+# default, that `ds` has not got it, and what is used instead (or that it is
+# read from ADSL, when only ADSL has it).  `t` translates.
+.template_fit_notes <- function(fit, ds, t = identity) {
+  was <- attr(fit, "was")
+  lab <- c(param = t("Parameter"), group = t("Group"))
+  unname(vapply(names(fit), function(n) {
+    w <- if (n %in% names(was)) was[[n]] else ""
+    if (identical(w, fit[[n]]))
+      sprintf(t("%s: the template's default %s is not in %s; it is read from ADSL."),
+              lab[[n]], w, ds)
+    else
+      sprintf(t("%s: the template's default %s is not in %s; it uses %s instead."),
+              lab[[n]], w, ds, fit[[n]])
+  }, ""))
 }
 
 # A template joins ADSL for the variables the dataset lacks, but it names

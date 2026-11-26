@@ -147,7 +147,7 @@ test_that("a figure design's R that does not read stops the import at its field"
   skip_on_cran()
   home <- local_home()
   p <- add_output(new_planner(), "F-1", type = "figure")
-  p <- set_fig_design(p, "F-1", tflspec::tfl_fig_template("km_simple", data = "ADTTE"))
+  p <- set_fig_design(p, "F-1", tflspec::tfl_fig_template("km_simple", data = "ADTTE", group = "TRT01P"))
   s <- suppressMessages(create_study("IM-2", planner = p))
   g <- file.path(home, "F-1 edited.yml")
   file.copy(file.path(s$path, "spec", "outputs", "F-1.yml"), g)

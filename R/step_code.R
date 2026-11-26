@@ -180,15 +180,40 @@ code_step_ui <- function(prefix, t = identity, lang = "en") {
 
 # ---- the program's lines around a step of the report's own code ----------
 
-# The datasets the report registers, read; and its ARD as `ard` when it
-# reads one
+# The datasets the report registers, read; a figure's subjects (its
+# analysis set's, with its analysis data: the code reads them by name,
+# `adsl_sub`); and its ARD as `ard` when it reads one
 .code_inputs <- function(x, output_id) {
   ds <- report_datasets(x, output_id)
+  sj <- if (identical(report_info(x, output_id)$type, "figure")) {
+    .code_subjects_lines(x, output_id, .adata_rows(x, output_id)$data_id)
+  }
   ard <- if (.code_reads_ard(x, output_id)) .code_ard_lines(x, output_id)
   c(if (length(ds)) c(
       paste0("# the report's data: ", paste(ds, collapse = ", "), " (data catalog)"),
       unlist(lapply(ds, function(d) .read_dataset_lines(x, d))), ""),
+    sj,
     ard)
+}
+
+# A figure's subjects: the subjects of the report's analysis set (the
+# object <dataset>_sub) and its analysis data `adata`, made before its own
+# code as its program makes them -- tflspec's lines (its report program's
+# .rp_fig_subjects(), .rp_fig_subjects_lines(): the ARD programs' data
+# part), not a rule of the app's.  NULL when the report has no set (or a
+# tflspec without them).
+.code_subjects_lines <- function(x, output_id, adata = character()) {
+  pop <- report_population(x, output_id)
+  if (is.na(pop) || is.null(x$ard)) return(NULL)
+  ns <- asNamespace("tflspec")
+  make <- get0(".rp_fig_subjects", envir = ns, mode = "function", inherits = FALSE)
+  lines <- get0(".rp_fig_subjects_lines", envir = ns, mode = "function", inherits = FALSE)
+  if (is.null(make) || is.null(lines)) return(NULL)
+  adata <- as.character(adata %||% character())
+  # (the report as tflspec's program reads its set: its data's population)
+  ctx <- list(report = list(id = output_id, output = list(data = list(population = pop))),
+              shared = list(ard = structure(x$ard, class = "tfl_ard_spec")))
+  lines(make(ctx, data = adata), adata)
 }
 
 # this report's ARD rows as `ard`: a figure's as a designed figure's
