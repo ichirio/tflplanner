@@ -419,7 +419,8 @@ $(document).on('hidden.bs.modal', function() {
 }
 
 .grid <- function(d, sheet, key, choices, closed = character(),
-                  select = FALSE, read_only = character(), spare = 1L) {
+                  select = FALSE, read_only = character(), spare = 1L,
+                  read_only_rows = integer()) {
   d <- .na_blank(d)
   if (!nrow(d)) d[1L, ] <- ""
   h <- rhandsontable::rhandsontable(
@@ -440,6 +441,9 @@ $(document).on('hidden.bs.modal', function() {
   for (cn in intersect(read_only, names(d))) {
     h <- suppressWarnings(rhandsontable::hot_col(h, cn, readOnly = TRUE))
   }
+  # (rows kept as they are -- a code list that is one of the study's)
+  rows <- read_only_rows[read_only_rows >= 1L & read_only_rows <= nrow(d)]
+  if (length(rows)) h <- rhandsontable::hot_row(h, rows, readOnly = TRUE)
   h
 }
 

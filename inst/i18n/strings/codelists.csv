@@ -30,3 +30,5 @@
 "Code list of %s","%s のコードリスト"
 "value: as the data has it; label: what it prints as (blank: itself); order: its place","value：データの値、label：表示する文字（空欄なら値のまま）、order：並び順"
 "Copy the lists","コピー"
+"The study's lists, read only: %s. Change them in spec/defaults.yml (codelists:).","試験標準のコードリスト（読み取り専用）: %s。変更は spec/defaults.yml（codelists:）で行います。"
+"Not changed: %s. A code list that is one of the study's lists (its `list` cell) is read only here: its rows are the study's list (spec/defaults.yml `codelists:`). Change the study's list, or the report's file.","変更していません: %s。試験標準のコードリストを使うリスト（`list` セルがあるもの）は、ここでは読み取り専用です。その行は試験標準のリスト（spec/defaults.yml の `codelists:`）です。試験標準のリストか、帳票のファイルを変更してください。"

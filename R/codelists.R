@@ -151,6 +151,7 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
                                       FALSE)),
       shiny::uiOutput(p("hidden"), inline = TRUE)),
     rhandsontable::rHandsontableOutput(p("hot")),
+    shiny::uiOutput(p("refs")),
     shiny::tags$details(
       class = "small mt-2",
       shiny::tags$summary(t("Read a file into this report")),
@@ -188,7 +189,22 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
     grids_drawn()
     ch <- .std_choices("codelists")
     ch$variable <- unique(c(vars(), ch$variable))
-    .grid(d, "codelists", key(), ch)
+    # (a list that is one of the study's -- its `list` cell -- is shown,
+    # read only: R/codelist_refs.R; the `list` column is not set here)
+    .grid(d, "codelists", key(), ch, read_only = "list",
+          read_only_rows = which(d$variable %in% .cl_ref_vars(d)))
+  })
+  output[[p("refs")]] <- shiny::renderUI({
+    shiny::req(has_study(), !is.null(report()))
+    rv$ver
+    d <- sheet_rows(rv$p, "codelists", report())
+    d <- d[shown(d), , drop = FALSE]
+    refs <- .cl_ref_vars(d)
+    if (!length(refs)) return(NULL)
+    lst <- vapply(refs, function(v) d$list[d$variable %in% v][1L], "")
+    shiny::div(class = "small text-muted mt-1",
+               sprintf(t("The study's lists, read only: %s. Change them in spec/defaults.yml (codelists:)."),
+                       paste0(refs, " (", lst, ")", collapse = ", ")))
   })
   output[[p("hidden")]] <- shiny::renderUI({
     shiny::req(has_study(), !is.null(report()))
@@ -217,6 +233,15 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
     # out of step with its spec, and the next sync converts the whole spec
     shown_now <- old[shown(old), , drop = FALSE]
     shown_now$output_id <- NULL
+    # (what the grid cannot change -- a study's list, the `list` column --
+    # put back, and said; the grid drawn again from the report)
+    d <- .cl_refs_keep(d, shown_now)
+    kept <- attr(d, "kept")
+    attr(d, "kept") <- NULL
+    if (length(kept)) {
+      notify(.cl_refs_kept_text(kept, t), "warning")
+      bump()
+    }
     if (identical(.normalize_sheet(d, "codelists")[names(shown_now)],
                   .normalize_sheet(shown_now, "codelists")[names(shown_now)])) return()
     cand <- guarded(set_sheet_rows(rv$p, "codelists", id,
@@ -627,10 +652,13 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
     grids_drawn()
     p <- shiny::isolate(rv$p)
     d <- sheet_rows(p, "codelists", report())
+    # (one of the study's lists: shown with its `list` cell, read only)
+    ref <- v %in% .cl_ref_vars(d)
     cols <- c("value", "label", "order",
-              if (.codelist_shows_under(p, report(), v)) "under")
+              if (.codelist_shows_under(p, report(), v)) "under", if (ref) "list")
     d <- d[d$variable %in% v, cols, drop = FALSE]
-    .grid(d, "codelists", key(), list())
+    .grid(d, "codelists", key(), list(), read_only = if (ref) cols else character(),
+          spare = if (ref) 0L else 1L)
   })
   shiny::observeEvent(input[[ids[["hot"]]]], {
     h <- input[[ids[["hot"]]]]
@@ -643,6 +671,18 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
     if (is.null(d) || is.null(id) || is.null(v)) return()
     d <- .drop_blank_rows(as.data.frame(d, stringsAsFactors = FALSE))
     old <- sheet_rows(rv$p, "codelists", id)
+    # (one of the study's lists: read only -- nothing taken in, and said
+    # when the grid had changed it; drawn again from the report)
+    if (v %in% .cl_ref_vars(old)) {
+      was <- old[old$variable %in% v, , drop = FALSE]
+      was$output_id <- NULL
+      d$variable <- rep(v, nrow(d))
+      if (length(attr(.cl_refs_keep(d, was), "kept"))) {
+        notify(.cl_refs_kept_text(v, t), "warning")
+        bump()
+      }
+      return()
+    }
     keep <- old[!old$variable %in% v, , drop = FALSE]
     keep$output_id <- NULL
     mine <- data.frame(variable = rep(v, nrow(d)), stringsAsFactors = FALSE)

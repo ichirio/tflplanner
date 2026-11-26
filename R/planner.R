@@ -70,7 +70,10 @@ report_types <- function() c("table", "listing", "figure")
 #' is replaced, the others are kept (rows with no `under` column keep the
 #' `under` the report's values have).  A code list is a report's (tflspec:
 #' every row names its report); to use one in several reports, copy it
-#' ([import_codelist()], `standard_codelists()`).
+#' ([import_codelist()], `standard_codelists()`).  A report's list that is
+#' one of the study's lists (`{list: SEX}` in its file; the sheet's `list`
+#' cell) has the study's rows, which are read only: `set_codelist()` stops
+#' on rows of such a variable.
 #'
 #' @param path An `.xlsx` or `.csv` file.
 #' @param x A `tflplanner`.
@@ -130,6 +133,15 @@ set_codelist <- function(x, output_id, rows) {
   rows <- rows[.codelist_cols]
   rows[] <- lapply(rows, as.character)
   old <- sheet_rows(x, "codelists", output_id)
+  # (a variable whose list is one of the study's -- its `list` cell -- has
+  # the study's rows, read only: R/codelist_refs.R)
+  refs <- intersect(.cl_ref_vars(old), rows$variable)
+  if (length(refs)) {
+    stop("The code list of ", paste(refs, collapse = ", "), " in ", output_id,
+         " is one of the study's lists (its `list` cell): its rows are the study's, read only. ",
+         "Change the study's list (spec/defaults.yml `codelists:`), or the report's file.",
+         call. = FALSE)
+  }
   key <- function(d) paste(d$variable, d$value, sep = "\r")
   # rows that do not say `under` (a file of variable, value, label and
   # order): each value's `under` as the report has it
