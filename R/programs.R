@@ -196,13 +196,22 @@ report_info <- function(x, output_id) {
 
 # A table's Rework as its program writes it: `data <- ard |>
 # normalize_ard(...)` (the table's own arguments), then the code, which
-# starts from `data` and leaves `data`.  The code is written as it is: an
-# old one that normalizes itself (`data <- normalize_ard(ard)`) overwrites
-# the line before it with the same data.  `code` the table's ARD code: one
-# that makes `data` itself has no `ard` to normalize.
+# starts from `data` and leaves `data`.  The code is written as tflspec
+# writes SPEC R into a program (.rework_code()): an old one that normalizes
+# itself (`data <- normalize_ard(ard)`) overwrites the line before it with
+# the same data.  `code` the table's ARD code: one that makes `data` itself
+# has no `ard` to normalize.
 .rework_lines <- function(x, output_id, code, proc) {
   c(if (is.na(code) || !.makes_data(code)) .rework_normalize_lines(x, output_id),
-    .code_block(proc))
+    .rework_code(proc))
+}
+
+# A Rework (a table's, a template listing's) as tflspec writes the data's
+# steps into a program, one element a line (tflspec A1): one expression
+# that assigns only `data` as it is, any other code in a scope of its own
+# that leaves `data`, local({ }), so what else it assigns stays there
+.rework_code <- function(proc) {
+  .tflspec_fn(".content_steps_code")(.code_block(proc))
 }
 
 # The check tflspec makes of a Rework, in its words: it names `data`
@@ -366,7 +375,7 @@ data_lines <- function(x, output_id, todo = TRUE) {
     }
     if (!is.null(recs)) {
       return(c(setup, "# the listing's records", recs,
-               if (!is.na(proc)) c("", "# its rework", .code_block(proc))))
+               if (!is.na(proc)) c("", "# its rework", .rework_code(proc))))
     }
   }
   # a listing defined in rows: its process code is a rework of `data`
