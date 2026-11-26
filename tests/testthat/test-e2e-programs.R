@@ -29,6 +29,20 @@ e2e_libs <- function(env = parent.frame()) {
   withr::local_envvar(R_LIBS = paste(.libPaths(), collapse = .Platform$path.sep), .local_envir = env)
 }
 
+# An official run, waited for.  A run that makes no batch folder stopped
+# before any program ran (its runner, programs/batch.R, in the child R):
+# every report is "not run" and no report's log says why -- the child's
+# exit status and the end of its output are the failure
+e2e_run <- function(s, ...) {
+  r <- run_batch(s, c("ard", "tfl"), ..., wait = TRUE)
+  if (is.null(r$batch)) {
+    fail(sprintf("the official run made no batch folder (exit status %s); its output ends:\n%s",
+                 if (isTRUE(r$ok)) "0" else "not 0",
+                 paste(utils::tail(r$output, 30L), collapse = "\n")))
+  }
+  invisible(r)
+}
+
 # a study of tflspec's example ADaM, registered in the test's home
 e2e_study <- function(id, datasets, home) {
   d <- file.path(studies_root(home), id)
@@ -98,7 +112,7 @@ test_that("the sample study's official run makes every report", {
   e2e_libs()
   s <- suppressMessages(create_sample_study(run = FALSE, home = home))
   s <- suppressMessages(save_study(s, home = home, fill_widths = TRUE))
-  invisible(run_batch(s, c("ard", "tfl"), wait = TRUE))
+  e2e_run(s)
   res <- e2e_results(s, s$planner$outputs$output_id)
   expect_identical(nrow(res), nrow(s$planner$outputs))
   e2e_expect_ok(res)
@@ -137,14 +151,14 @@ test_that("tables from templates converted to code and a listing started from th
   }
   # the report set alone: its programs only
   before <- list_batches(s)$batch
-  invisible(run_batch(s, c("ard", "tfl"), batch = "Topline", wait = TRUE))
+  e2e_run(s, batch = "Topline")
   b <- setdiff(list_batches(s)$batch, before)
   expect_length(b, 1L)
   r <- utils::read.csv(file.path(s$path, "runs", b, "run.csv"), stringsAsFactors = FALSE)
   expect_setequal(r$program, c("programs/ard/C-DM.R", "programs/tfl/C-DM.R"))
   expect_true(all(r$status == "OK"))
   # every report
-  invisible(run_batch(s, c("ard", "tfl"), wait = TRUE))
+  e2e_run(s)
   e2e_expect_ok(e2e_results(s, c("C-DM", "C-AE", "C-AEGR", "F-LAE")))
 })
 
@@ -166,7 +180,7 @@ test_that("a report adopted from the AI's draft is in the run and runs", {
   s <- suppressMessages(reload_from_spec("AI-2", home = home))
   expect_true("A-DM" %in% s$planner$outputs$output_id)
   s <- suppressMessages(save_study(s, home = home, fill_widths = TRUE))
-  invisible(run_batch(s, c("ard", "tfl"), wait = TRUE))
+  e2e_run(s)
   e2e_expect_ok(e2e_results(s, c("F-DM", "A-DM")))
 })
 
@@ -235,7 +249,7 @@ test_that("every template of tflspec makes its report in an official run", {
   if ("X-forest-hr" %in% ids) p <- set_fig_ard_source(p, "X-forest-hr", "own")
   s$planner <- p
   s <- suppressWarnings(suppressMessages(save_study(s, home = home, fill_widths = TRUE)))
-  invisible(run_batch(s, c("ard", "tfl"), wait = TRUE))
+  e2e_run(s)
   res <- e2e_results(s, ids)
   expect_identical(sort(res$output_id), sort(ids))
   e2e_expect_ok(res)
