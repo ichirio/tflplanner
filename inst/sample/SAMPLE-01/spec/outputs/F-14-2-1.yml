@@ -5,8 +5,10 @@ extends:
   - defaults
 data:
   source: code
+  population: SAF
 content: !r |-
-  saf <- adsl$USUBJID[adsl$SAFFL == "Y"]
+  # adsl_sub: the subjects of the report's analysis set, made before this code
+  saf <- adsl_sub$USUBJID
   d <- advs[advs$PARAMCD == "SYSBP" & advs$USUBJID %in% saf &
               advs$AVISITN > 0 & advs$AVISITN <= 8 & !is.na(advs$CHG), ]
   m <- aggregate(CHG ~ TRTA + AVISITN, data = d, FUN = function(x)

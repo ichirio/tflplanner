@@ -4,12 +4,89 @@
 # set's subjects (adsl_<set>) is made when a report's set is chosen, and a
 # report whose set changes has its analyses moved to the new set's data.
 
-# a report's analysis set (NA: none given)
+# a report's analysis set (NA: none given).  A listing's is its data's: its
+# row's `population_id` (what a save writes onto its `data: population`),
+# else the report list's -- tflspec's rule for the sheets (the data's own
+# set wins, else the report's: .data_population(), convert), so its
+# program, step 1 and the TOC read one set (review S5)
 report_population <- function(x, output_id) {
+  v <- .listing_row_set(x, output_id)
+  if (!is.na(v)) return(v)
   o <- x$outputs
   v <- if (is.null(o$population)) NA_character_ else
     o$population[match(output_id, o$output_id)]
   if (length(v) != 1L || .is_blank(v)) NA_character_ else v
+}
+# a listing's row's own set (NA: none, or no listing row)
+.listing_row_set <- function(x, output_id) {
+  lr <- if (is.list(x[["lf"]])) x[["lf"]][["listings"]]
+  if (length(output_id) != 1L || is.null(lr) || is.null(lr[["population_id"]])) return(NA_character_)
+  v <- lr[["population_id"]][match(output_id, lr[["output_id"]])]
+  if (length(v) != 1L || .is_blank(v)) NA_character_ else as.character(v)
+}
+# The listing sheets with a listing's set as report_population() reads it
+# (its own, else the report's) on its row: what its program is written
+# from, as tflspec writes the saved listing's (review S5: the planner's
+# program and tflspec's, of one SPEC, keep the same subjects).  A row that
+# reads one of the report's analysis data (`data`) has that data's set
+# (.data_population()): left as it is
+.lf_with_report_set <- function(x, output_id) {
+  lf <- x[["lf"]]
+  lr <- if (is.list(lf)) lf[["listings"]]
+  pop <- report_population(x, output_id)
+  if (is.null(lr) || is.na(pop)) return(lf)
+  mine <- !is.na(lr[["output_id"]]) & lr[["output_id"]] == output_id
+  if (!is.null(lr[["data"]])) mine <- mine & .is_blank_v(lr[["data"]])
+  if (!any(mine)) return(lf)
+  if (is.null(lr[["population_id"]])) lr[["population_id"]] <- rep(NA_character_, nrow(lr))
+  lr[["population_id"]][mine] <- pop
+  lf[["listings"]] <- lr
+  lf
+}
+
+# The study's analysis sets: what every control that offers a report's set
+# offers -- the report list's, step 1's, a figure's, the TOC's, the Create
+# dialog's, a template's data card, an analysis data's Population (canon
+# 11-15 (2): a set is registered in the study, spec/data.yml `populations:`,
+# and a report picks one of them; a flag no set says is no choice).  The
+# rows of the populations sheet (data.yml's `populations:` as the planner
+# holds it, its edits not saved yet with them) whose id tflspec's
+# .study_set_ids() takes as the study's, read from the study's data
+# catalog with those rows in it.  attr "none" TRUE when the study registers
+# no set (data.yml names none): a control offers none and says so
+# (.study_sets_none_label()).  A study with no data catalog (no
+# spec/data.yml; a planner with no YAML spec), or a tflspec without the
+# helper, has sets that are not known: the sheet's rows, as before.
+.study_set_rows <- function(p) {
+  po <- p$ard$populations
+  if (is.null(po) || !nrow(po)) {
+    po <- data.frame(population_id = character(), dataset = character(), where = character(),
+                     stringsAsFactors = FALSE)
+  }
+  po <- po[!.is_blank_v(po$population_id), , drop = FALSE]
+  ids <- .study_set_ids_now(p, po$population_id)
+  if (!is.null(ids)) po <- po[po$population_id %in% ids, , drop = FALSE]
+  rownames(po) <- NULL
+  attr(po, "none") <- !is.null(ids) && !length(ids)
+  po
+}
+# tflspec's .study_set_ids() of the study's data catalog with the
+# populations sheet's ids `sheet` as its `populations:` (what a save
+# writes there); NULL when the sets are not known
+.study_set_ids_now <- function(p, sheet) {
+  f <- get0(".study_set_ids", envir = asNamespace("tflspec"), mode = "function", inherits = FALSE)
+  sp <- p[["spec"]]
+  data <- if (is.list(sp) && is.list(sp[["study"]])) sp[["study"]][["data"]]
+  if (is.null(f) || !length(data)) return(NULL)
+  data[["populations"]] <- lapply(unique(as.character(sheet)), function(id) list(id = id))
+  f(data)
+}
+# the "none" item of a control of a report's set: `none` ("(not chosen)"),
+# or, the study registering no set, that it has none to offer
+.study_sets_none_label <- function(rows, t = identity, none = t("(not chosen)")) {
+  if (isTRUE(attr(rows, "none"))) {
+    t("(none: the study has no analysis set; register one in spec/data.yml populations)")
+  } else none
 }
 
 # An analysis set's label: the populations sheet's `label`, else the company
@@ -211,7 +288,10 @@ report_population <- function(x, output_id) {
 #' analysis of a dataset and the old set to the new set.  An analysis data
 #' of another kind (made from another analysis data, written as R) is left
 #' as it is and named in attribute `left`.  Analysis data are the study's:
-#' none is removed.
+#' none is removed.  The set is written where the report's data keeps it:
+#' a listing's row (its `population_id`); in the study's YAML spec, a
+#' figure's and a listing's data (`data: population`), a table's `common:`,
+#' and the report's TOC line with it.
 #'
 #' @param x A `tflplanner`.
 #' @param output_id The report.
@@ -233,6 +313,132 @@ report_population <- function(x, output_id) {
 #' options(old)
 #' @export
 set_report_population <- function(x, output_id, population) {
+  if (length(output_id) != 1L) stop("One report at a time.", call. = FALSE)
+  .write_report_population(x, output_id, population)
+}
+
+# The one way a report's analysis set is written: the report list, step 1,
+# the TOC taken in, the Add dialog and a template report's writes all come
+# here (codex review 2026-11-26, 3B).  `output_id` the reports, `population`
+# their sets, one each (recycled; NA none).  The set goes where the
+# report's data keeps it:
+# - the planner's own (no `output`): the report list's column, a listing's
+#   rows (`population_id`: a save writes it onto the listing's data), the
+#   set's analysis data made and the report's analyses moved to it
+#   (.report_set_view(); attributes `made` and `left`, every report's);
+# - a report the YAML spec has: its file's set as .o_set_population() puts
+#   it (a figure's and a data map's on the data, else `common:`), its toc
+#   line following it (.spec_set_toc_population()), and the view's rows
+#   made again from the file (.spec_set_output()), so the save does not
+#   take it back.  The planner's own reports the spec has are written after
+#   one sync of the view's edits (the analyses moved); a report new to the
+#   view reaches the spec by the save, from the column and rows set here.
+#   (A report that shares its file with others: the save's, as before.)
+# - a template report whose template takes the set as an argument of its
+#   own (.tpl_pop_is_arg(): forest_hr, tflspec_hierarchy ...): that
+#   argument too, the same value, so the two never disagree (.o_write_set();
+#   review H5).
+# `output`: one report's tfl_output written with its set (a template
+# report's argument or step write, what it writes beside the set as it
+# is); `population` NULL keeps the set it has (its argument made the
+# same).  Its analyses are its template's: none moved, no data made.
+.write_report_population <- function(x, output_id, population = NULL, output = NULL) {
+  n <- length(output_id)
+  if (!is.null(output) && n != 1L) stop("One report's file is written at a time.", call. = FALSE)
+  if (!is.null(output) && is.null(x$spec)) stop("The planner has no YAML spec.", call. = FALSE)
+  pops <- NULL
+  if (!is.null(population)) {
+    pops <- as.character(rep_len(population, n))
+    pops[vapply(pops, .is_blank, NA)] <- NA_character_
+  }
+  if (is.null(output)) {
+    if (is.null(pops)) pops <- rep(NA_character_, n)
+    made <- left <- character()
+    for (k in seq_len(n)) {
+      x <- .report_set_view(x, output_id[k], pops[k])
+      made <- c(made, attr(x, "made"))
+      left <- c(left, attr(x, "left"))
+    }
+  }
+  if (!is.null(x$spec)) {
+    ids <- if (!is.null(output)) output_id else intersect(output_id, names(x$spec$outputs))
+    if (is.null(output) && length(ids)) {
+      # (the view's edits -- the analyses moved, the data made -- in the
+      # spec first: the file is written from it)
+      x <- .spec_sync(x, x$spec$meta)
+      attr(x, "changed") <- NULL
+    }
+    for (id in ids) {
+      o <- output %||% x$spec$outputs[[id]]
+      if (is.null(o)) next
+      if (!is.null(pops)) {
+        o <- .o_write_set(o, pops[match(id, output_id)])
+      } else {
+        # (the set kept: its argument made the same -- the set where the
+        # data keeps it, else, an older file's, the argument's)
+        now <- .o_population(o)
+        if (is.na(now)) now <- .o_arg_population(o)
+        if (!is.na(now)) o <- .o_write_set(o, now)
+      }
+      if (is.null(output)) {
+        w <- x$spec$where
+        rel <- if (id %in% names(w)) w[[id]]
+        # (a file several reports share is written by the save, as before;
+        # its TOC line follows the set now all the same)
+        if (!is.null(rel) && sum(unlist(w) == rel) > 1L) {
+          x <- .spec_set_toc_population(x, id, .o_population(o))
+          next
+        }
+      }
+      x <- .spec_set_output(.spec_set_toc_population(x, id, .o_population(o)), id, o)
+    }
+  }
+  if (is.null(output)) {
+    attr(x, "made") <- unique(made)
+    attr(x, "left") <- unique(left)
+  }
+  x
+}
+
+# One report's file with its set (NA: none) in every place it lives:
+# where its data keeps it (.o_set_population()) and, when its template
+# takes the set as an argument of its own (a shown `population`
+# parameter, .tpl_pop_is_arg()), that argument -- the same value, or taken
+# out with it.  The one rule .write_report_population() writes by (H5).
+.o_write_set <- function(o, population) {
+  o <- .o_set_population(o, population)
+  if (!.o_takes_set_arg(o)) return(o)
+  has <- length(population) && !is.na(population[1L]) && nzchar(population[1L])
+  t <- o$template
+  args <- .tpl_args_of(t)
+  if (!has && is.null(args$population)) return(o)
+  if (has && identical(as.character(unlist(args$population)), as.character(population[1L]))) return(o)
+  if (has) args["population"] <- list(as.character(population[1L])) else args$population <- NULL
+  # (in the place the file has it, a new one in its step's: .tpl_write_args())
+  o$template <- .tpl_write_args(t, args, by_step = TRUE)
+  o
+}
+
+# Whether a report's template takes its set as an argument of its own
+# (a template SPEC with a shown `population` parameter; FALSE for a report
+# of no template, a figure designer's name, a template not found)
+.o_takes_set_arg <- function(o) {
+  t <- o$template
+  if (!is.list(t) || is.null(t$name)) return(FALSE)
+  isTRUE(tryCatch(.tpl_pop_is_arg(.tpl_params(as.character(t$name)[1L])), error = function(e) FALSE))
+}
+
+# The set a report's template argument says (NA: none, or no such argument)
+.o_arg_population <- function(o) {
+  if (!.o_takes_set_arg(o)) return(NA_character_)
+  v <- as.character(unlist(.tpl_args_of(o$template)$population %||% NA_character_))[1L]
+  if (is.na(v) || !nzchar(v)) NA_character_ else v
+}
+
+# The planner's own part of .write_report_population() for one report:
+# the report list's column, a listing's rows, the set's data made and the
+# report's analyses moved (attributes `made`, `left`)
+.report_set_view <- function(x, output_id, population) {
   o <- x$outputs
   i <- match(output_id, o$output_id)
   if (is.na(i)) stop("No report '", output_id, "'.", call. = FALSE)
@@ -244,6 +450,15 @@ set_report_population <- function(x, output_id, population) {
   if (is.null(o$population)) o$population <- rep(NA_character_, nrow(o))
   o$population[i] <- new
   x$outputs <- o
+  # (a listing's row holds its set: the save writes it onto its data)
+  lr <- x$lf$listings
+  if (!is.null(lr) && "population_id" %in% names(lr)) {
+    mine <- !is.na(lr$output_id) & lr$output_id == output_id
+    if (any(mine)) {
+      lr$population_id[mine] <- new
+      x$lf$listings <- lr
+    }
+  }
   before <- .adata_rows(x, output_id)$data_id
   left <- character()
   if (!is.na(new)) {

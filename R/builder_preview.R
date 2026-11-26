@@ -434,7 +434,7 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
   # (the plan and its pages: a part's source with no statistics to read stops
   # at plan_apply(), not when the plan is made)
   run_pages <- function(r) {
-    plan <- tflspec::tfl_content_run(r, objects_for(r))
+    plan <- tflspec::tfl_content_run(r, objects_for(r), study = .content_study(r, sp$study))
     list(plan = plan, res = suppressMessages(rtfreporter::plan_apply(plan)))
   }
   made <- tryCatch(run_pages(r), error = function(e) {

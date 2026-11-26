@@ -99,28 +99,30 @@
     }
   }, ignoreInit = TRUE)
   # The analysis set: the first row of the condition, put in at once --
-  # the study's analysis sets (pop:SAF) and the population flags of the
-  # data (flag:PPROTFL), each with the condition it writes
+  # the study's analysis sets only (pop:SAF), each with the condition it
+  # writes.  A population flag of the data no set says is no choice: it is
+  # registered as a study population first (adata_flag_note; codex review
+  # 9).  A saved condition on such a flag stays the filter's, as it is.
+  # (the sets every control of a report's set offers, .study_set_rows();
+  # attr "none": the study registers none, said in the "(none)" item)
   adata_pop_options <- function(from) {
-    po <- rv$p$ard$populations
-    po <- po[!.is_blank_v(po$where), , drop = FALSE]
-    val <- paste0("pop:", po$population_id)
-    cond <- po$where
-    lab <- sprintf("%s (%s)", po$population_id, po$where)
-    d <- if (!.is_blank(from)) an_data(adata_root(from))
-    flags <- if (!is.null(d)) .cond_population_flags(names(d)) else character()
-    have <- unlist(regmatches(po$where, gregexpr("[A-Za-z0-9_]+FL", po$where)))
-    flags <- setdiff(flags, have)
-    # (paste0() of no flags would still give one "flag:")
-    fv <- if (length(flags)) paste0("flag:", flags) else character()
-    fc <- if (length(flags)) sprintf("%s == %s", flags, encodeString("Y", quote = "\"")) else character()
-    data.frame(value = c(val, fv), cond = c(cond, fc), label = c(lab, fc),
-               name = c(po$population_id, vapply(flags, .population_id_for, "")),
-               stringsAsFactors = FALSE)
+    all <- .study_set_rows(rv$p)
+    po <- all[!.is_blank_v(all$where), , drop = FALSE]
+    structure(data.frame(value = paste0("pop:", po$population_id), cond = po$where,
+                         label = sprintf("%s (%s)", po$population_id, po$where),
+                         name = po$population_id, stringsAsFactors = FALSE),
+              none = attr(all, "none"))
+  }
+  # the data's Y/N flags no study population says (.tpl_flags_undefined(),
+  # as the Create dialog tells them)
+  adata_flags_undefined <- function(from) {
+    if (.is_blank(from)) return(character())
+    d <- tryCatch(an_data(adata_root(from)), error = function(e) NULL)
+    .tpl_flags_undefined(d, rv$p$ard$populations)
   }
   adata_pop_choices <- function(from) {
     o <- adata_pop_options(from)
-    c(stats::setNames(".none", t("(none)")), stats::setNames(o$value, o$label))
+    c(stats::setNames(".none", .study_sets_none_label(o, t, t("(none)"))), stats::setNames(o$value, o$label))
   }
   # the option whose condition the condition's first rows are (".none": none)
   adata_pop_of_where <- function(where, from) {
@@ -245,9 +247,10 @@
                            selected = blank_na(r$from), width = "100%"),
         shiny::selectInput("adata_pop", with_tip(
           argl("Population", "population_id"),
-          t("The analysis set (Populations tab) this data is kept to, or a population flag of the data (SAFFL = Y). Make an analysis data only when the report needs more than a dataset kept to a set.")),
+          t("The analysis set (Populations tab) this data is kept to: one of the study's populations. Make an analysis data only when the report needs more than a dataset kept to a set.")),
           pop_ch, selected = pop_now, width = "100%")),
       shiny::uiOutput("adata_pop_note"),
+      shiny::uiOutput("adata_flag_note"),
       if (nzchar(e$legacy_pop)) shiny::p(
         class = "small text-muted mb-2",
         sprintf(t("Also kept to the population %s (population_id, as the sheet has it: SPEC shows it)."),
@@ -407,6 +410,17 @@
     shiny::div(class = "alert alert-warning small py-1 mb-2",
                if (n < 0L) sprintf(t("%s has no %s: its condition is not taken as the population %s (written as a condition)."), root, .pop_flag(po$where[k]), pop) else
                  sprintf(t("%s's %s is not %s's for %d subjects: its condition is not taken as the population %s (written as a condition)."), root, .pop_flag(po$where[k]), po$dataset[k], n, pop))
+  })
+  # the data's Y/N flags that are no study population: told, not offered
+  # (a flag that is an analysis set is registered first)
+  output$adata_flag_note <- shiny::renderUI({
+    shiny::req(!is.null(adata_edit()))
+    from <- input$adata_from %||% ""
+    fl <- adata_flags_undefined(from)
+    shiny::req(length(fl))
+    shiny::p(class = "small text-muted mb-2",
+             sprintf(t("%s's Y/N flags %s are not study populations: a flag that is a real analysis set is registered as a study population (spec/data.yml populations) first, then chosen here."),
+                     adata_root(from), paste(fl, collapse = ", ")))
   })
   # the same data already there: said, so it is not made twice
   output$adata_same <- shiny::renderUI({

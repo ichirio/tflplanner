@@ -2,8 +2,6 @@ id: F-14-2-4
 kind: figure
 label: Hazard ratio of the time to first skin disorder by subgroup (forest plot, its
   own ARD)
-common:
-  population: SAF
 extends:
   - defaults
 ard:
@@ -77,8 +75,6 @@ data:
       dataset: ADTTE
     - step: param
       value: TTSKIN
-    - step: flag
-      variable: SAFFL
     - step: ard_stats
       name: est
       analysis_id: HR, HR_SEX, HR_AGEGR1
@@ -87,6 +83,7 @@ data:
       by: SEX, AGEGR1
     - step: code
       label: 'the rows to draw: the comparison arm, a heading row per subgroup'
+      out: est
       code: |-
         # an upper limit above this is a model that did not converge (an arm
         # with no event in the subgroup): its hazard ratio is NE
@@ -133,6 +130,7 @@ data:
             txt = ifelse(head, "", txt),
             y = rev(row_number())
           )
+  population: SAF
 codelists:
   TRT01A:
     - value: Control

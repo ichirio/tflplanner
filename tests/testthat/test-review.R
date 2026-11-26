@@ -210,7 +210,7 @@ test_that("a study of 200 reports is reviewed without its data in a few seconds"
 test_that("a figure's advice is in the app's language, by its sentence", {
   local_home()
   p <- add_output(new_planner(), "F1", type = "figure")
-  p <- set_fig_design(p, "F1", tflspec::tfl_fig_template("km_simple"))
+  p <- set_fig_design(p, "F1", tflspec::tfl_fig_template("km_simple", group = "TRT01P"))
   r <- review_problems(p, lang = "ja")
   i <- which(r$rule == "F02")
   expect_true(length(i) >= 1L)

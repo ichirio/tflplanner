@@ -20,6 +20,52 @@
 }
 .pd_source_steps <- c("read", "join", "param", "flag", "time_unit")
 
+# Whether a designer template has a group argument (its form's group
+# field): every one but those of one group or none (a single-arm KM, a
+# spider plot of subjects, a waterfall, a swimmer plot)
+.fig_tpl_has_group <- function(tp, kind) {
+  !tp %in% c("km_single_arm", "individual_spider") && !kind %in% c("waterfall", "swimmer")
+}
+
+# ... and whether it needs one chosen: a template in parts that has one --
+# figure group / by have no default (PRINCIPLES 1.14); a whole-script
+# template passes it to its type's function only when given
+.fig_tpl_needs_group <- function(tp, kind, whole = FALSE) {
+  !isTRUE(whole) && .fig_tpl_has_group(tp, kind)
+}
+
+# A designer template's own parameter of an argument: tflspec's
+# tfl_param() of it -- or of its alias (.fig_tpl_arg_alias: the KM
+# template's group is `by`) -- in the template's parameters, else in its
+# kind's (km_simple is km's); NULL when neither has it.  Never another
+# template's (.fig_tpl_args() falls back to one for a field's heading): the
+# same argument may mean something else there, or have another default.
+.fig_tpl_own_arg <- function(tp, kind, arg) {
+  for (nm in unique(c(tp, kind))) {
+    p <- .tpl_params(nm)
+    for (a in stats::na.omit(c(arg, .fig_tpl_arg_alias[arg]))) if (!is.null(p[[a]])) return(p[[a]])
+  }
+  NULL
+}
+
+# The help behind a template argument's "?" (one rule, every argument of
+# every template): the template's own description of the argument (its
+# own parameter's doc, .fig_tpl_own_arg()), shown as .tpl_doc_shown() shows
+# a doc (tflspec's Japanese, else the app's row keyed by the doc's text),
+# when it has one; else the argument's shared text (.tpl_arg_shared_help);
+# else "".
+.tpl_arg_help <- function(tp, kind, arg, t = identity, lang = "en") {
+  prm <- .fig_tpl_own_arg(tp, kind, arg)
+  if (!is.null(prm) && nzchar(prm$doc %||% "")) return(.tpl_doc_shown(prm, t, lang))
+  sh <- .tpl_arg_shared_help[arg]
+  if (!is.na(sh)) t(sh[[1L]]) else ""
+}
+
+# an argument's help for a template that does not describe it, by the
+# argument (what it means in every template that has it)
+.tpl_arg_shared_help <- c(
+  time_unit = "The unit the time axis is shown in; the data's days are converted to it.")
+
 # The data steps that make a statistic (a KM fit, summary statistics, a
 # function's result, the ARD's numbers): step 2 (ARD) shows them, from the
 # first one on -- the steps after it go on in its object; the steps before
