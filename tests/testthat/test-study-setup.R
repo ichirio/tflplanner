@@ -128,10 +128,15 @@ test_that("the company's code and the user's run once per program run", {
   give_data(s)
   e <- new.env()
   src <- function() withr::with_dir(s$path, sys.source(f, envir = e, toplevel.env = e))
-  # a program's run starts as a program starts (.study_guard's lines) and
-  # ends as it ends
+  # a program's run starts as a program starts (the lines after its
+  # study.yml check) and ends as it ends (a report program's)
+  prog <- .program_code(add_output(new_planner(), "T-1"), "T-1")
+  run_start <- prog[startsWith(prog, "options(tflplanner.run = basename(")]
+  run_end <- prog[prog == "options(tflplanner.run = NULL)"]
+  expect_length(run_start, 1L)
+  expect_length(run_end, 1L)
   withr::defer(options(tflplanner.run = NULL))
-  run <- function() eval(parse(text = .run_start), e)
+  run <- function() eval(parse(text = run_start), e)
   run()
   src()
   expect_identical(c(e$n_company, e$n_user), c(1, 1))
@@ -153,7 +158,7 @@ test_that("the company's code and the user's run once per program run", {
   src()
   expect_identical(c(e$n_company, e$n_user), c(3, 3))
   # sourced without a program's run (it ended): each time
-  eval(parse(text = .run_end), e)
+  eval(parse(text = run_end), e)
   expect_null(getOption("tflplanner.run"))
   e2 <- new.env()
   withr::with_dir(s$path, sys.source(f, envir = e2, toplevel.env = e2))
@@ -284,7 +289,10 @@ test_that("an old study_setup.R that cannot be split is kept as it was, and says
   rs <- file.path(s$path, .report_setup_path())
   dir.create(dirname(rs), recursive = TRUE, showWarnings = FALSE)
   if (!file.exists(rs)) writeLines("# report setup", rs)
-  rec <- withr::with_dir(s$path, eval(parse(text = .report_setup_hash_code())))
+  # (record_report()'s line that works it out, as report_setup.R has it)
+  code <- report_setup_code(s$planner)
+  rec <- withr::with_dir(s$path, eval(parse(text = sub("^  setup <- ", "",
+    grep("^  setup <- ", code, value = TRUE)))))
   expect_identical(rec, .report_setup_hash(s$path))
 })
 
@@ -300,7 +308,6 @@ test_that("each setup file sources study_setup.R first; programs no library()", 
               "programs/tfl/fig_setup.R")) {
     expect_identical(first_code(file.path(s$path, f)), src, label = f)
   }
-  expect_identical(.source_study_setup(), src)
   # a report program: no library() of its own, the study.yml check, then
   # report_setup.R (always written, always sourced)
   prog <- readLines(file.path(s$path, "programs", "tfl", "DM.R"))
@@ -618,4 +625,11 @@ test_that("the setup reads the datasets a report uses, not every dataset of the 
   used <- tolower(.reports_datasets(p))
   expect_identical(now, all[all %in% used])
   expect_identical(now[1L], "adsl")
+})
+
+test_that("the preview's report_content() is the one fig_setup.R has (tflspec writes it)", {
+  # (the app runs a report's own code with it, R/user_report.R: the same
+  # functions as the study's programs/tfl/fig_setup.R ends with)
+  fig <- .fig_setup_code(NULL)
+  expect_identical(utils::tail(fig, length(.report_content_fun)), .report_content_fun)
 })

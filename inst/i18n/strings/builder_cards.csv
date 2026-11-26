@@ -21,3 +21,4 @@
 "R switch. On: the value is R code, typed in the R box. Off: the field's own value. The value moves across when it turns.","R スイッチ。オン: 値を R のコードで書きます（R の欄）。オフ: この欄の値です。切り替えると、値はもう一方の欄へ移ります。"
 "This R cannot be shown in the field: it stays R.","この R は欄の形では表せないため、R のままにしました。"
 "The field's value is kept until R is typed in the R box.","R の欄に R を書くまでは、この欄の値をそのまま使います。"
+"This is R the field cannot hold: it was moved to the R box.","この欄の形では表せない R なので、R の欄へ移しました。"

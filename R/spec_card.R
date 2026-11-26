@@ -404,7 +404,13 @@ spec_card_args <- function(read, item, fn, defs = spec_card_defs(fn)) {
     # never set would: "" is a value (plan_stub(heading = "") a blank
     # heading), so the field left blank keeps it)
     if (is.null(new) && identical(cur, "")) next
-    if (.same_value(new, cur, lg)) next
+    # (a value that was R -- its field drawn with the R switch on -- read
+    # back from the field: the switch was turned off.  Written in the
+    # field's form even where it says the same, so that it opens with the
+    # switch off; a value not turned is no change)
+    turned_off <- inherits(cur, "tfl_r") && !is.null(new) && !inherits(new, c("tfl_r", "tfl_unset")) &&
+      !identical(.arg_kind(defs$args[[a]]$type), "r")
+    if (.same_value(new, cur, lg) && !turned_off) next
     # (a value its field could not show as it is was shown as its R -- a
     # table's cross layer: R text that still says the value is no change)
     if (inherits(new, "tfl_r") && !is.null(cur) && !inherits(cur, "tfl_r") &&
