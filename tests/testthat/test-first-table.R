@@ -790,7 +790,7 @@ test_that("a template figure has no population flag: a forest's analysis data is
     expect_match(tr(no_tpl, "ja"), "\u9078\u3093\u3067\u304f\u3060\u3055\u3044", fixed = TRUE)
     # ... and the checks list it to check, with the way to step 1, whether
     # or not the figure could be drawn (only the picture needs a drawing)
-    draw()
+    session$setInputs(pd_redraw = 1)
     for (h in list(output$pd_overlay$html, output$pd_checks$html)) {
       expect_match(h, "pd_goto_data", fixed = TRUE)
       expect_match(h, "to check", fixed = TRUE)
