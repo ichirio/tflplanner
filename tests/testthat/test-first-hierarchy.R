@@ -41,7 +41,7 @@ test_that("the starter writes the rows of the sample's T-14-3-1", {
   same("sheet", "tables", "overall_label")
   # (in the table's pipe, tflspec #302)
   norm <- function(p, id) {
-    code <- .report_code_lines(p, id, table = TRUE)
+    code <- .program_code(p, id)
     i <- which(code == "plan <- ard |>")
     j <- which(startsWith(trimws(code), "table_plan("))
     paste(trimws(code[(i + 1L):(j[j > i][1L] - 1L)]), collapse = " ")
@@ -71,11 +71,13 @@ test_that("its own hierarchy (medications), all records, a Total column", {
                              group = "TRT01A", hierarchy = c("CMCLAS", "CMDECOD"),
                              total = "Total")
   an <- ard_rows(p, "analyses", "T-CM")
-  expect_identical(an$analysis_id, "CM")
-  expect_identical(an$variables, "CMCLAS | CMDECOD")
-  expect_identical(an$overall, "TRUE")
+  # (the header's N: BIGN, counted by the group, not run over all -- the
+  # Total column's N is the groups' sum)
+  expect_identical(an$analysis_id, c("BIGN", "CM"))
+  expect_identical(an$variables, c("TRT01A", "CMCLAS | CMDECOD"))
+  expect_identical(an$overall, c(NA, "TRUE"))
   expect_identical(sheet_rows(p, "tables", "T-CM")$overall_label, "Any CM")
-  code <- .report_code_lines(p, "T-CM", table = TRUE)
+  code <- .program_code(p, "T-CM")
   expect_match(norm_line <- paste(code, collapse = " "),
                "hierarchy = c(\"CMCLAS\", \"CMDECOD\")", fixed = TRUE)
   expect_match(norm_line, "overall = \"Any CM\"", fixed = TRUE)
@@ -119,6 +121,10 @@ test_that("by severity too: each subject at the worst, the grade in the columns 
   local_home()
   r <- starter_from_sample(grade = "AESEV")
   an <- ard_rows(r$p, "analyses", "T-14-3-1")
+  # (its header prints N: BIGN, by the group only)
+  expect_identical(an$analysis_id, c("BIGN", "TEAE"))
+  expect_identical(an$variables[1L], "TRT01A")
+  an <- an[-1L, ]
   expect_identical(an$by, "TRT01A | AESEV")
   expect_identical(an$denominator, "adsl_saf")
   tb <- sheet_rows(r$p, "tables", "T-14-3-1")

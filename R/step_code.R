@@ -90,11 +90,6 @@ set_report_datasets <- function(x, output_id, datasets) {
 # Is the step the report's own code?
 .is_code_step <- function(x, output_id, step) !is.na(step_code(x, output_id, step))
 
-# What a step of its own code leaves
-.step_leaves <- function(type, step) {
-  if (identical(step, "content")) "content" else if (identical(type, "figure")) "df" else "data"
-}
-
 # Does a report's own code have its ARD (`ard`) in reach?  A figure's as its
 # ARD source says.  A table's data step of its own code makes its data
 # itself (its ARD, when it has one, is what its definition's data step
@@ -238,24 +233,6 @@ code_step_ui <- function(prefix, t = identity, lang = "en") {
   c(paste0("# this report's ARD (`ard`)",
            if (!identical(of, output_id)) paste0(": ", of, "'s")),
     .code_block(a), "")
-}
-
-# A step of the report's own code, as the program runs it: its code, then
-# the check that it left what the next step reads
-.code_step_lines <- function(x, output_id, step) {
-  code <- step_code(x, output_id, step)
-  leaves <- .step_leaves(report_info(x, output_id)$type, step)
-  # (a figure's content: drawn at its size on the page first)
-  sized <- if (identical(step, "content") &&
-               identical(report_info(x, output_id)$type, "figure")) {
-    utils::tail(.fig_sized_lines(x, output_id, "content"), -1L)
-  }
-  c(paste0("# your code: leaves `", leaves, "`"),
-    .code_block(code),
-    "",
-    sized,
-    if (identical(step, "content")) "content <- report_content(content)" else
-      sprintf("%s <- report_data(%s, \"%s\")", leaves, leaves, leaves))
 }
 
 # ---- migration: "user" is no longer a type --------------------------------

@@ -6,3 +6,8 @@
 "the ARD of %s is not made yet: make it first (its step %s)","%s の ARD はまだ作られていません。先に作ってください（その手順 %s）"
 "This report has no analysis set. Choose one in step %s, 'This report's analysis set'.","この帳票に解析対象集団がありません。手順 %s の「この帳票の解析対象集団」で選んでください。"
 "This report has no analysis set. Choose one in step %s, 'This report's analysis set', then apply the template again.","この帳票に解析対象集団がありません。手順 %s の「この帳票の解析対象集団」で選んでから、テンプレートをもう一度適用してください。"
+"Level order cl_%s (%s)","水準の並び cl_%s（%s）"
+"The setting to read the ARD of %s","%s の ARD を読む指定"
+"The setting to read this figure's own ARD","この Figure 自身の ARD を読む指定"
+"The setting to read the ARD taken in (%s)","取り込んだ ARD（%s）を読む指定"
+"Analyses of this figure's ARD: %s","この Figure の ARD の解析： %s"

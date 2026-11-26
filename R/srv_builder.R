@@ -424,7 +424,7 @@
           !.has_group_n(p0, .part_parent(id), st$key[1L]))
         shiny::div(
           class = "small text-warning d-flex flex-wrap gap-2 align-items-center",
-          shiny::span(sprintf(t("The ARD has no subjects per %s: a header's (N=n) prints NA."),
+          shiny::span(sprintf(t("No BIGN counts the subjects per %s: a header's (N=n) reads its N from BIGN."),
                               st$key[1L])),
           # (the report's ARD is step 1's: not changed from a part)
           if (!part) .btn("b_add_n", t("Count them (then Preview)"),

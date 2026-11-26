@@ -69,7 +69,12 @@ button[onclick*='tpl_revert'] { white-space: nowrap; flex-shrink: 0; }
 .rp-field-row > .rp-form-input { flex: 1 1 auto; min-width: 0; }
 .rp-field-row > .rp-r-input { flex: 1 1 auto; min-width: 0; display: none; }
 .rp-field.rp-field-r > .rp-field-row > .rp-form-input { display: none; }
-.rp-field.rp-field-r > .rp-field-row > .rp-r-input { display: block; }
+/* the R switch on: its R box tinted (the standards' blue), told from the
+   field's own control -- a call's field is R text too -- and the note a
+   switch gives when a value cannot move across (R/field_ui.R .r_carry()) */
+.rp-field.rp-field-r > .rp-field-row > .rp-r-input { display: block; background: #eef6ff;
+  border-color: #cfe2ff; }
+.rp-r-note { font-size: 12px; color: #6b7280; margin-top: .1rem; }
 .rp-r-toggle { margin: 0; cursor: pointer; font-size: 11px; font-family: Consolas, 'Courier New', monospace;
   color: #9ca3af; border: 1px solid #e5e7eb; border-radius: .25rem; padding: 0 .3rem; line-height: 1.5; }
 .rp-r-toggle input { display: none; }
@@ -119,6 +124,8 @@ button[onclick*='tpl_revert'] { white-space: nowrap; flex-shrink: 0; }
 /* a field of several values (its chips wrap: a box taller than a text's)
    on a row of its own, the others side by side under it */
 .rp-group-row > .rp-group-cell:has(> .rp-field-list) { flex-basis: 100%; }
+/* ... and a call typed as its R (rtf_border(...)): the whole row to read it */
+.rp-group-row > .rp-group-cell:has(> .rp-field-call) { flex-basis: 100%; }
 .rp-more { margin-top: .3rem; }
 .rp-more-toggle { border: 0; background: none; padding: 0; font-size: 12.5px; color: #6b7280; }
 .rp-more-arrow { display: inline-block; transition: transform .15s; }
@@ -142,10 +149,178 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
 .rp-add-item .shiny-input-container { flex: 1 1 auto; margin-bottom: 0; }
 "
 
+# The R switch's rule (R/field_ui.R .r_carry()), the page's half: a
+# control's value as R text (toR) and R text back as the control's value
+# (fromR: {ok, value}; ok false where the control cannot hold it).  Pure
+# functions, window.rpCarry -- tests/testthat/test-r-switch.R runs them.
+.r_carry_js <- r"---(
+(function() {
+  var numRe = /^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?L?$/;
+  // a string literal's text ("a", 'b'); null: not one
+  function str(t) {
+    t = String(t).trim();
+    var m = /^("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')$/.exec(t);
+    if (!m) return null;
+    var s = m[1].slice(1, -1);
+    if (m[1].charAt(0) === "'") s = s.replace(/\\'/g, "'").replace(/"/g, '\\"');
+    try { return JSON.parse('"' + s + '"'); } catch (e) { return null; }
+  }
+  // one literal -- a string, TRUE / FALSE, a number -- as its text; null: not one
+  function lit(t) {
+    t = String(t).trim();
+    if (t === 'TRUE' || t === 'FALSE') return t;
+    if (numRe.test(t)) return t.replace(/L$/, '');
+    return str(t);
+  }
+  // one literal or c() of them: their texts; null: not so
+  function vec(t) {
+    t = String(t).trim();
+    var one = lit(t);
+    if (one !== null) return [one];
+    var m = /^c\(([\s\S]*)\)$/.exec(t);
+    if (!m) return null;
+    var body = m[1], parts = [], cur = '', q = null;
+    for (var i = 0; i < body.length; i++) {
+      var ch = body.charAt(i);
+      if (q) {
+        cur += ch;
+        if (ch === '\\') cur += body.charAt(++i); else if (ch === q) q = null;
+      } else if (ch === '"' || ch === "'") { q = ch; cur += ch; }
+      else if (ch === ',') { parts.push(cur); cur = ''; }
+      else cur += ch;
+    }
+    if (q) return null;
+    if (cur.trim().length || parts.length) parts.push(cur);
+    var out = [];
+    for (var j = 0; j < parts.length; j++) {
+      var v = lit(parts[j]);
+      if (v === null) return null;
+      out.push(v);
+    }
+    return out;
+  }
+  // a value as an R literal: TRUE / FALSE and (num) a number bare, else a string
+  function quote(x, num) {
+    x = String(x);
+    if (x === 'TRUE' || x === 'FALSE') return x;
+    if (num && numRe.test(x)) return x;
+    return JSON.stringify(x);
+  }
+  // a call the field holds: fn(name = value, ...) with fn one of `fns`,
+  // each value a literal (a string, a number, TRUE, FALSE, NA) or a call
+  // of `inner` whose values are literals -- the grammar R's
+  // .call_from_r() reads as the call (R/builder_cards.R)
+  function callOk(t, fns, inner) {
+    var p = 0;
+    function ws() { while (p < t.length && /\s/.test(t.charAt(p))) p++; }
+    function ident() {
+      var m = /^[A-Za-z.][\w.]*/.exec(t.slice(p));
+      if (!m) return null;
+      p += m[0].length;
+      return m[0];
+    }
+    function value(allowed) {
+      ws();
+      var at = p;
+      if (call(allowed, [])) return true;
+      p = at;
+      var m = /^("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|(?:TRUE|FALSE|NA)(?![\w.])|[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?L?)/.exec(t.slice(p));
+      if (!m) return false;
+      p += m[0].length;
+      return true;
+    }
+    function call(allowed, args) {
+      ws();
+      var id = ident();
+      if (!id) return false;
+      if (t.substr(p, 2) === '::') { p += 2; id = ident(); if (!id) return false; }
+      if (allowed.indexOf(id) < 0) return false;
+      ws();
+      if (t.charAt(p) !== '(') return false;
+      p++;
+      ws();
+      if (t.charAt(p) === ')') { p++; return true; }
+      var seen = {};
+      for (;;) {
+        ws();
+        var nm = ident();
+        if (!nm || seen[nm]) return false;
+        seen[nm] = true;
+        ws();
+        if (t.charAt(p) !== '=' || t.charAt(p + 1) === '=') return false;
+        p++;
+        if (!value(args)) return false;
+        ws();
+        if (t.charAt(p) === ',') { p++; continue; }
+        if (t.charAt(p) === ')') { p++; return true; }
+        return false;
+      }
+    }
+    t = String(t).trim();
+    var ok = call(fns, inner || []);
+    ws();
+    return ok && p === t.length;
+  }
+  // the control's value (a text; a select of several: its values; a
+  // check: whether ticked) as R text; '' for none
+  function toR(carry, v, num) {
+    if (carry === 'check') return v === true ? 'TRUE' : '';
+    if (Array.isArray(v)) v = v.filter(function(x) { return String(x).length > 0; });
+    else v = (v === null || v === undefined) ? '' : String(v);
+    if (carry === 'many') {
+      if (!Array.isArray(v)) v = v.length ? [v] : [];
+      if (!v.length) return '';
+      if (v.length === 1) return quote(v[0], num);
+      return 'c(' + v.map(function(x) { return quote(x, num); }).join(', ') + ')';
+    }
+    if (Array.isArray(v)) v = v.length ? String(v[0]) : '';
+    if (!v.trim().length) return '';
+    if (carry === 'rtext' || carry === 'number') return v.trim();
+    if (carry === 'text') return JSON.stringify(v);
+    if (carry === 'one') return quote(v, num);
+    return '';
+  }
+  // R text back as the control's value: a text; a select's values (an
+  // array); a check's true / false.  ok false: the control cannot hold it
+  // (a call field: only a call callOk() reads, `fns` and `inner`)
+  function fromR(carry, t, fns, inner) {
+    t = String(t).trim();
+    var no = {ok: false};
+    if (carry === 'rtext') {
+      if (fns && fns.length && !callOk(t, fns, inner)) return no;
+      return {ok: true, value: t};
+    }
+    if (carry === 'check') {
+      if (t === 'TRUE' || t === 'T') return {ok: true, value: true};
+      if (t === 'FALSE' || t === 'F') return {ok: true, value: false};
+      return no;
+    }
+    if (carry === 'number') return numRe.test(t) ? {ok: true, value: t.replace(/L$/, '')} : no;
+    if (carry === 'text') {
+      var s = str(t);
+      return s === null ? no : {ok: true, value: s};
+    }
+    if (carry === 'one') {
+      var o = lit(t);
+      return o === null ? no : {ok: true, value: [o]};
+    }
+    if (carry === 'many') {
+      var vs = vec(t);
+      return vs === null ? no : {ok: true, value: vs};
+    }
+    return no;
+  }
+  // does the field hold this R?  The one test for the switch turned off
+  // and for a text typed in the field
+  function holds(carry, t, fns, inner) { return fromR(carry, t, fns, inner).ok; }
+  window.rpCarry = {toR: toR, fromR: fromR, holds: holds};
+})();
+)---"
+
 # the cards' behaviour: open / close remembered in this browser, the R
 # and the column / value switches, the folded arguments' search and
 # promotion, Code line <-> card, Enter adds an item
-.builder_cards_js <- "
+.builder_cards_js <- paste0(.r_carry_js, "
 (function() {
   function store(k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
   function read(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
@@ -199,8 +374,104 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
   $(document).on('change', '.rp-card-switch input', function() {
     $(this).closest('.rp-card').toggleClass('rp-card-off', !this.checked);
   });
+  // the R switch turned: the value moves across (R/field_ui.R .r_carry(),
+  // the field's data-carry) -- into the R box when it turns on, back into
+  // the control when it turns off, the side it left emptied; a value that
+  // cannot move stays where it is and the field says so (R the control
+  // cannot show: the switch stays on)
+  function ctlValue(el, carry) {
+    if (carry === 'check') return el.checked;
+    return el.selectize ? el.selectize.getValue() : $(el).val();
+  }
+  function ctlSet(el, carry, v) {
+    if (carry === 'check') {
+      el.checked = v === true;
+    } else if (el.selectize) {
+      var vs = Array.isArray(v) ? v : (v === '' ? [] : [v]);
+      vs.forEach(function(x) { if (!el.selectize.options[x]) el.selectize.addOption({value: x, label: x}); });
+      if (!vs.length) el.selectize.clear(); else el.selectize.setValue(el.multiple ? vs : vs[0]);
+      return true;
+    } else if (el.tagName === 'SELECT') {
+      var x = Array.isArray(v) ? (v.length ? v[0] : '') : v;
+      if (x !== '' && !$(el).find('option').filter(function() { return this.value === x; }).length) return false;
+      $(el).val(x);
+    } else {
+      el.value = Array.isArray(v) ? (v.length ? v[0] : '') : v;
+    }
+    $(el).trigger('input').trigger('change');
+    return true;
+  }
   $(document).on('change', '.rp-isr', function() {
-    $(this).closest('.rp-field').toggleClass('rp-field-r', this.checked);
+    var sw = $(this), f = sw.closest('.rp-field'), lab = sw.closest('.rp-r-toggle');
+    if (sw.data('rpBack')) { sw.removeData('rpBack'); f.toggleClass('rp-field-r', this.checked); return; }
+    var fid = f.attr('data-field'), carry = f.attr('data-carry') || '';
+    var fns = (f.attr('data-r-fns') || '').split(' ').filter(Boolean);
+    var inner = (f.attr('data-r-inner') || '').split(' ').filter(Boolean);
+    var num = f.attr('data-r-num') === '1';
+    var el = document.getElementById(fid), r = document.getElementById(fid + '__r');
+    var note = '', kind = '';
+    if (this.checked) {
+      var txt = (el && carry) ? window.rpCarry.toR(carry, ctlValue(el, carry), num) : '';
+      if (r && txt.length && !r.value.trim().length) {
+        r.value = txt;
+        $(r).trigger('input').trigger('change');
+        ctlSet(el, carry, carry === 'check' ? false : '');
+      } else if (!carry) {
+        note = lab.attr('data-note-field') || '';
+        kind = 'field';
+      }
+    } else if (r && r.value.trim().length) {
+      var back = (el && carry) ? window.rpCarry.fromR(carry, r.value, fns, inner) : {ok: false};
+      if (back.ok && ctlSet(el, carry, back.value)) {
+        r.value = '';
+        $(r).trigger('input').trigger('change');
+      } else {
+        this.checked = true;
+        sw.data('rpBack', true).trigger('change');
+        note = lab.attr('data-note-kept') || '';
+        kind = 'kept';
+      }
+    }
+    f.toggleClass('rp-field-r', this.checked);
+    rNote(f, note, kind);
+  });
+  // a field's note on its R switch (kind: kept, moved, field); none: gone
+  function rNote(f, note, kind) {
+    f.children('.rp-r-note').remove();
+    if (note) {
+      f.children('.rp-field-row').after(
+        $('<div class=\"rp-field-hint rp-r-note\"></div>').attr('data-kind', kind).text(note));
+    }
+  }
+  function rAttrs(f) {
+    var sp = function(k) { return (f.attr(k) || '').split(' ').filter(Boolean); };
+    return {carry: f.attr('data-carry') || '', fns: sp('data-r-fns'), inner: sp('data-r-inner')};
+  }
+  // the R box typed in: its note said again -- R the field could not hold
+  // and now can (or none), R typed where the field's value was kept
+  $(document).on('input change', '.rp-r-input', function() {
+    var f = $(this).closest('.rp-field'), n = f.children('.rp-r-note');
+    if (!n.length) return;
+    var a = rAttrs(f), v = String(this.value || '').trim();
+    var kind = n.attr('data-kind');
+    if ((kind === 'kept' || kind === 'moved') &&
+        (!v.length || window.rpCarry.holds(a.carry, v, a.fns, a.inner))) n.remove();
+    if (kind === 'field' && v.length) n.remove();
+  });
+  // a text typed in the field with its switch off: R the field cannot hold
+  // (the same test as the switch's) goes to the R box, the switch on
+  $(document).on('change', '.rp-field[data-carry=rtext] > .rp-field-row > .rp-form-input input[type=text]', function() {
+    var f = $(this).closest('.rp-field'), a = rAttrs(f);
+    var sw = f.find('.rp-isr').first(), r = document.getElementById(f.attr('data-field') + '__r');
+    if (!sw.length || sw.prop('checked') || !r || this.id !== f.attr('data-field')) return;
+    var v = String(this.value || '').trim();
+    if (!v.length || window.rpCarry.holds(a.carry, v, a.fns, a.inner)) return;
+    r.value = v;
+    this.value = '';
+    $(r).trigger('input').trigger('change');
+    $(this).trigger('input');
+    sw.prop('checked', true).data('rpBack', true).trigger('change');
+    rNote(f, sw.closest('.rp-r-toggle').attr('data-note-moved') || '', 'moved');
   });
   $(document).on('change', '.rp-isval', function() {
     $(this).closest('.rp-map-row').toggleClass('rp-map-val', this.checked);
@@ -501,4 +772,4 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
     }, 50);
   });
 })();
-"
+")

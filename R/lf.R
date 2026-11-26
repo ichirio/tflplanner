@@ -147,59 +147,10 @@ listing_types <- function() company_standards()$listing_types
   tflspec::tfl_read_data_code(x$ard$datasets, dataset)
 }
 
-# the part of a listing's program between its setup and its report (part
-# "data": its data only; "content": laid out from a `data` made before)
-.listing_lines <- function(x, output_id, rework = NA, part = "all") {
-  if (!nrow(lf_rows(x, "listings", output_id))) return(NULL)
-  # (its set as the report's one reader says it, report_population(): its
-  # row's, else the report's -- the set tflspec writes onto its data; S5)
-  x$lf <- .lf_with_report_set(x, output_id)
-  l <- lf_rows(x, "listings", output_id)
-  # a listing of the report's analysis data, or of an analysis set's
-  # subjects: its program starts with their part of the ARD definition
-  own <- any(!is.na(c(l$data[1L] %||% NA, l$population_id[1L] %||% NA)))
-  tflspec::tfl_listing_code(
-    tflspec::tfl_listing_spec(x$lf, check = FALSE), output_id,
-    x$ard$datasets, rework = if (!is.na(rework)) .code_block(rework),
-    type = .std_setting("listing_type", "multiline"),
-    codelists = .study_codelists(x), part = part,
-    ard = if (own) structure(x$ard, class = "tfl_ard_spec"))
-}
-
-# the part of a figure's program between its setup and its report: a
-# figure with no design and no code of its own yet -- its datasets read,
-# the company's plot template or a TODO
-.figure_lines <- function(x, output_id, info) {
-  ds <- report_datasets(x, output_id)
-  if (!length(ds)) return(NULL)
-  tpl <- .fill_template("figure_plot", x, output_id)
-  plot <- c(
-    if (!is.na(tpl)) .code_block(tpl) else c(
-      "# TODO: the plot, e.g.",
-      "#   plot <- ggplot2::ggplot(adsl, ggplot2::aes(AGE)) + ggplot2::geom_histogram()"),
-    paste0("stop(\"tflplanner: the plot of ", info$program,
-           " is still to be written.\")"))
-  makes_content <- FALSE
-  setup <- file.path(study_layout()[["programs_tfl"]], .fig_setup_file)
-  c(if (length(ds)) c(paste0("# the data: ", paste(ds, collapse = ", "),
-                             " (data catalog)"),
-                      unlist(lapply(ds, function(d) .read_dataset_lines(x, d))),
-                      ""),
-    "# the figure style of the company standards, and the figure checks",
-    sprintf("source(%s)", encodeString(setup, quote = "\"")),
-    "",
-    "# ---- the plot (ggplot2), written by hand: leaves `plot`",
-    "#      (theme_tfl(), scale_colour_tfl(), tfl_marker() ... give the standard's look)",
-    plot,
-    if (!makes_content) c(
-      "",
-      "# the figure checks: dropped rows, colours against the standard",
-      "tfl_check(plot)"))
-}
-
-# A designed figure's lines (#293): the study's figure setup sourced (the
-# program sources it at its top instead), then the design's code -- its
-# `# ---- data ----` and `# ---- plot ----` -- and the figure checks
+# A designed figure's lines (#293), as the Plot Designer shows them: the
+# study's figure setup sourced, then the design's code -- its
+# `# ---- data ----` and `# ---- plot ----` -- and the figure checks (the
+# report's program: tflspec::tfl_report_program())
 .fig_design_lines <- function(x, output_id, design, source = TRUE) {
   c(if (source) c(.fig_source_lines(), ""),
     .fig_design_plot(design, output_id, codelists = .fig_codelists(x, output_id), x = x))
@@ -217,16 +168,6 @@ listing_types <- function() company_standards()$listing_types
   if (!nrow(tb)) return(cl)
   tb$output_id <- output_id
   rbind(cl, tb)
-}
-
-# A designed figure's code in its two steps: `data` (its ARD, the datasets
-# it reads, its `# ---- data ----`) and `plot` (its `# ---- plot ----` and
-# the figure checks) -- for a report whose other step is its own code
-.fig_design_parts <- function(x, output_id, design) {
-  lines <- .fig_design_plot(design, output_id, codelists = .study_codelists(x), x = x)
-  at <- match(TRUE, startsWith(lines, "# ---- plot"), nomatch = length(lines) + 1L)
-  list(data = utils::head(lines, at - 1L),
-       plot = utils::tail(lines, length(lines) - at + 1L))
 }
 
 .fig_source_lines <- function() {

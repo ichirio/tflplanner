@@ -49,13 +49,18 @@ test_that("the sample's T-14-1-1S is T-14-1-1's ARD as one ard_stack", {
   s <- suppressMessages(create_sample_study(run = FALSE))
   a <- ard_rows(s$planner, "analyses", "T-14-1-1S")
   # the stack and the analyses inside it, read as the ARD tab reads them
+  # (BIGN outside the stack, as T-14-1-1's: the column headers' N, tflspec#969)
   ol <- .an_outline(a)
-  expect_identical(ol$analysis_id, c("DEMOG", "CONT", "CAT"))
-  expect_identical(ol$depth, c(0L, 1L, 1L))
+  expect_identical(ol$analysis_id, c("BIGN", "DEMOG", "CONT", "CAT"))
+  expect_identical(ol$depth, c(0L, 0L, 1L, 1L))
+  expect_identical(a$method[a$analysis_id == "BIGN"], "categorical")
   st <- a[a$analysis_id == "DEMOG", ]
   expect_identical(st$method, "cards::ard_stack")
   fl <- .stack_flags_of(st$args)$flags
-  expect_true(isTRUE(fl[[".by_stats"]]))
+  # BIGN counts the subjects per group: the stack does not count them
+  # again (as stack_group() writes it; review rule A13)
+  expect_false(isTRUE(fl[[".by_stats"]]))
+  expect_identical(nrow(stack_n_twice(a)), 0L)
   # no total N: no table of the sample prints one
   expect_false(isTRUE(fl[[".total_n"]]))
   # inside: their own variables and statistics, the stack's data and groups

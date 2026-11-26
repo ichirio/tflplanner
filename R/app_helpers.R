@@ -483,6 +483,14 @@ $(document).on('hidden.bs.modal', function() {
 .ard_closed_columns <- c("data", "dataset", "population_id", "denominator",
                          "from", "subjects_in")
 
+# The choices of an analyses row's `from` (tflspec B-5): the objects an item
+# can read -- the analysis data, the items given a `name`, the datasets
+.ard_from_choices <- function(ard) {
+  nm <- ard$analyses[["name"]]
+  nm <- nm[!is.na(nm) & nzchar(nm)]
+  unique(c(ard$analysis_data$data_id, nm, ard$datasets$dataset))
+}
+
 # tflspec's column help is English; the app shows it in its language
 .help_table <- function(sheet) {
   rd <- tflspec::tfl_spec_columns(sheet)

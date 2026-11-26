@@ -447,9 +447,18 @@ test_that("a new figure starts from a template the study's data can draw", {
     expect_match(h, "spec/outputs/F-AGE.yml", fixed = TRUE)
     expect_match(h, "Spec (YAML)", fixed = TRUE)
     expect_match(h, "pd_retpl")
+    # the figure keeps a level order and an ARD source outside its design
+    rv <- session$userData$rv
+    rv$p <- set_codelist(rv$p, "F-AGE", data.frame(variable = "TRT01A", value = c("A", "B")))
+    rv$p <- set_fig_ard_source(rv$p, "F-AGE", "own")
+    expect_length(.fig_replace_items(rv$p, "F-AGE"), 2L)
     # a template again: asked first, then the design is replaced
     session$setInputs(pd_retpl = 1)
     session$setInputs(pd_tpl = "", pd_retpl_ok = 1)
+    # ... and the replace clears them: the report keeps what is its own
+    expect_length(.fig_replace_items(rv$p, "F-AGE"), 0L)
+    expect_identical(.fig_ard_source(rv$p, "F-AGE")$kind, "none")
+    expect_true("F-AGE" %in% output_ids(rv$p))
     expect_length(fig_design(session$userData$rv$p, "F-AGE")$layers, 0L)
   })
 })
@@ -487,6 +496,28 @@ test_that("a report's ARD can be given the subjects per group", {
   expect_true(is.na(a$by[1]))
   expect_identical(a$population_id[1], "SAF")
   expect_true(.has_group_n(p, "T1", "TRT01A"))
+  # counted already: left as it is
+  expect_identical(add_group_n(p, "T1", "TRT01A"), p)
+  # a BIGN of something else: the header would not read it
+  expect_error(add_group_n(p, "T1", "SEX"), "has a BIGN that does not count SEX")
+  # a stack by the group: it does not count them again
+  ps <- stack_group(set_ard_rows(new_planner(), "analyses", "T2", data.frame(
+    analysis_id = c("AGE", "SEX"), method = c("continuous", "categorical"),
+    dataset = "ADSL", population_id = "SAF", by = "TRT01A",
+    variables = c("AGE", "SEX"))), "T2", c("AGE", "SEX"))
+  expect_false(.has_group_n(ps, "T2", "TRT01A"))
+  ps <- add_group_n(ps, "T2", "TRT01A")
+  a <- ard_rows(ps, "analyses", "T2")
+  expect_identical(a$analysis_id[1], "BIGN")
+  expect_identical(a$args[a$method %in% "cards::ard_stack"], ".by_stats = FALSE")
+  expect_identical(nrow(stack_n_twice(a)), 0L)
+  # a hierarchy of records: the subjects are its denominator
+  ph <- set_ard_rows(new_planner(), "analyses", "T3", data.frame(
+    analysis_id = "AE", method = "hierarchical", data = "adae_saf", by = "TRT01A",
+    variables = "AEBODSYS | AEDECOD", denominator = "adsl_saf"))
+  expect_false(.has_group_n(ph, "T3", "TRT01A"))
+  a <- ard_rows(add_group_n(ph, "T3", "TRT01A"), "analyses", "T3")
+  expect_identical(c(a$analysis_id[1], a$data[1]), c("BIGN", "adsl_saf"))
 })
 
 test_that("set_total_column() switches a Total column on and off in both halves (#212)", {
@@ -517,7 +548,7 @@ test_that("set_total_column() switches a Total column on and off in both halves 
   tb <- sheet_rows(p, "tables", "T1")
   expect_identical(c(tb$total, tb$total_position), c("All", "first"))
   # the programs say it
-  code <- .report_code_lines(p, "T1", table = TRUE)
+  code <- .program_code(p, "T1")
   expect_true(any(grepl('plan_total(label = "All", position = "first")', code, fixed = TRUE)))
   # off: both halves cleared, nothing else touched
   p <- set_total_column(p, "T1", NULL)
@@ -588,8 +619,25 @@ test_that("the wizard runs the analyses together (ard_stack), unless a subject h
   expect_true(all(is.na(an$dataset[2:3])) && all(is.na(an$by[2:3])))
   expect_identical(an$args[1], ".total_n = TRUE")
   expect_identical(attr(p, "group_missing"), 0L)
-  # the stack counts the subjects per group: the column headers' N
-  expect_true(.has_group_n(p, "T-S", "TRT01A"))
+  # no header that prints N: no BIGN, and the stack's own counts are not
+  # the column headers' N (tflspec#969)
+  expect_false(.has_group_n(p, "T-S", "TRT01A"))
+  # a header that prints N (the study's): BIGN first, the stack not
+  # counting the subjects per group again
+  p0 <- set_sheet_rows(new_planner(), "col_header", NA, data.frame(
+    line = "1", cols = ".values", span = "each", text = "(N={n})"))
+  pn <- first_table(p0, "T-S", "data/adam/adsl.rds", d, "SAFFL",
+                    "TRT01A", c("AGE", "SEX", "RACE"))
+  an <- ard_rows(pn, "analyses", "T-S")
+  expect_identical(an$analysis_id, c("BIGN", "STACK", "CONT", "CAT"))
+  expect_identical(an$parent, c(NA, NA, "STACK", "STACK"))
+  expect_identical(an$method[1], "cards::ard_tabulate")
+  expect_identical(c(an$dataset[1], an$population_id[1], an$variables[1]),
+                   c("ADSL", "SAF", "TRT01A"))
+  expect_true(is.na(an$by[1]))
+  expect_identical(an$args[2], ".by_stats = FALSE, .total_n = TRUE")
+  expect_true(.has_group_n(pn, "T-S", "TRT01A"))
+  expect_identical(nrow(stack_n_twice(an)), 0L)
   # a subject of the analysis set with no group: one by one
   d$TRT01A[2] <- NA
   p2 <- first_table(new_planner(), "T-S", "data/adam/adsl.rds", d, "SAFFL",

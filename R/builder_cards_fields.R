@@ -279,11 +279,11 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
     if (!is.null(dl)) shiny::tags$datalist(id = dl, lapply(unname(choices), function(x) shiny::tags$option(value = x))))
 }
 
-.field_r <- function(fid, value, default) {
+.field_r <- function(fid, value, default, placeholder = NULL) {
   v <- if (inherits(value, "tfl_r")) as.character(unclass(value)) else if (!is.null(value)) .arg_to_r(value)
+  if (is.null(placeholder) && !is.null(default)) placeholder <- .arg_to_r(default)
   shiny::tags$input(type = "text", id = fid, class = "form-control form-control-sm rp-mono",
-                    value = v, placeholder = if (!is.null(default)) .arg_to_r(default) else NULL,
-                    spellcheck = "false")
+                    value = v, placeholder = placeholder, spellcheck = "false")
 }
 
 # the usual named colours when none are given (a company palette comes as `choices`)
@@ -320,13 +320,23 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
                      width = "100%", selectize = FALSE)
 }
 
+# does a call<fn>'s field have a small form (its function's visible
+# arguments, the schema's)?  Without one the call is typed as its R text
+.call_has_form <- function(fns) {
+  fn <- if (length(fns)) fns[[1L]]
+  !is.null(fn) && length(.schema_of(fn)$visible) > 0L
+}
+
 # a call<fn>: the function's visible arguments as a small form (the schema
-# knows them), else R
+# knows them), else its R text -- the call's own shape as the placeholder,
+# rtf_border(...), where there is no default
 .field_call <- function(fid, fns, value, default, lang = "en") {
   fn <- if (length(fns)) fns[[1L]]
-  ent <- if (!is.null(fn)) .schema_of(fn)
+  if (!.call_has_form(fns)) {
+    return(.field_r(fid, value, default, placeholder = if (is.null(default) && !is.null(fn)) paste0(fn, "(...)")))
+  }
+  ent <- .schema_of(fn)
   vis <- ent$visible
-  if (is.null(fn) || !length(vis)) return(.field_r(fid, value, default))
   args <- if (inherits(value, "tfl_call")) value$args else list()
   shiny::div(class = "rp-call", `data-fn` = fn,
              shiny::tags$code(class = "rp-name", paste0(fn, "(")),

@@ -14,6 +14,13 @@ data:
     where: !r TRTEMFL == "Y"
 ard:
   analyses:
+    - id: BIGN
+      label: Subjects per group
+      method: categorical
+      data: adsl_saf
+      variables:
+        - TRT01A
+      purpose: PRIMARY OUTCOME MEASURE
     - id: TEAE
       label: TEAE by SOC / PT
       method: hierarchical

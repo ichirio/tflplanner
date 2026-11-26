@@ -59,32 +59,21 @@
 # study_setup.R), wherever they are (inside
 # suppressPackageStartupMessages()).  A study whose files are without
 # dplyr (made before it was in the company's setup code) keeps `dplyr::`.
+# tflspec reads them from the files' text (tfl_setup_values()).
 .study_setup_packages <- function(root) {
   f <- .study_setup_run(root)
   # a study not saved yet: the company's setup code it starts with
-  ex <- tryCatch(if (length(f)) {
-    do.call(c, lapply(f, parse, keep.source = FALSE, encoding = "UTF-8"))
-  } else {
-    parse(text = gsub("{STUDY_ID}", "STUDYID", setup_code(), fixed = TRUE),
-          keep.source = FALSE)
-  }, error = function(e) NULL)
-  out <- character()
-  walk <- function(e) {
-    if (!is.call(e)) return(invisible())
-    fn <- e[[1L]]
-    nm <- if (is.name(fn)) as.character(fn) else
-      if (is.call(fn) && identical(fn[[1L]], as.name("::"))) as.character(fn[[3L]]) else ""
-    if (nm %in% c("library", "require")) {
-      m <- tryCatch(match.call(base::library, e), error = function(err) NULL)
-      pk <- m$package
-      if (is.name(pk) || (is.character(pk) && length(pk) == 1L)) {
-        out <<- c(out, as.character(pk))
-      }
-    }
-    for (a in as.list(e)[-1L]) walk(a)
-  }
-  for (e in ex) walk(e)
-  unique(out)
+  txt <- tryCatch(if (length(f)) .setup_file_text(f) else
+    list(gsub("{STUDY_ID}", "STUDYID", setup_code(), fixed = TRUE)),
+    error = function(e) NULL)
+  if (is.null(txt)) return(character())
+  tflspec::tfl_setup_values(txt)$attached
+}
+
+# the text of setup files, a file an element, in their order (read as
+# source() reads them when a program runs)
+.setup_file_text <- function(f) {
+  unname(lapply(f, readLines, warn = FALSE, encoding = "UTF-8"))
 }
 
 # `expr` as the study's programs have it: with the study's options (no
@@ -150,9 +139,4 @@
   e <- new.env(parent = parent)
   eval(parse(text = tflspec::tfl_helpers_code(), keep.source = FALSE), envir = e)
   e
-}
-
-# code without the blank lines it starts with
-.drop_leading_blank <- function(code) {
-  code[cumsum(nzchar(code)) > 0L]
 }

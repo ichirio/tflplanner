@@ -468,3 +468,38 @@ test_that("a figure's preview says when its ARD could not be made", {
                                         ard = list(rows = NULL, print = "p", error = "no data")))
   expect_match(r$error, "The preview's ARD could not be made: no data", fixed = TRUE)
 })
+
+test_that("replacing a design clears what it owned outside itself, and the dialog lists it", {
+  p <- new_planner()
+  p <- add_output(p, "T-1", type = "table")
+  p <- add_output(p, "T-2", type = "table")
+  p <- add_output(p, "F-1", type = "figure")
+  p <- set_codelist(p, "F-1", data.frame(variable = "TRT01A", value = c("Drug X", "Control")))
+  # the table's own level order is not the figure's
+  p <- set_codelist(p, "T-1", data.frame(variable = "SEX", value = c("F", "M")))
+  p <- set_fig_ard_source(p, "F-1", "table:T-1")
+  p <- set_ard_rows(p, "analyses", "F-1", data.frame(
+    analysis_id = "HR", method = "coxph", stringsAsFactors = FALSE))
+  p <- set_ard_rows(p, "analyses", "T-2", data.frame(
+    analysis_id = "N", method = "summary", stringsAsFactors = FALSE))
+  items <- .fig_replace_items(p, "F-1")
+  expect_true("Level order cl_trt01a (TRT01A)" %in% items)
+  expect_true("The setting to read the ARD of T-1" %in% items)
+  expect_true("Analyses of this figure's ARD: HR" %in% items)
+  expect_length(items, 3L)
+  # in Japanese, in plain words
+  ja <- .fig_replace_items(p, "F-1", function(s) tr(s, "ja"))
+  expect_true(any(grepl("cl_trt01a", ja, fixed = TRUE)) && all(nzchar(ja)))
+  expect_false(any(ja %in% items))
+  q <- .fig_clear_owned(p, "F-1")
+  expect_length(.fig_replace_items(q, "F-1"), 0L)
+  expect_identical(.fig_ard_source(q, "F-1")$kind, "none")
+  expect_identical(sheet_rows(q, "codelists", "F-1")$variable, character())
+  # what is the other reports' stays
+  expect_identical(sheet_rows(q, "codelists", "T-1")$variable, c("SEX", "SEX"))
+  expect_identical(ard_rows(q, "analyses", "T-2")$analysis_id, "N")
+  # a figure that owns nothing: nothing to list, nothing added
+  expect_length(.fig_replace_items(p, "T-1"), 1L)
+  expect_identical(nrow(.fig_clear_owned(new_planner(), "F-9")$sheets$report),
+                   nrow(new_planner()$sheets$report))
+})

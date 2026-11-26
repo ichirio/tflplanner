@@ -1033,26 +1033,28 @@
     shiny::div(
       class = "alert alert-danger py-1 small",
       sprintf(t(.n_twice_words), r$analysis_id, paste(groupn, collapse = ", ")),
-      " ", .btn("ard_stack_del_groupn", sprintf(t("Delete %s"), paste(groupn, collapse = ", ")),
+      " ", .btn("ard_stack_keep_groupn",
+                sprintf(t("Keep %s, stop %s counting them"), paste(groupn, collapse = ", "),
+                        r$analysis_id),
                 class = "btn-sm btn-outline-danger py-0"))
   })
-  shiny::observeEvent(input$ard_stack_del_groupn, {
+  # the column header's N is read from BIGN only: BIGN stays, the stack's
+  # own per-group counts go off (.by_stats = FALSE, as the starters write it)
+  shiny::observeEvent(input$ard_stack_keep_groupn, {
     r <- st_row()
     tg <- ard_target()
     shiny::req(tg, st_role(r) == "parent")
     a <- st_rows()
-    drop <- a$analysis_id[.stack_group_n(a, r)]
-    a <- a[!a$analysis_id %in% drop, , drop = FALSE]
+    groupn <- a$analysis_id[.stack_group_n(a, r)]
     a$output_id <- NULL
-    # the stack counts them now
     i <- match(r$analysis_id, a$analysis_id)
     fl <- .stack_flags_of(a$args[i])
-    fl$flags[[".by_stats"]] <- TRUE
+    fl$flags[[".by_stats"]] <- FALSE
     a$args[i] <- .stack_args(fl$flags, fl$other)
     rv$p <- set_ard_rows(rv$p, "analyses", tg, a)
     bump()
-    notify(sprintf(t("%s deleted: %s counts the subjects per group now."),
-                   paste(drop, collapse = ", "), r$analysis_id))
+    notify(sprintf(t("%s no longer counts the subjects per group: %s does."),
+                   r$analysis_id, paste(groupn, collapse = ", ")))
   })
   # one inside a stack: on what it runs, said; how to change that for it
   stack_inside_note <- function(r) {

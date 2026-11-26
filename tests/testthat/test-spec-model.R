@@ -489,7 +489,8 @@ test_that("the builder's cells and decimals are plan_cells(); the rounding the s
   # (said once, in study_setup.R's part 2, which every program sources; no
   # report's program, and not report_setup.R again)
   expect_true(any(grepl("rtfreporter.rounding = \"r\"",
-                        .study_rounding_lines(.study_rounding_source(q)), fixed = TRUE)))
+                        study_setup_code(list(), study = .study_rounding_source(q)),
+                        fixed = TRUE)))
   expect_false(any(grepl("rounding = \"r\"", program_code(q, "T-14-3-1"), fixed = TRUE)))
   expect_identical(.spec_set_rounding(q, "sas")$spec$text, p$spec$text)
   # the card's write of it: the same

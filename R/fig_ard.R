@@ -488,3 +488,57 @@ set_fig_own_analyses <- function(x, output_id, analyses, population_id = NULL) {
   }
   x
 }
+
+# What a figure keeps outside its design, that the design owns: its level
+# orders (its rows of the codelists sheet), the ARD it reads (its report
+# row's ard_source) and the analyses of its own ARD (its rows of the
+# analyses sheet).  What belongs to the report -- its analysis set, title,
+# outputs, the analysis data -- is not here.
+.fig_design_owned <- function(x, output_id) {
+  cl <- sheet_rows(x, "codelists", output_id)
+  src <- .fig_ard_source(x, output_id)
+  # (a derived source -- a template figure with analyses of its own -- is
+  # the rows' doing: no source is saved for it)
+  r <- x$sheets$report
+  saved <- !is.null(r) && "ard_source" %in% names(r) &&
+    any(!is.na(r$output_id) & r$output_id == output_id &
+          !is.na(r$ard_source) & nzchar(trimws(r$ard_source)))
+  an <- ard_rows(x, "analyses", output_id)
+  list(variables = unique(cl$variable[!is.na(cl$variable)]),
+       source = if (saved) src else list(kind = "none"),
+       analyses = as.character(an$analysis_id[!is.na(an$analysis_id)]))
+}
+
+# The same, as the lines of a confirmation (in plain words)
+.fig_replace_items <- function(x, output_id, t = identity) {
+  o <- .fig_design_owned(x, output_id)
+  c(sprintf(t("Level order cl_%s (%s)"),
+            gsub("[^a-z0-9]+", "_", tolower(o$variables)), o$variables),
+    switch(o$source$kind,
+           table = sprintf(t("The setting to read the ARD of %s"), o$source$id),
+           own = t("The setting to read this figure's own ARD"),
+           import = sprintf(t("The setting to read the ARD taken in (%s)"), o$source$file)),
+    if (length(o$analyses)) sprintf(t("Analyses of this figure's ARD: %s"),
+                                    paste(o$analyses, collapse = ", ")))
+}
+
+# The figure with what its design owned taken away, for a design that
+# replaces it: the template then writes what it sets.  The analysis data
+# stay (the report's set and what it reads are the report's).
+.fig_clear_owned <- function(x, output_id) {
+  cl <- x$sheets$codelists
+  if (!is.null(cl) && nrow(cl)) {
+    x$sheets$codelists <- cl[is.na(cl$output_id) | cl$output_id != output_id, , drop = FALSE]
+    rownames(x$sheets$codelists) <- NULL
+  }
+  r <- x$sheets$report
+  if (!is.null(r) && "ard_source" %in% names(r) &&
+      any(!is.na(r$output_id) & r$output_id == output_id)) {
+    x <- set_fig_ard_source(x, output_id, NULL)
+  }
+  if (NROW(ard_rows(x, "analyses", output_id))) {
+    a <- ard_rows(x, "analyses", output_id)
+    x <- set_ard_rows(x, "analyses", output_id, a[0L, , drop = FALSE])
+  }
+  x
+}
