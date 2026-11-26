@@ -46,15 +46,15 @@ e2e_run <- function(s, ...) {
 # a study of tflspec's example ADaM, registered in the test's home
 e2e_study <- function(id, datasets, home) {
   d <- file.path(studies_root(home), id)
-  dir.create(file.path(d, "adam"), recursive = TRUE)
+  dir.create(file.path(d, study_layout()[["adam"]]), recursive = TRUE)
   dat <- list()
   for (x in datasets) {
     e <- new.env()
     utils::data(list = x, package = "tflspec", envir = e)
     dat[[x]] <- e[[x]]
-    saveRDS(e[[x]], file.path(d, "adam", paste0(x, ".rds")))
+    saveRDS(e[[x]], file.path(d, study_layout()[["adam"]], paste0(x, ".rds")))
   }
-  invisible(tflspec::tfl_ai_study_init(d, adam = "adam", study_id = id, overwrite = TRUE))
+  invisible(tflspec::tfl_ai_study_init(d, adam = study_layout()[["adam"]], study_id = id, overwrite = TRUE))
   invisible(suppressMessages(register_study(d, home = home)))
   list(path = d, data = dat)
 }
@@ -140,7 +140,7 @@ test_that("tables from templates converted to code and a listing started from th
                     population = "SAF")
   p <- e2e_tpl_code(p, "C-AE", "hierarchical", list(population = "SAF", hierarchy = c("AEBODSYS", "AEDECOD")))
   p <- e2e_tpl_code(p, "C-AEGR", "ae_max_grade", list(population = "SAF"))
-  p <- first_listing(p, "F-LAE", "adam/adae.rds", st$data$adae, columns = c("USUBJID", "AEDECOD", "AESEV"),
+  p <- first_listing(p, "F-LAE", file.path(study_layout()[["adam"]], "adae.rds"), st$data$adae, columns = c("USUBJID", "AEDECOD", "AESEV"),
                      group = "TRT01A")
   p <- .set_report_batches(p, "C-DM", "Topline")
   s$planner <- p
@@ -168,7 +168,7 @@ test_that("a report adopted from the AI's draft is in the run and runs", {
   e2e_libs()
   st <- e2e_study("AI-2", c("adsl"), home)
   s <- suppressMessages(open_study("AI-2", home = home))
-  s$planner <- first_table(s$planner, "F-DM", "adam/adsl.rds", st$data$adsl, population = "SAFFL",
+  s$planner <- first_table(s$planner, "F-DM", file.path(study_layout()[["adam"]], "adsl.rds"), st$data$adsl, population = "SAFFL",
                            group = "TRT01A", variables = c("AGE", "SEX"))
   s <- suppressMessages(save_study(s, home = home))
   # the AI's draft of another report: that report's file under a new id
