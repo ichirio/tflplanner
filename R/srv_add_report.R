@@ -6,7 +6,8 @@
 # the set its subjects rows carry -- tflspec::tfl_report_set()); NA none
 .o_population <- function(o) {
   if (!is.list(o)) return(NA_character_)
-  v <- as.character(tflspec::tfl_report_set(o))[1L]
+  # (a report the screens draw half made: no set rather than an error)
+  v <- tryCatch(as.character(tflspec::tfl_report_set(o))[1L], error = function(e) NA_character_)
   if (is.na(v) || !nzchar(v)) NA_character_ else v
 }
 # A report's analysis set set (NA: taken out) where tfl_report_set() reads
@@ -14,7 +15,10 @@
 # study's spec, for a template that fills its set from no argument)
 .o_set_population <- function(o, population, study = NULL) {
   has <- length(population) && !is.na(population[1L]) && nzchar(population[1L])
-  tflspec::tfl_set_report_set(o, if (has) population[1L] else NA_character_, study)
+  o <- tflspec::tfl_set_report_set(o, if (has) population[1L] else NA_character_, study)
+  # (the `common:` left empty taken out)
+  if (is.list(o$common) && !length(o$common)) o$common <- NULL
+  o
 }
 .srv_add_report <- function() {
   shiny::observeEvent(input$add_ok, {
@@ -967,24 +971,23 @@
     # or none
     sel <- input$tpl_data_pop %||% tpl_data_pop_sel(id, f)
     pop <- NULL
+    set <- NA_character_
     if (identical(sel, ".own")) {
       pop <- list(dataset = f$join_dataset, where = f$join_where)
-      o <- .o_set_population(o, NA_character_, rv$p$spec$study)
     } else if (startsWith(sel, "flag:")) {
       pop <- list(dataset = "ADSL", where = sprintf("%s == \"Y\"", sub("^flag:", "", sel)))
-      o <- .o_set_population(o, NA_character_, rv$p$spec$study)
     } else if (nzchar(sel)) {
-      o <- .o_set_population(o, sel, rv$p$spec$study)
+      set <- sel
       pops <- rv$p$ard$populations
       k <- match(sel, pops$population_id)
       if (!is.na(k)) pop <- as.list(pops[k, intersect(c("population_id", "dataset", "where"), names(pops)),
                                          drop = FALSE])
-    } else {
-      o <- .o_set_population(o, NA_character_, rv$p$spec$study)
     }
     steps <- .tpl_steps_from(input$tpl_data_ds, pop, input$tpl_data_param %||% "",
                              input$tpl_data_filter %||% "")
     if (is.null(steps)) o$data$steps <- NULL else o$data$steps <- steps
+    # (the set written on the data map the steps are in, after them -- A2-T)
+    o <- .o_set_population(o, set, rv$p$spec$study)
     if (!length(o$data)) o$data <- NULL
     p2 <- guarded(.spec_set_output(.spec_set_toc_population(rv$p, id, .o_population(o)), id, o))
     if (is.null(p2)) return()
