@@ -460,7 +460,9 @@ test_that("a template figure with a set: its preview and its expanded code are t
     suppressWarnings(suppressMessages(session$setInputs(add_ok = 1)))
     rid <- "F-SJ-1"
     expect_identical(rv$p$spec$outputs[[rid]]$data$population, "SAF")
-    session$setInputs(target = rid, nav = "make", step = "content", content_nav = "content")
+    # (the result tabs as the browser has them: Report result selected)
+    session$setInputs(target = rid, nav = "make", step = "content", content_nav = "content",
+                      fig_right = "result")
     # the preview: tflspec is given the study the program writer has, so the
     # figure is drawn from the set's subjects (its code makes them first)
     suppressWarnings(suppressMessages(session$setInputs(tpl_fig_preview = 1)))
@@ -506,8 +508,10 @@ test_that("a template figure with no group (it has no default, PRINCIPLES 1.14):
     suppressWarnings(suppressMessages(session$setInputs(add_ok = 2)))
     rid <- "F-NG-1"
     expect_identical(as.character(unlist(add_args(rv$p, rid)$group)), "TRT01A")
-    # emptied on its card: the preview waits, saying which
-    session$setInputs(target = rid, nav = "make", step = "content", content_nav = "content")
+    # emptied on its card: the preview waits, saying which (the result tabs
+    # as the browser has them: Report result selected)
+    session$setInputs(target = rid, nav = "make", step = "content", content_nav = "content",
+                      fig_right = "result")
     suppressWarnings(session$setInputs(tpl_mean_se__group = ""))
     expect_null(add_args(rv$p, rid)$group)
     suppressWarnings(session$setInputs(tpl_fig_preview = 1))
