@@ -12,6 +12,11 @@ test_that("the ARD tab: the outline, a stack's form, one inside it, grouping and
   shiny::testServer(server_for("ST"), {
     rv <- session$userData$rv
     session$setInputs(nav = "make", step = "ard", target = "T1")
+    # (the study's header prints N: BIGN first, the stack not counting the
+    # subjects per group again)
+    a <- ard_rows(rv$p, "analyses", "T1")
+    expect_identical(a$analysis_id, c("BIGN", "STACK", "CONT", "CAT"))
+    expect_identical(a$args[a$analysis_id == "STACK"], ".by_stats = FALSE, .total_n = TRUE")
     # the outline: the stack, the two inside it
     h <- output$ard_outline$html
     expect_match(h, "STACK")
@@ -28,7 +33,8 @@ test_that("the ARD tab: the outline, a stack's form, one inside it, grouping and
     do.call(session$setInputs, stats::setNames(
       list(FALSE, TRUE, TRUE),
       paste0("st", n, "_fl", c(".total_n", ".missing", ".by_stats"))))
-    expect_identical(ard_rows(rv$p, "analyses", "T1")$args[1], ".missing = TRUE")
+    a <- ard_rows(rv$p, "analyses", "T1")
+    expect_identical(a$args[a$analysis_id == "STACK"], ".missing = TRUE")
     # one inside: no data of its own, the way out offered
     session$setInputs(ard_ol_pick = "CAT")
     h <- output$ard_stat_ui$html
@@ -38,10 +44,12 @@ test_that("the ARD tab: the outline, a stack's form, one inside it, grouping and
     # a variable CONT has already: refused
     n <- session$userData$st_env$n
     do.call(session$setInputs, stats::setNames(list(c("SEX", "AGE")), paste0("st", n, "_vars")))
-    expect_identical(ard_rows(rv$p, "analyses", "T1")$variables[3], "SEX")
+    a <- ard_rows(rv$p, "analyses", "T1")
+    expect_identical(a$variables[a$analysis_id == "CAT"], "SEX")
     # moved up: CAT before CONT
     session$setInputs(ard_ol_move = list(id = "CAT", by = -1))
-    expect_identical(ard_rows(rv$p, "analyses", "T1")$analysis_id, c("STACK", "CAT", "CONT"))
+    expect_identical(ard_rows(rv$p, "analyses", "T1")$analysis_id,
+                     c("BIGN", "STACK", "CAT", "CONT"))
     # one added inside
     session$setInputs(ard_ol_pick = "STACK")
     session$setInputs(ard_stack_add = 1)
@@ -75,11 +83,18 @@ test_that("the ARD tab: the outline, a stack's form, one inside it, grouping and
     # the outline's badge reads the review (made 2 s after the edits pause)
     session$elapse(2100)
     expect_match(output$ard_outline$html, "counts the subjects per group twice", fixed = TRUE)
-    # BIGN deleted from the note: the stack counts them, nothing twice
-    session$setInputs(ard_stack_del_groupn = 1)
+    # the note keeps BIGN (the header's N is read from it only) and turns
+    # the stack's own counts off: nothing twice
+    expect_no_match(output$ard_stack_n_note$html, "ard_stack_del_groupn", fixed = TRUE)
+    expect_match(output$ard_stack_n_note$html, "ard_stack_keep_groupn", fixed = TRUE)
     a <- ard_rows(rv$p, "analyses", "T2")
-    expect_false("BIGN" %in% a$analysis_id)
-    expect_true(is.na(a$args[a$analysis_id == "STACK"]))
+    a$output_id <- NULL
+    a$args[a$analysis_id == "STACK"] <- ".by_stats = TRUE"
+    rv$p <- set_ard_rows(rv$p, "analyses", "T2", a)
+    session$setInputs(ard_stack_keep_groupn = 1)
+    a <- ard_rows(rv$p, "analyses", "T2")
+    expect_true("BIGN" %in% a$analysis_id)
+    expect_identical(a$args[a$analysis_id == "STACK"], ".by_stats = FALSE")
     expect_identical(nrow(stack_n_twice(a)), 0L)
     # the code of one inside: the stack's one call
     session$setInputs(ard_ol_pick = "CAT")
@@ -91,6 +106,7 @@ test_that("the ARD tab: the outline, a stack's form, one inside it, grouping and
     session$setInputs(ard_stack_delete = 1)
     session$setInputs(ard_stack_delete_how = "ungroup", ard_stack_keep_n = FALSE,
                       ard_stack_delete_ok = 1)
-    expect_identical(ard_rows(rv$p, "analyses", "T2")$analysis_id, c("CONT", "CAT"))
+    expect_identical(ard_rows(rv$p, "analyses", "T2")$analysis_id,
+                     c("BIGN", "CONT", "CAT"))
   })
 })

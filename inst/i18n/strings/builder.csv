@@ -3,7 +3,7 @@
 "Decimals of the percent","% の小数桁数"
 "This table has no ARD yet: the builder is built from it.","この Table にはまだ ARD がありません。ビルダーは ARD から作られます。"
 "Drag to order, type to rename; every change is written to this report's SPEC (YAML) and shown in the code and the preview on the right.","ドラッグで並べ替え、入力で名前を変えられます。変更はこの帳票の SPEC（YAML）に書かれ、右のコードとプレビューに出ます。"
-"The ARD has no subjects per %s: a header's (N=n) prints NA.","ARD に %s ごとの被験者数がありません。見出しの (N=n) は NA になります。"
+"No BIGN counts the subjects per %s: a header's (N=n) reads its N from BIGN.","%s ごとの被験者数を数える BIGN がありません。見出しの (N=n) の N は BIGN から読みます。"
 "Count them (then Preview)","数える（そしてプレビュー）"
 "Reading the ARD of %s for the builder","%s の ARD をビルダーのために読んでいます"
 "Table builder","Table ビルダー"

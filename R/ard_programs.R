@@ -20,6 +20,9 @@
 # Like the report programs, a generated ARD program carries a checksum, and
 # follows the definition on every save: one edited by hand is written again
 # too, its edited copy first put in programs/.edited/.
+#
+# The text of ard_setup.R and of each output's program is tflspec's
+# (tflspec::tfl_ard_program(), tflspec#910 G5-1c).
 
 .ard_prog_name <- function(output_id) {
   paste0(gsub("[^A-Za-z0-9._-]", "_", output_id), ".R")
@@ -72,26 +75,15 @@ ard_setup_code <- function(spec, date = Sys.Date()) {
 
 .ard_setup_code <- function(spec, date = Sys.Date()) {
   x <- if (is.character(spec)) .read_ard_spec(spec) else spec
-  lay <- study_layout()
-  c(.banner(
-      paste("Program    :", file.path(lay[["programs_ard"]], .ard_setup_file)),
-      "What every ARD program of the study starts with (it sources this).",
-      paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
-             ", ", format(date, "%Y-%m-%d"))),
-    "",
-    "# the study's setup: the company's, the study's folders and id, your own",
-    .source_study_setup(),
-    "",
-    # (tflspec's: library() of what the study's setup does not attach, a
-    # blank line, the company's statistics and formats)
-    .drop_leading_blank(.ard_spec_code(x, part = "setup")),
-    "# the files each ARD is built with, recorded with it (tflspec's",
-    "# save_ard(): tflplanner compares the study setup's)",
-    "options(tflspec.ard_sources = c(",
-    paste0("  ", names(.study_setup_files()), " = ",
-           encodeString(.study_setup_files(), quote = "\""),
-           c(rep(",", length(.study_setup_files()) - 1L), "))")),
-    "")
+  ctx <- .live_context_args()
+  tflspec::tfl_ard_program(x, standards = .ard_standards(), attached = ctx$attached,
+                           study_code = ctx$study_code, layout = study_layout(),
+                           date = date, generator = .setup_generator())
+}
+
+# The company's ARD catalogs, as tflspec's ARD programs take them
+.ard_standards <- function() {
+  list(ard_statistics = .std_ard_statistics(), ard_methods = .std_ard_methods())
 }
 
 #' @rdname ard_setup_code
@@ -104,31 +96,11 @@ ard_program_code <- function(spec, output_id, date = Sys.Date(), dir = ".",
 .ard_program_code <- function(spec, output_id, date = Sys.Date(), dir = ".",
                               codelists = NULL) {
   x <- if (is.character(spec)) .read_ard_spec(spec) else spec
-  lay <- study_layout()
-  a <- x$analyses[x$analyses$output_id %in% output_id, , drop = FALSE]
-  if (!nrow(a)) stop("No analyses for ", output_id, call. = FALSE)
-  labels <- ifelse(is.na(a$label), a$analysis_id,
-                   paste0(a$analysis_id, " (", a$label, ")"))
-  c(.banner(
-      paste("Program    :", file.path(lay[["programs_ard"]],
-                                      .ard_prog_name(output_id))),
-      paste0("Output     : ", output_id, " -> its rows of ",
-             .study_value(x, "output", "output/ard/ard.rds")),
-      strwrap(paste(labels, collapse = ", "), width = 74,
-              initial = "Analyses   : ", prefix = strrep(" ", 13)),
-      paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
-             ", ", format(date, "%Y-%m-%d"))),
-    "",
-    .study_guard,
-    sprintf("source(%s)", encodeString(file.path(lay[["programs_ard"]],
-                                                 .ard_setup_file),
-                                       quote = "\"")),
-    "",
-    # its rows into the study ARD with its definition's fingerprint
-    # (tflspec's save_ard(); tflplanner compares it)
-    .ard_spec_code(x, output_id = output_id, part = "body", dir = dir,
-                   codelists = codelists),
-    .run_end)
+  ctx <- .live_context_args()
+  tflspec::tfl_ard_program(x, output_id, standards = .ard_standards(), dir = dir,
+                           codelists = codelists, attached = ctx$attached,
+                           study_code = ctx$study_code, layout = study_layout(),
+                           date = date, generator = .setup_generator())
 }
 
 #' @rdname ard_setup_code
