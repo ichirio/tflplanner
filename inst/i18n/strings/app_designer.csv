@@ -78,7 +78,6 @@
 "%s has a code list: its values' order and text are the code list's (the data steps' last, Code lists).","%s にはコードリストがあります。水準の順と表示名はコードリストのものです（データの手順の最後の「コードリスト」）。"
 "This report's code lists of the figure's columns: its program puts them on the data as the data steps' last (set_levels()), each column a factor in the list's order, its values the labels -- the order and text of the legend and the axis. A value a list does not have stops the program.","Figure の列の、この帳票のコードリストです。プログラムはデータの手順の最後にこれをデータに当てます（set_levels()）。各列はリストの順の factor になり、値はラベルになります。凡例や軸の順と文字になります。リストに無い値があるとプログラムは止まります。"
 "Added analyses %s to step %s (remove them there if not wanted): update the ARD, then Preview.","解析 %s を手順 %s に追加しました（不要ならそこで削除）。ARD を更新してからプレビューしてください。"
-"%s has no analysis set, so the analyses its figure needs are not written: choose the report's set in step %s (This report's population), then apply the template again.","%s に解析対象集団がないため、図に必要な解析は書いていません。手順 %s の「この帳票の解析対象集団」を選んでから、テンプレートをもう一度適用してください。"
 "data frame, %d rows x %d columns","データフレーム、%d 行 × %d 列"
 "its first rows","先頭の行"
 "The data steps are in step 1 (data).","データの手順は手順 1（data）にあります。"

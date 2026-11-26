@@ -414,9 +414,8 @@
       # analyses: a template's default is a flag, not a set of the study)
       pop <- report_pop()
       if (is.null(pop)) {
-        notify(sprintf(
-          t("%s has no analysis set, so the analyses its figure needs are not written: choose the report's set in step %s (This report's population), then apply the template again."),
-          id, .step_no("data")), "warning")
+        # (the checks list says it, one item with the way to step 1: a toast
+        # would go before it is read, #867)
         return()
       }
       p2 <- guarded(set_fig_own_analyses(rv$p, id, an, population_id = pop))

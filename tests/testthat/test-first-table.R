@@ -847,3 +847,12 @@ test_that("the template form's analysis-set line in Japanese, and the form's new
   n_s <- function(x) lengths(regmatches(x, gregexpr("%s", x, fixed = TRUE)))
   expect_identical(n_s(jp), n_s(new))
 })
+
+test_that("the no-analysis-set sentence is the checks list's, not a toast (#867)", {
+  s <- .strings()
+  # the toast's row is gone; the check's sentence has its Japanese
+  expect_false(any(grepl("so the analyses its figure needs are not written", s$en, fixed = TRUE)))
+  chk <- "This report has no analysis set. Choose one in step %s, 'This report's analysis set', then apply the template again."
+  expect_true(chk %in% s$en)
+  expect_true(nzchar(s$ja[match(chk, s$en)]))
+})
