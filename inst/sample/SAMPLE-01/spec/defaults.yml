@@ -57,6 +57,7 @@ codelists:
     - {value: HISPANIC OR LATINO, label: Hispanic or Latino}
     - {value: NOT HISPANIC OR LATINO, label: Not Hispanic or Latino}
     - {value: NOT REPORTED, label: Not Reported}
+    - {value: UNKNOWN, label: Unknown}
 # The ADaM metadata read from the define.xml data/adam/define.xml by tflplanner ([Data] -> ADaM levels):
 # each variable's code list and the code lists' values. study$adam gets these levels.
 adam_meta:
