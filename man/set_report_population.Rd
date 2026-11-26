@@ -26,7 +26,11 @@ them, to the new set's (found, or made with the same definition); an
 analysis of a dataset and the old set to the new set.  An analysis data
 of another kind (made from another analysis data, written as R) is left
 as it is and named in attribute \code{left}.  Analysis data are the study's:
-none is removed.
+none is removed.  The set is written where the report's data keeps it:
+a listing's row (its \code{population_id}); in the study's YAML spec, a
+figure's and a listing's data (\verb{data: population}), a table's subjects
+rows or its template's set argument (never \verb{common:}), and the report's
+TOC line with it.
 }
 \examples{
 # a home in the temporary folder: used in this R session only, nothing

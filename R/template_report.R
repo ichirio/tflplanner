@@ -26,6 +26,7 @@
   vs_change = "A vital sign's change",
   ae_disc_soc_pt = "Adverse events leading to discontinuation by SOC and PT",
   ae_eair = "Exposure-adjusted incidence rates by SOC and PT",
+  ae_rel_soc_pt = "Related adverse events by SOC and PT",
   ae_ser_soc_pt = "Serious adverse events by SOC and PT",
   lab_abnormal = "Laboratory abnormalities",
   param_change = "Parameters' value and change",
@@ -872,20 +873,29 @@
 # The arguments the add-report dialog writes for template `prm_all`
 # (.tpl_params()), from what its fields send: `raws` by argument name (a
 # pick's "Add all suggested" already expanded; `population` the report's
-# population field where the template hides it), `nones` by name a
+# set control, .tpl_asks_report_pop(); returned as attribute "population",
+# never as an argument: the one setter writes it, .write_report_population()),
+# `nones` by name a
 # switch's <id>__none input, `study` the study SPEC (its values prefill the
 # fields).  An optional argument is written only when its field says other
 # than what it sent untouched (.tpl_field_arg()); a required one empty
 # gives no args and attribute "missing" (its name).  No Shiny.
 .tpl_dialog_args <- function(prm_all, raws, study = NULL, nones = list()) {
   args <- list()
-  # (the report's population, for a template that hides it: not an argument)
+  # (the report's set: not an argument -- the setter writes it, and the
+  # template's `population` argument with it where it takes one (H5);
+  # required for one that needs it, demog, forest_hr)
   pop <- NULL
-  if (.tpl_pop_of_report(prm_all)) {
+  if (.tpl_asks_report_pop(prm_all)) {
     pop <- .tpl_value(raws[["population"]], "population", prm_all$population)
-    if (is.null(pop)) return(structure(list(), missing = "population"))
+    if (inherits(pop, "tfl_unset")) pop <- NULL
+    # (required: a hidden one that is the report's alone (demog), or a shown
+    # one the template needs (forest_hr); not a KM type's, which may be left out)
+    if (is.null(pop) && isTRUE(prm_all[["population"]]$required) && !.tpl_own_data(prm_all)) {
+      return(structure(list(), missing = "population"))
+    }
   }
-  for (x in .tpl_shown(prm_all)) {
+  for (x in .tpl_dialog_shown(prm_all)) {
     raw <- raws[[x$name]]
     type <- .tpl_type(x)
     start <- .tpl_study_value(study, x) %||% x$default
@@ -1113,8 +1123,7 @@
   if (is.null(tp)) return(character())
   miss <- .tpl_missing(tp$name, tp$args, p$spec$study)
   if (.tpl_pop_of_report(.tpl_params(tp$name))) {
-    pid <- .o_population(p$spec$outputs[[output_id]])
-    if (is.na(pid) || !nzchar(pid)) miss <- c("population", miss)
+    if (is.na(.o_population(p$spec$outputs[[output_id]]))) miss <- c("population", miss)
   }
   if (!length(miss)) {
     rule <- .tpl_rule_missing(p, output_id)
@@ -1275,13 +1284,36 @@
   !is.null(p) && isTRUE(p$hidden) && isTRUE(p$required) && !.tpl_own_data(prm)
 }
 
-# Whether the template's analysis set is the report's `population:` field
-# alone: its `population` hidden, required, and not part of the report's own
-# data steps (demog, stf_t02_demog).  The add-report dialog asks for it, and
-# writes it as the report's population, not as an argument.
-.tpl_pop_of_report <- function(prm) {
+# Whether the add-report dialog asks the report's analysis set for a
+# template: every one does (#868, decided by coordinator 11-26 night): the
+# one control "This report's population", the study's populations only,
+# whatever the template says of its `population` -- hidden (demog, a KM
+# type), shown (forest_hr, tflspec_hierarchy) or not at all (tflspec_v1's
+# figures).  A `population` argument is never drawn as a field of its own
+# (.tpl_dialog_shown()); where the set is written: .tpl_pop_is_arg()
+.tpl_asks_report_pop <- function(prm) TRUE
+
+# The template's parameters the add-report dialog draws as fields: the
+# shown ones but `population`, which is the report's set control
+.tpl_dialog_shown <- function(prm) {
+  s <- .tpl_shown(prm)
+  s[!vapply(s, function(x) identical(x$name, "population"), NA)]
+}
+
+# The `population` parameter the set control stands for; a template with
+# none (tflspec_v1's figures) gets a bare one: optional, no default
+.tpl_pop_param <- function(prm) {
+  x <- prm[["population"]]
+  if (is.null(x)) list(name = "population", required = FALSE) else x
+}
+
+# Whether the template takes its set as a shown argument (forest_hr,
+# tflspec_hierarchy): the one setter of a report's set
+# (.write_report_population(), .o_write_set()) then also writes that
+# argument, the same value; a hidden one, or none, is the report's set alone
+.tpl_pop_is_arg <- function(prm) {
   p <- prm[["population"]]
-  !is.null(p) && isTRUE(p$hidden) && isTRUE(p$required) && !.tpl_own_data(prm)
+  !is.null(p) && !isTRUE(p$hidden)
 }
 
 # A report's `data:` steps as the card's fields say them: the dataset
@@ -1363,15 +1395,15 @@
   if (!is.null(name)) o$template$name <- name
   prm <- .tpl_params(o$template$name)
   args <- args[c(intersect(names(prm), names(args)), setdiff(names(args), names(prm)))]
-  # (the analysis set is the template's argument, never `common:` (A2-T,
-  # tflspec::tfl_set_report_set()'s rule): an old `common: population` goes,
-  # the set written once)
-  if (!is.null(args$population)) {
-    o$common$population <- NULL
-    if (!length(o$common)) o$common <- NULL
-  }
-  # (a template whose analysis set is the report's population (demog) holds
-  # it in `common:`, not in its arguments)
+  # (the report's set written where the report's set lives, never `common:`
+  # (A2-T, tflspec::tfl_set_report_set()): a figure's data `population:`
+  # (canon 11-15), a data map's, a template's set argument -- .o_set_population();
+  # #868.  Every write of this file then goes through the setter,
+  # .write_report_population(), which keeps the template's `population`
+  # argument the same value: H5)
+  if (!is.null(args$population)) o <- .o_set_population(o, as.character(args$population), p$spec$study)
+  # (a template whose analysis set is the report's population (a hidden data
+  # stage) holds it on the report's data, not in its arguments)
   if (.tpl_pop_of_report(prm)) args$population <- NULL
   o$template <- .tpl_write_args(o$template, args)
   o
@@ -1750,7 +1782,7 @@ $(document).on('shiny:connected', function() {
     class = "small mb-2",
     shiny::div(class = "mb-1",
                with_tip(shiny::span(shiny::strong(t("Analysis set (population)")), ": ", shiny::code(pop)),
-                        t("The report's analysis set (common: population), set on the report list. The template's analysis data read it unless their own row names one."))),
+                        t("The report's analysis set (its population:), set on the report list. The template's analysis data read it unless their own row names one."))),
     if (NROW(pv$rows)) shiny::tags$table(
       class = "table table-sm small mb-0",
       shiny::tags$thead(shiny::tags$tr(
@@ -1851,7 +1883,8 @@ $(document).on('shiny:connected', function() {
   o <- sp$outputs[[output_id]]
   if (is.null(o) || is.null(.tpl_spec_name(o))) return(character())
   res <- tryCatch(tflspec::tfl_resolve_output(o, sp$study), error = function(e) NULL)
-  code <- tryCatch(tflspec::tfl_content_code(res), error = function(e) character())
+  code <- tryCatch(tflspec::tfl_content_code(res, study = .content_study(res, sp$study)),
+                   error = function(e) character())
   in_call <- vapply(attr(res, "template")$rest %||% list(), function(it) {
     if (is.list(it) && !identical(it$from, "own") && is.character(it$fn) && length(it$fn) == 1L) it$fn else NA_character_
   }, "")

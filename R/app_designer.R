@@ -69,10 +69,12 @@
     shiny::uiOutput("pd_body"))
 }
 
-# A figure's step 1 (#293): the data steps of its design, their form
+# A figure's step 1 (#293): its report's analysis set (the subjects it
+# draws), then the data steps of its design, their form
 .designer_data_ui <- function() {
   shiny::conditionalPanel(
     "output.report_kind == 'figure'",
+    shiny::uiOutput("fig_report_pop"),
     shiny::uiOutput("pd_data_body"))
 }
 
@@ -126,14 +128,17 @@
 
 # The template choices: under their category (tflspec >= 0.0.24.9003; the
 # kind before), each with the data it reads; those the study's data cannot
-# draw stay listed but cannot be chosen, and say why.
-.fig_template_choices <- function(templates, have, words) {
+# draw stay listed but cannot be chosen, and say why.  `current`: the
+# design's own template, the one first chosen when the data can draw it.
+.fig_template_choices <- function(templates, have, words, current = NULL) {
   cat <- if ("category" %in% names(templates)) templates$category else templates$kind
   dat <- if ("data" %in% names(templates)) templates$data else rep(NA_character_, nrow(templates))
   ok <- vapply(dat, .fig_data_ok, NA, have = have, USE.NAMES = FALSE)
   lab <- paste0(words$label(templates$label),
                 ifelse(is.na(dat), "", paste0("  \u00b7 ", dat)),
                 ifelse(ok, "", paste0("  \u2014 ", words$missing)))
+  # (the categories are tflspec's words: in the app's language)
+  cat <- words$label(cat)
   ch <- split(stats::setNames(templates$template, lab),
               factor(cat, levels = unique(cat)))
   ch <- lapply(ch, as.list)
@@ -146,8 +151,82 @@
     length(intersect(setdiff(ds, "ADSL"), toupper(have)))
   }, 0L, USE.NAMES = FALSE)
   best <- if (any(ok)) which(ok)[which.max(used[ok])] else NA
+  own <- if (length(current) == 1L && !is.na(current)) which(templates$template == current & ok)
+  if (length(own)) best <- own[1L]
   list(choices = ch, off = templates$template[!ok],
        first = if (is.na(best)) "" else templates$template[best])
+}
+
+# A figure template's line in the designer's list: the one the new report's
+# dialog shows for the template of the same name -- a series template
+# ("<series>/<name>") first, then the app's own line (.tpl_desc_of()) --
+# else the figure template's own label.  English; the list translates it.
+.fig_template_label <- function(template, label, series = .tpl_series_templates()) {
+  fig <- series[series$kind %in% "figure", , drop = FALSE]
+  vapply(seq_along(template), function(i) {
+    nm <- c(fig$name[sub("^.*/", "", fig$name) == template[i]], template[i])
+    d <- vapply(nm, .tpl_desc_of, "", series = series)
+    d <- d[nzchar(d)]
+    if (length(d)) d[[1L]] else label[i]
+  }, "", USE.NAMES = FALSE)
+}
+
+# The template form's fields (#861): tfl_fig_template()'s arguments, as
+# the designer gives them
+.fig_tpl_fields <- c("param", "group", "time_unit", "value", "x", "y", "time", "category",
+                     "responders", "duration", "subgroups", "ref", "comparison", "at_visit")
+# tfl_fig_template()'s arguments a template's tfl_param() names otherwise
+# (the Kaplan-Meier template's group is `by`)
+.fig_tpl_arg_alias <- c(group = "by")
+
+# The template form's fields, each as tflspec's figure templates define it
+# (tfl_param(): its name, doc, choices, default), so that the form heads it
+# as the new report's dialog does (.tpl_arg_heading(): "meaning (name)"
+# from .tpl_arg_labels, one copy for both).  A field's definition: the
+# template's own -- by its name, else its kind's (km_simple is km's) --
+# under the field's name or its alias; else the first figure template that
+# has the field; else the name alone.  `params`, `figures`: the templates'
+# parameters (.tpl_params()) and the figure templates' names.
+.fig_tpl_args <- function(template, kind, fields = .fig_tpl_fields, params = .tpl_params,
+                          figures = .fig_tpl_registered()) {
+  seen <- list()
+  prm <- function(nm) {
+    if (is.null(seen[[nm]])) seen[[nm]] <<- params(nm) %||% list()
+    seen[[nm]]
+  }
+  own <- unique(c(template, kind))
+  stats::setNames(lapply(fields, function(a) {
+    for (nm in own) {
+      p <- prm(nm)
+      for (x in stats::na.omit(c(a, .fig_tpl_arg_alias[a]))) if (!is.null(p[[x]])) return(p[[x]])
+    }
+    for (nm in setdiff(figures, own)) if (!is.null(prm(nm)[[a]])) return(prm(nm)[[a]])
+    list(name = a)
+  }), fields)
+}
+
+# The template form's line under the Dataset (#863): the report's analysis
+# set -- every figure's subjects, whatever the template: the report's
+# program keeps them before the design's code (A2-2, .fig_subjects_line()),
+# and forest_hr's own analyses read it too -- or none, in the warning
+# colour, with the step that sets it.  `pop`: the set's id, NULL for none.
+.fig_pop_line <- function(pop, t = identity) {
+  step <- .step_no("data")
+  none <- length(pop) != 1L || is.na(pop) || !nzchar(pop)
+  shiny::div(
+    class = paste("small mb-2", if (none) "text-warning-emphasis" else "text-muted"),
+    with_tip(
+      if (none) sprintf(t("This report's analysis set: none (choose it in step %s)"), step) else
+        sprintf(t("This report's analysis set: %s"), pop),
+      sprintf(t("A figure's subjects are the report's analysis set (the data's `population:`). Change it in step %s, in This report's population."),
+              step)))
+}
+
+# tflspec's figure templates (tfl_templates(), kind figure), in its order
+.fig_tpl_registered <- function() {
+  x <- tryCatch(tflspec::tfl_templates(), error = function(e) NULL)
+  if (!is.data.frame(x) || !all(c("name", "kind") %in% names(x))) return(character())
+  x$name[x$kind %in% "figure"]
 }
 
 # the value an input gives, as a field: NULL = not set (the default)

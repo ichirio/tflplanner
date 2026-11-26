@@ -95,6 +95,23 @@ test_that("the checks: no source, not made yet, then each piece against the rows
   pr <- .fig_ard_problems(s, "F-14-2-3")
   expect_identical(pr$severity, "error")
   expect_match(pr$problem, "no TRT01A = Nobody")
+  # a drawing made before the figure had its own ARD: its checks are read
+  # from the figure now (#873)
+  r0 <- list(problems = .fig_ard_problems(s0, "F-14-2-3")[c("part", "field", "problem")],
+             ard_problems = .fig_ard_problems(s0, "F-14-2-3"), ard_rows = NULL)
+  expect_match(r0$problems$problem, "has none: choose it in step 2")
+  d3 <- fig_design(s$planner, "F-14-2-3")
+  s3 <- s
+  s3$planner <- set_fig_ard_source(s$planner, "F-14-2-3", "own")
+  now <- .fig_problems_now(r0, s3, "F-14-2-3", d3, ard = NULL)
+  expect_false(any(grepl("has none", now$problem)))
+  # (its own ARD is read now: what that has to say, not "none")
+  expect_match(paste(now$problem, collapse = " "), "has no analysis|not made yet")
+  # the drawing's own problems stay
+  r1 <- r0
+  r1$problems <- rbind(data.frame(part = "layers[1] point", field = "x", problem = "no such column"),
+                       r0$problems)
+  expect_true("no such column" %in% .fig_problems_now(r1, s3, "F-14-2-3", d3)$problem)
   # the study's spec check names them too
   ck <- .check_fig_ards(s, "F-14-2-3")
   expect_match(ck$message, "F-14-2-3: no TRT01A = Nobody")
@@ -272,17 +289,6 @@ test_that("set_fig_own_analyses() writes a design's analyses to the figure's ARD
   expect_error(set_fig_own_analyses(p, "F-FOR", list()), "two data frames")
 })
 
-test_that("a template's population flag is the study's analysis set", {
-  p <- new_planner()
-  p$ard$populations <- .normalize_ard_sheet(data.frame(
-    population_id = c("SAF", "ITT"), dataset = "ADSL",
-    where = c("SAFFL == \"Y\"", "ITTFL == \"Y\"")), "populations")
-  expect_identical(.population_of_flag(p, "SAFFL"), "SAF")
-  expect_identical(.population_of_flag(p, "ITT"), "ITT")
-  expect_identical(.population_of_flag(p, "FASFL"), NA_character_)
-  expect_identical(.population_of_flag(new_planner(), "SAFFL"), NA_character_)
-})
-
 # (a template figure added as Add > Figure > Template does)
 tpl_fig_planner <- function(p, name, id, ...) {
   pops <- p$ard$populations
@@ -297,7 +303,8 @@ tpl_fig_planner <- function(p, name, id, ...) {
 
 test_that("a template figure with analyses of its own reads its own ARD; one without, none", {
   s <- fig_ard_study()
-  p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF")
+  p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF",
+                       group = "TRT01A")
   expect_true(NROW(ard_rows(p, "analyses", "F-9-1")) > 0L)
   expect_true(is.na(p$sheets$report$ard_source[match("F-9-1", p$sheets$report$output_id)]) ||
                 !"ard_source" %in% names(p$sheets$report))
@@ -317,7 +324,8 @@ test_that("a template figure with analyses of its own reads its own ARD; one wit
 
 test_that("a forest_hr template figure's program reads its ARD, no stop()", {
   s <- fig_ard_study()
-  p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF")
+  p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF",
+                       group = "TRT01A")
   code <- program_code(p, "F-9-1")
   expect_false(any(grepl("stop(\"F-9-1 reads an ARD", code, fixed = TRUE)))
   expect_true(any(grepl("readRDS(", code, fixed = TRUE)))
@@ -331,7 +339,8 @@ test_that("a forest_hr template figure's program reads its ARD, no stop()", {
 
 test_that("Review does not say 'No dataset is read' of a figure reading an ARD", {
   s <- fig_ard_study()
-  p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF")
+  p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF",
+                       group = "TRT01A")
   r <- review_problems(p)
   expect_false(any(r$output_id == "F-9-1" & r$message == "No dataset is read."))
   # a figure reading neither an ARD nor a dataset still gets it
@@ -344,9 +353,10 @@ test_that("Review does not say 'No dataset is read' of a figure reading an ARD",
 
 test_that("a template figure's ARD tabs are on when it makes an ARD (forest_hr), off when it does not (km_survival, mean_se) (#514)", {
   s <- fig_ard_study()
-  p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF")
+  p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF",
+                       group = "TRT01A")
   expect_true(.report_uses_ard(p, "F-9-1"))
-  p <- tpl_fig_planner(p, "mean_se", "F-9-2", param = "SYSBP")
+  p <- tpl_fig_planner(p, "mean_se", "F-9-2", param = "SYSBP", group = "TRT01A")
   p <- tpl_fig_planner(p, "km_survival", "F-9-3", by = "TRT01A")
   expect_false(.report_uses_ard(p, "F-9-3"))
   expect_false(.report_uses_ard(p, "F-9-2"))
@@ -418,7 +428,8 @@ test_that("a figure's own ARD for its preview: the study ARD's while built, else
   st <- stale_ard_study()
   on.exit(st$done(), add = TRUE)
   s <- st$s
-  s$planner <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF")
+  s$planner <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF",
+                               group = "TRT01A")
   pr <- "p1"
   built <- "not built"
   made <- 0L

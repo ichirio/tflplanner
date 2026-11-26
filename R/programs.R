@@ -178,13 +178,22 @@ report_info <- function(x, output_id) {
 
 # A table's Rework as its program writes it: `data <- ard |>
 # normalize_ard(...)` (the table's own arguments), then the code, which
-# starts from `data` and leaves `data`.  The code is written as it is: an
-# old one that normalizes itself (`data <- normalize_ard(ard)`) overwrites
-# the line before it with the same data.  `code` the table's ARD code: one
-# that makes `data` itself has no `ard` to normalize.
+# starts from `data` and leaves `data`.  The code is written as tflspec
+# writes SPEC R into a program (.rework_code()): an old one that normalizes
+# itself (`data <- normalize_ard(ard)`) overwrites the line before it with
+# the same data.  `code` the table's ARD code: one that makes `data` itself
+# has no `ard` to normalize.
 .rework_lines <- function(x, output_id, code, proc) {
   c(if (is.na(code) || !.makes_data(code)) .rework_normalize_lines(x, output_id),
-    .code_block(proc))
+    .rework_code(proc))
+}
+
+# A Rework (a table's, a template listing's) as tflspec writes the data's
+# steps into a program, one element a line (tflspec A1): one expression
+# that assigns only `data` as it is, any other code in a scope of its own
+# that leaves `data`, local({ }), so what else it assigns stays there
+.rework_code <- function(proc) {
+  .tflspec_fn(".content_steps_code")(.code_block(proc))
 }
 
 # The check tflspec makes of a Rework, in its words: it names `data`
@@ -206,7 +215,8 @@ report_info <- function(x, output_id) {
   if (!is.null(y)) {
     o <- .code_content(y)
     o$data <- list(source = "ard", object = "ard", steps = list(tflspec::tfl_r(.rework_mark)))
-    code <- tryCatch(tflspec::tfl_content_code(o, pipe = "|>"), error = function(e) NULL)
+    code <- tryCatch(tflspec::tfl_content_code(o, pipe = "|>", study = .content_study(o, y$study)),
+                     error = function(e) NULL)
     i <- match(.rework_mark, code)
     if (!is.na(i) && i > 1L) return(code[seq_len(i - 1L)])
   }
@@ -439,7 +449,7 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   ctx <- .live_context_args()
   tflspec::tfl_report_program(
     .report_values(x, output_id), study = .code_spec(x)$study,
-    shared = .report_shared(x), standards = .report_standards(),
+    shared = .report_shared(x, output_id), standards = .report_standards(),
     attached = ctx$attached, study_code = ctx$study_code,
     series_dir = .program_series_dirs(), layout = study_layout(), date = date,
     generator = .setup_generator(), part = part, todo = todo)
@@ -492,7 +502,10 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     listing = NULL, design = NULL, ard_source = list(kind = "none"))
   if (identical(type, "listing")) {
     # (a listing of the report's analysis data, or of an analysis set's
-    # subjects: its program starts with their part of the ARD definition)
+    # subjects: its program starts with their part of the ARD definition;
+    # its set as the report's one reader says it, report_population(): its
+    # row's, else the report's -- the set tflspec writes onto its data; S5)
+    x$lf <- .lf_with_report_set(x, output_id)
     l <- lf_rows(x, "listings", output_id)
     if (nrow(l)) {
       out$listing <- list(own = any(!is.na(c(l$data[1L] %||% NA, l$population_id[1L] %||% NA))))
@@ -508,13 +521,23 @@ program_code <- function(x, output_id, date = Sys.Date()) {
       .adata_datasets(ad, i, x$ard$populations)))))
     out$fig_codelists <- function() .fig_codelists(x, output_id)
     out$size <- function() .fig_size_of(x, output_id)
+    # (written from the sheets -- no spec, or edits it has not taken in --
+    # the figure's analysis set is still its data's `population:` as the
+    # one reader says it, report_population(): tflspec makes its subjects
+    # from it, as the designer's code view does, .fig_rp_context(); A2-2)
+    pop <- report_population(x, output_id)
+    if (is.null(out$spec_output) && !is.na(pop)) {
+      out$spec_output <- list(data = list(population = pop))
+    }
   }
   out
 }
 
 # The values the reports of a study share (tflspec::tfl_report_program()'s
-# `shared`); a spec of the sheets is made only for a report that needs it
-.report_shared <- function(x) {
+# `shared`); a spec of the sheets is made only for a report that needs it.
+# `output_id` the report the program is for: a listing's set on its row
+# (.lf_with_report_set(); S5)
+.report_shared <- function(x, output_id = NULL) {
   list(
     setup = x$setup,
     report_setup = function() .uses_report_setup(x),
@@ -522,7 +545,8 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     ard_spec = function() .ard_spec_last(x$ard),
     study_ard = .study_ard_rel(x$ard),
     codelists = function() .study_codelists(x),
-    listings = function() tflspec::tfl_listing_spec(x$lf, check = FALSE),
+    listings = function() tflspec::tfl_listing_spec(
+      if (is.null(output_id)) x$lf else .lf_with_report_set(x, output_id), check = FALSE),
     sheets = function() .spec_object_last(x, c(table_sheets(), report_sheets()),
                                           unique(c(.study_keys$table, .study_keys$report))),
     table_sheets = function() .spec_object_last(x, table_sheets(), .study_keys$table))
@@ -648,7 +672,8 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   i <- match(output_id, x$outputs$output_id)
   add <- list()
   if (!is.na(i)) {
-    pop <- if (!is.null(x$outputs$population)) x$outputs$population[i] else NA_character_
+    # (the report's set as its one reader says it: a listing's row first, S5)
+    pop <- report_population(x, output_id)
     if (!.is_blank(pop) && !"OUTPUT_POPULATION" %in% said) {
       add$OUTPUT_POPULATION <- .pop_label(x, pop)
     }
@@ -711,6 +736,16 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     })
   }
   r
+}
+
+# The study a content call of tflspec's (tfl_content_code(),
+# tfl_content_run()) is given for the report `o`: a figure's, the study the
+# program writer has -- every way a figure is made applies its report's set
+# (canon 11-15: its subjects made from the study, or a stop saying why);
+# NULL for a table's and a listing's, whose data part the program writes
+# apart (with the study tflspec would write it into the content's code)
+.content_study <- function(o, study) {
+  if (identical(o$kind, "figure")) study
 }
 
 # `report_id <- "<id>"`: what a report's program sets at its head, and a

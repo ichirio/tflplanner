@@ -36,8 +36,10 @@ type corrected); the TOC's otherwise.}
 
 \item{populations}{The reports' analysis sets, a population_id named by
 report (see \code{toc_populations()}): each one that differs from the
-report's is set with \code{\link[=set_report_population]{set_report_population()}} (its data made, its
-analyses moved).}
+report's is set as \code{\link[=set_report_population]{set_report_population()}} sets it (its data made,
+its analyses moved, the set written where the report's data keeps it,
+its TOC line with it); the reports already there whose set moved are
+in attribute \code{set_moved} (\code{output_id}, \code{from}, \code{to}).}
 
 \item{make_data}{Make the analysis data of each new report's datasets
 (the TOC's \code{datasets}): \verb{<dataset>_<set>}, kept to the subjects of its
@@ -47,7 +49,8 @@ analysis set (\verb{adsl_<set>}), found or made.}
 (those deleted since are made again).}
 }
 \value{
-The \code{tflplanner}.
+The \code{tflplanner}, with attributes \code{made} (the analysis data
+made) and \code{set_moved}.
 }
 \description{
 Adds the TOC's new reports (their type, program, file, note, titles and

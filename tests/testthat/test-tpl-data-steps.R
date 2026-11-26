@@ -59,18 +59,117 @@ test_that("a join no longer the analysis set's is told", {
   expect_false(.tpl_join_stale(.tpl_steps_fields(.tpl_steps_from("ADSL", saf)), saf))
 })
 
-test_that("the study's treatment is the `by`, and ADSL's flags no population says are offered", {
+test_that("the study's treatment is the `by`'s suggestion, not its value, and ADSL's flags no population says are found (to be told, #868)", {
   skip_if_not("km_survival" %in% tflspec::tfl_templates()$name)
   study <- list(study = list(settings = list(treatment = "TRT01P")))
   prm <- .tpl_params("km_survival")
-  expect_identical(.tpl_study_value(study, prm$by), "TRT01P")
+  # (`by` is required with no default and no study source: the study's
+  # treatment is the planner's suggestion, written only when picked --
+  # PRINCIPLES 1.14-1.16; empty, it is missing, study or not)
+  expect_null(.tpl_study_value(study, prm$by))
+  expect_identical(.tpl_suggest("km_survival", "by", "TRT01P", study = study), "TRT01P")
   expect_true("by" %in% .tpl_missing("km_survival", list()))
-  expect_false("by" %in% .tpl_missing("km_survival", list(), study))
+  expect_true("by" %in% .tpl_missing("km_survival", list(), study))
   adsl <- data.frame(SAFFL = c("Y", "N"), ITTFL = c("Y", "Y"), EFFFL = c("N", ""),
                      TRTFL = c("A", "B"), AGE = 1:2)
   pops <- data.frame(population_id = "SAF", dataset = "ADSL", where = "SAFFL == \"Y\"")
   expect_identical(.tpl_flags_undefined(adsl, pops), c("ITTFL", "EFFFL"))
   expect_identical(.tpl_flags_undefined(NULL), character())
+})
+
+test_that("a KM type's analysis set is asked as the report's set, not an argument, and may be left out (#868)", {
+  skip_if_not("km_survival" %in% tflspec::tfl_templates()$name)
+  prm <- .tpl_params("km_survival")
+  expect_true(.tpl_asks_report_pop(prm))
+  expect_false(.tpl_pop_of_report(prm))
+  # (every template has the one control; the layout `km` takes the set as a
+  # shown argument too: the setter, .write_report_population(), writes
+  # it with the report's set -- not the dialog's arguments; review H5)
+  expect_true(.tpl_asks_report_pop(.tpl_params("km")))
+  a <- .tpl_dialog_args(prm, list(population = "SAF", by = "TRT01A"))
+  expect_null(attr(a, "missing"))
+  expect_identical(attr(a, "population"), "SAF")
+  expect_null(a$population)
+  b <- .tpl_dialog_args(prm, list(population = "", by = "TRT01A"))
+  expect_null(attr(b, "missing"))
+  expect_null(attr(b, "population"))
+})
+
+test_that("the report's set control is for every template; a shown `population` is no field of its own, it is written as the argument too (#868)", {
+  own <- list(data = list(name = "data", hidden = TRUE, step = "data"))
+  hid <- c(own, list(population = list(name = "population", hidden = TRUE, step = "data")))
+  shn <- c(own, list(population = list(name = "population", step = "data")))
+  for (prm in list(hid, shn, own)) expect_true(.tpl_asks_report_pop(prm))
+  expect_false(.tpl_pop_is_arg(hid))
+  expect_true(.tpl_pop_is_arg(shn))
+  expect_false(.tpl_pop_is_arg(own))
+  expect_false("population" %in% names(.tpl_dialog_shown(shn)))
+  expect_true("data" %in% names(.tpl_dialog_shown(c(shn, list(data = list(name = "data"))))))
+})
+
+test_that("a report's analysis set is read and set where its file has it: the data map's, else its rows', never common: (#868, A2-T)", {
+  o <- list(data = list(population = "SAF", steps = list(list(step = "read", dataset = "ADTTE"))))
+  expect_identical(.o_population(o), "SAF")
+  o2 <- .o_set_population(o, "ITT")
+  expect_identical(o2$data$population, "ITT")
+  expect_null(o2$common)
+  expect_identical(.o_population(o2), "ITT")
+  # (a data map with the set in `common:`: moved onto the data)
+  o3 <- .o_set_population(list(common = list(population = "SAF"), data = list(steps = list())), "ITT")
+  expect_identical(o3$data$population, "ITT")
+  expect_null(o3$common)
+  expect_null(.o_set_population(o, NA_character_)$data$population)
+  # (no data map -- a table's rows: on its subjects row, never `common:` -- A2-T)
+  t1 <- .o_set_population(list(data = list(list(id = "adsl_sub", from = "ADSL"))), "SAF")
+  expect_identical(t1$data[[1L]]$population, "SAF")
+  expect_null(t1$common)
+  expect_identical(.o_population(t1), "SAF")
+  t0 <- .o_set_population(t1, "")
+  expect_null(t0$common)
+  expect_true(is.na(.o_population(t0)))
+  expect_true(is.na(.o_population(list())))
+  # (a figure: its set on its data always, a map made for it -- canon 11-15)
+  f1 <- .o_set_population(list(id = "F-1", kind = "figure", common = list(), data = NULL), "SAF")
+  expect_identical(f1$data, list(population = "SAF"))
+  expect_null(f1$common)
+  expect_identical(names(f1), c("id", "kind", "data"))
+  expect_identical(.o_population(f1), "SAF")
+  f0 <- .o_set_population(f1, NA_character_)
+  expect_null(f0$data)
+  expect_true(is.na(.o_population(f0)))
+  # (an old figure: its set in `common:`, its steps with the set's join --
+  # read as it is; set again, the set goes on the data, `common:` out)
+  old <- list(id = "F-2", kind = "figure", common = list(population = "SAF"),
+              data = list(steps = .tpl_steps_from("ADTTE", list(dataset = "ADSL", where = "SAFFL == \"Y\""))))
+  expect_identical(.o_population(old), "SAF")
+  o4 <- .o_set_population(old, "SAF")
+  expect_identical(names(o4$data), c("population", "steps"))
+  expect_identical(o4$data$steps, old$data$steps)
+  expect_null(o4$common)
+  # (a table with no rows that make its subjects: no `common:` either -- A2-T;
+  # the writer says the set is on no data)
+  expect_warning(t2 <- .o_set_population(list(id = "T-1", kind = "table"), "SAF"),
+                 "has no data row that makes its subjects", fixed = TRUE)
+  expect_null(t2$common)
+  expect_null(t2$data)
+})
+
+test_that("a template's `population` argument is the report's set where its file has it: no second value beside it (#868)", {
+  skip_if_not("km" %in% tflspec::tfl_templates()$name)
+  st <- list(list(step = "read", dataset = "ADTTE"))
+  # (a KM type's report switched to the layout `km`: its set on the data map)
+  p <- list(spec = list(outputs = list(`F-1` = list(id = "F-1", kind = "figure", template = list(name = "km"),
+                                                    data = list(population = "SAF", steps = st)))))
+  o <- .tpl_output(p, "F-1", list(population = "ITT", by = "TRT01A"))
+  expect_identical(o$data$population, "ITT")
+  expect_null(o$common$population)
+  expect_identical(.o_population(o), "ITT")
+  expect_identical(o$template$args$population, "ITT")
+  # (a figure with no data map: its set on its data still, canon 11-15)
+  p$spec$outputs[["F-1"]]$data <- NULL
+  o2 <- .tpl_output(p, "F-1", list(population = "ITT"))
+  expect_identical(o2$data$population, "ITT")
+  expect_null(o2$common$population)
 })
 
 test_that("a report's analysis set changed on the card is its toc line's too", {

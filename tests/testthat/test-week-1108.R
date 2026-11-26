@@ -206,7 +206,8 @@ tpl_fig_study <- function(h, id = "F-9-1") {
   name <- "forest_hr"
   steps <- if (.tpl_own_data(tflspec::tfl_template_params(name))) .tpl_steps_from("ADTTE", saf, "PFS")
   o <- tflspec::tfl_output(id, "figure", label = name, common = list(population = "SAF"),
-                           template = list(name = name, args = list(param = "PFS", population = "SAF")),
+                           template = list(name = name, args = list(param = "PFS", population = "SAF",
+                                                                    group = "TRT01A")),
                            data = if (length(steps)) list(steps = steps))
   s$planner <- .spec_add_output(p, o, label = name, population = "SAF")
   suppressWarnings(suppressMessages(save_study(s, home = h$home)))
