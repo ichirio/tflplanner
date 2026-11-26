@@ -372,10 +372,10 @@ test_that("a template's analysis set is its argument, in the data step: none tak
   expect_false(.tpl_pop_of_report(.tpl_params("hierarchical")))
   expect_false(.tpl_pop_of_report(.tpl_params("km_survival")))
   expect_false(.tpl_pop_of_report(list()))
-  # (demog's has the template's default, SAF: not empty; stf_t02_demog's none)
+  # (demog's has the template's default, SAF: not empty; disposition's none)
   expect_identical(.tpl_missing("demog", list(by = "TRT01A")), character())
   expect_identical(.tpl_missing("demog", list()), "by")
-  expect_true("population" %in% .tpl_missing("stf_t02_demog", list(by = "TRT01A")))
+  expect_true("population" %in% .tpl_missing("disposition", list(by = "TRT01A")))
 })
 
 test_that("a table field's column choices are the template's data's, not every dataset's (gui-checks-1 D3)", {

@@ -438,10 +438,9 @@ test_that("the dialog writes only the optional arguments changed in it: demog an
       do.call(session$setInputs, req)
       suppressMessages(session$setInputs(add_ok = which(nm == c("demog", "stf_t02_demog"))))
       args <- add_args(rv$p, paste0("T-", rid))
-      # (the analysis set an argument, A2-T: demog's left at its default,
-      # SAF, is not written; stf_t02_demog's has no default, required)
-      want <- c("by", "continuous", "categorical", if (nm == "stf_t02_demog") "population")
-      expect_setequal(names(args), want)
+      # (the analysis set an argument left at the template's default, SAF:
+      # not written, A2-T)
+      expect_setequal(names(args), c("by", "continuous", "categorical"))
       expect_identical(add_row(rv$p, paste0("T-", rid))$population, "SAF")
     }
     # (a heading of two lines: a box that keeps the line break)
@@ -489,23 +488,23 @@ test_that("a switch to demog and back keeps population as the template's argumen
 })
 
 test_that("a template with no population: no ARD run and no error note, the preview waits; its field's tip is the usual one", {
-  # (stf_t02_demog: its analysis set an argument with no default, A2-T --
+  # (disposition: its analysis set an argument with no default, A2-T --
   # demog's has the template's, SAF)
   id <- sample_for_add()
   shown <- watch_add()
   shiny::testServer(server_for(id), {
     rv <- session$userData$rv
-    session$setInputs(add = 1, modal_type = "table", modal_how = "template", modal_tpl_table = "stf_t02_demog",
+    session$setInputs(add = 1, modal_type = "table", modal_how = "template", modal_tpl_table = "disposition",
                       modal_id = "ZZ-8", modal_desc = "", modal_section = "",
-                      mtpl_stf_t02_demog__population = "SAF", mtpl_stf_t02_demog__by = "TRT01A",
-                      mtpl_stf_t02_demog__continuous = "AGE", mtpl_stf_t02_demog__categorical = "SEX")
+                      mtpl_disposition__population = "SAF", mtpl_disposition__by = "TRT01A",
+                      mtpl_disposition__categorical = "EOSSTT")
     # (the dialog's population field: the analysis set's tip, not tflspec's note)
     dlg <- add_html(add_modal(shown))
     expect_false(grepl("not a template parameter", dlg, fixed = TRUE))
     suppressMessages(session$setInputs(add_ok = 1))
     session$setInputs(target = "T-ZZ-8", nav = "make", step = "data", content_nav = "content")
     expect_false(grepl("not a template parameter", add_html(output$tpl_card_data$html), fixed = TRUE))
-    session$setInputs(tpl_stf_t02_demog__population = "")
+    session$setInputs(tpl_disposition__population = "")
     expect_identical(.tpl_missing_report(rv$p, "T-ZZ-8"), "population")
     n0 <- length(shown$notes)
     suppressWarnings(session$setInputs(tpl_preview = 1))
