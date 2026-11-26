@@ -140,8 +140,3 @@
   eval(parse(text = tflspec::tfl_helpers_code(), keep.source = FALSE), envir = e)
   e
 }
-
-# code without the blank lines it starts with
-.drop_leading_blank <- function(code) {
-  code[cumsum(nzchar(code)) > 0L]
-}

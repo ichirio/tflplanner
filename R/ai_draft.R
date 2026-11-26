@@ -814,9 +814,9 @@
 
 # The company standard's levels (its settings ai_review_figure, _table,
 # _listing); a kind it does not say, or says wrongly, has the default
-.ai_review_company <- function() {
+.ai_review_company <- function(std = company_standards()) {
   vapply(.ai_review_kinds, function(k) {
-    v <- .ai_review_level(.std_setting(paste0("ai_review_", k), NA_character_))
+    v <- .ai_review_level(.std_setting(paste0("ai_review_", k), NA_character_, std = std))
     if (is.na(v)) .ai_review_default[[k]] else v
   }, "")
 }
