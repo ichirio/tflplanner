@@ -336,6 +336,59 @@ test_that("step 1: a population not in the populations sheet stays a choice (#41
   })
 })
 
+# (tflspec's .study_set_ids(): a tflspec without it knows no study's sets)
+has_study_set_ids <- function() {
+  !is.null(get0(".study_set_ids", envir = asNamespace("tflspec"), mode = "function", inherits = FALSE))
+}
+
+test_that("the sets a report is offered are the study's registered ones; none registered, none offered and said (review M3)", {
+  p <- pop_planner()
+  # no YAML spec, no data catalog: the sets are not known -- the sheet's, as before
+  r <- .study_set_rows(p)
+  expect_identical(r$population_id, c("SAF", "ITT"))
+  expect_false(attr(r, "none"))
+  expect_identical(.study_sets_none_label(r), "(not chosen)")
+  expect_identical(.study_sets_none_label(r, none = "(none)"), "(none)")
+  # a row with no id is no set
+  q <- p
+  q$ard$populations <- .normalize_ard_sheet(data.frame(
+    population_id = c("SAF", NA), dataset = "ADSL", where = c("SAFFL == \"Y\"", "XXFL == \"Y\"")),
+    "populations")
+  expect_identical(.study_set_rows(q)$population_id, "SAF")
+  # no data catalog and no set: not known to have none
+  q$ard$populations <- p$ard$populations[0, , drop = FALSE]
+  expect_false(attr(.study_set_rows(q), "none"))
+  skip_if_not(has_study_set_ids())
+  # a data catalog: its sets as the planner holds them (a set added in the
+  # sheet and not saved yet is the study's too)
+  q <- p
+  q$spec <- list(study = list(data = list(datasets = list(list(dataset = "ADSL", path = "data/adam/adsl.rds")),
+                                          populations = list(list(id = "SAF")))))
+  r <- .study_set_rows(q)
+  expect_identical(r$population_id, c("SAF", "ITT"))
+  expect_false(attr(r, "none"))
+  # a data catalog that names none: none offered, and the "none" item says so
+  q$ard$populations <- p$ard$populations[0, , drop = FALSE]
+  r <- .study_set_rows(q)
+  expect_identical(nrow(r), 0L)
+  expect_true(attr(r, "none"))
+  expect_match(.study_sets_none_label(r), "register one in spec/data.yml populations", fixed = TRUE)
+})
+
+test_that("step 1 of a study that registers no set offers none and says so (review M3)", {
+  skip_if_not(has_study_set_ids())
+  local_home()
+  p <- pop_planner()
+  p$ard$populations <- p$ard$populations[0, , drop = FALSE]
+  create_study("RN", planner = p)
+  shiny::testServer(server_for("RN"), {
+    session$setInputs(nav = "make", step = "ard", target = "T1")
+    h <- output$ard_report_pop$html
+    expect_match(h, "register one in spec/data.yml populations", fixed = TRUE)
+    expect_false(grepl("<option value=\"SAF\"", h, fixed = TRUE))
+  })
+})
+
 test_that("a listing's analysis set is on its row too: what a save writes onto its data (codex review 3B)", {
   p <- add_output(pop_planner(), "L1", type = "listing")
   p <- set_lf_rows(p, "listings", "L1", data.frame(dataset = "ADAE", population_id = "SAF"))

@@ -103,12 +103,15 @@
   # writes.  A population flag of the data no set says is no choice: it is
   # registered as a study population first (adata_flag_note; codex review
   # 9).  A saved condition on such a flag stays the filter's, as it is.
+  # (the sets every control of a report's set offers, .study_set_rows();
+  # attr "none": the study registers none, said in the "(none)" item)
   adata_pop_options <- function(from) {
-    po <- rv$p$ard$populations
-    po <- po[!.is_blank_v(po$where) & !.is_blank_v(po$population_id), , drop = FALSE]
-    data.frame(value = paste0("pop:", po$population_id), cond = po$where,
-               label = sprintf("%s (%s)", po$population_id, po$where),
-               name = po$population_id, stringsAsFactors = FALSE)
+    all <- .study_set_rows(rv$p)
+    po <- all[!.is_blank_v(all$where), , drop = FALSE]
+    structure(data.frame(value = paste0("pop:", po$population_id), cond = po$where,
+                         label = sprintf("%s (%s)", po$population_id, po$where),
+                         name = po$population_id, stringsAsFactors = FALSE),
+              none = attr(all, "none"))
   }
   # the data's Y/N flags no study population says (.tpl_flags_undefined(),
   # as the Create dialog tells them)
@@ -119,7 +122,7 @@
   }
   adata_pop_choices <- function(from) {
     o <- adata_pop_options(from)
-    c(stats::setNames(".none", t("(none)")), stats::setNames(o$value, o$label))
+    c(stats::setNames(".none", .study_sets_none_label(o, t, t("(none)"))), stats::setNames(o$value, o$label))
   }
   # the option whose condition the condition's first rows are (".none": none)
   adata_pop_of_where <- function(where, from) {

@@ -12,6 +12,51 @@ report_population <- function(x, output_id) {
   if (length(v) != 1L || .is_blank(v)) NA_character_ else v
 }
 
+# The study's analysis sets: what every control that offers a report's set
+# offers -- the report list's, step 1's, a figure's, the TOC's, the Create
+# dialog's, a template's data card, an analysis data's Population (canon
+# 11-15 (2): a set is registered in the study, spec/data.yml `populations:`,
+# and a report picks one of them; a flag no set says is no choice).  The
+# rows of the populations sheet (data.yml's `populations:` as the planner
+# holds it, its edits not saved yet with them) whose id tflspec's
+# .study_set_ids() takes as the study's, read from the study's data
+# catalog with those rows in it.  attr "none" TRUE when the study registers
+# no set (data.yml names none): a control offers none and says so
+# (.study_sets_none_label()).  A study with no data catalog (no
+# spec/data.yml; a planner with no YAML spec), or a tflspec without the
+# helper, has sets that are not known: the sheet's rows, as before.
+.study_set_rows <- function(p) {
+  po <- p$ard$populations
+  if (is.null(po) || !nrow(po)) {
+    po <- data.frame(population_id = character(), dataset = character(), where = character(),
+                     stringsAsFactors = FALSE)
+  }
+  po <- po[!.is_blank_v(po$population_id), , drop = FALSE]
+  ids <- .study_set_ids_now(p, po$population_id)
+  if (!is.null(ids)) po <- po[po$population_id %in% ids, , drop = FALSE]
+  rownames(po) <- NULL
+  attr(po, "none") <- !is.null(ids) && !length(ids)
+  po
+}
+# tflspec's .study_set_ids() of the study's data catalog with the
+# populations sheet's ids `sheet` as its `populations:` (what a save
+# writes there); NULL when the sets are not known
+.study_set_ids_now <- function(p, sheet) {
+  f <- get0(".study_set_ids", envir = asNamespace("tflspec"), mode = "function", inherits = FALSE)
+  sp <- p[["spec"]]
+  data <- if (is.list(sp) && is.list(sp[["study"]])) sp[["study"]][["data"]]
+  if (is.null(f) || !length(data)) return(NULL)
+  data[["populations"]] <- lapply(unique(as.character(sheet)), function(id) list(id = id))
+  f(data)
+}
+# the "none" item of a control of a report's set: `none` ("(not chosen)"),
+# or, the study registering no set, that it has none to offer
+.study_sets_none_label <- function(rows, t = identity, none = t("(not chosen)")) {
+  if (isTRUE(attr(rows, "none"))) {
+    t("(none: the study has no analysis set; register one in spec/data.yml populations)")
+  } else none
+}
+
 # An analysis set's label: the populations sheet's `label`, else the company
 # standards' (their populations sheet's note), else the label of its flag in `data` (SAFFL: "Safety
 # Population Flag"), else its id

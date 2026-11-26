@@ -413,7 +413,8 @@
     if (is.null(tp) || !nrow(tp)) return(NULL)
     u <- unique(tp$text)
     ch <- pop_choices()
-    names(ch)[1L] <- t("(not taken)")
+    # (a study that registers no set: its "none" item says so, as everywhere)
+    names(ch)[1L] <- .study_sets_none_label(.study_set_rows(rv$p), t, t("(not taken)"))
     shiny::div(
       class = "mb-2",
       shiny::h6(with_tip(t("Populations"), t("The TOC's population column, as the study's populations: matched by id, label or a usual word (Safety Population: SAF); change it here. Taken in, it is the report's population (the report list's, step 1's): its data is made, and a report whose set changes has its analyses moved."))),
