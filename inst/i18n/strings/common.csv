@@ -2195,3 +2195,5 @@
 "(none: the study has no analysis set; register one in spec/data.yml populations)","（なし：試験に解析対象集団がありません。spec/data.yml の populations に登録してください）"
 "Keep records whose flag is Y","フラグが Y のレコードを残す"
 "The records a record flag marks (ANL01FL, TRTEMFL ...).  The analysis set (FAS, SAF ...) is no step: write it on the report's data (`population:`); the report's program makes its subjects and joins the records to them.","レコードのフラグ（ANL01FL、TRTEMFL など）が付いたレコードを残します。解析対象集団（FAS、SAF など）は手順ではありません。帳票のデータ（`population:`）に書いてください。帳票のプログラムが被験者を作り、そこにレコードを結合します。"
+"the unit the analysis and the axis use: the call's first step converts AVAL from its unit, AVALU, to it (tte_time()); the x axis's title","解析と軸で使う単位: 呼び出しの最初のステップで AVAL を元の単位 AVALU からこの単位に変換する（tte_time()）; x 軸のタイトル"
+"the censoring variable, 0 the event, any other value a censoring (Surv(time, censor == 0))","打ち切りの変数。0 がイベント、0 以外は打ち切り（Surv(time, censor == 0)）"
