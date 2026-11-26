@@ -69,7 +69,10 @@ test_that("the code lists' dialog and step 2: a grid edit changes that cell and 
       d <- sheet_rows(before, sh, "T1")
       # one cell changed: the last column of the first row (the page and
       # the report: a setting of the right type)
-      col <- setdiff(names(d), c("output_id", "note"))
+      # (a code list's `list` cell names one of the study's lists, which the
+      # grid does not set: one row's cell alone would not agree with the
+      # variable's other rows either -- test-codelist-refs.R tests it)
+      col <- setdiff(names(d), c("output_id", "note", "list"))
       col <- col[length(col)]
       new <- "changed"
       # (a band's row height, tflspec#568: a whole number, or the save refuses it)

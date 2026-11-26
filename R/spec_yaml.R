@@ -54,8 +54,12 @@
 # What tflspec's tfl_yaml_from_sheets() writes the YAML spec from: the
 # planner's sheets as one definition (with the study keys), the report list
 # and setup (the _tflplanner sheet's rows), the ARD definition, the listing
-# and figure sheets, the figure designs, and the study's fields
-.planner_sheets <- function(p, meta, style = p$spec$study$study$settings$style) {
+# and figure sheets, the figure designs, the study's fields, and the study's
+# code lists (`codelists`, study$codelists: the study_codelists sheet, which
+# a report's `list` cell names; NULL -- a planner with no spec -- none given,
+# and tflspec reads the defaults.yml it writes over)
+.planner_sheets <- function(p, meta, style = p$spec$study$study$settings$style,
+                            codelists = if (!is.null(p$spec)) p$spec$study$codelists %||% list()) {
   o <- p$outputs[names(.empty_outputs())]
   o$setup_code <- rep(NA_character_, nrow(o))
   planner <- rbind(
@@ -74,10 +78,28 @@
       !identical(style, "standard")) {
     study$settings <- list(style = style)
   }
-  list(table = unclass(.spec_object(p, c(table_sheets(), report_sheets()),
-                                    unique(unlist(.study_keys)))),
-       planner = planner, ard = p$ard, listing = p$lf,
-       figures = p$fig_designs %||% list(), study = study)
+  out <- list(table = unclass(.spec_object(p, c(table_sheets(), report_sheets()),
+                                           unique(unlist(.study_keys)))),
+              planner = planner, ard = p$ard, listing = p$lf,
+              figures = p$fig_designs %||% list(), study = study)
+  if (!is.null(codelists)) out$study_codelists <- .study_codelists_sheet(codelists)
+  out
+}
+
+# The study's code lists (study$codelists: by name, each its codes, named by
+# them when it has labels) as tflspec's study_codelists sheet: a code a row
+# -- the list's name, the code, its label (blank: the list has none), its
+# place -- as tfl_sheets_from_spec() writes it
+.study_codelists_sheet <- function(cl) {
+  rows <- lapply(names(cl), function(nm) {
+    x <- cl[[nm]]
+    codes <- as.character(names(x) %||% unname(x))
+    lab <- if (is.null(names(x))) rep(NA_character_, length(x)) else as.character(unname(x))
+    data.frame(name = rep(nm, length(codes)), value = codes, label = lab,
+               order = as.character(seq_along(codes)), stringsAsFactors = FALSE)
+  })
+  do.call(rbind, c(list(data.frame(name = character(), value = character(), label = character(),
+                                   order = character(), stringsAsFactors = FALSE)), rows))
 }
 
 # study.yml's top-level keys the save writes: the study's fields, when it
@@ -231,7 +253,12 @@
 .save_yaml_spec <- function(p, meta, root, own = function(rel) FALSE,
                             before_write = NULL) {
   whole <- is.null(p$spec)
-  p <- .spec_sync(p, meta)
+  # (written whole: the study's code lists, which a report's `list` cell
+  # names, are the folder's defaults.yml's -- the bridge writes them back)
+  scl <- if (whole && .has_yaml_spec(root)) {
+    tryCatch(tflspec::tfl_read_study_spec(root)$codelists %||% list(), error = function(e) NULL)
+  }
+  p <- .spec_sync(p, meta, codelists = scl)
   attr(p, "changed") <- NULL
   # (a planner with no spec is written whole: what of study.yml the writer
   # does not write -- the AI screens' ai:, a block by hand, a settings:
@@ -258,7 +285,11 @@
   tmp <- tempfile("tflplanner-normal")
   on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
   p <- tryCatch({
-    tflspec::tfl_yaml_from_sheets(.planner_sheets(s$planner, s$meta), tmp, overwrite = TRUE)
+    # (the study's code lists, which a report's `list` cell names: the
+    # spec's, else the folder's -- a study read from its state has no spec yet)
+    scl <- if (!is.null(s$planner$spec)) s$planner$spec$study$codelists %||% list() else
+      tflspec::tfl_read_study_spec(s$path)$codelists %||% list()
+    tflspec::tfl_yaml_from_sheets(.planner_sheets(s$planner, s$meta, codelists = scl), tmp, overwrite = TRUE)
     .study_spec_keys(.planner_from_yaml(tmp))
   }, error = function(e) NULL)
   if (!is.null(p)) {

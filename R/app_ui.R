@@ -76,6 +76,8 @@ details.ard-fn > summary::-webkit-details-marker { display: none; }
 details.ard-fn[open] .ard-fn-closed, details.ard-fn:not([open]) .ard-fn-open { display: none; }
 .ard-fn-near { opacity: .7; }
 .handsontable td, .handsontable th { font-size: 12.5px; }
+/* a cell kept as it is (read only): light grey, before anyone types */
+.handsontable td.htDimmed { background-color: #f3f3f3; }
 .rp-dirty { color: #b45309; font-weight: 600; }
 .rp-study { font-weight: 600; }
 .rp-assist { background: var(--bs-tertiary-bg, #f6f7f9); }
