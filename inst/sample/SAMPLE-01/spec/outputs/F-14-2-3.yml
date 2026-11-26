@@ -4,7 +4,6 @@ label: KM curves of the time to first skin disorder (designed)
 extends:
   - defaults
 data:
-  population: SAF
   source: code
   steps:
     - step: read
@@ -19,6 +18,7 @@ data:
       time: AVAL
       censor: CNSR
       by: TRT01A
+  population: SAF
 content:
   - km_curve:
       linewidth: 0.3

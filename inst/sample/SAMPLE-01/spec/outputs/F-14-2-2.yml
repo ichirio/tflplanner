@@ -4,8 +4,8 @@ label: KM plot of the time to first skin disorder
 extends:
   - defaults
 data:
-  population: SAF
   source: code
+  population: SAF
 content: !r |-
   arms <- c("Drug X", "Control")
   # adsl_sub: the subjects of the report's analysis set, made before this code
