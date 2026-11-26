@@ -4,6 +4,9 @@
 # its data, read the report's definition, lay the report out from it, write
 # the RTF.  How the report looks lives in the workbooks, so a change of
 # layout is a change of workbook, not of program.
+#
+# The text is tflspec's (tflspec::tfl_report_program(), tflspec#910 G5-1c):
+# tflplanner reads each report's values from the planner (.report_values()).
 
 # A one-row sheet (report, page) resolved for one report the way
 # rtfreporter resolves it: the report's own cells over the default row,
@@ -133,13 +136,6 @@ report_info <- function(x, output_id) {
     paste("#", bar))
 }
 
-# a program's section line, as tflspec writes its own (a designed figure's
-# `# ---- data ----` and `# ---- plot ----`): to the 78th column
-.section <- function(title) {
-  head <- paste("# ----", title, "")
-  paste0(head, strrep("-", max(3L, 78L - nchar(head))))
-}
-
 # Does this code assign `data` itself?  (Then it needs no default
 # normalization after it.)
 .makes_data <- function(code) {
@@ -155,20 +151,6 @@ report_info <- function(x, output_id) {
   imp <- .ard_import_of(x, output_id)
   if (is.null(imp)) .fill_template("table_data", x, output_id) else
     .imported_ard_code(imp, output_id)
-}
-
-# A table's normalization after its ARD: its Rework (process code) after
-# the table's normalize_ard(), or (when the code before it did not make
-# `data`) the company's template; the built-in normalization is the
-# table's plan's (tflspec::tfl_table_code(): `plan <- ard |>
-# normalize_ard(...) |> table_plan(...)`), no line here
-.table_process_lines <- function(x, output_id, code, proc) {
-  if (.table_norm_builtin(x, output_id, code, proc)) return(NULL)
-  if (!is.na(proc)) {
-    c("", "# normalize and rework", .rework_lines(x, output_id, code, proc))
-  } else if (!.makes_data(code)) {
-    c("", .code_block(.fill_template("table_process", x, output_id)))
-  }
 }
 
 # Is a table's normalization the built-in one, in its plan's pipe?  When
@@ -343,145 +325,7 @@ code_templates <- function(name = NULL) {
 #' @return Code lines.
 #' @noRd
 data_lines <- function(x, output_id, todo = TRUE) {
-  lay <- study_layout()
-  info <- report_info(x, output_id)
-  o <- x$outputs[x$outputs$output_id == output_id, , drop = FALSE]
-  code <- .ard_code_of(x, output_id)
-  proc <- if (nrow(o) && !is.na(o$process_code)) o$process_code else NA
-  type <- info$type
-  setup <- if (!is.na(x$setup)) c(.code_block(x$setup), "")
-  # a step of the report's own code: the data and the content, each as its
-  # definition or its code makes it
-  if (.is_code_step(x, output_id, "data") || .is_code_step(x, output_id, "content")) {
-    return(c(setup, .code_report_lines(x, output_id, info, proc)))
-  }
-  # a template listing: its records as `data`, as a table of records has them
-  # (its content is the template's: .report_code_lines())
-  if (.is_template_listing(x, output_id)) {
-    # (a definition that does not hold: the report part says so and stops)
-    recs <- tryCatch(.table_dataset_lines(x, output_id), error = function(e) "failed")
-    if (identical(recs, "failed")) {
-      return(c(setup, "# the listing's definition does not hold: see the report part"))
-    }
-    if (!is.null(recs)) {
-      return(c(setup, "# the listing's records", recs,
-               if (!is.na(proc)) c("", "# its rework", .code_block(proc))))
-    }
-  }
-  # a listing defined in rows: its process code is a rework of `data`
-  if (identical(type, "listing")) {
-    l <- .listing_lines(x, output_id, rework = proc)
-    if (!is.null(l)) return(c(setup, l))
-  }
-  # a figure: its design's code, or (none yet) its datasets and a plot to
-  # write
-  if (identical(type, "figure")) {
-    design <- fig_design(x, output_id)
-    f <- if (is.null(design)) {
-      .figure_lines(x, output_id, info)
-    } else if (!is.null(design$figure)) {
-      c(.fig_source_lines(), "", .fig_key_lines(x, output_id))
-    } else {
-      .fig_design_lines(x, output_id, design)
-    }
-    if (!is.null(f)) return(c(setup, f))
-  }
-  # a table of records: its records as `data`, its ARD too when it has
-  # analyses (a part's rows: plan_append())
-  if (identical(type, "table")) {
-    recs <- .table_dataset_lines(x, output_id)
-    if (!is.null(recs)) {
-      return(c(setup, "# the report's records", recs,
-               if (!is.na(code)) c("", "# its ARD (the parts' rows)", .code_block(code))))
-    }
-  }
-  if (is.na(code)) {
-    if (!todo) return(NULL)
-    stop_todo <- paste0("stop(\"tflplanner: the data part of ",
-                        info$program, " is still to be written.\")")
-    body <- switch(type,
-      figure = c(
-        "# TODO: make the figure(s), e.g.",
-        "#   content <- list(ggplot2::ggplot(adsl, ggplot2::aes(AGE)) +",
-        "#                     ggplot2::geom_histogram())",
-        stop_todo),
-      listing = c(
-        "# TODO: make the listing pages, e.g.",
-        paste0("#   adae    <- readRDS(", .path_lit(file.path(lay[["adam"]], "adae.rds")), ")"),
-        "#   content <- as_rtftables(adae[, c(\"USUBJID\", \"AEDECOD\")])",
-        stop_todo),
-      c("# TODO: build the ARD, e.g.",
-        paste0("#   adsl <- readRDS(", .path_lit(file.path(lay[["adam"]], "adsl.rds")), ")"),
-        "#   ard  <- cards::ard_stack(adsl, .by = TRT01A, ...)",
-        stop_todo))
-    return(c(if (!is.na(x$setup)) c(.code_block(x$setup), ""), body))
-  }
-  table <- identical(type, "table")
-  proc_lines <- if (table) .table_process_lines(x, output_id, code, proc)
-  c(if (!is.na(x$setup)) c(.code_block(x$setup), ""),
-    .code_block(code),
-    proc_lines)
-}
-
-# The part of a program between its setup and its report when a step is
-# the report's own code: its data (the datasets it registers and its ARD
-# read, its code; or as the definition makes it), then its content (its
-# code; or as the definition makes it -- a table's plan is the report
-# part's)
-.code_report_lines <- function(x, output_id, info, proc = NA) {
-  type <- info$type
-  dc <- .is_code_step(x, output_id, "data")
-  cc <- .is_code_step(x, output_id, "content")
-  design <- if (identical(type, "figure")) fig_design(x, output_id)
-  todo <- function(what) paste0("stop(\"tflplanner: the ", what, " of ", info$program,
-                                " is still to be written.\")")
-  data <- if (dc) {
-    code <- step_code(x, output_id, "data")
-    c(.section("data: your code"),
-      .code_inputs(x, output_id),
-      if (identical(type, "table")) {
-        # (leaving `ard`, it is normalized in the table's plan)
-        leaves <- if (.table_norm_builtin(x, output_id, code, proc)) "ard" else "data"
-        c(if (identical(leaves, "ard")) "# your code: leaves `ard` (normalized in the table's plan) or `data`"
-          else "# your code: leaves `data` (or `ard`, normalized below)",
-          .code_block(code),
-          .table_process_lines(x, output_id, code, proc),
-          "", sprintf("%s <- report_data(%s, \"%s\")", leaves, leaves, leaves))
-      }
-      else .code_step_lines(x, output_id, "data"))
-  } else switch(type,
-    table = {
-      a <- .ard_code_of(x, output_id)
-      recs <- .table_dataset_lines(x, output_id)
-      ard_lines <- c(.section(if (.table_norm_builtin(x, output_id, a, proc)) "data: this report's ARD"
-                              else "data: this report's normalized ARD"),
-                     if (is.na(a)) todo("ARD") else c(.code_block(a), .table_process_lines(x, output_id, a, proc)))
-      # a table of records (`data: {source: dataset}`): its records as
-      # `data`; its ARD too when it has analyses (a part's rows: plan_append())
-      if (is.null(recs)) ard_lines
-      else c(.section("data: this report's records"), recs, if (!is.na(a)) c("", ard_lines))
-    },
-    listing = c(.section("data: the listing's data"),
-                .listing_lines(x, output_id, rework = proc, part = "data") %||%
-                  .code_inputs(x, output_id)),
-    figure = c(.section("data: the figure's data"),
-               if (!is.null(design)) .fig_design_parts(x, output_id, design)$data else
-                 .code_inputs(x, output_id)))
-  content <- if (cc) {
-    c("", .section("content: your code"),
-      .code_step_lines(x, output_id, "content"))
-  } else switch(type,
-    table = NULL,
-    listing = c("", .section("content: the listing"),
-                .listing_lines(x, output_id, part = "content") %||% todo("listing's columns")),
-    figure = c("", .section("content: the figure"),
-               if (!is.null(design)) .fig_design_parts(x, output_id, design)$plot else
-                 todo("figure")))
-  # (one blank line between the two)
-  while (length(data) && identical(data[[length(data)]], "")) data <- data[-length(data)]
-  # the figure style, report_content() and report_data() first (a designed
-  # figure's program sources them at its top)
-  c(if (is.null(design)) c(.fig_source_lines(), ""), data, content)
+  .report_program(x, output_id, part = "data", todo = todo)
 }
 
 # A table of records (its YAML's `data: {source: dataset, ...}`): the code
@@ -577,103 +421,113 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 }
 
 .program_code <- function(x, output_id, date = Sys.Date()) {
-  lay <- study_layout()
-  info <- report_info(x, output_id)
-  o <- x$outputs[x$outputs$output_id == output_id, , drop = FALSE]
-  desc <- if (nrow(o) && !is.na(o$description)) o$description else NULL
-  titles <- .title_lines(x, output_id)
-  type <- info$type
-  table <- identical(type, "table")
-  # a template listing is planned like a table of records: `data`, then the
-  # template's plan
-  tpl_listing <- .is_template_listing(x, output_id)
-  # a table normalized in its plan's pipe keeps its ARD (`ard`), one
-  # normalized in its data part `data`
-  obj <- if (tpl_listing) "data" else if (!table) "content" else if (.table_norm_builtin(x, output_id)) "ard" else "data"
-  # a designed figure: its code is the design's (#293)
-  design <- if (identical(type, "figure")) fig_design(x, output_id)
-  # a step of the report's own code: its data and content parts are
-  # .code_report_lines()'s
-  own <- .is_code_step(x, output_id, "data") || .is_code_step(x, output_id, "content")
-  # a figure report with the content key `figure: {name, args}` (tflspec#835):
-  # its program is tflspec's call, `content <- tflspec::<fn>(...)`
-  fig_key <- !is.null(design$figure) && !own
-
-  head <- .banner(
-    paste("Program    :", file.path(lay[["programs_tfl"]], info$program)),
-    paste0("Output     : ", output_id, " (", type, ") -> ", info$file),
-    # wrapped as the ARD banner's Analyses: are
-    if (!is.null(desc)) strwrap(desc, width = 74, initial = "Description: ",
-                                prefix = strrep(" ", 13)),
-    if (length(titles)) paste("Title      :", titles),
-    paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
-           ", ", format(date, "%Y-%m-%d")),
-    if (own) paste0(
-      "The data and content parts are your code where its steps are; the report part is written from ",
-      lay[["spec"]], "/.") else if (fig_key) c(
-      paste0("The data and content parts make `content` (tflspec's figure function, called as the report's ",
-             "`figure:` says); the report part is written from ", lay[["spec"]], "/."),
-      paste0("Edit its `figure:` key in ", lay[["spec"]], "/outputs/", output_id, ".yml, not this code.")
-    ) else if (is.null(design)) paste0(
-      "The data part makes `", obj, "`; the report part is written from ",
-      lay[["spec"]], "/.") else c(
-      paste0("The data and plot parts make `plot`; the report part is written from ",
-             lay[["spec"]], "/."),
-      paste0("Edit the design in the Plot Designer (", lay[["spec"]], "/outputs/",
-             output_id, ".yml), not this code.")))
-
-  data <- if (is.null(design) || own) data_lines(x, output_id) else c(
-    if (!is.na(x$setup)) c(.code_block(x$setup), ""),
-    if (fig_key) .fig_key_lines(x, output_id) else
-      .fig_design_lines(x, output_id, design, source = FALSE))
-  # (the deliverable is the report: a table's data is not saved -- the
-  # study ARD holds it by output_id)
-  data_part <- if (!is.null(design) || own) data else c(
-    .section(paste0("data: ", switch(type,
-      figure = "the figure",
-      listing = if (tpl_listing) "the listing's records" else "the listing's pages",
-      if (!is.null(.table_dataset_lines(x, output_id))) "this report's records and ARD"
-      else if (identical(obj, "ard")) "this report's ARD" else "this report's normalized ARD"))),
-    data)
-
-  # a figure's plot goes to the report as it is (rtf_figures(doc, plot)),
-  # unless its code makes `content` itself
-  content <- if (.is_code_step(x, output_id, "content")) "content" else
-    if (table || tpl_listing) "plan" else if (identical(type, "figure") &&
-      !any(grepl("^[[:space:]]*content[[:space:]]*(<-|=)[^=]", data))) "plot" else "content"
-  report_part <- c(
-    .section("report"),
-    .report_code_lines(x, output_id, (table || tpl_listing) && identical(content, "plan"), content))
-  # a listing of `data` (as_rtftables(data, ...)): its program records
-  # whether `data` has no records, so the official run notes an empty
-  # listing (batch.R reads report_status.csv's `empty`)
-  if (identical(type, "listing") && any(grepl("as_rtftables[(]data,", c(data, report_part)))) {
-    report_part[report_part == "record_report(report_id)"] <-
-      "record_report(report_id, empty = nrow(data) == 0)"
-  }
-
-  c(head,
-    "",
-    .study_guard,
-    "# the study's setup, and the header, footer and tokens of every report",
-    sprintf("source(%s)", .r_string(file.path(lay[["programs_tfl"]],
-                                               .report_setup_file))),
-    if (!is.null(design)) .fig_source_lines(),
-    "",
-    .report_id_line(output_id),
-    "",
-    data_part,
-    "",
-    # (no blank line at the end: a file ends on its last line)
-    report_part,
-    .run_end)
+  .report_program(x, output_id, date = date)
 }
 
-# The report part of a report program, written out from its definition by
-# tflspec: the table's plan (tfl_table_code()), the document around it
-# (tfl_report_code()) and where it goes (tfl_report_path()).  A definition
-# that does not hold yet (a half-filled sheet) gives a stop() line saying
-# why, so the program is still written and says what to fix when run.
+# ---- the report programs are made by tflspec (tflspec#910, G5-1c) ----------
+#
+# tflplanner reads a report's values from the planner -- its sheets, its
+# figure design, its own code, its YAML spec when the view is in step with
+# it -- and tflspec makes the program's text from them
+# (tflspec::tfl_report_program(); the ARD programs: tfl_ard_program()).
+
+# A report's program, or its data part (`part = "data"`), made by tflspec
+# in the code context the session has now (the study's, while
+# .with_study_code() runs; else none)
+.report_program <- function(x, output_id, date = Sys.Date(), part = "program",
+                            todo = TRUE) {
+  ctx <- .live_context_args()
+  tflspec::tfl_report_program(
+    .report_values(x, output_id), study = .code_spec(x)$study,
+    shared = .report_shared(x), standards = .report_standards(),
+    attached = ctx$attached, study_code = ctx$study_code,
+    series_dir = .program_series_dirs(), layout = study_layout(), date = date,
+    generator = .setup_generator(), part = part, todo = todo)
+}
+
+# The code context in force now, as tflspec's makers take it: the packages
+# the study's setup attaches, and whether its programs are written as the
+# study's (its folders' variables, its setup's rounding and data)
+.live_context_args <- function() {
+  list(attached = as.character(getOption("tflspec.attached")),
+       study_code = length(getOption("tflspec.paths")) > 0L ||
+         isTRUE(getOption("tflspec.study_setup")))
+}
+
+# The folders the template series are looked for in before tflspec's own:
+# a folder set by option, then the tflplanner home's (where tflspec looks
+# itself outside a program's making)
+.program_series_dirs <- function() {
+  c(getOption("tflspec.series_dir"),
+    file.path(tools::R_user_dir("tflplanner", "data"), "standards", "series"))
+}
+
+# The company's inputs a report or ARD program reads
+.report_standards <- function() {
+  s <- company_standards()
+  list(code_templates = s$code_templates, ard_statistics = .std_ard_statistics(),
+       ard_methods = .std_ard_methods(), settings = s$settings)
+}
+
+# The values a report's program is made from (tflspec::tfl_report_program()'s
+# `report`).  A figure's size on the page is worked out only when its
+# program draws it.
+.report_values <- function(x, output_id) {
+  info <- report_info(x, output_id)
+  o <- x$outputs[x$outputs$output_id == output_id, , drop = FALSE]
+  type <- info$type
+  out <- list(
+    id = output_id, type = type, program = info$program, file = info$file,
+    description = if (nrow(o) && !is.na(o$description)) o$description,
+    titles = .title_lines(x, output_id),
+    steps = list(data = step_code(x, output_id, "data"),
+                 content = step_code(x, output_id, "content")),
+    datasets = report_datasets(x, output_id),
+    process = if (nrow(o) && !is.na(o$process_code)) o$process_code else NA_character_,
+    ard_import = .ard_import_of(x, output_id),
+    ard_object = .ard_object(x, output_id),
+    output = .code_output(x, output_id)$output,
+    spec_output = .code_spec(x)$outputs[[output_id]],
+    template_listing = .is_template_listing(x, output_id),
+    listing = NULL, design = NULL, ard_source = list(kind = "none"))
+  if (identical(type, "listing")) {
+    # (a listing of the report's analysis data, or of an analysis set's
+    # subjects: its program starts with their part of the ARD definition)
+    l <- lf_rows(x, "listings", output_id)
+    if (nrow(l)) {
+      out$listing <- list(own = any(!is.na(c(l$data[1L] %||% NA, l$population_id[1L] %||% NA))))
+    }
+  }
+  if (identical(type, "figure")) {
+    out$design <- fig_design(x, output_id)
+    src <- .fig_ard_source(x, output_id)
+    src$step <- .step_no("ard")
+    out$ard_source <- src
+    ad <- .adata_rows(x, output_id)
+    out$adata <- list(ids = ad$data_id, reads = unique(unlist(lapply(ad$data_id, function(i)
+      .adata_datasets(ad, i, x$ard$populations)))))
+    out$fig_codelists <- function() .fig_codelists(x, output_id)
+    out$size <- function() .fig_size_of(x, output_id)
+  }
+  out
+}
+
+# The values the reports of a study share (tflspec::tfl_report_program()'s
+# `shared`); a spec of the sheets is made only for a report that needs it
+.report_shared <- function(x) {
+  list(
+    setup = x$setup,
+    report_setup = function() .uses_report_setup(x),
+    ard = structure(x$ard, class = "tfl_ard_spec"),
+    ard_spec = function() .ard_spec_last(x$ard),
+    study_ard = .study_ard_rel(x$ard),
+    codelists = function() .study_codelists(x),
+    listings = function() tflspec::tfl_listing_spec(x$lf, check = FALSE),
+    sheets = function() .spec_object_last(x, c(table_sheets(), report_sheets()),
+                                          unique(c(.study_keys$table, .study_keys$report))),
+    table_sheets = function() .spec_object_last(x, table_sheets(), .study_keys$table))
+}
+
 # A table's normalization for the builder's ARD preview (fetch_ard()) when
 # the table says none: the line its definitions say -- the hierarchy of its
 # hierarchical analysis, the any-event row (tables$overall_label):
@@ -739,69 +593,6 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   x$sheets$tokens <- rbind(.normalize_sheet(x$sheets$tokens, "tokens"),
                            .normalize_sheet(do.call(rbind, add), "tokens"))
   x
-}
-
-.report_code_lines <- function(x, output_id, table,
-                               content = if (table) "plan" else "content") {
-  lay <- study_layout()
-  # the report as its file says it, and the study's spec (#411); none (a
-  # planner without a spec): the sheets
-  y <- .code_output(x, output_id)
-  sheets <- function() .spec_object_last(x, c(table_sheets(), report_sheets()),
-                                         unique(c(.study_keys$table, .study_keys$report)))
-  sp <- if (is.null(y)) sheets()
-  tpl <- table && .is_template_listing(x, output_id)
-  tryCatch(c(
-    if (table) c(
-      if (!.table_norm_builtin(x, output_id)) {
-        # (a Rework that leaves no `data` is a definition that does not hold)
-        o <- x$outputs[x$outputs$output_id == output_id, , drop = FALSE]
-        if (nrow(o) && !is.na(o$process_code)) .rework_need_data(o$process_code)
-      },
-      paste0("# the ", if (tpl) "listing" else "table", ", as ",
-             file.path(lay[["spec"]], "outputs", paste0(output_id, ".yml")), " defines it"),
-      # the built-in normalization in its pipe (the hierarchy of its
-      # hierarchical analysis, the any-event row: as the report's
-      # definitions say; an ARD definition that does not hold yet, a
-      # half-filled one: as the table's rows say); otherwise the data part
-      # made `data`
-      if (tpl || .table_norm_builtin(x, output_id)) {
-        if (!is.null(y)) {
-          tflspec::tfl_content_code(.code_content(y), pipe = "|>")
-        } else {
-          tryCatch(tflspec::tfl_table_code(sp, output_id, pipe = "|>", ard_spec = .ard_spec_last(x$ard)),
-                   error = function(e) tflspec::tfl_table_code(sp, output_id, pipe = "|>"))
-        }
-      } else {
-        # (a table normalized in its data part -- its process code, the
-        # data's steps -- keeps the sheets' plan for now: the items' plan
-        # writes the steps and normalize_ard() in its own pipe)
-        tflspec::tfl_table_code(sp %||% sheets(), output_id, data = "data", pipe = "|>",
-                                normalize = FALSE)
-      },
-      ""),
-    paste0("# the report, as ", file.path(lay[["spec"]], "outputs", paste0(output_id, ".yml")),
-           " defines it"),
-    if (!is.null(y)) {
-      c(.report_id_code(tflspec::tfl_report_code(y$output, content = content,
-                                                 setup = .uses_report_setup(x),
-                                                 study = y$study), output_id),
-        sprintf("generate_rtfreport(doc, %s, overwrite = TRUE)",
-                .report_path_code(tflspec::tfl_report_path(y$output, study = y$study),
-                                  output_id)))
-    } else {
-      c(.report_id_code(tflspec::tfl_report_code(sp, output_id, content = content,
-                                                 setup = .uses_report_setup(x)), output_id),
-        sprintf("generate_rtfreport(doc, %s, overwrite = TRUE)",
-                .report_path_code(tflspec::tfl_report_path(sp, output_id), output_id)))
-    },
-    # a figure from an ARD: the definition of that ARD it was made from
-    if (!is.na(.fig_ard_need(x, output_id))) "record_report(report_id, ard = ard_built)"
-    else "record_report(report_id)"),
-    error = function(e) sprintf(
-      "stop(%s)", .r_string(paste0("tflplanner: the definition of ",
-                                   output_id, " does not hold: ",
-                                   conditionMessage(e)))))
 }
 
 # ---- the programs from the YAML spec's items (#411) -------------------------
@@ -925,34 +716,6 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 # `report_id <- "<id>"`: what a report's program sets at its head, and a
 # preview of its data part sets first (the data templates read it)
 .report_id_line <- function(output_id) paste("report_id <-", .r_string(output_id))
-
-# The first line of every program: it runs from the study folder (its
-# setup's source() would fail with a less clear message); under 80 columns
-# The lines a generated program starts its run with, after its study.yml
-# check, and ends it with: the run's token (option tflplanner.run), which
-# study_setup.R reads so that it runs once in the run
-.run_start <- c("# this run of the program: the study's setup runs once in it",
-                "options(tflplanner.run = basename(tempfile(\"run\")))")
-.run_end <- c("", "# the end of this run", "options(tflplanner.run = NULL)")
-
-.study_guard <- c(
-  "stopifnot(\"run it from the study folder\" = file.exists(\"study.yml\"))",
-  .run_start)
-
-# The report's own id in its program is `report_id` (set at its head): a
-# program copied for another report changes it in one place.  The RTF's
-# path through its folder's variable; its name, when it is the report's id,
-# made from report_id.
-.report_id_code <- function(code, output_id) {
-  lit <- encodeString(output_id, quote = "\"")
-  gsub(sprintf("file.path(path_programs_tfl, %s)", lit),
-       "file.path(path_programs_tfl, report_id)", code, fixed = TRUE)
-}
-.report_path_code <- function(path, output_id) {
-  if (!identical(basename(path), paste0(output_id, ".rtf"))) return(.path_lit(path))
-  dir <- .path_lit(dirname(path))
-  sprintf("file.path(%s, paste0(report_id, \".rtf\"))", dir)
-}
 
 # programs/tfl/report_setup.R is always written, and every report program
 # sources it (it sources programs/study_setup.R).  The study's tokens,

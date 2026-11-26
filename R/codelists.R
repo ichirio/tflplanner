@@ -87,13 +87,42 @@ import_codelist <- function(x, from_output, output_id, variables = NULL) {
 
 #' @rdname import_codelist
 #' @noRd
-standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
-  cl <- company_standards(home)$codelists
+standard_codelists <- function(sets = NULL, home = tflplanner_home(),
+                               std = company_standards(home)) {
+  cl <- std$codelists
   if (is.null(cl) || !nrow(cl)) return(.builtin_standards()$codelists[0L, ])
   cl$set[is.na(cl$set)] <- cl$variable[is.na(cl$set)]
   if (!is.null(sets)) cl <- cl[cl$set %in% sets, , drop = FALSE]
   rownames(cl) <- NULL
   cl
+}
+
+# The company standards' code lists (standard_codelists()) as a study's
+# spec/defaults.yml holds them, `codelists:` (tflspec's study$codelists):
+# a list a `set`, in the sheet's order, its values in their `order` (as
+# .codelist_order() sorts them), each {value, label} -- a value with no
+# label written alone.  The study's lists are codes and labels only
+# (tflspec's .study_codelists_read()): `under` and `note` are not written.
+# A row with no value (or no list: no set, no variable) is no code.  No
+# lines: no lists.
+.std_codelists_block <- function(cl) {
+  if (is.null(cl) || !nrow(cl)) return(character())
+  cl <- cl[!is.na(cl$set) & !is.na(cl$value) & nzchar(trimws(cl$value)), , drop = FALSE]
+  if (!nrow(cl)) return(character())
+  lists <- lapply(split(cl, factor(cl$set, levels = unique(cl$set))), function(r) {
+    o <- suppressWarnings(as.numeric(r$order %||% rep(NA, nrow(r))))
+    r <- r[order(is.na(o), o, seq_len(nrow(r))), , drop = FALSE]
+    lab <- r$label %||% rep(NA_character_, nrow(r))
+    lapply(seq_len(nrow(r)), function(i) {
+      if (is.na(lab[i]) || !nzchar(trimws(lab[i]))) r$value[i] else
+        list(value = r$value[i], label = lab[i])
+    })
+  })
+  c("# The company standards' code lists, copied when the study was made: by name, for",
+    "# display (study$codelists$SEX); none reaches a report through extends:.",
+    strsplit(sub("\n$", "", yaml::as.yaml(list(codelists = lists),
+                                          indent.mapping.sequence = TRUE)),
+             "\n", fixed = TRUE)[[1L]])
 }
 
 # The company standards' code lists a new installation has: CDISC's usual

@@ -178,12 +178,16 @@
 
 # The block as tflspec reads it (its study$adam_meta): checked the way a
 # study's defaults.yml is (no lines: a study with none)
-.adam_meta_parse <- function(block) {
-  d <- tempfile("tflplanner-adam-meta")
+.adam_meta_parse <- function(block) .defaults_block_read(block)$adam_meta
+
+# A block of defaults.yml (its lines) as tflspec reads it: the study of a
+# folder whose spec/defaults.yml is the block alone (no lines: an empty one)
+.defaults_block_read <- function(block) {
+  d <- tempfile("tflplanner-defaults")
   dir.create(file.path(d, "spec"), recursive = TRUE)
   on.exit(unlink(d, recursive = TRUE), add = TRUE)
-  writeLines(c("# adam_meta", block), file.path(d, "spec", "defaults.yml"), useBytes = TRUE)
-  tflspec::tfl_read_study_spec(d)$adam_meta
+  writeLines(c("# defaults", block), file.path(d, "spec", "defaults.yml"), useBytes = TRUE)
+  tflspec::tfl_read_study_spec(d)
 }
 
 # The lines of the top-level block `key` of `lines` (a YAML file's), the

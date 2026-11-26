@@ -162,34 +162,6 @@ set_fig_design <- function(x, output_id, design) {
             obj, obj, sz$width_in, sz$height_in, dpi))
 }
 
-# A figure report with the content key `figure: {name, args}` (tflspec#835):
-# its program's data and content as tflspec writes them -- the report's
-# datasets and analysis data (its ARD definition), its ARD (`ard`), then the
-# model's fit when the function takes one (km_fit, made from the analysis
-# data) and `content <- tflspec::<fn>(...)`.  A key that does not hold (an
-# unknown name, an argument left out) is a stop() line saying why, as the
-# report part's are.
-.fig_key_lines <- function(x, output_id) {
-  y <- .code_output(x, output_id)
-  call <- tryCatch(as.character(tflspec::tfl_content_code(.code_content(y), pipe = "|>")),
-                   error = function(e) c(
-                     "# the figure's key does not hold:",
-                     paste0("stop(", .r_string(trimws(conditionMessage(e))), ")")))
-  ad <- .adata_rows(x, output_id)
-  reads <- unique(unlist(lapply(ad$data_id, function(i) .adata_datasets(ad, i, x$ard$populations))))
-  c(if (length(reads)) c(
-      paste0("# the data: ", paste(reads, collapse = ", "), " (data catalog)"),
-      unlist(lapply(reads, function(d) .read_dataset_lines(x, d))),
-      ""),
-    if (nrow(ad)) c(
-      "# the report's analysis data (its ARD definition)",
-      .ard_spec_code(structure(x$ard, class = "tfl_ard_spec"), output_id = output_id,
-                     part = "data", data = ad$data_id),
-      ""),
-    .fig_ard_lines(x, output_id),
-    call)
-}
-
 # A designed figure's data and plot sections, as its program has them
 # (#293): `# ---- data ----` -- the code lists, the datasets read (the
 # data catalog), the steps' pipes -- and `# ---- plot ----` -- the palette,
