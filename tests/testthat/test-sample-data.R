@@ -34,7 +34,8 @@ test_that("the four ADaM files are what data-raw/make-sample-data.R makes", {
   for (k in names(made)) {
     f <- file.path(sample_dir(), "data", "adam", paste0(k, ".rds"))
     expect_true(file.exists(f), info = k)
-    expect_equal(readRDS(f), made[[k]], info = k)
+    # (variable labels left out: tflspec's own labels change without the data)
+    expect_equal(readRDS(f), made[[k]], ignore_attr = "label", info = k)
   }
 })
 
@@ -43,6 +44,7 @@ test_that("every output of the sample is in the README's table", {
                                        pattern = "[.]yml$"))
   expect_gt(length(ids), 0L)
   readme <- readLines(file.path(sample_dir(), "README.md"), warn = FALSE)
-  rows <- sub("^[|] *([^ |]+) *[|].*$", "\1", grep("^[|] *[TLF]-", readme, value = TRUE))
+  tbl <- grep("^[|] *[TLF]-", readme, value = TRUE)
+  rows <- regmatches(tbl, regexpr("[TLF]-[0-9]+-[0-9]+-[0-9]+[A-Z]*", tbl))
   expect_setequal(rows, ids)
 })
