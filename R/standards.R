@@ -633,8 +633,8 @@ company_standards <- function(home = tflplanner_home()) {
   .std_cache$value
 }
 
-.std_setting <- function(key, default = NA_character_) {
-  s <- company_standards()$settings
+.std_setting <- function(key, default = NA_character_, std = company_standards()) {
+  s <- std$settings
   v <- s$value[match(key, s$key)]
   if (length(v) && !is.na(v) && nzchar(v)) v else default
 }
@@ -713,9 +713,10 @@ add_standard_defaults <- function(x, study_id) {
 # The company's font and size (the standards' settings `font`, `font_size`
 # in points) into the study's page row: every report's, written once as
 # options() in report_setup.R.  `only_missing`: where the study has none.
-.std_font <- function(x, only_missing = FALSE) {
-  want <- c(font = .std_setting("font"),
-            font_size_half_points = .half_points(.std_setting("font_size")))
+# `std`: the company standards (company_standards()).
+.std_font <- function(x, only_missing = FALSE, std = company_standards()) {
+  want <- c(font = .std_setting("font", std = std),
+            font_size_half_points = .half_points(.std_setting("font_size", std = std)))
   for (cn in names(want)) {
     if (is.na(want[[cn]])) next
     if (only_missing && !is.na(study_page_value(x, cn))) next
@@ -725,11 +726,12 @@ add_standard_defaults <- function(x, study_id) {
 }
 
 # the rows a new study starts with: its study defaults, its ARD definition's
-# analysis sets and data catalog
-.standard_planner <- function(study_id) {
-  s <- company_standards()
+# analysis sets and data catalog, from the company standards `std`
+# (company_standards() of one home: create_study() gives its home's)
+.standard_planner <- function(study_id, std = company_standards()) {
+  s <- std
   p <- new_planner()
-  r <- .std_setting("rounding")
+  r <- .std_setting("rounding", std = s)
   if (!is.na(r)) p$study[["rounding"]] <- r
   su <- s$code_templates$code[match("setup", s$code_templates$name)]
   if (length(su) && !is.na(su)) {
@@ -749,15 +751,39 @@ add_standard_defaults <- function(x, study_id) {
     p$sheets[[sh]] <- .normalize_sheet(d, sh)
     if (sh == "report") p <- .old_program_default(p)
   }
-  p <- .std_font(p)
+  p <- .std_font(p, std = s)
   p$ard$study$value[p$ard$study$key == "id"] <- .std_setting("subject_id",
-                                                             "USUBJID")
+                                                             "USUBJID", std = s)
   p$ard$study$value[p$ard$study$key == "output"] <-
-    .std_setting("ard_output", "output/ard/ard.rds")
+    .std_setting("ard_output", "output/ard/ard.rds", std = s)
   # the company's note on a set is its label in the new study's sheet
   po <- s$populations
   if (is.null(po$label) && !is.null(po$note)) po$label <- po$note
   p$ard$populations <- .normalize_ard_sheet(po, "populations")
   p$ard$datasets <- .normalize_ard_sheet(s$datasets, "datasets")
+  p
+}
+
+# A new study's planner (.standard_planner()) with the company standards'
+# code lists in its spec: defaults.yml `codelists:` (.std_codelists_block())
+# and the study's lists as tflspec reads them (study$codelists), put there
+# as [Data] -> ADaM levels puts `adam_meta:` (.adam_levels_apply()).  The
+# planner is given the spec its save would write (.spec_ensure(), after the
+# save's own .meta_tokens(); `meta`: the study's fields and `created`), so
+# the save writes the block with the rest.  `std`: the company standards
+# (company_standards() of the study's home, as .standard_planner() has
+# them).  A company with no code lists: the planner as it is (no
+# `codelists:`).  Only create_study() calls it: an existing study never
+# takes the company's lists.
+.std_codelists_into_spec <- function(p, meta, std = company_standards()) {
+  block <- .std_codelists_block(standard_codelists(std = std))
+  if (!length(block)) return(p)
+  p <- .spec_ensure(.meta_tokens(p, meta), meta)
+  sp <- p$spec
+  dflt <- file.path(study_layout()[["spec"]], "defaults.yml")
+  sp$text[[dflt]] <- .set_study_block(sp$text[[dflt]], "codelists", block)
+  sp$text <- sp$text[sort(names(sp$text), method = "radix")]
+  sp$study$codelists <- .defaults_block_read(block)$codelists
+  p$spec <- sp
   p
 }
