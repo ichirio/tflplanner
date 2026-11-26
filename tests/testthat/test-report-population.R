@@ -402,6 +402,29 @@ test_that("a listing's analysis set is on its row too: what a save writes onto i
   expect_error(set_report_population(q, c("T1", "L1"), "SAF"), "One report")
 })
 
+test_that("a listing's set has one reader: its row's own, else the report list's (review S5)", {
+  p <- add_output(pop_planner(), "L1", type = "listing")
+  # the row's set, the report list's none: the row's (the data's own set wins, as tflspec reads it)
+  p <- set_lf_rows(p, "listings", "L1", data.frame(dataset = "ADAE", population_id = "SAF"))
+  expect_identical(report_population(p, "L1"), "SAF")
+  expect_identical(.listing_row_set(p, "L1"), "SAF")
+  # the row's none, the report list's SAF: the report list's, and the sheets
+  # the program is written from have it on the row
+  p <- set_lf_rows(p, "listings", "L1", data.frame(dataset = "ADAE"))
+  p$outputs$population <- ifelse(p$outputs$output_id == "L1", "ITT", NA_character_)
+  expect_true(is.na(.listing_row_set(p, "L1")))
+  expect_identical(report_population(p, "L1"), "ITT")
+  lf <- .lf_with_report_set(p, "L1")
+  expect_identical(lf$listings$population_id[lf$listings$output_id == "L1"], "ITT")
+  # a row of an analysis data: that data's set, nothing added
+  p <- set_lf_rows(p, "listings", "L1", data.frame(data = "adae_x"))
+  lf <- .lf_with_report_set(p, "L1")
+  expect_true(is.na(lf$listings$population_id[lf$listings$output_id == "L1"]))
+  # a table: the report list's alone
+  expect_true(is.na(.listing_row_set(p, "T1")))
+  expect_true(is.na(report_population(p, "T1")))
+})
+
 test_that("a TOC taken in moves a report's set where its data keeps it, its toc line with it, and says so (codex review 3B)", {
   local_home()
   s <- suppressMessages(sample_study_copy())

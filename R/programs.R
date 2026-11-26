@@ -858,7 +858,8 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   i <- match(output_id, x$outputs$output_id)
   add <- list()
   if (!is.na(i)) {
-    pop <- if (!is.null(x$outputs$population)) x$outputs$population[i] else NA_character_
+    # (the report's set as its one reader says it: a listing's row first, S5)
+    pop <- report_population(x, output_id)
     if (!.is_blank(pop) && !"OUTPUT_POPULATION" %in% said) {
       add$OUTPUT_POPULATION <- .pop_label(x, pop)
     }

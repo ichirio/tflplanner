@@ -4,12 +4,44 @@
 # set's subjects (adsl_<set>) is made when a report's set is chosen, and a
 # report whose set changes has its analyses moved to the new set's data.
 
-# a report's analysis set (NA: none given)
+# a report's analysis set (NA: none given).  A listing's is its data's: its
+# row's `population_id` (what a save writes onto its `data: population`),
+# else the report list's -- tflspec's rule for the sheets (the data's own
+# set wins, else the report's: .data_population(), convert), so its
+# program, step 1 and the TOC read one set (review S5)
 report_population <- function(x, output_id) {
+  v <- .listing_row_set(x, output_id)
+  if (!is.na(v)) return(v)
   o <- x$outputs
   v <- if (is.null(o$population)) NA_character_ else
     o$population[match(output_id, o$output_id)]
   if (length(v) != 1L || .is_blank(v)) NA_character_ else v
+}
+# a listing's row's own set (NA: none, or no listing row)
+.listing_row_set <- function(x, output_id) {
+  lr <- if (is.list(x[["lf"]])) x[["lf"]][["listings"]]
+  if (length(output_id) != 1L || is.null(lr) || is.null(lr[["population_id"]])) return(NA_character_)
+  v <- lr[["population_id"]][match(output_id, lr[["output_id"]])]
+  if (length(v) != 1L || .is_blank(v)) NA_character_ else as.character(v)
+}
+# The listing sheets with a listing's set as report_population() reads it
+# (its own, else the report's) on its row: what its program is written
+# from, as tflspec writes the saved listing's (review S5: the planner's
+# program and tflspec's, of one SPEC, keep the same subjects).  A row that
+# reads one of the report's analysis data (`data`) has that data's set
+# (.data_population()): left as it is
+.lf_with_report_set <- function(x, output_id) {
+  lf <- x[["lf"]]
+  lr <- if (is.list(lf)) lf[["listings"]]
+  pop <- report_population(x, output_id)
+  if (is.null(lr) || is.na(pop)) return(lf)
+  mine <- !is.na(lr[["output_id"]]) & lr[["output_id"]] == output_id
+  if (!is.null(lr[["data"]])) mine <- mine & .is_blank_v(lr[["data"]])
+  if (!any(mine)) return(lf)
+  if (is.null(lr[["population_id"]])) lr[["population_id"]] <- rep(NA_character_, nrow(lr))
+  lr[["population_id"]][mine] <- pop
+  lf[["listings"]] <- lr
+  lf
 }
 
 # The study's analysis sets: what every control that offers a report's set
