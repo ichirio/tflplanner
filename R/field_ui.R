@@ -167,8 +167,13 @@ field_ui <- function(id, arg, def = NULL, value = NULL, fc = field_ctx()) {
 # the R box's text put back in the control (off).  One rule for every
 # field with the switch, by the control its kind draws:
 #   rtext   R source already (a call typed as its R, rtf_border(...)): the
-#           text as it is; back only a call to one of the type's
-#           functions (`fns`) where the type names some
+#           text as it is; where the type names functions (`fns`), the
+#           field holds only a call to one of them with named literal
+#           arguments, or calls of `inner` (their arguments' call types,
+#           rtf_border_line()) -- the grammar .call_from_r() reads as the
+#           call.  One test on the page (rpCarry.holds) decides both the
+#           switch turned off and a text typed in the field: R the field
+#           cannot hold goes to the R box, the switch on
 #   text    a text: a string literal ("Table 1")
 #   number  a number: its literal
 #   one     a select of one: a literal (a string; TRUE, FALSE)
@@ -178,7 +183,8 @@ field_ui <- function(id, arg, def = NULL, value = NULL, fc = field_ctx()) {
 # A value the box cannot put back (R the control cannot show) stays R, and
 # the field says so.  None ("": a table, a mapping, a call's small form):
 # nothing moved -- the R box empty, the field's value is read
-# (builder_card_read()) and the field says so.  A list(carry, fns, num).
+# (builder_card_read()) and the field says so.  A list(carry, fns, inner,
+# num).
 .r_carry <- function(kind, type) {
   carry <- switch(kind,
                   call = if (.call_has_form(.type_call_fn(type))) "" else "rtext",
@@ -191,9 +197,12 @@ field_ui <- function(id, arg, def = NULL, value = NULL, fc = field_ctx()) {
                   map = , table = "",
                   "rtext")
   fns <- if (identical(kind, "call")) .type_call_fn(type) else character()
+  inner <- unique(unlist(lapply(fns, function(f) {
+    lapply(.schema_of(f)$args, function(d) if (!is.null(d$type)) .type_call_fn(d$type))
+  })))
   first <- if (!is.null(type) && nzchar(type)) .type_split(trimws(type), "|")[[1L]] else ""
   num <- kind %in% c("number", "integer") || grepl("^(list|vec)<(number|integer)", first)
-  list(carry = carry, fns = fns, num = num)
+  list(carry = carry, fns = fns, inner = as.character(inner), num = num)
 }
 
 # The control of a look (`kind`): the card's switch of today's helpers.
@@ -273,6 +282,7 @@ field_ui <- function(id, arg, def = NULL, value = NULL, fc = field_ctx()) {
     title = t("R switch. On: the value is R code, typed in the R box. Off: the field's own value. The value moves across when it turns."),
     `data-note-kept` = t("This R cannot be shown in the field: it stays R."),
     `data-note-field` = t("The field's value is kept until R is typed in the R box."),
+    `data-note-moved` = t("This is R the field cannot hold: it was moved to the R box."),
     shiny::tags$input(type = "checkbox", id = paste0(fid, "__isr"), class = "rp-isr",
                       checked = if (is_r) NA else NULL),
     shiny::tags$span("R"))
@@ -300,6 +310,7 @@ field_ui <- function(id, arg, def = NULL, value = NULL, fc = field_ctx()) {
   shiny::div(
     class = paste(cls, collapse = " "), `data-arg` = arg, `data-field` = fid,
     `data-carry` = carry$carry, `data-r-fns` = if (length(carry$fns)) paste(carry$fns, collapse = " "),
+    `data-r-inner` = if (length(carry$inner)) paste(carry$inner, collapse = " "),
     `data-r-num` = if (isTRUE(carry$num)) "1",
     # (the "(none)" and R switches on the label's line, right: the input
     # keeps the field's whole width)

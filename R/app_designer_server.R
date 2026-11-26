@@ -365,11 +365,15 @@
   shiny::observeEvent(input$pd_retpl, {
     d <- design()
     shiny::req(d)
+    items <- .fig_replace_items(rv$p, current(), t)
     shiny::showModal(shiny::modalDialog(
       title = t("Apply a template"), size = "l", easyClose = TRUE,
       shiny::div(class = "alert alert-warning py-2 small",
                  sprintf(t("The current design (%d layers) is replaced by the template's."),
                          length(d$layers))),
+      if (length(items)) shiny::div(class = "alert alert-warning py-2 small",
+        shiny::p(class = "mb-1", t("These go as well, as the template does not set them:")),
+        shiny::tags$ul(class = "mb-0", lapply(items, shiny::tags$li))),
       start_inputs(),
       footer = shiny::tagList(shiny::modalButton(t("Cancel")),
                               .btn("pd_retpl_ok", t("Replace with the template"),
@@ -380,6 +384,9 @@
     d <- chosen_design()
     if (is.null(d)) return()
     shiny::removeModal()
+    # what the old design owned and the template does not set goes (the
+    # dialog listed it); the template then writes what it sets
+    rv$p <- .fig_clear_owned(rv$p, current())
     applied(d)
   })
   chosen_design <- function() {

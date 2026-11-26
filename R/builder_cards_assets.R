@@ -206,6 +206,61 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
     if (num && numRe.test(x)) return x;
     return JSON.stringify(x);
   }
+  // a call the field holds: fn(name = value, ...) with fn one of `fns`,
+  // each value a literal (a string, a number, TRUE, FALSE, NA) or a call
+  // of `inner` whose values are literals -- the grammar R's
+  // .call_from_r() reads as the call (R/builder_cards.R)
+  function callOk(t, fns, inner) {
+    var p = 0;
+    function ws() { while (p < t.length && /\s/.test(t.charAt(p))) p++; }
+    function ident() {
+      var m = /^[A-Za-z.][\w.]*/.exec(t.slice(p));
+      if (!m) return null;
+      p += m[0].length;
+      return m[0];
+    }
+    function value(allowed) {
+      ws();
+      var at = p;
+      if (call(allowed, [])) return true;
+      p = at;
+      var m = /^("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|(?:TRUE|FALSE|NA)(?![\w.])|[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?L?)/.exec(t.slice(p));
+      if (!m) return false;
+      p += m[0].length;
+      return true;
+    }
+    function call(allowed, args) {
+      ws();
+      var id = ident();
+      if (!id) return false;
+      if (t.substr(p, 2) === '::') { p += 2; id = ident(); if (!id) return false; }
+      if (allowed.indexOf(id) < 0) return false;
+      ws();
+      if (t.charAt(p) !== '(') return false;
+      p++;
+      ws();
+      if (t.charAt(p) === ')') { p++; return true; }
+      var seen = {};
+      for (;;) {
+        ws();
+        var nm = ident();
+        if (!nm || seen[nm]) return false;
+        seen[nm] = true;
+        ws();
+        if (t.charAt(p) !== '=' || t.charAt(p + 1) === '=') return false;
+        p++;
+        if (!value(args)) return false;
+        ws();
+        if (t.charAt(p) === ',') { p++; continue; }
+        if (t.charAt(p) === ')') { p++; return true; }
+        return false;
+      }
+    }
+    t = String(t).trim();
+    var ok = call(fns, inner || []);
+    ws();
+    return ok && p === t.length;
+  }
   // the control's value (a text; a select of several: its values; a
   // check: whether ticked) as R text; '' for none
   function toR(carry, v, num) {
@@ -227,15 +282,12 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
   }
   // R text back as the control's value: a text; a select's values (an
   // array); a check's true / false.  ok false: the control cannot hold it
-  // (a call field: only a call to one of its functions, `fns`)
-  function fromR(carry, t, fns) {
+  // (a call field: only a call callOk() reads, `fns` and `inner`)
+  function fromR(carry, t, fns, inner) {
     t = String(t).trim();
     var no = {ok: false};
     if (carry === 'rtext') {
-      if (fns && fns.length) {
-        var m = /^(?:[A-Za-z.][\w.]*::)?([A-Za-z.][\w.]*)\s*\(/.exec(t);
-        if (!m || fns.indexOf(m[1]) < 0 || t.charAt(t.length - 1) !== ')') return no;
-      }
+      if (fns && fns.length && !callOk(t, fns, inner)) return no;
       return {ok: true, value: t};
     }
     if (carry === 'check') {
@@ -258,7 +310,10 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
     }
     return no;
   }
-  window.rpCarry = {toR: toR, fromR: fromR};
+  // does the field hold this R?  The one test for the switch turned off
+  // and for a text typed in the field
+  function holds(carry, t, fns, inner) { return fromR(carry, t, fns, inner).ok; }
+  window.rpCarry = {toR: toR, fromR: fromR, holds: holds};
 })();
 )---"
 
@@ -351,9 +406,10 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
     if (sw.data('rpBack')) { sw.removeData('rpBack'); f.toggleClass('rp-field-r', this.checked); return; }
     var fid = f.attr('data-field'), carry = f.attr('data-carry') || '';
     var fns = (f.attr('data-r-fns') || '').split(' ').filter(Boolean);
+    var inner = (f.attr('data-r-inner') || '').split(' ').filter(Boolean);
     var num = f.attr('data-r-num') === '1';
     var el = document.getElementById(fid), r = document.getElementById(fid + '__r');
-    var note = '';
+    var note = '', kind = '';
     if (this.checked) {
       var txt = (el && carry) ? window.rpCarry.toR(carry, ctlValue(el, carry), num) : '';
       if (r && txt.length && !r.value.trim().length) {
@@ -362,9 +418,10 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
         ctlSet(el, carry, carry === 'check' ? false : '');
       } else if (!carry) {
         note = lab.attr('data-note-field') || '';
+        kind = 'field';
       }
     } else if (r && r.value.trim().length) {
-      var back = (el && carry) ? window.rpCarry.fromR(carry, r.value, fns) : {ok: false};
+      var back = (el && carry) ? window.rpCarry.fromR(carry, r.value, fns, inner) : {ok: false};
       if (back.ok && ctlSet(el, carry, back.value)) {
         r.value = '';
         $(r).trigger('input').trigger('change');
@@ -372,11 +429,49 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
         this.checked = true;
         sw.data('rpBack', true).trigger('change');
         note = lab.attr('data-note-kept') || '';
+        kind = 'kept';
       }
     }
     f.toggleClass('rp-field-r', this.checked);
+    rNote(f, note, kind);
+  });
+  // a field's note on its R switch (kind: kept, moved, field); none: gone
+  function rNote(f, note, kind) {
     f.children('.rp-r-note').remove();
-    if (note) f.children('.rp-field-row').after($('<div class=\"rp-field-hint rp-r-note\"></div>').text(note));
+    if (note) {
+      f.children('.rp-field-row').after(
+        $('<div class=\"rp-field-hint rp-r-note\"></div>').attr('data-kind', kind).text(note));
+    }
+  }
+  function rAttrs(f) {
+    var sp = function(k) { return (f.attr(k) || '').split(' ').filter(Boolean); };
+    return {carry: f.attr('data-carry') || '', fns: sp('data-r-fns'), inner: sp('data-r-inner')};
+  }
+  // the R box typed in: its note said again -- R the field could not hold
+  // and now can (or none), R typed where the field's value was kept
+  $(document).on('input change', '.rp-r-input', function() {
+    var f = $(this).closest('.rp-field'), n = f.children('.rp-r-note');
+    if (!n.length) return;
+    var a = rAttrs(f), v = String(this.value || '').trim();
+    var kind = n.attr('data-kind');
+    if ((kind === 'kept' || kind === 'moved') &&
+        (!v.length || window.rpCarry.holds(a.carry, v, a.fns, a.inner))) n.remove();
+    if (kind === 'field' && v.length) n.remove();
+  });
+  // a text typed in the field with its switch off: R the field cannot hold
+  // (the same test as the switch's) goes to the R box, the switch on
+  $(document).on('change', '.rp-field[data-carry=rtext] > .rp-field-row > .rp-form-input input[type=text]', function() {
+    var f = $(this).closest('.rp-field'), a = rAttrs(f);
+    var sw = f.find('.rp-isr').first(), r = document.getElementById(f.attr('data-field') + '__r');
+    if (!sw.length || sw.prop('checked') || !r || this.id !== f.attr('data-field')) return;
+    var v = String(this.value || '').trim();
+    if (!v.length || window.rpCarry.holds(a.carry, v, a.fns, a.inner)) return;
+    r.value = v;
+    this.value = '';
+    $(r).trigger('input').trigger('change');
+    $(this).trigger('input');
+    sw.prop('checked', true).data('rpBack', true).trigger('change');
+    rNote(f, sw.closest('.rp-r-toggle').attr('data-note-moved') || '', 'moved');
   });
   $(document).on('change', '.rp-isval', function() {
     $(this).closest('.rp-map-row').toggleClass('rp-map-val', this.checked);

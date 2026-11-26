@@ -26,6 +26,7 @@
   vs_change = "A vital sign's change",
   ae_disc_soc_pt = "Adverse events leading to discontinuation by SOC and PT",
   ae_eair = "Exposure-adjusted incidence rates by SOC and PT",
+  ae_rel_soc_pt = "Related adverse events by SOC and PT",
   ae_ser_soc_pt = "Serious adverse events by SOC and PT",
   lab_abnormal = "Laboratory abnormalities",
   param_change = "Parameters' value and change",

@@ -11,6 +11,8 @@
 # anything else than the contract's -- a data frame, rtftable pages, a
 # ggplot, an rtfplot, or a list of them -- stops, saying which item it is
 # and what it was; report_data() -- the data step left a data frame.
+# The preview runs a report's own code with them; tflspec writes them into
+# fig_setup.R (tfl_setup_program()), and a test keeps the two the same.
 .report_content_fun <- c(
   "# ---- a report of your own code: its `content` as rtfreporter takes it",
   "# (a ggplot becomes a figure; what is not a data frame, rtftable pages, a",

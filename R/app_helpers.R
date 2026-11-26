@@ -419,14 +419,17 @@ $(document).on('hidden.bs.modal', function() {
 }
 
 .grid <- function(d, sheet, key, choices, closed = character(),
-                  select = FALSE, read_only = character(), spare = 1L) {
+                  select = FALSE, read_only = character(), spare = 1L,
+                  read_only_rows = integer()) {
   d <- .na_blank(d)
   if (!nrow(d)) d[1L, ] <- ""
   h <- rhandsontable::rhandsontable(
     d, rowHeaders = TRUE, useTypes = FALSE, stretchH = "all",
     height = .grid_height(nrow(d)), minSpareRows = spare, planner_key = key,
     selectCallback = select)
-  h <- rhandsontable::hot_context_menu(h, allowRowEdit = TRUE,
+  # (a grid with every column read only has no rows to insert or remove)
+  all_ro <- length(d) > 0L && all(names(d) %in% read_only)
+  h <- rhandsontable::hot_context_menu(h, allowRowEdit = !all_ro,
                                        allowColEdit = FALSE)
   for (cn in names(choices)) {
     if (cn %in% names(d) && length(choices[[cn]])) {
@@ -440,6 +443,9 @@ $(document).on('hidden.bs.modal', function() {
   for (cn in intersect(read_only, names(d))) {
     h <- suppressWarnings(rhandsontable::hot_col(h, cn, readOnly = TRUE))
   }
+  # (rows kept as they are -- a code list that is one of the study's)
+  rows <- read_only_rows[read_only_rows >= 1L & read_only_rows <= nrow(d)]
+  if (length(rows)) h <- rhandsontable::hot_row(h, rows, readOnly = TRUE)
   h
 }
 
@@ -462,6 +468,14 @@ $(document).on('hidden.bs.modal', function() {
 # the keywords it takes any pkg::function.
 .ard_closed_columns <- c("data", "dataset", "population_id", "denominator",
                          "from", "subjects_in")
+
+# The choices of an analyses row's `from` (tflspec B-5): the objects an item
+# can read -- the analysis data, the items given a `name`, the datasets
+.ard_from_choices <- function(ard) {
+  nm <- ard$analyses[["name"]]
+  nm <- nm[!is.na(nm) & nzchar(nm)]
+  unique(c(ard$analysis_data$data_id, nm, ard$datasets$dataset))
+}
 
 # tflspec's column help is English; the app shows it in its language
 .help_table <- function(sheet) {

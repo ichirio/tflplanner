@@ -21,6 +21,7 @@
 "Each starts at its default; only a value you change is written into the report.","どれもデフォルト値から始まります。変えた値だけが帳票に書かれます。"
 "Adverse events leading to discontinuation by SOC and PT","SOC・PT 別の投与中止に至った有害事象"
 "Exposure-adjusted incidence rates by SOC and PT","SOC・PT 別の曝露期間調整発現率"
+"Related adverse events by SOC and PT","SOC・PT 別の治験薬と関連のある有害事象"
 "Serious adverse events by SOC and PT","SOC・PT 別の重篤な有害事象"
 "Laboratory abnormalities","臨床検査値の異常"
 "Parameters' value and change","パラメータの値と変化量"

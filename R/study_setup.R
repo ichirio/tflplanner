@@ -58,15 +58,21 @@
 #' head(code)
 #' @export
 study_helpers_code <- function(date = Sys.Date()) {
-  c(.banner(
-      paste("Program    :", .study_helpers_path()),
-      "The functions the study's programs call: the code lists on a data,",
-      "the ARD's ids and formats, the study ARD.  The study's setup sources it.",
-      paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
-             " (tflspec ", utils::packageVersion("tflspec"), "), ",
-             format(date, "%Y-%m-%d"))),
-    "",
-    tflspec::tfl_helpers_code())
+  tflspec::tfl_setup_program(
+    "study_helpers", layout = study_layout(), date = date,
+    generator = paste0("tflplanner ", utils::packageVersion("tflplanner"),
+                       " (tflspec ", utils::packageVersion("tflspec"), ")"))
+}
+
+# What tflplanner's setup programs say made them (their Generated line)
+.setup_generator <- function() paste("tflplanner", utils::packageVersion("tflplanner"))
+
+# The study's code context as tflspec's setup programs take it: the
+# packages its setup attaches, or no study (the code as tflspec writes it
+# alone)
+.setup_context_args <- function() {
+  opts <- .code_context$opts
+  list(attached = as.character(opts$tflspec.attached), study_code = !is.null(opts))
 }
 
 # write programs/study_helpers.R (its row of what the save did)
@@ -108,11 +114,6 @@ study_helpers_code <- function(date = Sys.Date()) {
   f <- .study_setup_present(root)
   if ("setup" %in% names(f) && .is_old_setup(f[["setup"]])) return(f["setup"])
   f
-}
-
-# the line a setup file starts with
-.source_study_setup <- function() {
-  sprintf("source(%s)", encodeString(.study_setup_path(), quote = "\""))
 }
 
 .setup_marker <- c(
@@ -184,52 +185,6 @@ setup_code <- function(study_id = NA, standards = company_standards()) {
          sub("^<text>:", "line ", conditionMessage(e)), call. = FALSE)
   })
   invisible(code)
-}
-
-# The generated lines of study_setup.R: the study's folders and what the
-# study is, as R variables, the study's rounding and data (tflspec writes
-# them: tflspec#791) and the helpers
-.study_data_keys <- c("adam", "sdtm", "other")
-
-.study_setup_body <- function(meta, study = NULL) {
-  lay <- study_layout()
-  val <- function(v) {
-    v <- as.character(v %||% NA_character_)
-    if (length(v) != 1L || is.na(v)) "NA_character_" else
-      encodeString(enc2utf8(v), quote = "\"")
-  }
-  nm <- function(x) formatC(x, width = -max(nchar(x)))
-  paths <- paste0("path_", names(lay))
-  ids <- paste0("study_", sub("^study_", "", .study_fields))
-  c("# ---- the study: its folders, relative to the study folder (the programs",
-    "#      run from it), and what it is (study.yml)",
-    "# the data root: an official run copies the programs into its batch folder",
-    "# and reads the data where run_paths.R says (the study's data folders);",
-    "# anywhere else it is the study folder.  company_setup.R runs before these",
-    "# lines: company code cannot use path_adam, path_sdtm or path_other.",
-    ".tfl_data_root <- if (file.exists(\"run_paths.R\")) { source(\"run_paths.R\"); .tfl_data_root } else \".\"",
-    paste(nm(paths), "<-", ifelse(names(lay) %in% .study_data_keys,
-      sprintf("file.path(.tfl_data_root, %s)", vapply(lay, val, "")),
-      vapply(lay, val, ""))),
-    "",
-    paste(nm(ids), "<-", vapply(.study_fields, function(k) val(meta[[k]]), "")),
-    "",
-    if (length(rnd <- .study_rounding_lines(study))) c(rnd, ""),
-    "# the functions the programs call (tflplanner writes them)",
-    sprintf("source(%s)", encodeString(.study_helpers_path(), quote = "\"")),
-    "")
-}
-
-# The study's rounding as study_setup.R sets it: tflspec's lines, from the study's
-# spec or the sheets' (none: NULL, or a study that says no rounding).  The
-# ARD and report setups then leave it out (option tflspec.study_setup).
-.study_rounding_lines <- function(study) {
-  if (is.null(study)) return(character())
-  # study_setup.R is written outside .with_study_code(): the data lines
-  # name the folders through the variables it defines above them
-  old <- options(tflspec.paths = .study_path_vars())
-  on.exit(options(old), add = TRUE)
-  tflspec::tfl_study_setup_code(study)
 }
 
 # What a planner's rounding is read from: the study's spec, or (a planner
@@ -391,68 +346,24 @@ setup_code <- function(study_id = NA, standards = company_standards()) {
 #' options(old)
 #' @export
 study_setup_code <- function(meta, date = Sys.Date(), study = NULL) {
-  q <- function(x) encodeString(x, quote = "\"")
-  c(.banner(
-      paste("Program    :", .study_setup_path()),
-      "What every program of the study starts with (ard_setup.R, report_setup.R",
-      "and fig_setup.R source it).  tflplanner writes it on every save: do not",
-      paste("edit it.  The company's code is in", .company_setup_file, "and yours in"),
-      paste0(.study_user_file, ": this file runs them, the company's first and yours last."),
-      paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
-             ", ", format(date, "%Y-%m-%d"))),
-    "",
-    "# This file runs once per program run: a program sets the option",
-    "# tflplanner.run when it starts (and clears it at its end), and this",
-    "# file sourced again in that run (a figure report: report_setup.R, then",
-    "# fig_setup.R) is skipped, so the company's code and yours run once and",
-    "# what yours sets stays.  Sourced without a program's run (by hand, the",
-    "# Plot Designer), it runs each time.  To run it again by hand:",
-    "# rm(.tfl_free_ran)",
-    sprintf(".tfl_free <- c(company = %s, user = %s)",
-            q(.company_setup_path()), q(.study_user_path())),
-    ".tfl_free_key <- paste(getwd(), getOption(\"tflplanner.run\", NA))",
-    ".tfl_free_run <- is.null(getOption(\"tflplanner.run\")) ||",
-    "  !identical(get0(\".tfl_free_ran\", envir = environment(), inherits = FALSE),",
-    "             .tfl_free_key)",
-    "if (.tfl_free_run) {",
-    "",
-    paste0("# ---- the company's code (", .company_setup_file, ")"),
-    "if (file.exists(.tfl_free[[\"company\"]])) source(.tfl_free[[\"company\"]], local = environment())",
-    "",
-    .study_setup_body(meta, study),
-    paste0("# ---- your code (", .study_user_file, ")"),
-    "if (file.exists(.tfl_free[[\"user\"]])) source(.tfl_free[[\"user\"]], local = environment())",
-    ".tfl_free_ran <- .tfl_free_key",
-    "}")
+  tflspec::tfl_setup_program("study_setup", meta = meta, study = study,
+                             layout = study_layout(), date = date,
+                             generator = .setup_generator())
 }
 
 #' @rdname study_setup_code
 #' @export
 company_setup_code <- function(meta, date = Sys.Date(), standards = company_standards()) {
-  about <- standards$about
-  v <- function(k) {
-    x <- about$value[match(k, about$key)]
-    if (length(x) && !is.na(x) && nzchar(x)) x else NA_character_
-  }
-  std <- paste(stats::na.omit(c(v("name"), v("version"))), collapse = " ")
-  if (!nzchar(std)) std <- "built-in"
-  upd <- v("updated")
-  c(paste0("# The company's code (", .company_setup_path(), "): copied from the company"),
-    paste0("# standards (", std, if (!is.na(upd)) paste0(" of ", upd), ") on ",
-           format(date, "%Y-%m-%d"), ".  The study's own now: tflplanner"),
-    "# never writes it again.  Every program runs it first (study_setup.R).",
-    "",
-    setup_code(meta[["study_id"]] %||% NA, standards))
+  # (a standards list without the setup code: no lines, as setup_code() has it)
+  std <- list(about = standards$about,
+              setup_code = standards$setup_code %||% data.frame(code = character()))
+  tflspec::tfl_setup_program("company_setup", meta = meta, standards = std,
+                             layout = study_layout(), date = date)
 }
 
 # programs/study_user.R as a new study gets it
 .study_user_code <- function() {
-  c(paste0("# Your study's code (", .study_user_path(), "): helper functions, options,"),
-    "# library() lines.  Every program runs it after the study's setup",
-    "# (study_setup.R), before the ARD, report or figure setup.  tflplanner never",
-    "# writes it again.  Values the study's YAML defines (the rounding, the",
-    "# folders, the formats) are set there, not here.",
-    "")
+  tflspec::tfl_setup_program("study_user", layout = study_layout())
 }
 
 # A study_setup.R in the form before #910: any that is not one tflplanner
@@ -602,7 +513,8 @@ company_setup_code <- function(meta, date = Sys.Date(), standards = company_stan
 # study made before #910, study_setup.R's alone) and
 # programs/tfl/report_setup.R (the study's font, tokens, header, rounding:
 # every report program sources it): "<study>|<report>" -- what a report
-# program records (.report_setup_hash_code()); the ARD reads study_setup.R
+# program records (record_report() in report_setup.R, which tflspec writes:
+# tfl_setup_program()); the ARD reads study_setup.R
 # only
 .report_setup_hash <- function(root) {
   md5 <- function(x) if (file.exists(x)) unname(tools::md5sum(x)) else ""
@@ -620,14 +532,4 @@ company_setup_code <- function(meta, date = Sys.Date(), standards = company_stan
   old <- !grepl("|", recorded, fixed = TRUE)
   cmp <- ifelse(old, sub("[|].*$", "", now), now)
   !is.na(recorded) & nzchar(recorded) & recorded != cmp
-}
-
-# ... the lines of a report program's record_report() that work it out
-.report_setup_hash_code <- function() {
-  q <- function(x) paste(encodeString(x, quote = "\""), collapse = ", ")
-  sprintf(paste0("paste(paste(unname(tools::md5sum(Filter(file.exists, c(%s)))),\n",
-                 "                collapse = \"+\"),\n",
-                 "          if (file.exists(%s)) unname(tools::md5sum(%s)) else \"\",\n",
-                 "          sep = \"|\")"),
-          q(.study_setup_files()), q(.report_setup_path()), q(.report_setup_path()))
 }
