@@ -178,9 +178,9 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home(),
       shiny::div(class = "small",
                  shiny::checkboxInput(p("all"), t("Every variable, not only those this report uses"),
                                       FALSE)),
-      shiny::uiOutput(p("hidden"), inline = TRUE)),
+      shiny::uiOutput(p("hidden"), inline = TRUE),
+      shiny::uiOutput(p("refs"), inline = TRUE)),
     rhandsontable::rHandsontableOutput(p("hot")),
-    shiny::uiOutput(p("refs")),
     shiny::tags$details(
       class = "small mt-2",
       shiny::tags$summary(t("Read a file into this report")),
@@ -218,6 +218,9 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home(),
     grids_drawn()
     ch <- .std_choices("codelists")
     ch$variable <- unique(c(vars(), ch$variable))
+    # (`list` right after `variable`: seen without scrolling)
+    d <- d[c(intersect(c("variable", "list"), names(d)),
+             setdiff(names(d), c("variable", "list")))]
     # (a list that is one of the study's -- its `list` cell -- is shown,
     # read only: R/codelist_refs.R; the `list` column is not set here)
     .grid(d, "codelists", key(), ch, read_only = "list",
@@ -230,10 +233,11 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home(),
     d <- d[shown(d), , drop = FALSE]
     refs <- .cl_ref_vars(d)
     if (!length(refs)) return(NULL)
-    lst <- vapply(refs, function(v) d$list[d$variable %in% v][1L], "")
-    shiny::div(class = "small text-muted mt-1",
-               sprintf(t("The study's lists, read only: %s. Change them in spec/defaults.yml (codelists:)."),
-                       paste0(refs, " (", lst, ")", collapse = ", ")))
+    cells <- vapply(refs, function(v) d$list[d$variable %in% v][1L], "")
+    shiny::span(class = "small text-muted",
+                sprintf(t("The study's lists, read only: %s. Change them in spec/defaults.yml (codelists:)."),
+                        paste(mapply(.cl_ref_line, refs, cells, MoreArgs = list(t = t)),
+                              collapse = ", ")))
   })
   output[[p("hidden")]] <- shiny::renderUI({
     shiny::req(has_study(), !is.null(report()))
@@ -268,7 +272,7 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home(),
     kept <- attr(d, "kept")
     attr(d, "kept") <- NULL
     if (length(kept)) {
-      notify(.cl_refs_kept_text(kept, t), "warning")
+      notify(.cl_refs_kept_text(kept, t, id), "warning")
       bump()
     }
     if (identical(.normalize_sheet(d, "codelists")[names(shown_now)],
@@ -516,7 +520,11 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home(),
     r <- r[order(is.na(o), o, seq_len(nrow(r))), , drop = FALSE]
     lab <- ifelse(is.na(r$label) | r$label == r$value, "",
                   paste0(" \u2192 ", r$label))
-    list(variable = r$variable[1L], text = paste0(r$value, lab, collapse = ", "))
+    # (`ref`: the study's list it refers to, or NULL)
+    cell <- if ("list" %in% names(r)) trimws(as.character(r$list))[1L] else NA_character_
+    ref <- if (!is.na(cell) && nzchar(cell)) .cl_ref_name(cell)
+    list(variable = r$variable[1L], text = paste0(r$value, lab, collapse = ", "),
+         ref = ref)
   })
 }
 
@@ -594,11 +602,14 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home(),
           on <- identical(l$variable, open)
           shiny::tags$tr(
             class = if (on) "table-active", style = "cursor: pointer;",
-            title = t("Click to edit this code list"),
+            title = if (is.null(l$ref)) t("Click to edit this code list") else t("Click to view (read only)"),
             onclick = pick_js(l$variable),
             shiny::tags$td(class = "fw-semibold text-nowrap",
                            shiny::span(class = "text-muted me-1", if (on) "\u25be" else "\u25b8"),
-                           l$variable),
+                           l$variable,
+                           if (!is.null(l$ref)) shiny::span(
+                             class = "badge text-bg-light border fw-normal ms-1",
+                             sprintf(t("study list: %s"), l$ref))),
             shiny::tags$td(l$text))
         }))),
     lapply(names(missing), function(v) shiny::div(
@@ -615,7 +626,7 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home(),
 # The open column's grid: its values, labels and order (and `under`, when
 # .codelist_shows_under()), written back to the report's code list of that
 # column as they are edited
-.codelist_detail_ui <- function(variable, t, ids, under = FALSE) {
+.codelist_detail_ui <- function(variable, t, ids, under = FALSE, ref = NULL) {
   shiny::div(
     class = "border rounded p-2 mb-2 bg-body-tertiary",
     shiny::div(
@@ -624,8 +635,13 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home(),
       shiny::div(class = "ms-auto",
                  .btn(ids[["close"]], t("Close"), class = "btn-sm btn-outline-secondary py-0"))),
     shiny::div(class = "small text-muted mb-1",
-               t("value: as the data has it; label: what it prints as (blank: itself); order: its place"),
-               if (under) paste0(" ", t("under: the value one level out it sits under (a nested count: shown with 0 when no subject has it)"))),
+               if (!is.null(ref)) {
+                 sprintf(t("The study's list %s, read only. Change it in spec/defaults.yml (codelists:)."), ref)
+               } else {
+                 shiny::tagList(
+                   t("value: as the data has it; label: what it prints as (blank: itself); order: its place"),
+                   if (under) paste0(" ", t("under: the value one level out it sits under (a nested count: shown with 0 when no subject has it)")))
+               }),
     rhandsontable::rHandsontableOutput(ids[["hot"]]))
 }
 
@@ -669,8 +685,11 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home(),
   output[[ids[["detail"]]]] <- shiny::renderUI({
     v <- open()
     shiny::req(has_study(), report(), v)
+    cl <- sheet_rows(shiny::isolate(rv$p), "codelists", report())
+    cell <- if ("list" %in% names(cl)) trimws(as.character(cl$list[cl$variable %in% v]))[1L] else NA_character_
     .codelist_detail_ui(v, t, ids, under = .codelist_shows_under(
-      shiny::isolate(rv$p), report(), v))
+      shiny::isolate(rv$p), report(), v),
+      ref = if (!is.na(cell) && nzchar(cell)) .cl_ref_name(cell))
   })
   key <- shiny::reactive(paste(ids[["hot"]], report() %||% "", open() %||% "",
                                rv$ver, sep = "|"))
@@ -683,8 +702,9 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home(),
     d <- sheet_rows(p, "codelists", report())
     # (one of the study's lists: shown with its `list` cell, read only)
     ref <- v %in% .cl_ref_vars(d)
+    # (the line over the grid names the study's list: no `list` column)
     cols <- c("value", "label", "order",
-              if (.codelist_shows_under(p, report(), v)) "under", if (ref) "list")
+              if (.codelist_shows_under(p, report(), v)) "under")
     d <- d[d$variable %in% v, cols, drop = FALSE]
     .grid(d, "codelists", key(), list(), read_only = if (ref) cols else character(),
           spare = if (ref) 0L else 1L)
@@ -706,8 +726,9 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home(),
       was <- old[old$variable %in% v, , drop = FALSE]
       was$output_id <- NULL
       d$variable <- rep(v, nrow(d))
+      d$list <- rep(was$list[1L], nrow(d))
       if (length(attr(.cl_refs_keep(d, was), "kept"))) {
-        notify(.cl_refs_kept_text(v, t), "warning")
+        notify(.cl_refs_kept_text(v, t, id), "warning")
         bump()
       }
       return()

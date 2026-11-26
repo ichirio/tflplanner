@@ -74,7 +74,51 @@ test_that("a grid's edit of a study's list, or of the list column, is put back",
   k <- .cl_refs_keep(d, old)
   expect_identical(attr(k, "kept"), "AGEGR1")
   expect_true(is.na(k$list[3L]))
-  expect_match(.cl_refs_kept_text("SEX", identity), "Not changed: SEX.", fixed = TRUE)
+  # the toast: which variable, and where to change it (the study's file, the report's)
+  expect_identical(
+    .cl_refs_kept_text(c("SEX", "ETHNIC"), identity, "T-14-1-1"),
+    paste0("SEX, ETHNIC not changed: it is the study's list, read only here. Change it in ",
+           "spec/defaults.yml (codelists:) or in the report's file (spec/outputs/T-14-1-1.yml)."))
+  expect_match(tr("%s not changed: it is the study's list, read only here. Change it in spec/defaults.yml (codelists:) or in the report's file (spec/outputs/%s.yml).", "ja"),
+               "%s \u306f\u5909\u66f4\u3057\u3066\u3044\u307e\u305b\u3093", fixed = TRUE)
+})
+
+test_that("a reference's lines: the list it names, picks, the tag, the tooltip, the source line", {
+  expect_identical(.cl_ref_name("SEX: M | F"), "SEX")
+  expect_identical(.cl_ref_line("ETHNIC", "ETHNIC", identity), "ETHNIC \u2190 study list ETHNIC")
+  expect_identical(.cl_ref_line("SEX", "SEX: M | F", identity), "SEX \u2190 study list SEX (M, F)")
+  expect_identical(.cl_ref_line("SEX", "SEX: M | F", function(x) tr(x, "ja")),
+                   "SEX \u2190 \u8a66\u9a13\u6a19\u6e96 SEX\uff08M, F\uff09")
+  cl <- data.frame(variable = c("ETHNIC", "ETHNIC", "RACE"), value = c("A", "B", "W"),
+                   label = c("a", "b", "w"), order = c("1", "2", "1"),
+                   list = c("ETHNIC", "ETHNIC", NA), stringsAsFactors = FALSE)
+  ln <- .codelist_lines(cl)
+  expect_identical(ln$ETHNIC$ref, "ETHNIC")
+  expect_null(ln$RACE$ref)
+  ids <- c(pick = "pk", new = "nw", close = "cl", detail = "dt", hot = "ht", edit = "ed",
+           copy = "cp", add = "ad")
+  h <- as.character(.codelist_part_ui(unname(ln), list(), identity, ids, "tip"))
+  expect_match(h, "study list: ETHNIC", fixed = TRUE)
+  expect_match(h, "Click to view (read only)", fixed = TRUE)
+  expect_match(h, "Click to edit this code list", fixed = TRUE)   # RACE's line
+  # the open reference: the source line over the grid, not the column hint
+  h <- as.character(.codelist_detail_ui("ETHNIC", identity, ids, ref = "ETHNIC"))
+  expect_match(h, "The study's list ETHNIC, read only. Change it in spec/defaults.yml (codelists:).", fixed = TRUE)
+  expect_false(grepl("value: as the data has it", h, fixed = TRUE))
+  h <- as.character(.codelist_detail_ui("RACE", identity, ids))
+  expect_match(h, "value: as the data has it", fixed = TRUE)
+})
+
+test_that("a grid with every column read only has no row items in its menu; a cell kept is shaded", {
+  d <- data.frame(value = c("A", "B"), label = c("a", "b"), stringsAsFactors = FALSE)
+  items <- function(g) names(g$x$contextMenu$items)
+  g <- .grid(d, "codelists", "k", list(), read_only = names(d), spare = 0L)
+  expect_false(any(c("row_above", "row_below", "remove_row") %in% items(g)))
+  g <- .grid(d, "codelists", "k", list(), read_only = "label")
+  expect_true(all(c("row_above", "row_below", "remove_row") %in% items(g)))
+  g <- .grid(d, "codelists", "k", list())
+  expect_true("row_above" %in% items(g))
+  expect_match(as.character(app_ui("en")), ".handsontable td.htDimmed { background-color: #f3f3f3; }", fixed = TRUE)
 })
 
 test_that("a writer's defaults.yml takes the spec's own blocks (code lists, ADaM metadata) from its text", {
@@ -183,11 +227,13 @@ test_that("the code lists' dialog: a study's list is shown read only, an edit of
     # the list column, and the study's lists' rows: read only
     ro <- vapply(w$columns, function(cc) isTRUE(cc$readOnly), NA)
     expect_true(ro[match("list", hdr)])
+    # `list` right after `variable`: seen without scrolling
+    expect_identical(match("list", hdr), match("variable", hdr) + 1L)
     cells <- Filter(function(cc) isTRUE(cc$readOnly), w$cell %||% list())
     rows <- unique(vapply(cells, function(cc) as.integer(cc$row), 0L)) + 1L
     vars <- vapply(w$data, function(r) r[[match("variable", hdr)]] %||% "", "")
     expect_setequal(vars[rows], c("SEX", "AGEGR1"))
-    expect_match(output$cl21_refs$html, "SEX (SEX), AGEGR1 (AGEGR1: &gt;=65 | &lt;65)", fixed = TRUE)
+    expect_match(output$cl21_refs$html, "SEX \u2190 study list SEX, AGEGR1 \u2190 study list AGEGR1 (&gt;=65, &lt;65)", fixed = TRUE)
     # an edit of SEX's label (what the browser would refuse): put back
     before <- rv$p
     i <- match("SEX", vars)

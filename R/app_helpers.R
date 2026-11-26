@@ -427,7 +427,9 @@ $(document).on('hidden.bs.modal', function() {
     d, rowHeaders = TRUE, useTypes = FALSE, stretchH = "all",
     height = .grid_height(nrow(d)), minSpareRows = spare, planner_key = key,
     selectCallback = select)
-  h <- rhandsontable::hot_context_menu(h, allowRowEdit = TRUE,
+  # (a grid with every column read only has no rows to insert or remove)
+  all_ro <- length(d) > 0L && all(names(d) %in% read_only)
+  h <- rhandsontable::hot_context_menu(h, allowRowEdit = !all_ro,
                                        allowColEdit = FALSE)
   for (cn in names(choices)) {
     if (cn %in% names(d) && length(choices[[cn]])) {

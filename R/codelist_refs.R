@@ -156,8 +156,25 @@
   out
 }
 
-# What the grids say when an edit of a study's list was not taken in
-.cl_refs_kept_text <- function(vars, t) {
-  sprintf(t("Not changed: %s. A code list that is one of the study's lists (its `list` cell) is read only here: its rows are the study's list (spec/defaults.yml `codelists:`). Change the study's list, or the report's file."),
-          paste(vars, collapse = ", "))
+# What the grids say when an edit of a study's list was not taken in:
+# which variables, and where to change them (the study's file, or the
+# report's file -- `output_id`)
+.cl_refs_kept_text <- function(vars, t, output_id) {
+  sprintf(t("%s not changed: it is the study's list, read only here. Change it in spec/defaults.yml (codelists:) or in the report's file (spec/outputs/%s.yml)."),
+          paste(vars, collapse = ", "), output_id)
+}
+
+# The name of the study's list a `list` cell refers to ("SEX: M | F": SEX)
+.cl_ref_name <- function(cell) .cl_ref_parse(cell)$list
+
+# One line of a reference for the refs line over the grid: the variable
+# <- the study's list (and the codes picked, when it takes some)
+.cl_ref_line <- function(variable, cell, t) {
+  ref <- .cl_ref_parse(cell)
+  if (length(ref$codes)) {
+    sprintf(t("%s \u2190 study list %s (%s)"), variable, ref$list,
+            paste(ref$codes, collapse = ", "))
+  } else {
+    sprintf(t("%s \u2190 study list %s"), variable, ref$list)
+  }
 }
