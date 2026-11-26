@@ -231,6 +231,7 @@
 "Total column of the post-baseline categories","ベースライン後のカテゴリーの合計の列"
 "Total row label","合計の行のラベル"
 "The analysis set adsl_sub keeps (data.yml's populations).","adsl_sub が残す解析対象集団（data.yml の populations）。"
+"The analysis set whose subjects' records the figure draws (data.yml's populations).","Figure に描く記録の被験者を決める解析対象集団（data.yml の populations）。"
 "The dataset of the records (the data row rec_sub's from).","記録のデータセット（データの行 rec_sub の from）。"
 "The column variable(s); the groups across.","列の変数。群を横に並べる。"
 "The category at baseline, the rows.","ベースラインのカテゴリー。行になる。"
