@@ -213,13 +213,14 @@ test_that("Add from a template writes the report with its template, the argument
     expect_match(pane, "A run saves it in the study's ARD", fixed = TRUE)
     expect_match(output$tpl_ard_code, "programs/ard/T-ZZ-5.R", fixed = TRUE)
     expect_match(add_text(output$tpl_ard_code_head$html), "programs/ard/T-ZZ-5.R", fixed = TRUE)
-    # the analysis set: the data step's field, written as the report's population
+    # the analysis set: the data step's field, the template's argument (A2-T,
+    # tflspec#984), never `common:`; the report list follows it
     other <- setdiff(stats::na.omit(rv$p$ard$populations$population_id), "SAF")[1L]
     skip_if(is.na(other), "the sample study has one population")
-    session$setInputs(tpl_report_pop = other)
+    session$setInputs(tpl_demog__population = other)
+    expect_identical(.tpl_of(rv$p, "T-ZZ-5")$args$population, other)
+    expect_null(rv$p$spec$outputs[["T-ZZ-5"]]$common)
     expect_identical(add_row(rv$p, "T-ZZ-5")$population, other)
-    expect_identical(rv$p$spec$outputs[["T-ZZ-5"]]$common$population, other)
-    expect_null(.tpl_of(rv$p, "T-ZZ-5")$args$population)
   })
 })
 
@@ -437,7 +438,10 @@ test_that("the dialog writes only the optional arguments changed in it: demog an
       do.call(session$setInputs, req)
       suppressMessages(session$setInputs(add_ok = which(nm == c("demog", "stf_t02_demog"))))
       args <- add_args(rv$p, paste0("T-", rid))
-      expect_setequal(names(args), c("by", "continuous", "categorical"))
+      # (the analysis set an argument, A2-T: demog's left at its default,
+      # SAF, is not written; stf_t02_demog's has no default, required)
+      want <- c("by", "continuous", "categorical", if (nm == "stf_t02_demog") "population")
+      expect_setequal(names(args), want)
       expect_identical(add_row(rv$p, paste0("T-", rid))$population, "SAF")
     }
     # (a heading of two lines: a box that keeps the line break)
@@ -453,7 +457,7 @@ test_that("the dialog writes only the optional arguments changed in it: demog an
   })
 })
 
-test_that("a switch to demog keeps population as the report's population; back from demog it is the argument again", {
+test_that("a switch to demog and back keeps population as the template's argument (A2-T: demog's is shown)", {
   id <- sample_for_add()
   shown <- watch_add()
   shiny::testServer(server_for(id), {
@@ -466,38 +470,42 @@ test_that("a switch to demog keeps population as the report's population; back f
     invisible(suppressMessages(output$tpl_card$html))
     session$setInputs(tpl_switch = "demog")
     dlg <- add_text(add_modal(shown))
-    expect_match(dlg, "To the report's population: population", fixed = TRUE)
+    expect_match(dlg, "Arguments kept: population", fixed = TRUE)
+    expect_false(grepl("To the report's population", dlg, fixed = TRUE))
     expect_false(grepl("Arguments dropped:[^.]*population", dlg))
     suppressWarnings(suppressMessages(session$setInputs(tpl_switch_ok = 1)))
     expect_identical(.tpl_of(rv$p, "T-ZZ-7")$name, "demog")
-    expect_null(add_args(rv$p, "T-ZZ-7")$population)
-    expect_identical(rv$p$spec$outputs[["T-ZZ-7"]]$common$population, "SAF")
-    # (back: the report's population is the argument again)
+    expect_identical(add_args(rv$p, "T-ZZ-7")$population, "SAF")
+    expect_null(rv$p$spec$outputs[["T-ZZ-7"]]$common)
+    # (back: the argument kept as it is)
     session$setInputs(tpl_switch = "shift")
     dlg <- add_text(add_modal(shown))
-    expect_match(dlg, "From the report's population: population", fixed = TRUE)
+    expect_match(dlg, "Arguments kept: population", fixed = TRUE)
+    expect_false(grepl("From the report's population", dlg, fixed = TRUE))
     suppressWarnings(suppressMessages(session$setInputs(tpl_switch_ok = 2)))
     expect_identical(.tpl_of(rv$p, "T-ZZ-7")$name, "shift")
     expect_identical(add_args(rv$p, "T-ZZ-7")$population, "SAF")
   })
 })
 
-test_that("demog with no population: no ARD run and no error note, the preview waits; its field's tip is the usual one", {
+test_that("a template with no population: no ARD run and no error note, the preview waits; its field's tip is the usual one", {
+  # (stf_t02_demog: its analysis set an argument with no default, A2-T --
+  # demog's has the template's, SAF)
   id <- sample_for_add()
   shown <- watch_add()
   shiny::testServer(server_for(id), {
     rv <- session$userData$rv
-    session$setInputs(add = 1, modal_type = "table", modal_how = "template", modal_tpl_table = "demog",
+    session$setInputs(add = 1, modal_type = "table", modal_how = "template", modal_tpl_table = "stf_t02_demog",
                       modal_id = "ZZ-8", modal_desc = "", modal_section = "",
-                      mtpl_demog__population = "SAF", mtpl_demog__by = "TRT01A",
-                      mtpl_demog__continuous = "AGE")
+                      mtpl_stf_t02_demog__population = "SAF", mtpl_stf_t02_demog__by = "TRT01A",
+                      mtpl_stf_t02_demog__continuous = "AGE", mtpl_stf_t02_demog__categorical = "SEX")
     # (the dialog's population field: the analysis set's tip, not tflspec's note)
     dlg <- add_html(add_modal(shown))
     expect_false(grepl("not a template parameter", dlg, fixed = TRUE))
     suppressMessages(session$setInputs(add_ok = 1))
     session$setInputs(target = "T-ZZ-8", nav = "make", step = "data", content_nav = "content")
     expect_false(grepl("not a template parameter", add_html(output$tpl_card_data$html), fixed = TRUE))
-    session$setInputs(tpl_report_pop = "")
+    session$setInputs(tpl_stf_t02_demog__population = "")
     expect_identical(.tpl_missing_report(rv$p, "T-ZZ-8"), "population")
     n0 <- length(shown$notes)
     suppressWarnings(session$setInputs(tpl_preview = 1))

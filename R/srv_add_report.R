@@ -1,13 +1,20 @@
 # app_server(): add report -- moved from R/app.R as it was.  Run in
 # app_server()'s environment (.srv_part()); what it makes is copied back
 # there for the parts after it (.srv_keep()).
-# A report's `common: population` set (NA: taken out, and the empty
-# `common:` with it)
-.o_set_population <- function(o, population) {
+# A report's analysis set as its file says it (A2-T, canon 11-15: the
+# `population:` of its data -- a data map's key, a template's set argument,
+# the set its subjects rows carry -- tflspec::tfl_report_set()); NA none
+.o_population <- function(o) {
+  if (!is.list(o)) return(NA_character_)
+  v <- as.character(tflspec::tfl_report_set(o))[1L]
+  if (is.na(v) || !nzchar(v)) NA_character_ else v
+}
+# A report's analysis set set (NA: taken out) where tfl_report_set() reads
+# it, never in `common:` (tflspec::tfl_set_report_set(); `study` the
+# study's spec, for a template that fills its set from no argument)
+.o_set_population <- function(o, population, study = NULL) {
   has <- length(population) && !is.na(population[1L]) && nzchar(population[1L])
-  o$common$population <- if (has) population[1L]
-  if (!length(o$common)) o$common <- NULL
-  o
+  tflspec::tfl_set_report_set(o, if (has) population[1L] else NA_character_, study)
 }
 .srv_add_report <- function() {
   shiny::observeEvent(input$add_ok, {
@@ -578,9 +585,14 @@
     pop <- as.character(dat$population %||% attr(args, "population") %||% args$population %||% NA_character_)
     attr(args, "population") <- NULL
     o <- tflspec::tfl_output(id, kind, label = if (is.na(desc)) NA_character_ else desc,
-                             common = if (!is.na(pop)) list(population = pop) else list(),
                              template = .tpl_write_args(list(name = nm), args, by_step = TRUE),
                              data = if (length(dat$steps)) list(steps = dat$steps))
+    # (the analysis set where the report's data says it, never in `common:`
+    # (A2-T): a set argument the dialog wrote is it; else written by
+    # tflspec (a KM type's data map).  The toc line's set: the one the
+    # report has, its template's default too)
+    if (!is.na(pop) && is.null(args$population)) o <- .o_set_population(o, pop, rv$p$spec$study)
+    pop <- tryCatch(tflspec::tfl_report_set(o, rv$p$spec$study), error = function(e) pop)
     # (straight into the spec: its toc line and its file, the view of
     # that report alone -- .spec_add_output())
     p2 <- guarded(.spec_add_output(rv$p, o, label = desc,
@@ -622,7 +634,15 @@
   tpl_write <- function(id, args, name = NULL, steps = NULL, redraw = TRUE) {
     o <- .tpl_output(rv$p, id, args, name = name)
     if (length(steps)) o$data$steps <- steps
-    p2 <- guarded(.spec_set_output(rv$p, id, o))
+    # (the set argument changed: the report list's set follows it, the
+    # template's default when none is given -- A2-T, the set the template's
+    # argument)
+    p1 <- rv$p
+    if (!identical(.o_population(o), .o_population(p1$spec$outputs[[id]]))) {
+      set <- tryCatch(tflspec::tfl_report_set(o, p1$spec$study), error = function(e) .o_population(o))
+      p1 <- .spec_set_toc_population(p1, id, set)
+    }
+    p2 <- guarded(.spec_set_output(p1, id, o))
     if (is.null(p2)) return(invisible(FALSE))
     rv$p <- p2
     rv$bver <- rv$bver + 1L
@@ -784,7 +804,7 @@
   # that takes it as a shown argument, not given: the report's population
   # is carried over)
   tpl_pop_back <- function(tp, to_prm, id) {
-    pid <- rv$p$spec$outputs[[id]]$common$population
+    pid <- .o_population(rv$p$spec$outputs[[id]])
     .tpl_pop_of_report(.tpl_params(tp$name)) && !.tpl_pop_of_report(to_prm) &&
       !.tpl_own_data(to_prm) && "population" %in% names(.tpl_shown(to_prm)) &&
       is.null(tp$args$population) && length(pid) && !is.na(pid[1L]) && nzchar(pid[1L])
@@ -802,7 +822,7 @@
     # (back from a template that takes the report's population: the
     # population an argument again)
     if (tpl_pop_back(tp, to_prm, id)) {
-      args$population <- as.character(rv$p$spec$outputs[[id]]$common$population)[1L]
+      args$population <- as.character(.o_population(rv$p$spec$outputs[[id]]))[1L]
     }
     # (to a KM type: the old template's data stage -- its dataset, its
     # parameter, the report's analysis set -- becomes the report's `data:`
@@ -902,7 +922,7 @@
   # the card's analysis-set choice: the report's population, else its own
   # join -- a flag ("flag:<variable>") or as it is (".own") -- else none
   tpl_data_pop_sel <- function(id, f) {
-    pid <- rv$p$spec$outputs[[id]]$common$population
+    pid <- .o_population(rv$p$spec$outputs[[id]])
     if (length(pid) && !is.na(pid[1L]) && nzchar(pid[1L])) return(as.character(pid[1L]))
     if (!f$join) return("")
     fl <- .pop_flag(f$join_where)
@@ -922,7 +942,7 @@
     ch
   }
   tpl_data_pop <- function(id) {
-    pid <- rv$p$spec$outputs[[id]]$common$population
+    pid <- .o_population(rv$p$spec$outputs[[id]])
     pops <- rv$p$ard$populations
     if (is.null(pid) || is.null(pops) || !nrow(pops)) return(NULL)
     k <- match(as.character(pid)[1L], pops$population_id)
@@ -949,24 +969,24 @@
     pop <- NULL
     if (identical(sel, ".own")) {
       pop <- list(dataset = f$join_dataset, where = f$join_where)
-      o <- .o_set_population(o, NA_character_)
+      o <- .o_set_population(o, NA_character_, rv$p$spec$study)
     } else if (startsWith(sel, "flag:")) {
       pop <- list(dataset = "ADSL", where = sprintf("%s == \"Y\"", sub("^flag:", "", sel)))
-      o <- .o_set_population(o, NA_character_)
+      o <- .o_set_population(o, NA_character_, rv$p$spec$study)
     } else if (nzchar(sel)) {
-      o <- .o_set_population(o, sel)
+      o <- .o_set_population(o, sel, rv$p$spec$study)
       pops <- rv$p$ard$populations
       k <- match(sel, pops$population_id)
       if (!is.na(k)) pop <- as.list(pops[k, intersect(c("population_id", "dataset", "where"), names(pops)),
                                          drop = FALSE])
     } else {
-      o <- .o_set_population(o, NA_character_)
+      o <- .o_set_population(o, NA_character_, rv$p$spec$study)
     }
     steps <- .tpl_steps_from(input$tpl_data_ds, pop, input$tpl_data_param %||% "",
                              input$tpl_data_filter %||% "")
     if (is.null(steps)) o$data$steps <- NULL else o$data$steps <- steps
     if (!length(o$data)) o$data <- NULL
-    p2 <- guarded(.spec_set_output(.spec_set_toc_population(rv$p, id, o$common$population), id, o))
+    p2 <- guarded(.spec_set_output(.spec_set_toc_population(rv$p, id, .o_population(o)), id, o))
     if (is.null(p2)) return()
     rv$p <- p2
     rv$bver <- rv$bver + 1L
@@ -982,10 +1002,10 @@
     if (is.null(tp) || !.tpl_pop_of_report(.tpl_params(tp$name))) return()
     o <- rv$p$spec$outputs[[id]]
     sel <- input$tpl_report_pop %||% ""
-    now <- as.character(o$common$population %||% "")[1L]
+    now <- .o_population(o)
     if (identical(sel, if (is.na(now)) "" else now)) return()
-    o <- .o_set_population(o, if (nzchar(sel)) sel else NA_character_)
-    p2 <- guarded(.spec_set_output(.spec_set_toc_population(rv$p, id, o$common$population), id, o))
+    o <- .o_set_population(o, if (nzchar(sel)) sel else NA_character_, rv$p$spec$study)
+    p2 <- guarded(.spec_set_output(.spec_set_toc_population(rv$p, id, .o_population(o)), id, o))
     if (is.null(p2)) return()
     rv$p <- p2
     rv$bver <- rv$bver + 1L
@@ -1020,7 +1040,7 @@
     # the data step, written as the report's `population:`)
     pop_of_report <- part %in% c("data", "head") && .tpl_pop_of_report(prm_all)
     if (pop_of_report) {
-      pid <- as.character(p$spec$outputs[[id]]$common$population %||% "")[1L]
+      pid <- .o_population(p$spec$outputs[[id]])
       if (is.na(pid)) pid <- ""
       if (!nzchar(pid)) {
         miss <- c("population", miss)
@@ -1033,7 +1053,7 @@
     # where a value comes from: this report / the study standard / the
     # function's default (and the report's over the study's, said)
     filled <- .tpl_filled(p, id)
-    rows <- .tpl_args_rows(tp$name, study, p$spec$outputs[[id]]$common$population)
+    rows <- .tpl_args_rows(tp$name, study, .o_population(p$spec$outputs[[id]]))
     from_of <- function(a) {
       b <- .tpl_badge_of(a, args, rows)
       # (a required argument with no value and no default: nothing to say the origin of)

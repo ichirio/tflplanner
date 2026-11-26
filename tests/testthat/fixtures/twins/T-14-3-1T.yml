@@ -1,8 +1,6 @@
 id: T-14-3-1T
 kind: table
 label: TEAEs by SOC / PT (a template SPEC, tflspec_v1/tflspec_hierarchy; the twin of T-14-3-1C)
-common:
-  population: SAF
 codelists:
   TRT01A:
     - value: Drug X
@@ -13,6 +11,7 @@ data:
 template:
   name: tflspec_v1/tflspec_hierarchy
   data:
+    population: SAF
     from: ADAE
   analysis:
     by:

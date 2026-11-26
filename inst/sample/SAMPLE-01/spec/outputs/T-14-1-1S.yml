@@ -1,13 +1,12 @@
 id: T-14-1-1S
 kind: table
 label: Demographic characteristics (its ARD one ard_stack call)
-common:
-  population: SAF
 extends:
   - defaults
 data:
   - id: adsl_saf
     from: ADSL
+    population: SAF
 ard:
   analyses:
     - id: BIGN

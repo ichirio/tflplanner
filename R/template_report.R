@@ -1113,7 +1113,7 @@
   if (is.null(tp)) return(character())
   miss <- .tpl_missing(tp$name, tp$args, p$spec$study)
   if (.tpl_pop_of_report(.tpl_params(tp$name))) {
-    pid <- as.character(p$spec$outputs[[output_id]]$common$population %||% "")[1L]
+    pid <- .o_population(p$spec$outputs[[output_id]])
     if (is.na(pid) || !nzchar(pid)) miss <- c("population", miss)
   }
   if (!length(miss)) {
@@ -1363,7 +1363,13 @@
   if (!is.null(name)) o$template$name <- name
   prm <- .tpl_params(o$template$name)
   args <- args[c(intersect(names(prm), names(args)), setdiff(names(args), names(prm)))]
-  if (!is.null(args$population)) o$common$population <- as.character(args$population)
+  # (the analysis set is the template's argument, never `common:` (A2-T,
+  # tflspec::tfl_set_report_set()'s rule): an old `common: population` goes,
+  # the set written once)
+  if (!is.null(args$population)) {
+    o$common$population <- NULL
+    if (!length(o$common)) o$common <- NULL
+  }
   # (a template whose analysis set is the report's population (demog) holds
   # it in `common:`, not in its arguments)
   if (.tpl_pop_of_report(prm)) args$population <- NULL
@@ -1721,12 +1727,12 @@ $(document).on('shiny:connected', function() {
 }
 
 # A template report's analysis set, for its data step (#751 item 6): the
-# report's own (`common: population`) and the analysis data the template
+# report's own (as its data says it, .o_population()) and the analysis data the template
 # makes with the population each has as tflspec resolves it (a template
 # row's own, else the report's) -- a data frame id, from, population; NULL
 # rows when it cannot be resolved
 .tpl_pop_view <- function(p, output_id) {
-  pid <- as.character(p$spec$outputs[[output_id]]$common$population %||% NA_character_)[1L]
+  pid <- .o_population(p$spec$outputs[[output_id]])
   ad <- .tpl_resolved(p, output_id)$ard$analysis_data
   rows <- if (length(ad)) data.frame(
     id = vapply(ad, function(x) as.character(x$id %||% NA_character_)[1L], ""),

@@ -243,8 +243,11 @@ test_that("a report's file with the template and arguments set, in the template'
   p <- .spec_add_output(p, tpl_demog_output(), population = "SAF")
   o <- .tpl_output(p, "T-99", list(zzz = 1, population = "FAS"), name = "disposition")
   expect_identical(o$template$name, "disposition")
-  expect_identical(names(o$template$args), "zzz")
-  expect_identical(o$common$population, "FAS")
+  # (the analysis set is the template's argument, A2-T: the report's old
+  # `common: population` goes, the set written once)
+  expect_identical(names(o$template$args), c("population", "zzz"))
+  expect_identical(o$template$args$population, "FAS")
+  expect_null(o$common)
   # the name kept when none is given
   expect_identical(.tpl_output(p, "T-99", list())$template$name, "demog")
 })
@@ -360,16 +363,19 @@ test_that("a template's name in a report's file, and its call in the program", {
   expect_identical(.tpl_arg_section("no_such_template", "data_id"), "data")
 })
 
-test_that("a template that hides its analysis set takes it from the report's population, asked in the dialog", {
-  expect_true(.tpl_pop_of_report(.tpl_params("demog")))
-  expect_true(.tpl_pop_of_report(.tpl_params("stf_t02_demog")))
+test_that("a template's analysis set is its argument, in the data step: none takes it from the report's population (A2-T)", {
+  # (demog's and stf_t02_demog's a shown argument now, tflspec#984)
+  expect_false(.tpl_pop_of_report(.tpl_params("demog")))
+  expect_false(.tpl_pop_of_report(.tpl_params("stf_t02_demog")))
+  expect_identical(.tpl_arg_section("demog", "population"), "data")
   # (an argument still; a KM type's analysis set is its data steps')
   expect_false(.tpl_pop_of_report(.tpl_params("hierarchical")))
   expect_false(.tpl_pop_of_report(.tpl_params("km_survival")))
   expect_false(.tpl_pop_of_report(list()))
-  # (not an empty argument of the card: the report's `population:` says it)
+  # (demog's has the template's default, SAF: not empty; stf_t02_demog's none)
   expect_identical(.tpl_missing("demog", list(by = "TRT01A")), character())
   expect_identical(.tpl_missing("demog", list()), "by")
+  expect_true("population" %in% .tpl_missing("stf_t02_demog", list(by = "TRT01A")))
 })
 
 test_that("a table field's column choices are the template's data's, not every dataset's (gui-checks-1 D3)", {

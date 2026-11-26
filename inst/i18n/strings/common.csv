@@ -1730,6 +1730,7 @@
 "Disposition","被験者の内訳"
 "Kaplan-Meier curves","Kaplan-Meier 曲線（図）"
 "the analysis set's id (SAF)","解析対象集団の ID（SAF）"
+"the analysis set's id (SAF): the subjects the report is of","解析対象集団の ID（SAF）: この帳票の対象の被験者"
 "the dataset","データセット"
 "the column variable","列の変数"
 "continuous variables","連続変数"
