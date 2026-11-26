@@ -22,7 +22,11 @@ Where this file and `CONTRIBUTING.md` disagree, tell a maintainer.
   to the table layout belongs in rtfreporter, a change to the spec in tflspec:
   change it upstream first; tflplanner only follows.
 - **Fictional data only.**  No company, study or patient data in code, tests,
-  fixtures, examples, issues or pull requests, and none sent to an AI service.
+  fixtures, examples, issues or pull requests.  Company material (specs, data,
+  TOC, shells, SAP, company standards) may be read locally by an AI tool the
+  company has approved (for example the company-contract GitHub Copilot).  It
+  must never be committed, pushed, pasted into an issue or pull request, or
+  sent to a service that is not approved.
 - R code is ASCII (`\uXXXX` escapes).  Every text the app shows has its
   Japanese in `inst/i18n/strings/<file>.csv`.
 - **Record the change in the PR description.**  A PR never edits `NEWS.md`,
