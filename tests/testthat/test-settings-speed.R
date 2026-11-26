@@ -148,14 +148,16 @@ test_that("the study's own settings and the ADaM levels row change study.yml alo
   b2 <- .planner_body(p2)
   expect_false(identical(b1, b2))
   expect_identical(.planner_core(b1), .planner_core(b2))
-  w1 <- .spec_bridge(b1, s$meta)
-  w2 <- .spec_bridge(b2, s$meta)
+  # (with the study's code lists, as the sync gives them: a report refers to one)
+  scl <- s$planner$spec$study$codelists
+  w1 <- .spec_bridge(b1, s$meta, codelists = scl)
+  w2 <- .spec_bridge(b2, s$meta, codelists = scl)
   on.exit(unlink(c(w1$dir, w2$dir), recursive = TRUE), add = TRUE)
   expect_identical(names(w1$text), names(w2$text))
   differ <- names(w1$text)[!vapply(names(w1$text), function(r) identical(w1$text[[r]], w2$text[[r]]), NA)]
   expect_identical(differ, .study_file)
   # and study.yml is what the study-only bridge writes
-  o2 <- .spec_bridge_study(b2, s$meta)
+  o2 <- .spec_bridge_study(b2, s$meta, codelists = scl)
   on.exit(unlink(o2$dir, recursive = TRUE), add = TRUE)
   expect_identical(o2$text[[.study_file]], w2$text[[.study_file]])
 })

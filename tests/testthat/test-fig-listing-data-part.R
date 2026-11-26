@@ -36,6 +36,23 @@ test_that("a listing of an analysis data, or of an analysis set's subjects: its 
   expect_identical(sum(code2 == "# ---- data ----"), 1L)
 })
 
+test_that("a listing whose set is the report list's only: its program keeps the set's subjects, as tflspec's (review S5)", {
+  p <- dp_planner()
+  p <- set_lf_rows(p, "listings", "L2", data.frame(dataset = "ADAE"))
+  expect_true(is.na(lf_rows(p, "listings", "L2")$population_id))
+  p$outputs$population <- ifelse(p$outputs$output_id %in% c("L1", "L2"), "SAF", NA_character_)
+  expect_identical(report_population(p, "L2"), "SAF")
+  code <- unlist(strsplit(data_lines(p, "L2"), "\n", fixed = TRUE))
+  expect_true(any(startsWith(code, "adsl_sub <- ")))
+  expect_true(any(grepl("dplyr::inner_join(", code, fixed = TRUE)))
+  # the same program as the row's own set gives
+  expect_identical(data_lines(p, "L2"), data_lines(dp_planner(), "L2"))
+  # the row is not changed: the set is read, not written
+  expect_true(is.na(lf_rows(p, "listings", "L2")$population_id))
+  # a listing of an analysis data: that data's set -- the report's not added
+  expect_identical(data_lines(p, "L1"), data_lines(dp_planner(), "L1"))
+})
+
 test_that("a figure whose read step names an analysis data: made before the plot", {
   p <- dp_planner()
   d <- list(data = list(list(step = "read", data = "adae_ser")),

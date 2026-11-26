@@ -42,6 +42,7 @@ outputs:
   - id: F-14-2-1
     kind: figure
     label: Mean change from baseline in systolic blood pressure
+    population: SAF
     datasets:
       - ADSL
       - ADVS
@@ -53,6 +54,7 @@ outputs:
   - id: F-14-2-2
     kind: figure
     label: KM plot of the time to first skin disorder
+    population: SAF
     datasets: ADTTE
   - id: T-14-2-2
     kind: table
@@ -61,6 +63,7 @@ outputs:
   - id: F-14-2-3
     kind: figure
     label: KM curves of the time to first skin disorder (designed)
+    population: SAF
   - id: T-14-2-3
     kind: table
     label: 'Systolic blood pressure: mean change at week 24 (95% CI), p-value; the
@@ -82,4 +85,5 @@ outputs:
   - id: L-16-2-7
     kind: listing
     label: Listing of severe treatment-emergent adverse events
+    population: SAF
 

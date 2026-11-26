@@ -147,7 +147,8 @@
       y <- if (!is.null(p)) .code_output(p, id)
       o <- if (!is.null(y)) .code_content(y) else tflspec::tfl_output(id, "figure")
       o$figure <- d$figure
-      suppressMessages(suppressWarnings(tflspec::tfl_content_code(o)))
+      suppressMessages(suppressWarnings(
+        tflspec::tfl_content_code(o, study = .content_study(o, y$study))))
     }, error = function(e) e)
     if (inherits(r, "error")) {
       out <- rbind(out, .problem_rows(f, "", "", "figure", conditionMessage(r)))

@@ -22,9 +22,11 @@
 # single-value argument the first present.  character(): none, or the
 # template / argument / list is not in the table.
 .tpl_suggest <- function(name, arg, data_cols, list = .tpl_suggest_list, study = NULL, dataset = NULL) {
-  # (`by`, of any template: the column variable, the study's settings.treatment
-  # of the study spec; none if it has none.  Not in the yml)
-  if (identical(arg, "by")) {
+  # (the group argument -- `by` of any template, a figure's `group` -- has no
+  # default (PRINCIPLES 1.14): its suggestion is the study's
+  # settings.treatment of the study spec (1.15), shown grey, never written
+  # (1.16); none if it has none.  Not in the yml)
+  if (arg %in% .tpl_group_args) {
     tr <- as.character(study$study$settings$treatment %||% character())
     return(if (.tpl_blank(tr)) character() else tr[1L])
   }
@@ -42,6 +44,10 @@
   if (arg %in% as.character(unlist(tp$single))) utils::head(out, 1L) else out
 }
 
+# The arguments that name a template's groups: `by` (a table's columns, a KM
+# figure's curves) and a figure's `group`
+.tpl_group_args <- c("by", "group")
+
 # Empty: NULL, no element, or only blank text
 .tpl_blank <- function(x) length(x) == 0L || !any(nzchar(trimws(as.character(unlist(x)))))
 
@@ -49,7 +55,7 @@
 # report reads (its `data` argument, the template's default, else the table's
 # `data:`), taken as the add-report dialog takes them (.tpl_columns).
 .tpl_suggest_for <- function(name, arg, data, args = list(), prm = .tpl_params(name), study = NULL) {
-  if (!identical(arg, "by") && is.null(.tpl_suggest_table()[[name]][[arg]])) return(character())
+  if (!arg %in% .tpl_group_args && is.null(.tpl_suggest_table()[[name]][[arg]])) return(character())
   dataset <- args$data %||% prm$data$default %||% .tpl_suggest_table()[[name]]$data
   .tpl_suggest(name, arg, .tpl_columns(data, dataset), study = study, dataset = dataset)
 }

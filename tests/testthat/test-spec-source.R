@@ -115,7 +115,7 @@ test_that("a direct edit that does not read: open as saved, no save, write back 
 test_that("a figure's design taken out of its file, or put back, is taken in", {
   spec_home()
   p <- add_output(new_planner(), "F-1", type = "figure")
-  p <- set_fig_design(p, "F-1", tflspec::tfl_fig_template("km_simple", data = "ADTTE"))
+  p <- set_fig_design(p, "F-1", tflspec::tfl_fig_template("km_simple", data = "ADTTE", group = "TRT01P"))
   s <- suppressMessages(create_study("SP-2", planner = p))
   f <- report_file(s, "F-1")
   with_design <- readLines(f)
@@ -242,7 +242,7 @@ test_that("a figure design is a part: merged, or a conflict", {
   base <- open_study("SP-3")
   other <- base
   other$planner <- set_fig_design(other$planner, "F-1",
-                                  tflspec::tfl_fig_template("km_simple", data = "ADTTE"))
+                                  tflspec::tfl_fig_template("km_simple", data = "ADTTE", group = "TRT01P"))
   save_study(other, base = base)
   mine <- base
   mine$planner$outputs$description[mine$planner$outputs$output_id == "T-1"] <- "mine"
@@ -255,7 +255,8 @@ test_that("a figure design is a part: merged, or a conflict", {
   save_study(x, base = b2)
   y <- b2
   y$planner <- set_fig_design(y$planner, "F-1",
-                              tflspec::tfl_fig_template("km_simple", data = "ADTTE2"))
+                              tflspec::tfl_fig_template("km_simple", data = "ADTTE2",
+                                                        group = "TRT01P"))
   expect_error(save_study(y, base = b2), class = "tflplanner_conflict")
 })
 

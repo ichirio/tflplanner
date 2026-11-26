@@ -69,7 +69,10 @@ test_that("the code lists' dialog and step 2: a grid edit changes that cell and 
       d <- sheet_rows(before, sh, "T1")
       # one cell changed: the last column of the first row (the page and
       # the report: a setting of the right type)
-      col <- setdiff(names(d), c("output_id", "note"))
+      # (a code list's `list` cell names one of the study's lists, which the
+      # grid does not set: one row's cell alone would not agree with the
+      # variable's other rows either -- test-codelist-refs.R tests it)
+      col <- setdiff(names(d), c("output_id", "note", "list"))
       col <- col[length(col)]
       new <- "changed"
       # (a band's row height, tflspec#568: a whole number, or the save refuses it)
@@ -260,7 +263,7 @@ test_that("step 2, the listing form: what it cannot show stays as written", {
 test_that("step 2, the figure designer: what it cannot show stays as written", {
   local_home()
   p <- add_output(new_planner(), "F1", type = "figure")
-  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP")
+  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", group = "TRT01A")
   # a number as the design has it (written as text), a setting the
   # designer has no field for
   d$plot$y_max <- "180"
@@ -297,6 +300,46 @@ test_that("step 2, the figure designer: what it cannot show stays as written", {
     session$setInputs(save = 1)
     expect_identical(fig_design(open_study("S1")$planner, "F1"),
                      fig_design(edited, "F1"))
+  })
+})
+
+test_that("the designer's form follows a design put in place of the one there (#866)", {
+  local_home()
+  p <- add_output(new_planner(), "F1", type = "figure")
+  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", group = "TRT01A")
+  d$plot$x_label <- "Old label"
+  p <- set_fig_design(p, "F1", d)
+  create_study("S1", planner = p)
+  shiny::testServer(server_for("S1"), {
+    rv <- session$userData$rv
+    pd <- session$userData$pd
+    session$setInputs(target = "F1", nav = "make", step = "content",
+                      content_nav = "content")
+    expect_match(output$pd_form$html, "Old label", fixed = TRUE)
+    n0 <- pd$n
+    # the design changed outside the form (a template, the Spec, a fix):
+    # the form is drawn again, with the new values
+    d2 <- fig_design(rv$p, "F1")
+    d2$plot$x_label <- "New label"
+    rv$p <- set_fig_design(rv$p, "F1", d2)
+    session$flushReact()
+    h <- output$pd_form$html
+    expect_match(h, "New label", fixed = TRUE)
+    expect_false(grepl("Old label", h, fixed = TRUE))
+    expect_gt(pd$n, n0)
+    # typed into the form, then the design replaced before it is written:
+    # the old form's value is not written into the new design
+    n1 <- pd$n
+    id <- function(x) paste0("pd", n1, "_", x)
+    v <- list()
+    v[[id("x_label")]] <- "New label"
+    do.call(session$setInputs, v)
+    v[[id("x_label")]] <- "Typed"
+    do.call(session$setInputs, v)
+    session$setInputs(pd_empty = 1)
+    session$elapse(1000)
+    expect_false(identical(fig_design(rv$p, "F1")$plot$x_label, "Typed"))
+    expect_false(grepl("New label", output$pd_form$html, fixed = TRUE))
   })
 })
 

@@ -80,6 +80,29 @@
     if (is.null(id) || is.null(d)) return()
     rv$p <- .fig_ard_steps_rows(set_fig_design(rv$p, id, d), id, d)
   }
+  # a design put in place of the one there (a template, a preset, empty):
+  # its pieces are not the old ones, so the form starts on the settings
+  replace_design <- function(d) {
+    if (is.null(d)) return()
+    pd$gen <- pd$gen + 1L
+    set_design(d)
+    sel(list(sec = "plot", i = 1L))
+    redraw_form()
+  }
+  # The form follows the design: drawn again whenever the design changes
+  # other than by the form itself (a template or preset put in its place,
+  # the Spec edited, the review's fix ...).  pd$own is the design as the
+  # form was drawn from it or last wrote it; pd$gen counts the designs
+  # come from elsewhere (what was typed for the one before is not written).
+  pd$own <- NULL
+  pd$gen <- 0L
+  shiny::observeEvent(design(), {
+    d <- design()
+    if (is.null(d) || is.null(pd$own) || identical(.fig_norm(unclass(d)), pd$own)) return()
+    pd$gen <- pd$gen + 1L
+    if (is.null(piece_now(d, sel()))) sel(list(sec = "plot", i = 1L))
+    redraw_form()
+  }, ignoreInit = TRUE)
 
   # the study's data, read once a file (and again when it changes)
   study_data <- function(ds) {
@@ -135,32 +158,46 @@
 
   # ---- starting: a template, filled in for the study's data --------------
   templates <- tflspec::tfl_fig_templates()
+  # (each listed by the line the new report's dialog gives it)
+  templates$label <- .fig_template_label(templates$template, templates$label)
   # the catalog's datasets whose file is there
   data_present <- function() {
     d <- catalog()
     d$dataset[!is.na(d$path) & file.exists(.data_file(rv$study$path, d$path))]
   }
-  tpl_select <- function() {
-    tc <- .fig_template_choices(
-      templates, data_present(),
-      list(label = t, missing = t("needs data this study has not got"),
-           other = t("Other"), empty = t("Empty design")))
+  # `current`: the design's template (chosen first when it is in the list)
+  tpl_choices <- function(current = NULL) .fig_template_choices(
+    templates, data_present(),
+    list(label = t, missing = t("needs data this study has not got"),
+         other = t("Other"), empty = t("Empty design")),
+    current = current)
+  tpl_select <- function(tc) {
     s <- shiny::selectInput("pd_tpl", t("Template"), tc$choices,
                             selected = tc$first, width = "100%")
     # the ones the data cannot draw: listed, but not to be chosen (the
     # options are HTML inside the tag, so they are marked in the HTML)
     .disable_options(s, tc$off)
   }
-  # the template's data, when the study has it, fills the Dataset
+  # the Dataset a template fills: its data, when the study has it ("": none)
+  tpl_data <- function(tp) {
+    if (is.null(tp) || !nzchar(tp) || !"data" %in% names(templates)) return("")
+    ds <- .fig_first_data(templates$data[templates$template == tp][1L], data_present())
+    if (is.na(ds)) "" else ds
+  }
   shiny::observeEvent(input$pd_tpl, {
     tp <- input$pd_tpl
     if (is.null(tp) || !nzchar(tp) || !"data" %in% names(templates)) return()
-    ds <- .fig_first_data(templates$data[templates$template == tp], data_present())
-    shiny::updateSelectizeInput(session, "pd_tpl_data",
-                                selected = if (is.na(ds)) "" else ds)
+    shiny::updateSelectizeInput(session, "pd_tpl_data", selected = tpl_data(tp))
   })
-  start_inputs <- function() {
+  # `current`, `data`: the design's template and the dataset it reads, chosen
+  # first; no dataset given (or not in the study), the one the template
+  # chosen fills (the template's observer above does not fire when the
+  # template chosen is the one chosen last time, so the dataset is set here)
+  start_inputs <- function(current = NULL, data = NULL) {
     ds_have <- data_present()
+    tc <- tpl_choices(current)
+    data <- ds_have[toupper(ds_have) %in% toupper(data)][1L]
+    if (is.na(data)) data <- tpl_data(tc$first)
     pr <- fig_presets()
     shiny::tagList(
       shiny::radioButtons("pd_from", NULL, inline = TRUE,
@@ -171,9 +208,12 @@
         bslib::layout_columns(
           col_widths = c(6, 6),
           shiny::div(
-            tpl_select(),
+            tpl_select(tc),
             shiny::selectizeInput("pd_tpl_data", t("Dataset"), c("", ds_have),
-                                  options = list(placeholder = t("choose the data")))),
+                                  selected = data,
+                                  options = list(placeholder = t("choose the data"))),
+            # (whose subjects: the report's analysis set, #863)
+            shiny::uiOutput("pd_tpl_pop")),
           shiny::uiOutput("pd_tpl_more"))),
       if (nrow(pr)) shiny::conditionalPanel(
         "input.pd_from == 'preset'",
@@ -263,6 +303,9 @@
     shiny::updateSelectizeInput(session, "pd_tpl_comparison", choices = c("", rest),
                                 selected = if (!is.null(cur) && cur %in% rest) cur else "")
   }, ignoreInit = TRUE)
+  # the report's analysis set under the Dataset: every figure's subjects,
+  # whatever the template (it follows a set chosen in step 1, #863)
+  output$pd_tpl_pop <- shiny::renderUI(.fig_pop_line(report_pop(), t))
   output$pd_tpl_more <- shiny::renderUI(tryCatch(pd_tpl_more_ui(), error = function(e) {
     if (inherits(e, "shiny.silent.error")) stop(e)
     message("tflplanner: template form: ", conditionMessage(e))
@@ -284,30 +327,49 @@
                             options = list(placeholder = placeholder, create = TRUE))
     cols <- .data_columns(dat)
     whole <- !templates$parts[templates$template == tp]
+    # each field headed "meaning (argument)" as the new report's dialog
+    # heads it: the template's own argument, one copy of the meaning (#861)
+    args <- .fig_tpl_args(tp, kind)
+    lab <- function(a) .tpl_arg_heading(args[[a]], t)
     shiny::tagList(
-      if (kind != "swimmer") sz("pd_tpl_param", t("Parameter (PARAMCD)"), prm),
-      sz("pd_tpl_pop", t("Population flag"),
-         .labelled(grep("FL$", names(cols), value = TRUE), cols)),
-      if (!tp %in% c("km_single_arm", "individual_spider") && !kind %in% c("waterfall", "swimmer"))
-        sz("pd_tpl_group", t("Group (treatment)"), .group_choices(cols)),
+      if (kind != "swimmer") sz("pd_tpl_param", lab("param"), prm),
+      # the group: no default (PRINCIPLES 1.14) -- the study's
+      # settings.treatment grey in the field, written only when picked
+      # (1.15, 1.16); empty: required (a template in parts)
+      if (.fig_tpl_has_group(tp, kind)) {
+        sugg <- .tpl_suggest(tp, "group", names(cols), study = rv$p$spec$study)
+        if (length(sugg)) {
+          .tpl_suggest_select("pd_tpl_group", lab("group"), c("", .group_choices(cols)), sugg,
+                              FALSE, list(create = TRUE), t)
+        } else {
+          sz("pd_tpl_group", lab("group"), .group_choices(cols),
+             placeholder = if (whole) t("the template's default") else t("Required"))
+        }
+      },
+      # (its choices and default: the template's tfl_param("time_unit"),
+      # tfl_fig_template()'s own default when tflspec defines none; the
+      # help behind "?", not in the label, #862)
       if (kind %in% c("km", "swimmer") || tp == "individual_spider")
-        shiny::selectInput("pd_tpl_unit", t("Time shown in (the data's time is in days)"),
-                           c("months", "weeks", "days", "years")),
+        shiny::selectInput("pd_tpl_unit",
+                           with_tip(lab("time_unit"),
+                                    .tpl_arg_help(tp, kind, "time_unit", t, tflplanner_language())),
+                           args$time_unit$choices %||% "months",
+                           selected = args$time_unit$default),
       if (kind %in% c("mean", "box", "individual", "pk") && !whole)
-        sz("pd_tpl_value", t("Value"), intersect(c("AVAL", "CHG", "PCHG"), vars)),
-      if (kind == "scatter") sz("pd_tpl_x", t("X"), vars),
-      if (kind == "scatter") sz("pd_tpl_y", t("Y"), vars),
-      if (kind == "pk") sz("pd_tpl_time", t("Nominal time"), vars),
-      if (kind == "bar") sz("pd_tpl_category", t("Category"), vars),
-      if (tp == "bar_rate_ci") shiny::textInput("pd_tpl_responders", t("Counted as response"), "CR, PR"),
-      if (kind == "swimmer") sz("pd_tpl_duration", t("Duration (days)"), vars),
+        sz("pd_tpl_value", lab("value"), intersect(c("AVAL", "CHG", "PCHG"), vars)),
+      if (kind == "scatter") sz("pd_tpl_x", lab("x"), vars),
+      if (kind == "scatter") sz("pd_tpl_y", lab("y"), vars),
+      if (kind == "pk") sz("pd_tpl_time", lab("time"), vars),
+      if (kind == "bar") sz("pd_tpl_category", lab("category"), vars),
+      if (tp == "bar_rate_ci") shiny::textInput("pd_tpl_responders", lab("responders"), "CR, PR"),
+      if (kind == "swimmer") sz("pd_tpl_duration", lab("duration"), vars),
       # a forest plot: its subgroups (ADSL's categorical columns) and the arm
       # compared with the reference (the group's first level)
       if (kind == "forest" && !whole) {
         cat_cols <- names(cols)[vapply(cols, function(v)
           (is.character(v) || is.factor(v)) && length(unique(stats::na.omit(v))) <= 12L, NA)]
         cat_cols <- setdiff(cat_cols, c(.group_choices(cols), grep("FL$", cat_cols, value = TRUE)))
-        shiny::selectizeInput("pd_tpl_subgroups", t("Subgroups"), .labelled(cat_cols, cols),
+        shiny::selectizeInput("pd_tpl_subgroups", lab("subgroups"), .labelled(cat_cols, cols),
                               intersect(c("SEX", "AGEGR1"), cat_cols), multiple = TRUE,
                               options = list(plugins = list("remove_button", "drag_drop")))
       },
@@ -316,12 +378,12 @@
         # column; the reference left out of the arm compared)
         lv <- .group_levels(dat)
         shiny::tagList(
-          sz("pd_tpl_ref", t("Reference arm"), lv),
+          sz("pd_tpl_ref", lab("ref"), lv),
           # (blank: every other arm against the reference)
-          sz("pd_tpl_comparison", t("Arm shown against the reference"), lv[-1L],
+          sz("pd_tpl_comparison", lab("comparison"), lv[-1L],
              placeholder = t("every other arm")))
       },
-      if (tp %in% c("box_by_group", "scatter_shift")) sz("pd_tpl_at_visit", t("At visit"),
+      if (tp %in% c("box_by_group", "scatter_shift")) sz("pd_tpl_at_visit", lab("at_visit"),
         if (!is.null(x) && "AVISIT" %in% names(x)) unique(x$AVISIT)),
       if (whole) shiny::p(class = "small text-muted",
         t("This type is not yet in parts: the design is its whole script, with the type's arguments to edit.")))
@@ -332,24 +394,35 @@
     tflspec::tfl_fig_design(data = list(list(
       step = "read", dataset = if (is.null(ds) || !nzchar(ds)) "ADSL" else ds)))
   }
+  # the report's analysis set (its data's `population:`), NULL for none
+  report_pop <- function() {
+    id <- current()
+    v <- if (!is.null(id)) report_population(rv$p, id) else NA_character_
+    if (is.na(v)) NULL else v
+  }
   applied <- function(d) {
     if (is.null(d)) return()
-    set_design(d)
+    tpl_need(NULL)
+    replace_design(d)
     notify(t("The template is applied: add to and change its layers in the designer."))
     # its numbers are the figure's own ARD (a forest plot's hazard ratios):
     # the analyses it needs go to step 1, and the figure's ARD is its own
     an <- attr(d, "analyses")
     id <- current()
     if (!is.null(an) && !is.null(id)) {
-      pop <- .population_of_flag(rv$p, an$analysis_data$population_id[1L])
+      # (the analysis data's set is the report's; a report with none gets no
+      # analyses: a template's default is a flag, not a set of the study)
+      pop <- report_pop()
+      if (is.null(pop)) {
+        # (the checks list says it, one item with the way to step 1: a toast
+        # would go before it is read, #867)
+        return()
+      }
       p2 <- guarded(set_fig_own_analyses(rv$p, id, an, population_id = pop))
       if (!is.null(p2)) {
         rv$p <- p2
         notify(sprintf(t("Added analyses %s to step %s (remove them there if not wanted): update the ARD, then Preview."),
                        paste(attr(p2, "written"), collapse = ", "), .step_no("ard")))
-        if (is.na(pop %||% NA)) notify(sprintf(
-          t("No analysis set of the study is the flag %s: choose the analysis data's set in step %s."),
-          an$analysis_data$population_id[1L], .step_no("data")), "warning")
       }
     }
   }
@@ -359,7 +432,7 @@
   })
   shiny::observeEvent(input$pd_empty, {
     shiny::req(current())
-    set_design(empty_design())
+    replace_design(empty_design())
   })
   # a template on a design already there: it replaces the design, asked first
   shiny::observeEvent(input$pd_retpl, {
@@ -374,7 +447,9 @@
       if (length(items)) shiny::div(class = "alert alert-warning py-2 small",
         shiny::p(class = "mb-1", t("These go as well, as the template does not set them:")),
         shiny::tags$ul(class = "mb-0", lapply(items, shiny::tags$li))),
-      start_inputs(),
+      # (the figure's own template first, not the list's first)
+      start_inputs(d$template, unlist(lapply(Filter(function(s) identical(s$step, "read"), d$data),
+                                             `[[`, "dataset"))[1L]),
       footer = shiny::tagList(shiny::modalButton(t("Cancel")),
                               .btn("pd_retpl_ok", t("Replace with the template"),
                                    class = "btn-danger"))))
@@ -399,15 +474,28 @@
       empty_design()
     } else {
       ds <- nz(input$pd_tpl_data)
+      # the group: only the one chosen (no default, PRINCIPLES 1.14; the
+      # suggestion is not a value, 1.16).  A template in parts that is split
+      # by it is not applied without one: one item to check says so
       grp <- nz(input$pd_tpl_group)
-      pop <- nz(input$pd_tpl_pop)
-      # the group and the flag from ADSL when the dataset has not got them
+      kind <- templates$kind[templates$template == tp]
+      tpl_need(NULL)
+      if (is.null(grp) && .fig_tpl_needs_group(tp, kind, !templates$parts[templates$template == tp])) {
+        tpl_need(sprintf(t("Fill in %s: the template has no default for it."),
+                         .tpl_arg_heading(.fig_tpl_args(tp, kind)$group, t)))
+        return(NULL)
+      }
+      # (no population flag: the figure's subjects are its report's analysis
+      # set, the report's data `population:` -- canon 11-15)
+      # the group from ADSL when the dataset has not got it
       join <- if (!is.null(ds)) {
         x <- study_data(ds)[[toupper(ds)]]
-        !is.null(x) && !all(c(grp, pop) %in% names(x))
+        !is.null(x) && !all(grp %in% names(x))
       }
       # (a forest's reference arm; left from a forest chosen before: not for another)
       ref <- if (identical(templates$kind[templates$template == tp], "forest")) nz(input$pd_tpl_ref)
+      # (a forest's own analysis data is the report's set's, named by it)
+      pop <- if (identical(templates$kind[templates$template == tp], "forest")) report_pop()
       args <- list(tp, data = ds, param = nz(input$pd_tpl_param), pop = pop,
                    group = grp, join_adsl = if (isTRUE(join)) TRUE,
                    value = nz(input$pd_tpl_value), x = nz(input$pd_tpl_x), y = nz(input$pd_tpl_y),
@@ -429,19 +517,17 @@
       if (!is.null(d) && !is.null(ds)) {
         dat <- study_data(c(ds, "ADSL"))
         x <- dat[[toupper(ds)]]
-        given <- c(param = "param", pop = "pop", group = "group")[
-          !vapply(list(args$param, pop, grp), is.null, logical(1))]
+        given <- c(param = "param", group = "group")[
+          !vapply(list(args$param, grp), is.null, logical(1))]
         if (!is.null(x)) d <- .trim_join(d, x)
-        fit <- if (!is.null(x)) .template_fit(d, x, dat$ADSL, given) else character()
+        fit <- if (!is.null(x)) .template_fit(d, x, dat$ADSL, given, group = args$group) else character()
         if (length(fit)) {
           args[names(fit)] <- as.list(fit)
-          args$join_adsl <- if (!all(c(args$group, args$pop) %in% names(x))) TRUE
+          args$join_adsl <- if (!all(args$group %in% names(x))) TRUE
           d2 <- make(args)
           if (!is.null(d2)) {
             d <- .trim_join(d2, x)
-            notify(sprintf(t("The template's defaults are not in %s: it uses %s instead."),
-                           ds, paste(sprintf("%s = %s", names(fit), fit),
-                                     collapse = ", ")))
+            notify(paste(.template_fit_notes(fit, ds, t), collapse = " "))
           }
         }
       }
@@ -521,13 +607,57 @@
     sel(list(sec = "plot", i = 1L))
     redraw_form()
   })
+  # the drawing's problems, the figure's ARD ones as the figure is now
+  # (its ARD source and analyses change without the design: the drawing
+  # is not drawn again for them)
+  checks_now <- shiny::reactive({
+    r <- pv()
+    need <- tpl_need()
+    pr <- if (!is.null(r)) {
+      id <- current()
+      if (is.null(id) || !identical(r$id, id) || is.null(rv$study)) r$problems else {
+        s <- rv$study
+        s$planner <- rv$p
+        .fig_problems_now(r, s, id, design())
+      }
+    }
+    # (a template not applied for a group not chosen: its item to check)
+    if (is.null(need)) return(pr)
+    row <- data.frame(part = "template", field = "group", problem = need, stringsAsFactors = FALSE)
+    if (is.null(pr) || !nrow(pr)) row else rbind(pr[c("part", "field", "problem")], row)
+  })
+  # the sentence of a template not applied: its group argument is empty
+  # (NULL: none); a figure chosen again, or the template applied, clears it
+  tpl_need <- shiny::reactiveVal(NULL)
+  shiny::observeEvent(current(), tpl_need(NULL), ignoreInit = TRUE)
+  # One check's row, wherever the checks are listed (the box over the
+  # picture, the Checks under it): a known cause is an item to check, its
+  # sentence -- the report with no analysis set, with the way to the step
+  # that has the set; a template's argument left empty (the form is in
+  # view) -- NULL for another check (each list shows it its own way).  (The
+  # button sets its input itself: the two lists show it at once, and an id
+  # is one element's.)
+  check_row <- function(pr, i) {
+    pop <- identical(pr$field[i], "population") && identical(pr$part[i], "ard")
+    if (!pop && !identical(pr$part[i], "template")) return(NULL)
+    shiny::div(
+      class = "mb-1 d-flex justify-content-between align-items-start gap-2",
+      shiny::div(shiny::span(class = "badge me-1 text-bg-warning", t("to check")), pr$problem[i]),
+      if (pop) shiny::tags$button(
+        class = "btn btn-sm btn-outline-primary py-0 text-nowrap", type = "button",
+        onclick = "Shiny.setInputValue('pd_goto_data', Math.random(), {priority: 'event'})",
+        sprintf(t("Go to step %s"), .step_no("data"))))
+  }
   overlay_open <- shiny::reactiveVal(TRUE)
   shiny::observeEvent(input$pd_overlay_toggle, overlay_open(!overlay_open()))
+  # the checks and advice: whether or not the figure could be drawn (a
+  # drawing that failed has its checks too: a report with no analysis set
+  # is one); only the picture needs the drawing
   output$pd_overlay <- shiny::renderUI({
     r <- pv()
-    shiny::req(r, r$png)
+    shiny::req(!is.null(r) || !is.null(tpl_need()))
     a <- r$advice
-    pr <- r$problems
+    pr <- checks_now()
     n_bad <- if (is.null(pr)) 0L else nrow(pr)
     n_adv <- if (is.null(a)) 0L else nrow(a)
     if (!n_bad && !n_adv) return(NULL)
@@ -547,9 +677,13 @@
       t(if (k %in% names(.pd_sections)) .pd_sections[[k]] else p)
     }
     items <- c(
-      if (n_bad) lapply(seq_len(nrow(pr)), function(i) shiny::div(
-        class = "mb-1", badge("error"),
-        shiny::span(class = "text-muted", pr$part[i], " "), pr$field[i], ": ", pr$problem[i])),
+      if (n_bad) lapply(seq_len(nrow(pr)), function(i) {
+        row <- check_row(pr, i)
+        if (!is.null(row)) return(row)
+        shiny::div(
+          class = "mb-1", badge("error"),
+          shiny::span(class = "text-muted", pr$part[i], " "), pr$field[i], ": ", pr$problem[i])
+      }),
       if (n_adv) lapply(seq_len(nrow(a)), function(i) shiny::div(
         class = "mb-1 d-flex justify-content-between align-items-start gap-2",
         shiny::div(badge(a$level[i]), shiny::span(class = "text-muted", part_label(a$part[i]), " "),
@@ -740,11 +874,23 @@
       if (stale()) shiny::div(class = "alert alert-warning py-1 px-2 small mb-2",
                               t("The steps have changed since: press Preview the data again.")),
       if (!is.null(r$error)) shiny::div(class = "alert alert-danger py-1 px-2 small mb-2",
-                                        shiny::strong(t("The steps stopped: ")), r$error),
+                                        error_ui(r$error, t("The steps stopped: "))),
       if (!length(ob)) shiny::p(class = "small text-muted mb-0", t("(nothing made)")),
       lapply(names(ob), function(nm) .pd_object_ui(nm, ob[[nm]], t)))
   })
   shiny::observeEvent(input$pd_goto_figure, bslib::nav_select("step", "content"))
+  # (the check "no analysis set" says where it is: step 1)
+  shiny::observeEvent(input$pd_goto_data, bslib::nav_select("step", "data"))
+  # a drawing's error: a known cause (the report has no analysis set) is
+  # said by its check's sentence, the R error kept for unknown causes (and
+  # behind "Details" for a known one)
+  error_ui <- function(err, lead) {
+    id <- current()
+    known <- !is.null(id) && .fig_no_set(rv$p, id, design())
+    if (!known) return(shiny::tagList(shiny::strong(lead), err))
+    shiny::tagList(.fig_no_set_text(design()),
+                   shiny::tags$details(class = "mt-1 text-muted", shiny::tags$summary(t("Details")), err))
+  }
   # a piece chosen, moved, removed
   shiny::observeEvent(input$pd_act, {
     a <- input$pd_act
@@ -864,6 +1010,7 @@
     }
     d <- shiny::isolate(design())
     shiny::req(d)
+    pd$own <- .fig_norm(unclass(d))
     s <- shiny::isolate(sel())
     pn <- piece_now(d, s)
     shiny::req(pn)
@@ -1097,7 +1244,7 @@
           if (fa$kind[i] %in% c("variables", "param")) "variables" else fa$kind[i], v[[1L]]))
       }
       shiny::req(length(raw))
-      return(list(sel = pd$sel, fields = out, raw = raw, whole = TRUE))
+      return(list(sel = pd$sel, fields = out, raw = raw, whole = TRUE, gen = pd$gen))
     }
     for (i in seq_len(nrow(f))) {
       v <- moved(f$field[i])
@@ -1105,13 +1252,16 @@
       out[f$field[i]] <- list(.pd_value(f$kind[i], v[[1L]]))
     }
     shiny::req(length(raw))
-    list(sel = pd$sel, fields = out, raw = raw)
+    list(sel = pd$sel, fields = out, raw = raw, gen = pd$gen)
   })
   pd_values_d <- shiny::debounce(pd_values, 500)
   shiny::observeEvent(pd_values_d(), {
     v <- pd_values_d()
     d <- design()
     if (is.null(d) || !identical(pd$id, current())) return()
+    # (values typed for a design replaced since -- a template, the Spec --
+    # are the old design's: not written into the new one)
+    if (!identical(v$gen, pd$gen)) return()
     s <- v$sel
     old <- if (s$sec == "plot") d$plot else if (s$i <= length(d[[s$sec]])) d[[s$sec]][[s$i]]
     if (is.null(old)) return()
@@ -1133,6 +1283,7 @@
     if (s$sec == "plot") d$plot <- new else d[[s$sec]][[s$i]] <- new
     if (identical(.fig_norm(unclass(d)), .fig_norm(unclass(design())))) return()
     set_design(d)
+    pd$own <- .fig_norm(unclass(fig_design(rv$p, current())))
     # another dataset changes what the forms offer; another function, the
     # arguments its form names
     # (a join's how: whether its variables are asked)
@@ -1179,7 +1330,9 @@
     }
     r$id <- id
     pv(r)
-    drawn(list(id = id, design = .fig_norm(unclass(d))))
+    # (with the report's analysis set: its subjects are the picture's)
+    drawn(list(id = id, design = .fig_norm(unclass(d)),
+               pop = report_population(shiny::isolate(rv$p), id)))
     drawing(FALSE)
   }
   # the form, the code and the checks first: the figure is drawn after the
@@ -1195,16 +1348,23 @@
     if (identical(form_on_page$id, shiny::isolate(current()))) draw_after() else
       form_on_page$waiting <- TRUE
   }
+  # the report's analysis set: another set, other subjects drawn
+  fig_pop <- shiny::reactive({
+    id <- current()
+    if (is.null(id)) NA_character_ else report_population(rv$p, id)
+  })
   stale <- shiny::reactive({
     d <- design()
     w <- drawn()
     !is.null(d) && (is.null(w) || !identical(w$id, current()) ||
-                      !identical(w$design, .fig_norm(unclass(d))))
+                      !identical(w$design, .fig_norm(unclass(d))) ||
+                      !identical(w$pop, fig_pop()))
   })
   design_d <- shiny::debounce(design, 600)
   shiny::observe({
     design_d()
     fig_id()
+    fig_pop()
     auto <- !identical(input$pd_auto, FALSE)
     if (on_tab() && shiny::isolate(stale()) &&
         (auto || !identical(shiny::isolate(drawn()$id), current()))) {
@@ -1234,7 +1394,7 @@
     shiny::req(r)
     if (!is.null(r$error)) {
       return(shiny::div(class = "alert alert-danger py-2 small",
-                        shiny::strong(t("The figure could not be drawn: ")), r$error))
+                        error_ui(r$error, t("The figure could not be drawn: "))))
     }
     z <- r$size
     if (is.null(z)) return(NULL)
@@ -1244,12 +1404,15 @@
   })
   output$pd_checks <- shiny::renderUI({
     r <- pv()
-    if (is.null(r)) return(shiny::p(class = "text-muted small", t("Not drawn yet.")))
-    pr <- r$problems
+    if (is.null(r) && is.null(tpl_need())) return(shiny::p(class = "text-muted small", t("Not drawn yet.")))
+    pr <- checks_now()
     items <- c(
-      if (!is.null(pr) && nrow(pr)) lapply(seq_len(nrow(pr)), function(i)
+      if (!is.null(pr) && nrow(pr)) lapply(seq_len(nrow(pr)), function(i) {
+        row <- check_row(pr, i)
+        if (!is.null(row)) return(shiny::tags$li(class = "list-unstyled", row))
         shiny::tags$li(class = "text-danger",
-                       shiny::strong(pr$part[i], " ", pr$field[i]), ": ", pr$problem[i])),
+                       shiny::strong(pr$part[i], " ", pr$field[i]), ": ", pr$problem[i])
+      }),
       lapply(r$warnings, function(w) shiny::tags$li(class = "text-warning", w)))
     shiny::div(
       shiny::h6(class = "mt-2", t("Checks")),
@@ -1289,9 +1452,14 @@
     id <- current()
     d <- design()
     shiny::req(id, d)
-    paste(tryCatch(.fig_design_lines(rv$p, id, d),
-                   error = function(e) conditionMessage(e)),
-          collapse = "\n")
+    # (the program's lines, written as the program is: with the study's
+    # code options -- its folders' variables, no `pkg::` for what its setup
+    # attaches; the subjects they keep said first, from what they do)
+    paste(tryCatch({
+      code <- .with_study_code(.fig_design_lines(rv$p, id, d))
+      c(.fig_subjects_line(rv$p, id, code), code)
+    }, error = function(e) conditionMessage(e)),
+    collapse = "\n")
   })
   output$pd_yaml <- shiny::renderText({
     d <- design()

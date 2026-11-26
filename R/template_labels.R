@@ -44,7 +44,9 @@
   labels = "Variable headings",
   order = "Variable order",
   cells = "Row statistics",
-  group = "Treatment group compared",
+  # (a figure's groups: a variable, not always the treatment, #861; the same
+  # word for the same meaning in every template, #868)
+  group = "Group",
   subgroups = "Subgroup variables",
   comparison = "Group compared with reference",
   time = "Time variable",
@@ -116,6 +118,12 @@
   visit_var = "Visit variable",
   visit_order = "Visit order",
   responders = "Responder categories",
+  # (the figure designer's template form, tfl_fig_template()'s arguments
+  # no tfl_param() defines, #861)
+  x = "Variable on the x axis",
+  y = "Variable on the y axis",
+  duration = "Duration in days",
+  at_visit = "Visit shown",
   ci_method = "Confidence interval method",
   stat_layout = "Rate and interval layout",
   layout = "Table layout",
@@ -187,7 +195,7 @@
   border_group = "Rule under each block",
   style = "Style set",
   conditions = "Analysis rows",
-  subgroup_vars = "Variables the subgroup rows read",
+  subgroup_vars = "Subgroup variables",
   responder = "Response category",
   overall_label = "Any-record row label",
   days_per_month = "Days per month",
@@ -211,5 +219,6 @@
     "Analysis ID of each parameter",
   "The subgroup rows, one a subgroup level, after the ALL row." = "Subgroup rows",
   "The group variable; one curve a group." = "Variable that splits the curves",
+  "The treatment variable compared." = "Group",
   "The breaks of the time axis (and the times of the number at risk); none for ggplot2's." = "Time axis ticks"
 )

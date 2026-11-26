@@ -964,12 +964,12 @@ test_that("saving the study defaults keeps every block of defaults.yml the write
   # every old block back, unchanged, comments included, before styles:, in old order
   expect_identical(.keep_study_blocks(new, old),
                    c(new[1:4], unlist(blk, use.names = FALSE), new[5:6]))
-  # a block the new lines have: the new one, once
+  # a block the new lines have too: the old one, once (a writer's copy of it
+  # -- the bridge's code lists, tfl_write_study_part()'s from the file on
+  # disk -- is older than the spec's text, tflspec#977)
   new2 <- append(new, c("codelists:", "  SEX: [F]"), after = 4L)
   expect_identical(.keep_study_blocks(new2, old),
-                   c(new[1:4], "codelists:", "  SEX: [F]",
-                     unlist(blk[c("figure_style", "options", "ai", "adam_meta")], use.names = FALSE),
-                     new[5:6]))
+                   c(new[1:4], unlist(blk, use.names = FALSE), new[5:6]))
   # no styles: in the new lines: at the end; a block after the old styles: after the others
   old2 <- c(old, "# After", "extra:", "  a: 1")
   expect_identical(.keep_study_blocks(new[1:4], old2),
