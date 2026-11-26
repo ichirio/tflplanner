@@ -59,13 +59,17 @@ test_that("a join no longer the analysis set's is told", {
   expect_false(.tpl_join_stale(.tpl_steps_fields(.tpl_steps_from("ADSL", saf)), saf))
 })
 
-test_that("the study's treatment is the `by`, and ADSL's flags no population says are found (to be told, #868)", {
+test_that("the study's treatment is the `by`'s suggestion, not its value, and ADSL's flags no population says are found (to be told, #868)", {
   skip_if_not("km_survival" %in% tflspec::tfl_templates()$name)
   study <- list(study = list(settings = list(treatment = "TRT01P")))
   prm <- .tpl_params("km_survival")
-  expect_identical(.tpl_study_value(study, prm$by), "TRT01P")
+  # (`by` is required with no default and no study source: the study's
+  # treatment is the planner's suggestion, written only when picked --
+  # PRINCIPLES 1.14-1.16; empty, it is missing, study or not)
+  expect_null(.tpl_study_value(study, prm$by))
+  expect_identical(.tpl_suggest("km_survival", "by", "TRT01P", study = study), "TRT01P")
   expect_true("by" %in% .tpl_missing("km_survival", list()))
-  expect_false("by" %in% .tpl_missing("km_survival", list(), study))
+  expect_true("by" %in% .tpl_missing("km_survival", list(), study))
   adsl <- data.frame(SAFFL = c("Y", "N"), ITTFL = c("Y", "Y"), EFFFL = c("N", ""),
                      TRTFL = c("A", "B"), AGE = 1:2)
   pops <- data.frame(population_id = "SAF", dataset = "ADSL", where = "SAFFL == \"Y\"")
