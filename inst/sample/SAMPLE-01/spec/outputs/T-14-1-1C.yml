@@ -16,6 +16,16 @@ ard:
       data: adsl_sub
       variables:
         - TRT01A
+      formats:
+        - N=0
+        - mean=2
+        - sd=3
+        - median=1
+        - min=0
+        - max=0
+        - p=xx.x%
+        - AGE:mean=1
+        - AGE:sd=2
     - id: AGE
       method: cards::ard_summary
       data: adsl_sub
@@ -30,6 +40,16 @@ ard:
         - median
         - min
         - max
+      formats:
+        - N=0
+        - mean=2
+        - sd=3
+        - median=1
+        - min=0
+        - max=0
+        - p=xx.x%
+        - AGE:mean=1
+        - AGE:sd=2
     - id: AGEGR1
       method: cards::ard_tabulate
       data: adsl_sub
@@ -37,6 +57,16 @@ ard:
         - TRT01A
       variables:
         - AGEGR1
+      formats:
+        - N=0
+        - mean=2
+        - sd=3
+        - median=1
+        - min=0
+        - max=0
+        - p=xx.x%
+        - AGE:mean=1
+        - AGE:sd=2
     - id: SEX
       method: cards::ard_tabulate
       data: adsl_sub
@@ -44,6 +74,16 @@ ard:
         - TRT01A
       variables:
         - SEX
+      formats:
+        - N=0
+        - mean=2
+        - sd=3
+        - median=1
+        - min=0
+        - max=0
+        - p=xx.x%
+        - AGE:mean=1
+        - AGE:sd=2
     - id: RACE
       method: cards::ard_tabulate
       data: adsl_sub
@@ -51,6 +91,16 @@ ard:
         - TRT01A
       variables:
         - RACE
+      formats:
+        - N=0
+        - mean=2
+        - sd=3
+        - median=1
+        - min=0
+        - max=0
+        - p=xx.x%
+        - AGE:mean=1
+        - AGE:sd=2
     - id: ECOGBL
       method: cards::ard_tabulate
       data: adsl_sub
@@ -58,6 +108,16 @@ ard:
         - TRT01A
       variables:
         - ECOGBL
+      formats:
+        - N=0
+        - mean=2
+        - sd=3
+        - median=1
+        - min=0
+        - max=0
+        - p=xx.x%
+        - AGE:mean=1
+        - AGE:sd=2
 codelists:
   TRT01A:
     - value: Drug X
