@@ -4,6 +4,8 @@
 "the design reads an ARD, but the figure has none: choose it in step %s","デザインは ARD を読みますが、Figure に ARD がありません。手順 %s で選んでください"
 "%s has no analysis %s (any more): the figure prints from it","%s に解析 %s が（もう）ありません。Figure はその数値を出します"
 "the ARD of %s is not made yet: make it first (its step %s)","%s の ARD はまだ作られていません。先に作ってください（その手順 %s）"
+"This report has no analysis set. Choose one in step %s, 'This report's analysis set'.","この帳票に解析対象集団がありません。手順 %s の「この帳票の解析対象集団」で選んでください。"
+"This report has no analysis set. Choose one in step %s, 'This report's analysis set', then apply the template again.","この帳票に解析対象集団がありません。手順 %s の「この帳票の解析対象集団」で選んでから、テンプレートをもう一度適用してください。"
 "Level order cl_%s (%s)","水準の並び cl_%s（%s）"
 "The setting to read the ARD of %s","%s の ARD を読む指定"
 "The setting to read this figure's own ARD","この Figure 自身の ARD を読む指定"

@@ -29,6 +29,9 @@ help_tip <- function(text, placement = "auto") {
 
 #' @noRd
 with_tip <- function(label, text, placement = "auto") {
+  # a label with its (i) already (a template argument's, with its help) takes
+  # no second one: two marks beside one heading
+  if (grepl("rp-tip", paste(as.character(label), collapse = ""), fixed = TRUE)) return(label)
   shiny::tags$span(class = "rp-with-tip", label, " ", help_tip(text, placement))
 }
 

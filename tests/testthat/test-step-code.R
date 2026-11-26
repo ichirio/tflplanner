@@ -317,6 +317,34 @@ test_that("report_content() is written once, in the study's fig_setup.R", {
   expect_identical(report_info(s$planner, "F-14-2-1")$type, "figure")
 })
 
+test_that("a figure of its own code has its analysis set's subjects, adsl_sub, before its code", {
+  skip_on_cran()
+  local_home()
+  s <- suppressMessages(sample_study_copy())
+  p <- s$planner
+  expect_identical(report_population(p, "F-14-2-1"), "SAF")
+  # the program (tflspec's lines): made after the datasets, before the code
+  code <- unlist(strsplit(program_code(p, "F-14-2-1"), "\n", fixed = TRUE))
+  at <- which(startsWith(code, "adsl_sub <- "))
+  expect_length(at, 1L)
+  expect_lt(at, which(startsWith(code, "# your code: leaves"))[1L])
+  # the code step's run: the sample's code reads them
+  res <- preview_code(s, "F-14-2-1")
+  expect_null(res$error)
+  # ... and they are the set's subjects (SAFFL == "Y")
+  s$planner <- set_step_code(p, "F-14-2-1", "content",
+                             "content <- data.frame(USUBJID = sort(unique(as.character(adsl_sub$USUBJID))))")
+  res <- preview_code(s, "F-14-2-1")
+  expect_null(res$error)
+  adsl <- readRDS(file.path(s$path, study_layout()[["adam"]], "adsl.rds"))
+  expect_identical(as.character(res$content$USUBJID),
+                   sort(unique(as.character(adsl$USUBJID[adsl$SAFFL %in% "Y"]))))
+  # a figure with no set: none made
+  p0 <- p
+  p0$outputs$population[match("F-14-2-1", p0$outputs$output_id)] <- NA_character_
+  expect_null(.code_subjects_lines(p0, "F-14-2-1"))
+})
+
 test_that("a step's code editor and the whole app UI build (in English and Japanese)", {
   skip_on_cran()
   # a start-up error (an argument shiny rejects, as an invalid CSS unit)

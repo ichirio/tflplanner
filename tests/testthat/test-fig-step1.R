@@ -15,7 +15,7 @@ test_that("every kind has the same steps; only a listing's ARD is idle", {
 test_that("the data steps are step 1's, the settings and layers step 2's", {
   local_home()
   p <- add_output(new_planner(), "F1", type = "figure")
-  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP")
+  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", group = "TRT01A")
   p <- set_fig_design(p, "F1", d)
   create_study("S1", planner = p)
   shiny::testServer(server_for("S1"), {
@@ -80,7 +80,7 @@ test_that("what the steps make: kept short by the preview, shown in step 1 on de
 })
 
 test_that("a time-unit step in days says why it writes no line, or writes its block; in months it divides", {
-  d <- tflspec::tfl_fig_template("km_simple", data = "ADTTE", param = "TTDE", pop = "SAFFL",
+  d <- tflspec::tfl_fig_template("km_simple", data = "ADTTE", param = "TTDE",
                                  group = "TRT01A")
   i <- which(vapply(d$data, function(p) identical(p$step, "time_unit"), NA))
   make <- function(d, codelists = TRUE) .fig_design_script(d, "F1")
@@ -94,7 +94,7 @@ test_that("a time-unit step in days says why it writes no line, or writes its bl
 test_that("a step's In and Out: on one line, what they are when not said as placeholders", {
   local_home()
   p <- add_output(new_planner(), "F1", type = "figure")
-  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP")
+  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", group = "TRT01A")
   d$data <- c(d$data, list(list(step = "function", fn = "survival::survfit")))
   p <- set_fig_design(p, "F1", d)
   create_study("S1", planner = p)
@@ -164,7 +164,7 @@ test_that("a figure's data steps are in two places: the records in step 1, the s
                                        list(step = "derive"))), 2L)
   local_home()
   p <- add_output(new_planner(), "F1", type = "figure")
-  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP")
+  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", group = "TRT01A")
   d$data <- c(d$data, list(list(step = "function", fn = "survival::survfit")))
   p <- set_fig_design(p, "F1", d)
   create_study("S1", planner = p)

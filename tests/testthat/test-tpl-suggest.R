@@ -42,6 +42,8 @@ test_that("by: the column variable is the study's treatment setting, else nothin
   st <- list(study = list(settings = list(treatment = "TRT01A")))
   expect_identical(.tpl_suggest("km", "by", "AGE", study = st), "TRT01A")
   expect_identical(.tpl_suggest("demog", "by", "AGE", study = st), "TRT01A")
+  # (a figure's `group` is a group argument too: the same suggestion)
+  expect_identical(.tpl_suggest("forest_hr", "group", "AGE", study = st), "TRT01A")
   expect_identical(.tpl_suggest("demog", "by", "AGE"), character())
   expect_identical(.tpl_suggest("demog", "by", "AGE", study = list(study = list(settings = list()))), character())
   expect_identical(.tpl_suggest_list, "max")
