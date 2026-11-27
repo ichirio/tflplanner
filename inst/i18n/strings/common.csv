@@ -1111,7 +1111,7 @@
 "ARD: the populations, one row a population.","ARD：解析対象集団。1 行 = 1 解析対象集団。"
 "The analysis data analysed (a data_id of analysis_data), instead of dataset and population_id: the population is its population; blank: dataset and population_id say it.","解析する解析データ（analysis_data の data_id）。dataset と population_id の代わりに使い、解析対象集団はそのデータのものになる。空欄 = dataset と population_id で指定。"
 "The population: the data is restricted to its subjects; blank: no restriction (population is NULL), or the population of `data`.","解析対象集団：データをその被験者に絞る。空欄 = 絞らない（population は NULL）、または `data` の解析対象集団。"
-"Which population {n} in the column header is, for a table split by page (a lab parameter): page (those with that page's data), table (the population), or both as n = page | N = table for {n} and {N}; blank: page (warns when both exist and differ). Both must be in the ARD.","ページ（検査項目など）で分けた Table で、列見出しの {n} が誰の人数か：page（そのページのデータがある人）、table（解析対象集団）、両方なら n = page | N = table で {n} と {N}。空欄 = page（両方あって食い違えば警告）。どちらも ARD に入れておくこと。"
+"Which population {n} in the column header is, for a table split by page (a lab parameter): page (those with that page's data), table (the population), or both as n = page | N = table for {n} and {N}; blank: page (warns when both exist and differ). Both must be in the ARD.","ページ（検査項目など）で分けた Table で、列見出しの {n} がどの解析対象集団の人数か：page（そのページのデータがある人）、table（解析対象集団）、両方なら n = page | N = table で {n} と {N}。空欄 = page（両方あって食い違えば警告）。どちらも ARD に入れておくこと。"
 "(every report)","（すべての帳票）"
 "Report sets","帳票セット"
 "A flag (== ""Y"") that selects the population, e.g. FASFL, SAFFL.","解析対象集団を選ぶフラグ（== ""Y""。例：FASFL、SAFFL）。"

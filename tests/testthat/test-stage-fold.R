@@ -10,8 +10,8 @@ test_that("the fold bar: two buttons, the same words in every step, in Japanese 
     expect_match(html, "data-fold=\"open\">Expand all</button>", fixed = TRUE)
   }
   ja <- as.character(.stage_fold_bar("content", "ja"))
-  expect_match(ja, "すべてたたむ", fixed = TRUE)
-  expect_match(ja, "すべて開く", fixed = TRUE)
+  expect_match(ja, "\u3059\u3079\u3066\u305f\u305f\u3080", fixed = TRUE)
+  expect_match(ja, "\u3059\u3079\u3066\u958b\u304f", fixed = TRUE)
 })
 
 test_that("the report screen has the bar once in each step, at its top", {
@@ -30,7 +30,7 @@ test_that("the report screen has the bar once in each step, at its top", {
   expect_identical(count(".rp-fold-closed > :not(:first-child)"), 1L)
   expect_identical(count("$(document).on('click', '.rp-fold-bar [data-fold]'"), 1L)
   ja <- as.character(app_ui("ja"))
-  expect_identical(lengths(regmatches(ja, gregexpr("すべてたたむ", ja, fixed = TRUE))), 4L)
+  expect_identical(lengths(regmatches(ja, gregexpr("\u3059\u3079\u3066\u305f\u305f\u3080", ja, fixed = TRUE))), 4L)
 })
 
 test_that("a collapsed card is its title line: a builder card's head, another card's title", {
