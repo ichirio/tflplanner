@@ -112,7 +112,7 @@
 "The statistics the figure makes","Figure が作る統計量"
 "The data steps that make an object: a KM fit, summary statistics, a function's result, the ARD's numbers. They read the records of step %s; the figure (step %s) draws what they make.","オブジェクトを作るデータの手順：KM の fit、要約統計量、関数の結果、ARD の数値など。手順 %s のレコードを読み、手順 %s の Figure がこれらが作ったものを描きます。"
 "every other arm","他のすべての群"
-"Fill in %s: the template has no default for it.","%s を入れてください（テンプレートに既定値はありません）。"
+"Fill in %s: the template has no default for it.","%s を入れてください（テンプレートにデフォルト値はありません）。"
 "The unit the time axis is shown in; the data's days are converted to it.","時間軸を表示する単位。データの日数をこの単位に換算します。"
 "This report's analysis set: %s","この帳票の解析対象集団: %s"
 "This report's analysis set: none (choose it in step %s)","この帳票の解析対象集団: なし（手順 %s で選びます）"

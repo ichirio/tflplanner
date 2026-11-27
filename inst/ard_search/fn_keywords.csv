@@ -184,8 +184,8 @@ cardx::ard_categorical_ci,ja,正確な信頼区間,1,,,"method = ""clopper-pears
 cardx::ard_categorical_ci,ja,奏効率,1,,,
 cardx::ard_categorical_ci,ja,奏効割合,1,,,
 cardx::ard_categorical_ci,ja,信頼区間,2,割合の区間。平均の区間は ard_continuous_ci,of a proportion; of a mean: ard_continuous_ci,
-cardx::ard_categorical_ci,sas,PROC FREQ BINOMIAL,1,"cardx の既定は ""waldcc""（連続修正つき Wald）。SAS と合わせるには method = ""wald"" か ""clopper-pearson""","cardx's default is ""waldcc"" (Wald with a continuity correction); method = ""wald"" or ""clopper-pearson"" matches SAS","method = ""wald"""
-cardx::ard_categorical_ci,sas,PROC FREQ,2,"割合の信頼区間（BINOMIAL）。cardx の既定は ""waldcc""（連続修正つき Wald）。SAS と合わせるには method = ""wald"" か ""clopper-pearson""","the CI of a proportion (BINOMIAL); cardx's default is ""waldcc"" (Wald with a continuity correction); method = ""wald"" or ""clopper-pearson"" matches SAS",
+cardx::ard_categorical_ci,sas,PROC FREQ BINOMIAL,1,"cardx のデフォルトは ""waldcc""（連続修正つき Wald）。SAS と合わせるには method = ""wald"" か ""clopper-pearson""","cardx's default is ""waldcc"" (Wald with a continuity correction); method = ""wald"" or ""clopper-pearson"" matches SAS","method = ""wald"""
+cardx::ard_categorical_ci,sas,PROC FREQ,2,"割合の信頼区間（BINOMIAL）。cardx のデフォルトは ""waldcc""（連続修正つき Wald）。SAS と合わせるには method = ""wald"" か ""clopper-pearson""","the CI of a proportion (BINOMIAL); cardx's default is ""waldcc"" (Wald with a continuity correction); method = ""wald"" or ""clopper-pearson"" matches SAS",
 cardx::ard_categorical_ci,r,binom.test,1,,,
 cardx::ard_categorical_ci,r,prop.test,2,,,
 cardx::ard_continuous_ci,en,mean CI,1,,,
@@ -212,13 +212,13 @@ cardx::ard_incidence_rate,ja,人年法,1,,,
 cardx::ard_incidence_rate,ja,曝露調整発現率,1,,,
 cardx::ard_incidence_rate,ja,100 人年あたり,1,,,
 cardx::ard_stats_t_test,en,t test,1,,,
-cardx::ard_stats_t_test,en,Student,1,args に var.equal = TRUE（既定は Welch）,args var.equal = TRUE (the default is Welch),var.equal = TRUE
+cardx::ard_stats_t_test,en,Student,1,args に var.equal = TRUE（デフォルトは Welch）,args var.equal = TRUE (the default is Welch),var.equal = TRUE
 cardx::ard_stats_t_test,en,Welch,1,,,
 cardx::ard_stats_t_test,en,two-sample,1,,,
 cardx::ard_stats_t_test,en,mean difference,1,調整なし。調整済みの差は ard_emmeans_contrast,unadjusted; an adjusted difference: ard_emmeans_contrast,
 cardx::ard_stats_t_test,ja,t 検定,1,,,
 cardx::ard_stats_t_test,ja,2 標本 t 検定,1,,,
-cardx::ard_stats_t_test,ja,スチューデント,1,args に var.equal = TRUE（既定は Welch）,args var.equal = TRUE (the default is Welch),var.equal = TRUE
+cardx::ard_stats_t_test,ja,スチューデント,1,args に var.equal = TRUE（デフォルトは Welch）,args var.equal = TRUE (the default is Welch),var.equal = TRUE
 cardx::ard_stats_t_test,ja,ウェルチ,1,,,
 cardx::ard_stats_t_test,ja,平均の差,1,調整なし。調整済みの差は ard_emmeans_contrast,unadjusted; an adjusted difference: ard_emmeans_contrast,
 cardx::ard_stats_t_test,ja,平均値の差の検定,1,,,
@@ -250,7 +250,7 @@ cardx::ard_stats_chisq_test,ja,カイ二乗検定,1,,,
 cardx::ard_stats_chisq_test,ja,カイ二乗,1,,,
 cardx::ard_stats_chisq_test,ja,χ二乗,1,,,
 cardx::ard_stats_chisq_test,ja,ピアソン,2,ピアソンのカイ二乗検定。ピアソンの相関係数は custom（PROC CORR）,Pearson's chi-square test; Pearson correlation: custom (PROC CORR),
-cardx::ard_stats_chisq_test,sas,PROC FREQ CHISQ,1,SAS と合わせるには correct = FALSE（R は 2×2 で Yates の補正が既定）,correct = FALSE matches SAS (R applies the Yates correction to a 2x2 table by default),correct = FALSE
+cardx::ard_stats_chisq_test,sas,PROC FREQ CHISQ,1,SAS と合わせるには correct = FALSE（R は 2×2 で Yates の補正がデフォルト）,correct = FALSE matches SAS (R applies the Yates correction to a 2x2 table by default),correct = FALSE
 cardx::ard_stats_chisq_test,sas,PROC FREQ,2,カイ二乗検定（CHISQ）。correct = FALSE で SAS と同じ,the chi-square test (CHISQ); correct = FALSE matches SAS,
 cardx::ard_stats_chisq_test,r,chisq.test,1,,,
 cardx::ard_stats_fisher_test,en,Fisher's exact test,1,,,
@@ -334,7 +334,7 @@ cardx::ard_stats_mantelhaen_test,ja,層別検定,1,,,
 cardx::ard_stats_mantelhaen_test,ja,層別解析,1,,,
 cardx::ard_stats_mantelhaen_test,ja,共通オッズ比,2,2×2×K の表のとき（層別の共通オッズ比）,for a 2x2xK table (the common odds ratio across strata),
 cardx::ard_stats_mantelhaen_test,ja,オッズ比,2,層別の共通オッズ比（2×2×K）,the common odds ratio across strata (2x2xK),
-cardx::ard_stats_mantelhaen_test,sas,PROC FREQ CMH,1,SAS と合わせるには correct = FALSE（R は 2×2×K で連続修正が既定）,correct = FALSE matches SAS (R corrects a 2x2xK table by default),correct = FALSE
+cardx::ard_stats_mantelhaen_test,sas,PROC FREQ CMH,1,SAS と合わせるには correct = FALSE（R は 2×2×K で連続修正がデフォルト）,correct = FALSE matches SAS (R corrects a 2x2xK table by default),correct = FALSE
 cardx::ard_stats_mantelhaen_test,sas,PROC FREQ,2,層別の検定（CMH）。correct = FALSE で SAS と同じ,the stratified test (CMH); correct = FALSE matches SAS,
 cardx::ard_stats_mantelhaen_test,r,mantelhaen.test,1,,,
 cardx::ard_stats_anova,en,model comparison,1,,,
@@ -372,8 +372,8 @@ cardx::ard_stats_mcnemar_test,en,paired proportions,1,,,
 cardx::ard_stats_mcnemar_test,ja,マクネマー検定,1,,,
 cardx::ard_stats_mcnemar_test,ja,対応のある割合,1,,,
 cardx::ard_stats_mcnemar_test,ja,対応のある二値,1,,,
-cardx::ard_stats_mcnemar_test,sas,PROC FREQ AGREE,1,SAS と合わせるには correct = FALSE（R の既定は連続修正あり）,correct = FALSE matches SAS (R corrects by default),correct = FALSE
-cardx::ard_stats_mcnemar_test,sas,PROC FREQ MCNEM,1,SAS と合わせるには correct = FALSE（R の既定は連続修正あり）,correct = FALSE matches SAS (R corrects by default),correct = FALSE
+cardx::ard_stats_mcnemar_test,sas,PROC FREQ AGREE,1,SAS と合わせるには correct = FALSE（R のデフォルトは連続修正あり）,correct = FALSE matches SAS (R corrects by default),correct = FALSE
+cardx::ard_stats_mcnemar_test,sas,PROC FREQ MCNEM,1,SAS と合わせるには correct = FALSE（R のデフォルトは連続修正あり）,correct = FALSE matches SAS (R corrects by default),correct = FALSE
 cardx::ard_stats_mcnemar_test,r,mcnemar.test,1,,,
 cardx::ard_stats_mcnemar_test_long,en,McNemar,2,1 被験者・1 時点が 1 行のデータ,one record per subject and visit,
 cardx::ard_stats_mcnemar_test_long,ja,マクネマー検定,2,1 被験者・1 時点が 1 行のデータ,one record per subject and visit,
@@ -472,7 +472,7 @@ cardx::ard_regression,ja,相対リスク,3,"log リンクの glm（method.args =
 cardx::ard_regression,sas,PROC REG,1,,,
 cardx::ard_regression,sas,PROC GLM,1,,,
 cardx::ard_regression,sas,PROC LOGISTIC,1,"method = ""glm"", method.args = list(family = binomial), exponentiate = TRUE。区間は R が profile 尤度、SAS が Wald。SAS は EVENT= が無いと低い方の水準をモデル化する（R は 1 の確率）。この設定では区間は profile 尤度のままで、args だけでは Wald にできない（tidy_fun を書く）。R 4.4 より前はその区間に MASS（R に同梱の推奨パッケージ）が要る","method = ""glm"", method.args = list(family = binomial), exponentiate = TRUE; the CI: profile likelihood in R, Wald in SAS; SAS models the lower level unless EVENT= is given (R models P(Y = 1)); with this setting the CI stays profile likelihood: args alone cannot make it Wald (write a tidy_fun); before R 4.4 that interval needs MASS (a recommended package, installed with R)","method = ""glm"", method.args = list(family = binomial), exponentiate = TRUE"
-cardx::ard_regression,sas,PROC PHREG,1,"method = ""coxph"", package = ""survival"", exponentiate = TRUE。SAS と合わせるには method.args = list(ties = ""breslow"")（R の既定は Efron）","method = ""coxph"", package = ""survival"", exponentiate = TRUE; method.args = list(ties = ""breslow"") matches SAS (R's default is Efron)","method = ""coxph"", package = ""survival"", method.args = list(ties = ""breslow""), exponentiate = TRUE"
+cardx::ard_regression,sas,PROC PHREG,1,"method = ""coxph"", package = ""survival"", exponentiate = TRUE。SAS と合わせるには method.args = list(ties = ""breslow"")（R のデフォルトは Efron）","method = ""coxph"", package = ""survival"", exponentiate = TRUE; method.args = list(ties = ""breslow"") matches SAS (R's default is Efron)","method = ""coxph"", package = ""survival"", method.args = list(ties = ""breslow""), exponentiate = TRUE"
 cardx::ard_regression,sas,PROC GENMOD,1,"method = ""glm"" と method.args = list(family = ...)。負の二項は method = ""glm.nb"", package = ""MASS""","method = ""glm"" with method.args = list(family = ...); negative binomial: method = ""glm.nb"", package = ""MASS""",
 cardx::ard_regression,sas,PROC MIXED,2,"MMRM は method = ""mmrm"", package = ""mmrm""（確認済み）。LSMEANS は ard_emmeans_*","MMRM: method = ""mmrm"", package = ""mmrm"" (checked); LSMEANS: ard_emmeans_*","method = ""mmrm"", package = ""mmrm"""
 cardx::ard_regression,r,lm,1,,,
@@ -490,7 +490,7 @@ cardx::ard_regression_basic,ja,ロジスティック回帰,2,係数だけの簡�
 cardx::ard_regression_basic,ja,オッズ比,2,係数だけの簡単な表,a simpler table of the coefficients only,
 cardx::ard_regression_basic,ja,ハザード比,2,係数だけの簡単な表,a simpler table of the coefficients only,
 cardx::ard_regression_basic,sas,PROC LOGISTIC,2,係数だけの簡単な表。区間は R が profile 尤度、SAS が Wald。SAS は EVENT= が無いと低い方の水準をモデル化する（R は 1 の確率）,"a simpler table of the coefficients only; the CI: profile likelihood in R, Wald in SAS; SAS models the lower level unless EVENT= is given (R models P(Y = 1))",
-cardx::ard_regression_basic,sas,PROC PHREG,2,"係数だけの簡単な表。SAS と合わせるには method.args = list(ties = ""breslow"")（R の既定は Efron）","a simpler table of the coefficients only; method.args = list(ties = ""breslow"") matches SAS (R's default is Efron)",
+cardx::ard_regression_basic,sas,PROC PHREG,2,"係数だけの簡単な表。SAS と合わせるには method.args = list(ties = ""breslow"")（R のデフォルトは Efron）","a simpler table of the coefficients only; method.args = list(ties = ""breslow"") matches SAS (R's default is Efron)",
 cardx::ard_emmeans_emmeans,en,LS means,1,,,
 cardx::ard_emmeans_emmeans,en,least-squares means,1,,,
 cardx::ard_emmeans_emmeans,en,lsmeans,1,,,
@@ -534,7 +534,7 @@ cardx::ard_car_anova,en,type 3 sums of squares,1,,,
 cardx::ard_car_anova,en,ANOVA table of a model,1,,,
 cardx::ard_car_anova,ja,タイプ III 平方和,1,,,
 cardx::ard_car_anova,ja,平方和,1,,,
-cardx::ard_car_anova,sas,PROC GLM SS3,1,"type = 3 は options(contrasts = c(""contr.sum"", ""contr.poly"")) と一緒に（既定の対比では SAS と違う）","type = 3 with options(contrasts = c(""contr.sum"", ""contr.poly"")) (with the default contrasts it differs from SAS)",
+cardx::ard_car_anova,sas,PROC GLM SS3,1,"type = 3 は options(contrasts = c(""contr.sum"", ""contr.poly"")) と一緒に（デフォルトの対比では SAS と違う）","type = 3 with options(contrasts = c(""contr.sum"", ""contr.poly"")) (with the default contrasts it differs from SAS)",
 cardx::ard_car_anova,r,car::Anova,1,,,
 cardx::ard_car_anova,r,Anova,1,,,
 cardx::ard_car_vif,en,VIF,1,,,
@@ -573,7 +573,7 @@ cardx::ard_survival_survfit,ja,生存期間,1,,,
 cardx::ard_survival_survfit,ja,全生存,1,,,
 cardx::ard_survival_survfit,ja,無増悪生存,1,,,
 cardx::ard_survival_survfit,ja,無イベント,1,,,
-cardx::ard_survival_survfit,sas,PROC LIFETEST,1,"SAS と合わせるには conf.type = ""log-log""（R の既定は ""log""）","conf.type = ""log-log"" matches SAS (R's default is ""log"")","method.args = list(conf.int = 0.95, conf.type = ""log-log"")"
+cardx::ard_survival_survfit,sas,PROC LIFETEST,1,"SAS と合わせるには conf.type = ""log-log""（R のデフォルトは ""log""）","conf.type = ""log-log"" matches SAS (R's default is ""log"")","method.args = list(conf.int = 0.95, conf.type = ""log-log"")"
 cardx::ard_survival_survfit,r,survfit,1,,,
 cardx::ard_survival_survfit_diff,en,difference in survival,1,,,
 cardx::ard_survival_survfit_diff,en,survival rate difference,1,,,

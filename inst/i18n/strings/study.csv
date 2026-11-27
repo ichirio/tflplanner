@@ -150,7 +150,7 @@
 "The ARD definition does not hold, so no ARD program was written (the rest is saved). See the Review tab.","ARD 定義が成り立たないため、ARD プログラムは書いていません（他は保存済み）。Review タブを見てください。"
 "To move it: close tflplanner, move the home folder, then run setup_tflplanner(home = ""<its new place>"") in R.","移すには：tflplanner を閉じ、ホームのフォルダを移してから、R で setup_tflplanner(home = ""<新しい場所>"") を実行します。"
 "This place cannot be set (nothing saved): the home %s is inside it.","この場所には設定できません（保存していません）。ホーム %s がこの中にあるためです。"
-"The study has no analyses in its ARD definition.","試験の ARD 定義に分析がありません。"
+"The study has no analyses in its ARD definition.","試験の ARD 定義に解析がありません。"
 "CDISC ARS: %s","CDISC ARS：%s"
 "CDISC (to exchange)","CDISC（交換用）"
 "siera (to run with siera)","siera（siera で実行する形）"
