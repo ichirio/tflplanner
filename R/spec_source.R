@@ -68,7 +68,7 @@
 # together), ard, lf, meta, or fig:<output_id>
 .spec_part_of <- function(file) {
   b <- basename(file)
-  # a file of the YAML spec (spec/*.yml, spec/outputs/, spec/patterns/):
+  # a file of the YAML spec (spec/*.yml, spec/outputs/):
   # the study is read whole
   yaml <- grepl("\\.ya?ml$", b) & b != .study_file &
     !grepl(paste0("(^|/)", .fig_design_dir, "/"), file)
@@ -86,11 +86,13 @@
 # planner and meta are what a part not read keeps).  Problems -- an error
 # or a warning of a reader -- are collected, not thrown: the result has
 # `problems` (file, sheet, row, message), and the parts with one are left
-# as `s` had them.
+# as `s` had them.  An error that is one of tflspec's old forms of the
+# SPEC (`tflspec_old_form`) also sets the attribute `old_form` (TRUE).
 .read_spec <- function(s, root, parts = c("books", "ard", "lf", "meta", "fig"),
                        books_needed = FALSE) {
   sp <- file.path(root, study_layout()[["spec"]])
   problems <- .spec_problems()
+  old_form <- FALSE
   p <- s$planner
   meta <- s$meta
   read <- function(file, expr) {
@@ -99,6 +101,7 @@
     out <- withCallingHandlers(
       tryCatch(expr, error = function(e) {
         errs <<- c(errs, conditionMessage(e))
+        if (inherits(e, "tflspec_old_form")) old_form <<- TRUE
         NULL
       }),
       warning = function(w) {
@@ -160,7 +163,18 @@
   s$planner <- p
   s$meta <- meta
   attr(s, "problems") <- problems
+  if (old_form) attr(s, "old_form") <- TRUE
   s
+}
+
+# The problems of an old form of the SPEC (`e`, tflspec's
+# `tflspec_old_form`) found in the study folder `root`: one row, its file
+# the place tflspec names (`e$where`, relative to the study folder)
+.old_form_problems <- function(e, root) {
+  w <- sub("^[A-Za-z_.]+\\(\\): ", "", as.character(e$where %||% .study_file)[1L])
+  r <- normalizePath(root, "/", mustWork = FALSE)
+  if (startsWith(w, paste0(r, "/"))) w <- substring(w, nchar(r) + 2L)
+  .spec_problems(w, conditionMessage(e))
 }
 
 # Problems as a table: file, sheet, row (from the message when it names
@@ -234,8 +248,16 @@
   changed <- diff$file[diff$status != "same"]
   if (!full && !length(changed)) {
     # (the files are what the state was saved as: the spec they hold, in
-    # step with the state's view)
-    s <- .spec_attach(s)
+    # step with the state's view.  One of an old form, which this tflspec
+    # no longer reads, is said as files that do not read are: the study
+    # open as last saved, and no save until they are changed)
+    a <- tryCatch(.spec_attach(s), tflspec_old_form = function(e) e)
+    if (inherits(a, "tflspec_old_form")) {
+      s$spec <- list(status = "invalid", files = diff, problems = .old_form_problems(a, s$path),
+                     old_form = TRUE)
+      return(s)
+    }
+    s <- a
     s$spec <- list(status = "same", files = diff)
     return(s)
   }
@@ -250,7 +272,8 @@
   problems <- attr(r, "problems")
   attr(r, "problems") <- NULL
   if (.has_errors(problems)) {
-    s$spec <- list(status = "invalid", files = diff, problems = problems)
+    s$spec <- list(status = "invalid", files = diff, problems = problems,
+                   old_form = isTRUE(attr(r, "old_form")))
     return(s)
   }
   # (compared with the saved study as its files say it: the YAML's own way

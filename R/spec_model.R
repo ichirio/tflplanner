@@ -3,7 +3,7 @@
 # a study carries, in `p$spec`:
 #
 #   study    the study's spec, tflspec::tfl_read_study_spec() (study.yml,
-#            data, defaults, patterns, toc)
+#            data, defaults, toc)
 #   outputs  the reports as their files say them (not resolved), a named
 #            list of tfl_output, by id
 #   text     every file's text (its lines), by its path relative to the
@@ -167,17 +167,13 @@
 
 # The study folder's spec put into a study's planner, in step with its
 # view (NULL spec when the folder has none or it does not read: the
-# planner is then written whole on save)
+# planner is then written whole on save).  An old form of the SPEC
+# (tflspec's `tflspec_old_form`: a study.yml with no spec_version, a
+# pattern file ...) is not a spec that does not read: it stops, and says
+# what to write instead (.adopt_spec() shows it as a read error).
 .spec_attach <- function(s) {
-  sp <- tryCatch(.spec_load(s$path), error = function(e) NULL)
+  sp <- tryCatch(.spec_load(s$path), error = .old_form_reraise)
   s$planner$spec <- sp
-  # (a state saved before the marker rows had none for a pattern with no
-  # page rows, and the report sheet then refuses the pattern)
-  for (nm in names(sp$study$patterns)) {
-    if (!.pattern_in_view(s$planner, paste0("@", nm))) {
-      s$planner <- .pattern_marker(s$planner, paste0("@", nm))
-    }
-  }
   # (a report's list that is one of the study's: its rows as the study's
   # lists are now -- spec/defaults.yml read again, R/codelist_refs.R)
   s$planner <- .spec_codelist_refs(s$planner)
@@ -208,7 +204,7 @@
 # only -- tfl_yaml_from_sheets() writes them nowhere else -- so a change to
 # them is bridged without the reports' rows (#749: a title edit bridged all
 # the reports twice).  The folder holds the rest the bridge wrote of the
-# study (data, defaults, patterns, toc), for .spec_load().
+# study (data, defaults, toc), for .spec_load().
 .spec_bridge_study <- function(body, meta, style = NULL, codelists = NULL) {
   sh <- .planner_sheets(body, meta, style, codelists)
   own <- function(d) {
@@ -283,16 +279,20 @@
   stats::setNames(lapply(seq_along(top), function(i) lines[top[i]:ends[i]]), keys)
 }
 
-# Which part of the spec a file is: study, data, defaults, toc,
-# pattern (its name) or output
+# Which part of the spec a file is: study, data, defaults, toc or output
 .spec_part <- function(rel) {
   sp <- study_layout()[["spec"]]
   if (identical(rel, .study_file)) return(list(kind = "study"))
   if (startsWith(rel, paste0(sp, "/outputs/"))) return(list(kind = "output"))
-  if (startsWith(rel, paste0(sp, "/patterns/"))) {
-    return(list(kind = "pattern", name = tools::file_path_sans_ext(basename(rel))))
-  }
   list(kind = tools::file_path_sans_ext(basename(rel)))
+}
+
+# An error caught where a read may fail quietly (NULL): one of tflspec's
+# old forms (`tflspec_old_form`) is raised again, for the user to see what
+# to write instead; any other gives NULL
+.old_form_reraise <- function(e) {
+  if (inherits(e, "tflspec_old_form")) stop(e)
+  NULL
 }
 
 # The edits of the view taken into the spec.  `meta`: the study's fields
@@ -450,7 +450,7 @@
       st <- NULL
       function() {
         if (is.null(st) && !is.null(was)) {
-          st <<- tryCatch(tflspec::tfl_read_study_spec(was$dir), error = function(e) NULL)
+          st <<- tryCatch(tflspec::tfl_read_study_spec(was$dir), error = .old_form_reraise)
         }
         st
       }
@@ -475,19 +475,6 @@
             sp$where[[id]] <- r
           }
           if (!is.null(kept$text)) sp$text[[r]] <- kept$text
-        },
-        pattern = {
-          nm <- part$name
-          # (a pattern renamed in the view is new here, and the old one gone)
-          from <- .renamed_from(p$spec$study$patterns, was_study()$patterns, new$study$patterns, nm)
-          mine <- new$study$patterns[[nm]]
-          if (!is.null(from)) {
-            mine <- .keep_layer_keys(p$spec$study$patterns[[from]], was_study()$patterns[[from]], mine)
-          }
-          if (is.null(mine)) sp$study$patterns[[nm]] <- NULL else sp$study$patterns[[nm]] <- mine
-          if (!identical(mine, new$study$patterns[[nm]])) {
-            sp$text[[r]] <- .study_part_lines(sp$study, "patterns", nm)
-          }
         },
         study = {
           # study.yml as the writer writes it, with every key of the spec's
@@ -555,8 +542,8 @@
   st[!vapply(st, function(v) is.null(v) || !length(v) || is.na(v[1L]), NA)]
 }
 
-# The pattern of the spec that `name` is: itself, or (a name new here) the
-# one gone with the same page, when there is exactly one (rename_page_pattern()
+# The page configuration of the spec that `name` is: itself, or (a name new
+# here) the one gone with the same page, when there is exactly one (rename_page_pattern()
 # changes the name in the sheets).  NULL: none.
 .renamed_from <- function(spec, was, now, name) {
   if (!is.null(spec[[name]])) return(name)
@@ -565,7 +552,7 @@
   if (length(gone) == 1L && !is.null(now[[name]])) gone else NULL
 }
 
-# A layer (the defaults, a pattern) as the sheets give it (`now`) with what
+# A layer (the defaults) as the sheets give it (`now`) with what
 # the edits did not touch kept as the spec (`spec`) has it: the bridge gives
 # the page and little else (code lists, data ... empty; content as rows, and
 # an item the rows cannot say is lost), so a key whose bridge value is the
@@ -589,8 +576,8 @@
 # stay as the spec has them.
 .keep_style_sets <- function(spec, was, now) {
   out <- spec %||% list()
-  # (a configuration renamed in the view is new here and the old one gone, as
-  # for a pattern: its set, content half and all, goes to the new name)
+  # (a configuration renamed in the view is new here and the old one gone:
+  # its set, content half and all, goes to the new name)
   for (nm in setdiff(names(now), names(was))) {
     from <- .renamed_from(out, was, now, nm)
     if (is.null(from) || identical(from, nm)) next
@@ -755,7 +742,7 @@
     }
     files[nrow(files) + 1L, ] <- list(to, if (same) "unchanged" else "written")
   }
-  # a report's (or a pattern's) file no longer in the definition
+  # a report's file no longer in the definition
   for (r in setdiff(.spec_files_yaml(root), c(names(text), .study_file))) {
     if (isTRUE(own(r))) {
       unlink(file.path(root, r))
@@ -795,7 +782,7 @@
 # A report's content items as the program has them: its file's over the
 # layers it extends (tflspec::tfl_resolve_output(provenance = TRUE)), each
 # item with `arg_from` (where each argument comes from: "own", "defaults",
-# "pattern:<name>") and `below` (the same verb's item without the
+# "style:<name>" ...) and `below` (the same verb's item without the
 # report's own: what a revert goes back to); `own` the report's own items.
 # NULL: the planner has no spec or edits of its sheets not yet in it (the
 # program is then written from the sheets: .code_spec()), the spec has no
@@ -970,8 +957,8 @@
 }
 
 # One report's rows of the view made again from the spec, and the base
-# with them.  Only that report is bridged (the study's defaults and
-# patterns, which give no row of the report's, left out: .spec_study_lean()),
+# with them.  Only that report is bridged (the study's defaults, which
+# give no row of the report's, left out: .spec_study_lean()),
 # only its sheets whose rows changed are set, and the base -- the view as
 # the spec was last in step with it, as it is before an edit here -- is the
 # view again (#417: a card's save in well under a second).
@@ -1052,7 +1039,7 @@
 }
 
 # The study's spec with no rows of its own for the bridge to make: its
-# defaults' and patterns' content and page (a report's rows are its own).
+# defaults' content and page (a report's rows are its own).
 # A template report among `outputs` keeps the defaults: its template
 # extends them (tflspec#779), so they give rows of the report's own -- left
 # out, its rows would differ from the ones the files give.
@@ -1060,7 +1047,6 @@
   if (is.null(study)) return(study)
   tpl <- any(vapply(outputs, function(o) !is.null(o$template), logical(1L)))
   if (!tpl && !is.null(study$defaults)) study$defaults[c("content", "page")] <- list(NULL)
-  study$patterns <- list()
   study
 }
 
