@@ -65,7 +65,7 @@
 "TOC: %s (header on row %d), %d rows","TOC：%s（見出しは %d 行目）、%d 行"
 "shells: %d sheets","シェル：%d シート"
 "Topline sheet: %s (a cross-check)","Topline シート：%s（照合用）"
-"%s: %d of %d items","%s：%3$d 項目中 %2$d"
+"%s: %d of %d items","%1$s：%3$d 項目中 %2$d"
 "the ID column as it is","ID の列をそのまま"
 "the ID column, normalised","ID の列を整えて"
 "type column + number column","種類の列 + 番号の列"

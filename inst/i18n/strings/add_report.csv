@@ -4,7 +4,7 @@
 "Required arguments","必須の引数"
 "Choose a template","テンプレートを選んでください"
 "Fill in the required argument %s.","必須の引数 %s を入れてください。"
-"A template report needs the study's YAML spec (save the study first).","テンプレートの帳票には試験の YAML の Spec が要ります（先に試験を保存してください）。"
+"A template report needs the study's YAML spec (save the study first).","テンプレートの帳票には試験の YAML の SPEC が要ります（先に試験を保存してください）。"
 "Back to the default (the line is taken out of args)","デフォルト値に戻す（args からこの行を消します）"
 "Required arguments are empty: %s. The preview waits for them.","必須の引数が空です: %s。入れるまでプレビューは作りません。"
 "Saved in spec/outputs/%s.yml as template: name and its args only.","spec/outputs/%s.yml には template: の名前と引数だけを書きます。"
