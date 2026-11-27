@@ -195,7 +195,7 @@ test_that("a stored path: a relative one kept as it is, one outside the study ab
   d <- withr_tempdir()
   expect_identical(.ai_path_store(c("docs/toc.xlsx", "", NA), d), "docs/toc.xlsx")
   out <- file.path(withr_tempdir(), "toc.xlsx")
-  expect_identical(.ai_path_store(out, d), out)
+  expect_identical(.ai_path_store(out, d), gsub("\\\\", "/", out))
   expect_identical(.ai_path_store(file.path(d, "docs", "toc.xlsx"), d), "docs/toc.xlsx")
 })
 
