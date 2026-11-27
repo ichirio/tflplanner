@@ -898,15 +898,21 @@ test_that("Create for a figure template with a shown `population`: the set on th
     expect_false(grepl("join", txt, fixed = TRUE))
     toc <- Filter(function(e) identical(e$id, "F-FP-1"), rv$p$spec$study$toc$outputs)
     expect_identical(toc[[1L]]$population, "SAF")
-    # (a table's set: its template's argument, never `common:` -- A2-T)
+    # (a table's set: its template's argument, never `common:` -- A2-T.
+    # SAF is demog's own default, so it is not written: the template holds
+    # it (canon 11-15 (1), L463); the toc line says it)
     session$setInputs(add = 2, modal_type = "table", modal_how = "template", modal_tpl_table = "demog",
                       modal_id = "FP-2", modal_desc = "", modal_section = "",
                       mtpl_demog__population = "SAF", mtpl_demog__by = "TRT01A",
                       mtpl_demog__continuous = "AGE")
     suppressMessages(session$setInputs(add_ok = 2))
-    expect_identical(add_args(rv$p, "T-FP-2")$population, "SAF")
-    expect_null(rv$p$spec$outputs[["T-FP-2"]]$common)
-    expect_null(rv$p$spec$outputs[["T-FP-2"]]$data$population)
+    o2 <- rv$p$spec$outputs[["T-FP-2"]]
+    expect_null(add_args(rv$p, "T-FP-2")$population)
+    expect_null(o2$common$population)
+    expect_null(o2$data$population)
+    expect_identical(tflspec::tfl_report_set(o2, rv$p$spec$study), "SAF")
+    toc2 <- Filter(function(e) identical(e$id, "T-FP-2"), rv$p$spec$study$toc$outputs)
+    expect_identical(toc2[[1L]]$population, "SAF")
   })
 })
 
