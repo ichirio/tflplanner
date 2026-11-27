@@ -30,7 +30,7 @@
 "Hazard ratio by subgroup (forest plot)","フォレストプロット（部分集団別のハザード比）"
 "Kaplan-Meier curves by group","群別の Kaplan-Meier 曲線"
 "Kaplan-Meier survival curves with a risk table","Kaplan-Meier 生存曲線（リスク集合の表つき）"
-"Cumulative incidence (1 - KM)","累積発現率（1 - KM）"
+"Cumulative incidence (1 - KM)","累積発生率（1 - KM）"
 "Mean by visit with its CI","来院別の平均と信頼区間"
 "Mean by visit with its SE","来院別の平均と標準誤差"
 "Waterfall plot","ウォーターフォールプロット"
