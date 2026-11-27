@@ -241,12 +241,12 @@ test_that("a report's file with the template and arguments set, in the template'
   skip_on_cran()
   p <- tpl_sample_planner()
   p <- .spec_add_output(p, tpl_demog_output(), population = "SAF")
-  o <- .tpl_output(p, "T-99", list(zzz = 1, population = "FAS"), name = "disposition")
+  o <- .tpl_output(p, "T-99", list(zzz = 1, population = "ENR"), name = "disposition")
   expect_identical(o$template$name, "disposition")
   # (the analysis set is the template's argument, A2-T: the report's old
   # `common: population` goes, the set written once)
   expect_identical(names(o$template$args), c("population", "zzz"))
-  expect_identical(o$template$args$population, "FAS")
+  expect_identical(o$template$args$population, "ENR")
   expect_null(o$common)
   # the name kept when none is given
   expect_identical(.tpl_output(p, "T-99", list())$template$name, "demog")
