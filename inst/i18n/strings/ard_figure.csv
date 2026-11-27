@@ -1,5 +1,5 @@
 "en","ja"
-"Inherited from the study defaults (%d rows; edit them under Study defaults)","試験共通のデフォルトから引き継ぐ行（%d 行。編集は「試験共通のデフォルト」で）"
+"Inherited from the study defaults (%d rows; edit them under Study defaults)","試験標準から引き継ぐ行（%d 行。編集は「試験標準」で）"
 "%s is a %s: the table definition is for Tables (a %s is made in its data code).","%s は %s です。Table の定義は Table 用です（%s はデータ準備コードで作ります）。"
 "Choose a report on the left to fill its rows from its ARD and from presets.","左で帳票を選ぶと、ARD やプリセットから行を埋められます。"
 "Fill variables and levels","変数と水準を埋める"

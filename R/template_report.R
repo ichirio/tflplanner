@@ -770,10 +770,10 @@
 # What an input gives, as the argument's value (NULL: none -- the default)
 .tpl_value <- function(v, type, prm = NULL) {
   if (is.null(v)) return(NULL)
-  # ("(none)" on an argument that may be left out: `!unset`; among other
+  # ("(none)" on an argument that may be left out, .tpl_none_ok(): `!unset`; among other
   # items of a many-valued field it is just not one of them)
   # (in any language: "(none)", "\uff08\u306a\u3057\uff09")
-  nn <- is.character(v) && !isTRUE(prm$required) && any(trimws(v) %in% .none_texts())
+  nn <- is.character(v) && .tpl_none_ok(prm) && any(trimws(v) %in% .none_texts())
   if (nn) {
     if (length(v) == 1L) return(tflspec::tfl_unset())
     v <- v[!trimws(v) %in% .none_texts()]
@@ -844,7 +844,7 @@
   if (is.null(raw)) return(NULL)
   if (identical(type, "list") && is.null(.tpl_list_text(shown, prm))) {
     txt <- paste(as.character(raw), collapse = "\n")
-    if (!isTRUE(prm$required) && trimws(txt) %in% .none_texts()) return(tflspec::tfl_unset())
+    if (.tpl_none_ok(prm) && trimws(txt) %in% .none_texts()) return(tflspec::tfl_unset())
     v <- .tpl_yaml_read(txt)
   } else {
     v <- .tpl_value(raw, type, prm)
