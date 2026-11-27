@@ -242,7 +242,9 @@ test_that("a template card: an edit is written, a value just replaced is not an 
     suppressMessages(session$setInputs(add_ok = 1))
     session$setInputs(target = "T-ZZ-6", nav = "make", step = "content", content_nav = "content")
     invisible(suppressMessages(output$tpl_card$html))
-    expect_identical(add_args(rv$p, "T-ZZ-6"), list(population = "SAF"))
+    # (a table template's `by` has no default: the report writes it)
+    rv$p$spec$outputs[["T-ZZ-6"]]$template$args$by <- "TRT01A"
+    expect_identical(add_args(rv$p, "T-ZZ-6"), list(population = "SAF", by = "TRT01A"))
     # a choice: written when it differs from the template's default ("none")
     session$setInputs(tpl_shift__split = "group_safe")
     expect_identical(add_args(rv$p, "T-ZZ-6")$split, "group_safe")
@@ -255,10 +257,10 @@ test_that("a template card: an edit is written, a value just replaced is not an 
     session$setInputs(tpl_shift__analysis_id = "A1")
     expect_identical(add_args(rv$p, "T-ZZ-6")$analysis_id, "A1")
     session$setInputs(tpl_revert = "analysis_id")
-    expect_identical(add_args(rv$p, "T-ZZ-6"), list(population = "SAF"))
+    expect_identical(add_args(rv$p, "T-ZZ-6"), list(population = "SAF", by = "TRT01A"))
     # Revert of an argument the report does not give, an empty field for one it does not give: nothing
     session$setInputs(tpl_revert = "total", tpl_shift__post_header = "")
-    expect_identical(add_args(rv$p, "T-ZZ-6"), list(population = "SAF"))
+    expect_identical(add_args(rv$p, "T-ZZ-6"), list(population = "SAF", by = "TRT01A"))
     # a header text with no {col}, or with braces that do not match: kept, and warned about
     n0 <- length(shown$notes)
     session$setInputs(tpl_shift__post_header = "no col here")
@@ -284,6 +286,7 @@ test_that("a template card: an edit is written, a value just replaced is not an 
     # (the set is no argument kept or dropped: the report's, kept -- review M12)
     expect_match(dlg, "Analysis set SAF: the report's, kept", fixed = TRUE)
     expect_false(grepl("Arguments kept:[^.]*population", dlg))
+    expect_match(dlg, "Arguments kept: [^.]*by")
     expect_match(dlg, "Arguments dropped: analysis_id", fixed = TRUE)
     # (nothing is written before OK)
     expect_identical(.tpl_of(rv$p, "T-ZZ-6")$name, "shift")
@@ -292,6 +295,7 @@ test_that("a template card: an edit is written, a value just replaced is not an 
     suppressWarnings(session$setInputs(tpl_switch_ok = 1))
     expect_identical(.tpl_of(rv$p, "T-ZZ-6")$name, to)
     expect_identical(.tpl_of(rv$p, "T-ZZ-6")$args$population, "SAF")
+    expect_identical(.tpl_of(rv$p, "T-ZZ-6")$args$by, "TRT01A")
     expect_identical(.o_population(rv$p$spec$outputs[["T-ZZ-6"]]), "SAF")
     expect_null(add_args(rv$p, "T-ZZ-6")$analysis_id)
   })
@@ -592,6 +596,7 @@ test_that("a switch to demog and back keeps the report's set by one rule, as the
     suppressMessages(session$setInputs(add_ok = 1))
     session$setInputs(target = "T-ZZ-7", nav = "make", step = "content", content_nav = "content")
     invisible(suppressMessages(output$tpl_card$html))
+    rv$p$spec$outputs[["T-ZZ-7"]]$template$args$by <- "TRT01A"
     session$setInputs(tpl_switch = "demog")
     dlg <- add_text(add_modal(shown))
     expect_match(dlg, "Analysis set SAF: the report's, kept", fixed = TRUE)

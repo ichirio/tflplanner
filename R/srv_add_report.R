@@ -298,7 +298,8 @@
     shiny::uiOutput("tpl_modal_more"))
   }
   # the dialog's required arguments of a template, for the dataset `ds` (NULL:
-  # the template's default); the study's value first: its treatment for `by`
+  # the template's default); the study's value first (a table's `by` has none:
+  # the planner only suggests settings.treatment, in grey)
   tpl_req_widgets <- function(nm, ds = NULL) {
     prm_all <- .tpl_params(nm)
     prm <- .tpl_shown(prm_all)

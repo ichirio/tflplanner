@@ -1103,8 +1103,8 @@
 .tpl_missing <- function(name, args, study = NULL) {
   prm <- .tpl_shown(.tpl_params(name))
   req <- names(prm)[vapply(prm, function(x) isTRUE(x$required), NA)]
-  # (a required argument the study gives -- its treatment for `by` -- is
-  # not empty: tflspec fills it)
+  # (a required argument the study gives -- not `by`, whose treatment is a
+  # grey suggestion only -- is not empty: tflspec fills it)
   given <- function(a) {
     v <- args[[a]] %||% if (!is.null(study)) .tpl_study_value(study, prm[[a]])
     length(v) > 0L && any(nzchar(as.character(v)))
