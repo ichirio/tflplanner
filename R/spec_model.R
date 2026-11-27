@@ -493,6 +493,9 @@
           mine <- new$study[[part$kind]]
           styles_kept <- FALSE
           if (identical(part$kind, "defaults")) {
+            # (the study's force -- the rounding, the study sheet's key
+            # `rounding` -- is the bridge's: the view holds it whole)
+            sp$study["force"] <- list(new$study$force %||% list())
             mine <- .keep_layer_keys(sp$study$defaults, was_study()$defaults, mine)
             # (the page configurations: the sheets' blank rows are the
             # study's default one, the bridge's `standard`; the others and the
@@ -875,29 +878,40 @@
   .spec_set_output(p, output_id, o, content_only = TRUE)
 }
 
-# The study's rounding -- plan_digits(rounding = ) of the study's defaults,
-# every report's -- written straight into its defaults.yml
+# The study's rounding, forced on every report (canon 1.33): defaults.yml's
+# `force:` (study$force, its one plan_digits(rounding = ) item), "sas" or
+# "r"; NA when the study forces none (options(rtfreporter.rounding)).  A
+# planner with no spec yet: the view's study key (the study sheet's
+# `rounding`, which the bridge writes to `force:`).
+.forced_rounding <- function(p) {
+  if (!is.null(p$spec$study)) {
+    for (it in p$spec$study$force$content %||% list()) {
+      r <- it$args$rounding
+      if (identical(as.character(it$fn), "plan_digits") && length(r) == 1L) return(as.character(r))
+    }
+    return(NA_character_)
+  }
+  r <- unname(p$study[["rounding"]] %||% NA_character_)
+  if (length(r) == 1L && !is.na(r) && nzchar(r)) as.character(r) else NA_character_
+}
+
+# The study's rounding set: defaults.yml's `force:` (study$force; NA: none,
+# options(rtfreporter.rounding)), written straight into its defaults.yml
 # (tflspec::tfl_write_study_part()), and the view's study row with it, in
-# the view and in the base (NA: none, options(rtfreporter.rounding))
+# the view and in the base.  Never study.yml's settings, never a card of
+# the defaults' content (both are old forms that stop, canon 11-10 :369).
 .spec_set_rounding <- function(p, value) {
   v <- if (length(value) == 1L && !is.na(value) && nzchar(value)) as.character(value) else NA_character_
+  if (!is.na(v) && !v %in% c("sas", "r")) {
+    stop("The study's rounding is \"sas\" or \"r\" (spec/defaults.yml `force:`), not \"", v, "\".",
+         call. = FALSE)
+  }
   p <- .spec_ensure(p)
   p <- .spec_sync(p, p$spec$meta)
   attr(p, "changed") <- NULL
   sp <- p$spec
-  d <- sp$study$defaults %||% list()
-  content <- d$content %||% list()
-  at <- which(.content_fns(content) == "plan_digits")
-  if (length(at)) {
-    it <- content[[at[1L]]]
-    it$args$rounding <- if (is.na(v)) NULL else v
-    if (length(it$args)) content[[at[1L]]] <- it else content[at[1L]] <- NULL
-  } else if (!is.na(v)) {
-    content <- .content_put(content, "plan_digits", 1L,
-                            tflspec::tfl_item("plan_digits", list(rounding = v)))
-  }
-  d$content <- content
-  sp$study$defaults <- d
+  sp$study$force <- if (is.na(v)) list() else
+    list(content = list(tflspec::tfl_item("plan_digits", list(rounding = v), "force")))
   rel <- file.path(study_layout()[["spec"]], "defaults.yml")
   f <- tempfile("tflplanner-defaults", fileext = ".yml")
   on.exit(unlink(f), add = TRUE)

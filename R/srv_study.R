@@ -1437,7 +1437,7 @@
     }
     rv$ver
     m <- shiny::isolate(rv$meta)
-    r <- shiny::isolate(rv$p$study[["rounding"]])
+    r <- .forced_rounding(shiny::isolate(rv$p))
     v <- function(x) if (is.na(x)) "" else x
     shiny::tagList(
       shiny::p(shiny::strong(m$study_id), shiny::br(),
@@ -1460,10 +1460,15 @@
       shiny::textAreaInput(updateOn = "blur", "m_description", with_token(t("Description"), "STUDY_DESCRIPTION"),
                            v(m$description), width = "100%")),
       .study_section("every", t("Every report"), open = TRUE,
+      # (the study's rounding, forced on every report: defaults.yml
+      # `force:`, canon 1.33 -- the builder's plan_digits() card shows it
+      # locked)
       shiny::selectInput(
-        "rounding", t("Rounding"),
+        "rounding",
+        with_tip(t("Rounding"),
+                 t("The study's rounding, forced on every report and its ARD (spec/defaults.yml force:): a report's own rounding is not used. Blank: none forced, options(rtfreporter.rounding).")),
         stats::setNames(c("", "r", "sas"),
-                        t(c("As options(rtfreporter.rounding)",
+                        t(c("None forced: options(rtfreporter.rounding)",
                             "r (half to even)", "sas (half away from zero)"))),
         selected = v(r)),
       # (chosen from ADSL's variables, or typed: written when chosen, not
@@ -1618,11 +1623,17 @@
       rv$p <- set_study_page_value(rv$p, "font_size_half_points", hp)
     }
   }, ignoreInit = TRUE)
+  # the study's rounding: defaults.yml's `force:` (a study with no spec
+  # yet: its study sheet's key, which the bridge writes there)
   shiny::observeEvent(input$rounding, {
     v <- if (nzchar(input$rounding)) input$rounding else NA_character_
-    if (!identical(unname(rv$p$study[["rounding"]]), v)) {
+    if (identical(.forced_rounding(rv$p), v)) return()
+    if (is.null(rv$p$spec)) {
       rv$p$study[["rounding"]] <- v
+      return()
     }
+    p2 <- guarded(.spec_set_rounding(rv$p, v))
+    if (!is.null(p2)) rv$p <- p2
   }, ignoreInit = TRUE)
   # the treatment variable: study.yml's settings: treatment: (blank: none)
   shiny::observeEvent(input$study_treatment, {

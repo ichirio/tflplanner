@@ -483,10 +483,11 @@ test_that("the builder's cells and decimals are plan_cells(); the rounding the s
   st4$value <- "stat_fmt"
   q <- builder_write(p, id, st4, was = st)
   expect_identical(cells(q)$value, "stat_fmt")
-  # the rounding: the study's defaults.yml only, every report's
+  # the rounding: the study's defaults.yml `force:` only, every report's
   q <- .spec_set_rounding(p, "r")
   expect_identical(changed_files(p$spec$text, q$spec$text), "spec/defaults.yml")
   expect_identical(unname(q$study[["rounding"]]), "r")
+  expect_identical(.forced_rounding(q), "r")
   expect_false(is.null(.spec_items(q, id)))
   # (said once, in study_setup.R's part 2, which every program sources; no
   # report's program, and not report_setup.R again)
@@ -494,12 +495,79 @@ test_that("the builder's cells and decimals are plan_cells(); the rounding the s
                         study_setup_code(list(), study = .study_rounding_source(q)),
                         fixed = TRUE)))
   expect_false(any(grepl("rounding = \"r\"", program_code(q, "T-14-3-1"), fixed = TRUE)))
-  expect_identical(.spec_set_rounding(q, "sas")$spec$text, p$spec$text)
-  # the card's write of it: the same
-  pd <- .builder_args(builder_items(p, id), "plan_digits")
-  q <- .builder_item_write(p, id, "plan_digits", utils::modifyList(pd, list(rounding = "r")))
-  expect_identical(changed_files(p$spec$text, q$spec$text), "spec/defaults.yml")
-  expect_match(as.character(.rounding_field("n", "sas")), "Applies to every report", fixed = TRUE)
+  # back to sas: the files as they were (the sample's force: as the writer writes it)
+  q2 <- .spec_set_rounding(q, "sas")
+  expect_identical(.forced_rounding(q2), "sas")
+  expect_identical(q2$spec$text, p$spec$text)
+  # the card's write of a rounding: no change of the study's (the card has
+  # no shortcut to defaults.yml), nor of the report's (the sample's reports
+  # have no plan_digits() card of the study's now: its only argument was
+  # the rounding)
+  expect_null(.builder_args(builder_items(p, id), "plan_digits"))
+  q <- .builder_item_write(p, id, "plan_digits", list(continuous = list(mean = 1L), rounding = "r"))
+  expect_identical(changed_files(p$spec$text, q$spec$text), rel)
+  expect_identical(.builder_args(builder_items(q, id), "plan_digits"), list(continuous = list(mean = 1L)))
+  expect_identical(.forced_rounding(q), "sas")
+  expect_match(as.character(.rounding_field("n", "sas")), "Study standard (forced)", fixed = TRUE)
+})
+
+test_that(".spec_set_rounding() writes defaults.yml `force:`, never study.yml or a content card (canon 1.33)", {
+  skip_on_cran()
+  s <- model_sample()
+  p <- s$planner
+  dflt <- "spec/defaults.yml"
+  q <- .spec_set_rounding(p, "r")
+  expect_identical(changed_files(p$spec$text, q$spec$text), dflt)
+  y <- yaml::yaml.load(paste(q$spec$text[[dflt]], collapse = "\n"))
+  expect_identical(y$force, list(content = list(list(plan_digits = list(rounding = "r")))))
+  # no plan_digits(rounding) card in the study's content; study.yml as it was
+  rd <- vapply(y$content, function(it) !is.null(it$plan_digits$rounding), NA)
+  expect_false(any(rd))
+  expect_identical(q$spec$text[["study.yml"]], p$spec$text[["study.yml"]])
+  expect_null(yaml::yaml.load(paste(q$spec$text[["study.yml"]], collapse = "\n"))$settings$rounding)
+  # the other blocks of the file kept (codelists:, adam_meta: ...), force: once
+  top <- function(x) sub(":.*$", "", grep("^[A-Za-z_]+:", x, value = TRUE))
+  expect_identical(sort(top(q$spec$text[[dflt]])), sort(top(p$spec$text[[dflt]])))
+  expect_identical(sum(q$spec$text[[dflt]] == "force:"), 1L)
+  # none: no force: block; the reports' setups write no options() then
+  n <- .spec_set_rounding(q, NA)
+  expect_false("force" %in% top(n$spec$text[[dflt]]))
+  expect_identical(.forced_rounding(n), NA_character_)
+  expect_identical(n$spec$study$force, list())
+  expect_false(any(grepl("rtfreporter.rounding", study_setup_code(list(), study = .study_rounding_source(n)),
+                         fixed = TRUE)))
+  # only sas or r
+  expect_error(.spec_set_rounding(p, "iec60559"), "\"sas\" or \"r\"")
+  # saved and opened again: the force read back, study.yml without it
+  home <- getOption("tflplanner.home")
+  s$planner <- q
+  s2 <- suppressMessages(save_study(s, home = home))
+  expect_identical(tflspec::tfl_read_study_spec(s2$path)$force$content[[1L]]$args$rounding, "r")
+  expect_null(yaml::read_yaml(file.path(s2$path, "study.yml"))$settings$rounding)
+  s3 <- suppressMessages(open_study("SAMPLE-01", home = home))
+  expect_identical(.forced_rounding(s3$planner), "r")
+  expect_identical(unname(s3$planner$study[["rounding"]]), "r")
+})
+
+test_that("the study sheet's rounding key (the view) goes to defaults.yml `force:` through the bridge", {
+  skip_on_cran()
+  s <- model_sample()
+  home <- getOption("tflplanner.home")
+  s <- suppressMessages(open_study("SAMPLE-01", home = home))
+  m0 <- spec_md5(s$path)
+  s$planner$study[["rounding"]] <- "r"
+  s <- suppressMessages(save_study(s, home = home))
+  expect_identical(changed_files(m0, spec_md5(s$path)), "spec/defaults.yml")
+  expect_identical(tflspec::tfl_read_study_spec(s$path)$force$content[[1L]]$args$rounding, "r")
+  d <- readLines(file.path(s$path, "spec", "defaults.yml"), encoding = "UTF-8")
+  expect_identical(sum(d == "force:"), 1L)
+  expect_false(any(grepl("rounding: sas", d, fixed = TRUE)))
+  expect_identical(.forced_rounding(s$planner), "r")
+  # blank: no force: left
+  s$planner$study[["rounding"]] <- NA_character_
+  s <- suppressMessages(save_study(s, home = home))
+  expect_length(tflspec::tfl_read_study_spec(s$path)$force, 0L)
+  expect_false(any(readLines(file.path(s$path, "spec", "defaults.yml")) == "force:"))
 })
 
 test_that("the builder's header, order and pages are plan_col_header(), plan_sort(), plan_paginate_group() (#417)", {
@@ -609,7 +677,7 @@ test_that("a save merges what another session saved since; nothing saved since, 
   expect_true(any(grepl("overall: Any event", readLines(file.path(a4$path, "spec/outputs/T-14-3-1.yml")), fixed = TRUE)))
 })
 
-test_that("the rounding on plan_digits()' card: the study's defaults.yml, back and forth, no error (#417)", {
+test_that("the rounding: locked on plan_digits()' card, chosen on the Study tab into defaults.yml force:, back and forth (#417, canon 1.33)", {
   skip_on_cran()
   s <- model_sample()
   ard <- cards::ard_stack(cards::ADSL, .by = TRT01A, cards::ard_continuous(variables = AGE),
@@ -619,6 +687,10 @@ test_that("the rounding on plan_digits()' card: the study's defaults.yml, back a
   dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
   saveRDS(ard_meta(ard, data), f)
   saveRDS(data, sub("[.]rds$", "_data.rds", f))
+  # (the report's own plan_digits() card: the sample's study has none now)
+  s$planner <- .builder_item_write(s$planner, "T-14-1-1", "plan_digits",
+                                   list(continuous = list(mean = 1L, sd = 2L)))
+  s <- suppressMessages(save_study(s, home = getOption("tflplanner.home")))
   rel <- file.path(s$path, "spec", "defaults.yml")
   d0 <- readLines(rel)
   shiny::testServer(server_for("SAMPLE-01"), {
@@ -627,18 +699,24 @@ test_that("the rounding on plan_digits()' card: the study's defaults.yml, back a
     session$setInputs(target = "T-14-1-1", nav = "make", step = "content",
                       content_nav = "content", table_nav = "builder")
     session$elapse(1000)
-    expect_true(grepl("_card_plan_digits__rounding", output$builder_form$html, fixed = TRUE))
-    id <- paste0("b", bf$n, "_card_plan_digits__rounding")
+    h <- output$builder_form$html
+    # the card shows the forced rounding, locked: no input of it
+    fid <- paste0("b", bf$n, "_card_plan_digits__rounding")
+    expect_true(grepl(sprintf('data-field="%s"', fid), h, fixed = TRUE))
+    expect_false(grepl(sprintf('id="%s"', fid), h, fixed = TRUE))
+    expect_true(grepl("rp-field-locked", h, fixed = TRUE))
+    expect_true(grepl('data-from="force"', h, fixed = TRUE))
+    # chosen on the Study tab: the study's force
     for (v in c("r", "sas", "r")) {
-      a <- list()
-      a[[id]] <- v
-      do.call(session$setInputs, a)
+      session$setInputs(rounding = v)
       session$elapse(3000)
+      expect_identical(.forced_rounding(rv$p), v)
       expect_identical(unname(rv$p$study[["rounding"]]), v)
     }
     session$setInputs(save = 1)
-    expect_identical(setdiff(readLines(rel), d0), "      rounding: r")
+    expect_identical(setdiff(readLines(rel), d0), "        rounding: r")
     expect_identical(length(readLines(rel)), length(d0))
+    expect_identical(tflspec::tfl_read_study_spec(s$path)$force$content[[1L]]$args$rounding, "r")
   })
 })
 
@@ -685,7 +763,8 @@ test_that("the treatment variable is study.yml's settings: treatment: (#444)", {
   expect_identical(changed_files(m0, spec_md5(s$path)), "study.yml")
   y <- yaml::read_yaml(file.path(s$path, "study.yml"))
   expect_identical(y$settings$treatment, "TRT01P")
-  expect_identical(y$settings$rounding, "sas")
+  # (the rounding is not study.yml's: defaults.yml force:)
+  expect_null(y$settings$rounding)
   expect_null(y$treatment)
   # tflspec reads it (a template's by / group)
   expect_identical(tflspec::tfl_read_study_spec(s$path)$study$settings$treatment, "TRT01P")
@@ -725,7 +804,7 @@ sd_missing_into <- function(root, text) {
   writeLines(append(x, paste0("  sd_missing: ", text), after = end), f, useBytes = TRUE)
 }
 
-test_that("settings: sd_missing survives open, an unchanged save and a change of rounding", {
+test_that("settings: sd_missing survives open, an unchanged save, a rewrite of study.yml and a change of rounding", {
   skip_on_cran()
   for (case in list(list(v = "NA", y = "\"NA\""), list(v = "", y = "''"),
                     list(v = "-", y = "\"-\""))) {
@@ -739,13 +818,16 @@ test_that("settings: sd_missing survives open, an unchanged save and a change of
     m0 <- spec_md5(s$path)
     s <- suppressMessages(save_study(s, home = home))
     expect_identical(changed_files(m0, spec_md5(s$path)), character())
-    # a change that rewrites study.yml: the value stays
+    # a change that rewrites study.yml (the treatment variable), and of the
+    # rounding (defaults.yml force:): the value stays
+    s$planner$study[["treatment"]] <- "TRT01P"
     s$planner$study[["rounding"]] <- "r"
     s <- suppressMessages(save_study(s, home = home))
-    expect_true("study.yml" %in% changed_files(m0, spec_md5(s$path)))
+    expect_true(all(c("study.yml", "spec/defaults.yml") %in% changed_files(m0, spec_md5(s$path))))
     y <- yaml::read_yaml(file.path(s$path, "study.yml"))
     expect_identical(y$settings$sd_missing, case$v)
-    expect_identical(y$settings$rounding, "r")
+    expect_null(y$settings$rounding)
+    expect_identical(tflspec::tfl_read_study_spec(s$path)$force$content[[1L]]$args$rounding, "r")
     expect_identical(sum(grepl("^  sd_missing:", readLines(file.path(s$path, "study.yml")))), 1L)
     expect_identical(tflspec::tfl_read_study_spec(s$path)$study$settings$sd_missing, case$v)
     s2 <- suppressMessages(open_study("SAMPLE-01", home = home))

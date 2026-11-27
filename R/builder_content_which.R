@@ -176,7 +176,8 @@
       }
       if (!length(lv)) NULL else lv
     },
-    plan_digits = list(rounding = "sas"),
+    # (no rounding: the study's, forced -- defaults.yml `force:`)
+    plan_digits = list(),
     plan_sort = if (hier && length(st$row_keys)) {
       list(keys = trimws(strsplit(.hier_sort(
         c(rep("alpha", length(st$row_keys) - 1L), "freq"),
@@ -232,11 +233,11 @@
   t <- function(x) tr(x, lang)
   switch(
     fn,
-    # (said behind the (i): where the card writes -- plan_cells(), the
-    # study's defaults.yml -- one card a function's exception)
+    # (said behind the (i): where the card writes -- plan_cells(); the
+    # rounding the study's, forced -- one card a function's exception)
     plan_digits = shiny::div(class = "rp-card-note",
                              help_tip(paste(t("The decimals are written into plan_cells()'s formats."),
-                                            t("Applies to every report (the study's defaults.yml)")))),
+                                            t("The rounding is the study's, forced on every report (the Study tab).")))),
     # (a line; what it does and one row before and after under the (i))
     normalize_ard = shiny::div(
       class = "rp-card-note",

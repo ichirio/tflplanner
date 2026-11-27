@@ -136,26 +136,36 @@
 
 # ---- plan_digits(), plan_levels(), plan_filter() -----------------------------------
 
-# plan_digits(rounding = ): the study's rounding (one for every report: the
-# study sheet's), a choice of the schema's
+# plan_digits(rounding = ): the study's rounding, forced on every report
+# (defaults.yml `force:`, canon 1.33, 11-10 :370) -- shown, locked: a
+# disabled field with no input (nothing to read back), its mark "Study
+# standard (forced)".  It is chosen on the Study tab only; a report's own
+# rounding that differs is tflspec's warning (tflspec_force_over).
+# `value`: the forced rounding, NULL / NA when the study forces none.
 .rounding_field <- function(cid, value = NULL, lang = "en") {
-  ty <- .schema_of("plan_digits")$args$rounding$type %||% "enum[sas|r|iec60559]"
-  v <- if (length(value) == 1L && !is.na(value) && nzchar(value)) value
-  shiny::tagList(
-    arg_field(cid, "rounding", ty, label = .arg_meaning("plan_digits", "rounding"), value = v,
-              from = if (!is.null(v)) "defaults" else "own",
-              help = tr(paste("How a 5 is rounded: sas half away from zero, r half to even,",
-                              "iec60559 as the machine stores the number. The study's: every",
-                              "report's (the Study tab's Rounding); blank there: options(rtfreporter.rounding)."),
-                        lang),
-              lang = lang),
-    # (a change here is the study's: every report's -- a mark, its words
-    # in its title)
-    shiny::span(class = "rp-badge rp-badge-defaults rp-every-report",
-                title = tr("Applies to every report (the study's defaults.yml)", lang),
-                tr("Applies to every report", lang)),
-    shiny::div(class = "small text-muted rp-every-report-note",
-               tr("Applies to every report (the study's defaults.yml)", lang)))
+  t <- function(x) tr(x, lang)
+  v <- if (length(value) == 1L && !is.na(value) && nzchar(value)) as.character(value)
+  lab <- if (!is.null(v)) unname(.enum_labels$rounding[v])
+  shown <- if (is.null(v)) t("None forced: options(rtfreporter.rounding)") else if (is.na(lab)) v else lab
+  shiny::div(
+    class = "rp-field rp-field-enum rp-field-locked rp-has-value", `data-arg` = "rounding",
+    `data-field` = paste0(cid, "__rounding"),
+    shiny::div(class = "rp-field-head",
+               shiny::tags$label(class = "rp-field-label",
+                                 builder_label(.arg_meaning("plan_digits", "rounding"), "rounding", "arg", lang),
+                                 from_badge("force", lang),
+                                 help_tip(t(paste("How a 5 is rounded: sas half away from zero, r half to even.",
+                                                  "The study's, forced on every report (spec/defaults.yml force:):",
+                                                  "chosen on the Study tab, not here. None forced:",
+                                                  "options(rtfreporter.rounding)."))))),
+    shiny::div(class = "rp-field-row",
+               shiny::div(class = "rp-form-input",
+                          shiny::tags$select(class = "form-select form-select-sm rp-locked",
+                                             disabled = NA, `aria-disabled` = "true",
+                                             title = t("Set on the Study tab (spec/defaults.yml force:)"),
+                                             shiny::tags$option(value = v %||% "", selected = NA, shown)))),
+    shiny::div(class = "small text-muted rp-forced-note",
+               t("Set on the Study tab (spec/defaults.yml force:)")))
 }
 
 # Each variable's empty values hidden (plan_levels(.drop_empty = ):

@@ -569,7 +569,7 @@ $", "", yaml::as.yaml(list(tokens = tokens))), "
 # `lines` (the writer's text) with every top-level block of `old` whose key
 # `lines` has not: the key's line to the next top-level key, the comment
 # lines just above the key included (those just above the next key belong to
-# that one). The writer's own keys (content, page, data, styles) are not
+# that one). The writer's own keys (force, content, page, data, styles) are not
 # kept: the writer leaves one out when it is empty, so the old one is gone.
 # A block of `old` that `lines` has too is the old one: a writer may write
 # it -- the bridge writes the study's code lists, tfl_write_study_part()
@@ -585,8 +585,8 @@ $", "", yaml::as.yaml(list(tokens = tokens))), "
   top <- is_key(old)
   keys <- ifelse(top, key_of(old), NA_character_)
   # (the writer's copies of the old blocks: out, the old ones go back)
-  for (k in setdiff(keys[top], c("content", "page", "data", "styles"))) lines <- .set_study_block(lines, k)
-  skip <- c(key_of(lines[is_key(lines)]), "content", "page", "data", "styles")
+  for (k in setdiff(keys[top], c("force", "content", "page", "data", "styles"))) lines <- .set_study_block(lines, k)
+  skip <- c(key_of(lines[is_key(lines)]), "force", "content", "page", "data", "styles")
   st <- which(keys %in% "styles")[1L]
   before <- character()
   after <- character()

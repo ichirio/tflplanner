@@ -308,7 +308,7 @@ test_that("the verbs after a template's call: the ones its program has", {
 
 # demog's study items: in its call with tflspec#780 (tfl_tpl(study = )), none with #764
 .demog_study_fns <- if ("study" %in% names(formals(tflspec::tfl_tpl))) {
-  c("plan_cells", "plan_digits", "plan_stub", "plan_style")
+  c("plan_cells", "plan_stub", "plan_style")
 } else character()
 
 test_that("the verbs after a template's call in the program tflspec writes now", {

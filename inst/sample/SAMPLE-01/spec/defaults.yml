@@ -1,3 +1,7 @@
+force:
+  content:
+    - plan_digits:
+        rounding: sas
 content:
   - normalize_ard: {}
   - plan_cells:
@@ -5,8 +9,6 @@ content:
         - !r n == 0 ~ "0"
         - '{n:.0f} ({p:.1f%})'
       na: '-'
-  - plan_digits:
-      rounding: sas
   - plan_col_header:
       header:
         - line: '1'

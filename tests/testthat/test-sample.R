@@ -194,3 +194,22 @@ test_that("the sample's SPEC fixes of the 2026-11-25 reviews reach its programs"
   expect_true(has(t3, "{p.value:stat_fmt}"))
   expect_false(has(t3, "{p.value:.3f}"))
 })
+
+test_that("the sample's rounding is forced in defaults.yml force:, not in study.yml (canon 1.33)", {
+  skip_on_cran()
+  root <- system.file("sample", "SAMPLE-01", package = "tflplanner")
+  st <- tflspec::tfl_read_study_spec(root)
+  expect_length(st$force$content, 1L)
+  it <- st$force$content[[1L]]
+  expect_identical(it$fn, "plan_digits")
+  expect_identical(it$args, list(rounding = "sas"))
+  expect_identical(it$from, "force")
+  # study.yml says no rounding; the study's content has no rounding card
+  expect_null(st$study$settings$rounding)
+  expect_false(any(grepl("rounding", readLines(file.path(root, "study.yml")), fixed = TRUE)))
+  expect_false(any(vapply(st$defaults$content, function(x) !is.null(x$args$rounding), NA)))
+  # the view: the study sheet's key; the setup: the forced rounding
+  p <- .planner_from_yaml(root)
+  expect_identical(unname(p$study[["rounding"]]), "sas")
+  expect_true(any(grepl("rtfreporter.rounding = \"sas\"", tflspec::tfl_study_setup_code(st), fixed = TRUE)))
+})
