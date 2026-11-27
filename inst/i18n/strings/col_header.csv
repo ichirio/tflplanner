@@ -3,7 +3,7 @@
 "(the table)","（Table）"
 "(the listing: see step %s)","（Listing: 手順 %s で）"
 "Add a line above","行を上に足す"
-"This report's column header is more than the form shows (positions, KEY = value, styled row-header cells): edit it as R on this card (plan_col_header()).","この帳票の列見出しは、この画面で表せない書き方（列の位置、KEY = 値、行見出しの列の書式）を含みます。このカードの R で編集してください（plan_col_header()）。"
+"This report's column header is more than the form shows (positions, KEY = value, styled row-header cells): edit it as R on this card (plan_col_header()).","この帳票の列見出しは、この画面で表せない書き方（列の位置、KEY = 値、行ラベルの列の書式）を含みます。このカードの R で編集してください（plan_col_header()）。"
 "Line %d","行 %d"
 "the same on each column","各列に同じ"
 "one cell per value of a key","キーごとにまとめる"
