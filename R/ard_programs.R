@@ -175,7 +175,19 @@ ard_autoexec_code <- function(spec, date = Sys.Date()) {
   }
   for (id in ids) {
     if (is.null(.ard_prog_cache$code[[id]])) {
+      # (not made in this session: a file whose checksum is the one
+      # recorded for the same inputs in an earlier session is current, and
+      # its program is not made again -- R/program_hashes.R, #749)
+      rec <- .code_hash_key("ard", id, list(spec, root, codelists))
+      prog <- paste0("ard:", id)
+      h <- .code_hash_get(prog, rec)
+      f <- file.path(dir, .ard_prog_name(id))
+      if (!is.null(h) && identical(.program_file_hash(f), h)) {
+        out[nrow(out) + 1L, ] <- list(f, "unchanged")
+        next
+      }
       .ard_prog_cache$code[[id]] <- ard_program_code(spec, id, dir = root, codelists = codelists)
+      .code_hash_put(prog, rec, .body_hash(.ard_prog_cache$code[[id]]))
     }
     put(.ard_prog_cache$code[[id]], .ard_prog_name(id))
   }
