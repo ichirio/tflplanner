@@ -85,8 +85,19 @@ test_that("where a copy's YAML files go: by their place, Windows separators too,
   f <- y("T-1.yml", "id: T-1")
   expect_identical(.import_place(f, "T-1", "copy\\spec\\outputs\\T-1.yml"), "spec/outputs/T-1.yml")
   expect_true(is.na(.import_place(f, "T-1", "spec/codelists.yml")))
-  # an old figure design in spec/figures/: by what it holds (its layers)
+  # an old figure design in spec/figures/: by its place (#900), whatever it
+  # holds -- layers, only data steps and a plot, panels, or only `content`
+  # (which on its own would read as spec/defaults.yml)
   expect_identical(.import_place(y("F-1.yml", "layers: []"), "T-1", "spec/figures/F-1.yml"), "(old)")
+  expect_identical(.import_place(y("F-2.yml", c("data: []", "plot: {}")), "T-1",
+                                 "copy/spec/figures/F-2.yml"), "(old)")
+  expect_identical(.import_place(y("F-3.yml", c("plots: []", "compose: {}")), "T-1",
+                                 "copy\\spec\\figures\\F-3.yml"), "(old)")
+  expect_identical(.import_place(y("F-4.yml", "content: []"), "T-1",
+                                 "spec/figures/F-4.yml"), "(old)")
+  # a file named spec/figures.yml is no figure design: a file of the spec
+  expect_identical(.import_place(y("figures.yml", "layers: []"), "T-1", "spec/figures.yml"),
+                   "spec/figures.yml")
   expect_identical(.import_place(y("s.yml", "study_id: CS-1"), "T-1"), .study_file)
   expect_identical(.import_place(y("l.yml", "layers: []"), "T-1"), "(old)")
   expect_identical(.import_place(y("d.yml", "styles: {}"), "T-1"), "spec/defaults.yml")
