@@ -150,6 +150,7 @@ test-builder-stage1.R,4,1.2
 test-code-options.R,4,0.0
 test-codelist-grid-write.R,4,0.3
 test-cov-spec-source.R,4,0.3
+test-defaults-keep.R,4,0.5
 test-derive-builder-gaps.R,4,0.1
 test-fig-stale.R,4,1.1
 test-flow.R,4,0.2
