@@ -56,7 +56,7 @@
     b <- list_batches(current_study())
     b <- b[b$what %in% c("ard", "all"), , drop = FALSE]
     log <- if (nrow(b)) file.path(b$path, "logs", "ard",
-                                  sub("[.][Rr]$", ".log", .ard_prog_name(id)))
+                                  sub("[.][Rr]$", ".log", .ard_prog_name(id))) else character()
     log <- log[file.exists(log)]
     if (!length(log)) {
       return(sprintf(t("%s has no official run yet."), id))
