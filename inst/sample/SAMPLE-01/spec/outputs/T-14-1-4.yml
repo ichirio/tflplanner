@@ -9,7 +9,7 @@ extends:
 data:
   - id: adsl_scrf
     from: ADSL
-ard:
+analysis:
   analyses:
     - id: BIGN
       method: categorical

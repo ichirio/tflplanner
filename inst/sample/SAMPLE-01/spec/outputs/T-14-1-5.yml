@@ -15,7 +15,7 @@ data:
       "ASIAN" & COUNTRY == "KOR" ~ "KOREAN", RACE == "ASIAN" ~ "OTHER")
   - id: adsl_enr_1
     from: ADSL
-ard:
+analysis:
   analyses:
     - id: BIGN
       method: categorical
