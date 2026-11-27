@@ -1529,7 +1529,7 @@
                     d = ifelse(is.na(d$rows), "", d$rows),
                     e = ifelse(is.na(d$built), "", d$built), f = d$error,
                     g = src, stringsAsFactors = FALSE)
-    names(v) <- t(c("output_id", "Analyses", "State", "Rows", "Built",
+    names(v) <- t(c("Report ID (output_id)", "Analyses", "State", "Rows", "Built",
                     "Error", "Source"))
     DT::formatStyle(
       .dt(v, selection = "single"), names(v)[3L],
@@ -1575,7 +1575,7 @@
     old <- ifelse(d$output_id %in% outdated, t("outdated"), "")
     v <- data.frame(d$output_id, d$analysis_id, d$variable, d$groups, lv, d$message,
                     eff, src, old, stringsAsFactors = FALSE)
-    names(v) <- t(c("output_id", "Analysis ID", "Variable", "Groups", "Kind", "Message",
+    names(v) <- t(c("Report ID (output_id)", "Analysis ID", "Variable", "Groups", "Kind", "Message",
                     "In the table", "From", "ARD"))
     x <- .dt(v, selection = "single",
              language = list(emptyTable = t("Nothing went wrong (or the study ARD is not made yet).")))

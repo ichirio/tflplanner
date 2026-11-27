@@ -493,3 +493,61 @@ test_that("batch.R keeps the study's own analysis functions (key source) with th
   sup <- support_of(batch_code(bs_planner()))
   expect_false(any(grepl("functions/", sup$ard, fixed = TRUE)))
 })
+
+test_that("the study key source files are in the support list as the ARD programs source them", {
+  p <- bs_planner()
+  # a ./ start and backslashes are the path the code sources (tflspec's .path_code())
+  p$ard$study <- rbind(p$ard$study, data.frame(
+    key = "source", value = ".\\programs\\ard\\functions\\ard_a.R | ./programs/ard/functions/ard_b.R"))
+  expect_identical(.batch_own_sources(p$ard),
+                   c("programs/ard/functions/ard_a.R", "programs/ard/functions/ard_b.R"))
+  sup <- .batch_support(p$ard, tempfile())
+  expect_true(all(.batch_own_sources(p$ard) %in% sup$ard))
+  # what the programs source is in the support list, each with its part
+  src <- .batch_sourced(p$ard)
+  for (k in names(src)) expect_true(all(src[[k]] %in% sup[[k]]))
+  expect_identical(.batch_own_sources(bs_planner()$ard), character())
+})
+
+test_that("every file the saved programs source() is in the batch's support list (#792)", {
+  skip_on_cran()
+  bs_home()
+  p <- bs_planner()
+  p$ard$study <- rbind(p$ard$study, data.frame(
+    key = "source", value = "programs/ard/functions/ard_mine.R"))
+  s <- create_study("BSRC2", planner = p)
+  fdir <- file.path(s$path, "programs", "ard", "functions")
+  dir.create(fdir, recursive = TRUE, showWarnings = FALSE)
+  writeLines("ard_mine <- function(data, ...) NULL", file.path(fdir, "ard_mine.R"))
+  o <- open_study("BSRC2")
+  # the path of each source() / sys.source() of every R file under programs/,
+  # with the study's folder variables (path_programs_ard ...)
+  env <- list2env(as.list(.study_path_vars()), parent = baseenv())
+  sourced <- function(e) {
+    if (!is.call(e)) return(character())
+    fn <- e[[1L]]
+    here <- if (is.name(fn) && as.character(fn) %in% c("source", "sys.source") &&
+                length(e) > 1L) {
+      v <- tryCatch(eval(e[[2L]], env), error = function(err) NULL)
+      if (is.character(v)) v
+    }
+    c(here, unlist(lapply(as.list(e)[-1L], sourced)))
+  }
+  progs <- list.files(file.path(o$path, "programs"), pattern = "[.]R$", recursive = TRUE)
+  found <- unique(unlist(lapply(progs, function(f) {
+    ex <- parse(file.path(o$path, "programs", f), keep.source = FALSE, encoding = "UTF-8")
+    unlist(lapply(as.list(ex), sourced))
+  })))
+  found <- sub("^(\\./+)+", "", gsub("\\\\", "/", found))
+  # (run_paths.R is the runner's own: it writes it into the batch folder)
+  found <- setdiff(found, "run_paths.R")
+  # the ARD programs' study key source and ard_setup.R, a report's
+  # report_setup.R, the setups' study_setup.R and study_helpers.R, the
+  # autoexecs' batch.R
+  expect_true(all(c("programs/ard/functions/ard_mine.R", "programs/ard/ard_setup.R",
+                    "programs/tfl/report_setup.R", "programs/study_setup.R",
+                    "programs/study_helpers.R", "programs/batch.R") %in% found),
+              info = paste(found, collapse = ", "))
+  sup <- .batch_support(o$planner$ard, o$path)
+  expect_identical(setdiff(found, unlist(sup, use.names = FALSE)), character())
+})

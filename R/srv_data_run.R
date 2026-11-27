@@ -92,7 +92,7 @@
       f = paste0(d$program, ifelse(d$program_state %in% "edited",
                                    paste0(" (", t("edited by hand"), ")"), "")),
       stringsAsFactors = FALSE)
-    names(v) <- t(c("output_id", "Type", "State", "When", "Why", "Program"))
+    names(v) <- t(c("Report ID (output_id)", "Type", "State", "When", "Why", "Program"))
     v$.key <- .report_search_keys(shiny::isolate(picker_rows()), d$output_id)
     DT::formatStyle(
       .dt(v, selection = "multiple",

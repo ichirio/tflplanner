@@ -1185,7 +1185,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
                                           sprintf(t("Checked %s"), format(co$time, "%Y-%m-%d %H:%M"))),
         shiny::tags$table(
           class = "table table-sm small mt-2 ai-result-all",
-          shiny::tags$thead(shiny::tags$tr(lapply(c("output_id", t("Check"), t("To confirm"),
+          shiny::tags$thead(shiny::tags$tr(lapply(c(t("Report ID (output_id)"), t("Check"), t("To confirm"),
                                                     t("first problem"), ""), shiny::tags$th))),
           shiny::tags$tbody(lapply(seq_len(nrow(r)), function(i) {
             k <- n_cf(r$output_id[i])
