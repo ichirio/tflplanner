@@ -119,6 +119,32 @@ test_that("a launcher whose R has gone is dead: its recorded icons, or none when
   expect_length(.dead_launchers(c(`3.9` = a), xy = "4.6", installed = "3.9", os = "linux"), 0L)
 })
 
+test_that("a launcher that remembers no R is dead on every system, though /bin/Rscript be there (#900)", {
+  cfg <- withr_tempdir()
+  a <- file.path(cfg, "launcher-R3.8")
+  b <- file.path(cfg, "launcher-R3.7")
+  dir.create(a)
+  dir.create(b)
+  # (a: no launcher.conf at all; b: a launcher.conf without its r_home)
+  .write_text("r_xy=3.7", file.path(b, "launcher.conf"))
+  for (os in c("linux", "mac", "windows")) {
+    dead <- .dead_launchers(c(`3.8` = a, `3.7` = b), xy = "4.6",
+                            installed = character(), os = os)
+    expect_setequal(names(dead), c("3.8", "3.7"))
+    expect_identical(dead[["3.8"]], character())
+  }
+  # an x.y still installed is not dead, as for a launcher with its conf
+  expect_length(.dead_launchers(c(`3.8` = a), xy = "4.6", installed = "3.8", os = "linux"), 0L)
+  # a launcher whose R is there is not dead
+  r <- file.path(cfg, "R-3.6")
+  dir.create(file.path(r, "bin"), recursive = TRUE)
+  file.create(file.path(r, "bin", "Rscript"))
+  c36 <- file.path(cfg, "launcher-R3.6")
+  dir.create(c36)
+  .write_text(.launcher_conf_text(r, "3.6"), file.path(c36, "launcher.conf"))
+  expect_length(.dead_launchers(c(`3.6` = c36), xy = "4.6", installed = character(), os = "linux"), 0L)
+})
+
 test_that("the port is in every kind of shortcut: Windows, macOS and Linux", {
   dirs <- list(desktop = "C:/u/Desktop", start_menu = "C:/u/Programs/tflplanner")
   sc <- .windows_shortcuts("C:/cfg/launcher", dirs, "en", port = 7480L, xy = "4.6")
