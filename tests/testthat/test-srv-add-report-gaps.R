@@ -152,22 +152,26 @@ test_that("the dialog's Create waits for an ID and the required arguments, and t
     dlg <- add_modal(shown)
     for (k in c("table", "listing", "figure")) expect_match(dlg, sprintf('id="modal_tpl_%s"', k), fixed = TRUE)
     # (a template with a data argument: its required fields drawn apart, to follow the dataset)
-    expect_match(add_html(output$mtpl_demog___req_box$html), 'id="mtpl_demog__population"', fixed = TRUE)
+    expect_match(add_html(output$mtpl_demog___req_box$html), 'id="mtpl_demog__by"', fixed = TRUE)
     expect_match(add_html(output$modal_ok_js$html), "prop('disabled', true)", fixed = TRUE)
-    # an ID, but the analysis set is not chosen
+    # an ID, but `by` is not chosen
     session$setInputs(modal_id = "ZZ-5")
     expect_match(add_html(output$modal_ok_js$html), "prop('disabled', true)", fixed = TRUE)
-    # (the analysis set: the report's population, asked here; `by` has no default)
+    # (the analysis set: its argument, the template's default SAF; `by` has no default)
     session$setInputs(mtpl_demog__population = "SAF")
     expect_match(add_html(output$modal_ok_js$html), "prop('disabled', true)", fixed = TRUE)
     session$setInputs(mtpl_demog__by = "TRT01A")
     expect_match(add_html(output$modal_ok_js$html), "prop('disabled', false)", fixed = TRUE)
     # the template's other arguments: each its own input, counted in the heading
-    opt0 <- Filter(function(x) !isTRUE(x$required), .tpl_shown(.tpl_params("demog")))
+    # (population not among them: the report's set control, asked first with
+    # the required ones, its start the template's default SAF -- #868, A2-T)
+    opt0 <- Filter(function(x) !isTRUE(x$required), .tpl_dialog_shown(.tpl_params("demog")))
     opt <- Filter(function(x) !.tpl_is_key(x), opt0)
     more <- add_html(output$tpl_modal_more$html)
     expect_match(more, sprintf("More arguments (%d)", length(opt)), fixed = TRUE)
     for (nm in names(opt0)) expect_match(more, sprintf('id="mtpl_demog__%s"', nm), fixed = TRUE)
+    expect_false(grepl('id="mtpl_demog__population"', more, fixed = TRUE))
+    expect_match(add_html(output$mtpl_demog___req_box$html), 'id="mtpl_demog__population"', fixed = TRUE)
   })
 })
 
@@ -213,13 +217,14 @@ test_that("Add from a template writes the report with its template, the argument
     expect_match(pane, "A run saves it in the study's ARD", fixed = TRUE)
     expect_match(output$tpl_ard_code, "programs/ard/T-ZZ-5.R", fixed = TRUE)
     expect_match(add_text(output$tpl_ard_code_head$html), "programs/ard/T-ZZ-5.R", fixed = TRUE)
-    # the analysis set: the data step's field, written as the report's population
+    # the analysis set: the data step's field, the template's argument (A2-T,
+    # tflspec#984), never `common:`; the report list follows it
     other <- setdiff(stats::na.omit(rv$p$ard$populations$population_id), "SAF")[1L]
     skip_if(is.na(other), "the sample study has one population")
-    session$setInputs(tpl_report_pop = other)
+    session$setInputs(tpl_demog__population = other)
+    expect_identical(.tpl_of(rv$p, "T-ZZ-5")$args$population, other)
+    expect_null(rv$p$spec$outputs[["T-ZZ-5"]]$common)
     expect_identical(add_row(rv$p, "T-ZZ-5")$population, other)
-    expect_identical(rv$p$spec$outputs[["T-ZZ-5"]]$common$population, other)
-    expect_null(.tpl_of(rv$p, "T-ZZ-5")$args$population)
   })
 })
 
@@ -344,7 +349,8 @@ test_that("a template listing: its data card writes the dataset's steps, keeps a
     expect_identical(c(f$dataset, f$filter), c("ADAE", "AESER == 'Y'"))
     expect_false(f$join)
     expect_identical(rv$p$spec$outputs[["L-ZZ-7"]]$data$population, "SAF")
-    expect_null(rv$p$spec$outputs[["L-ZZ-7"]]$common$population)
+    # (never `common:` -- A2-T)
+    expect_null(rv$p$spec$outputs[["L-ZZ-7"]]$common)
     # a join of the report's own (its file's, on a flag the study does not
     # define): offered as the report's own join, kept as it is -- no flag
     # offered as a set (codex review 9)
@@ -557,6 +563,8 @@ test_that("the dialog writes only the optional arguments changed in it: demog an
       do.call(session$setInputs, req)
       suppressMessages(session$setInputs(add_ok = which(nm == c("demog", "stf_t02_demog"))))
       args <- add_args(rv$p, paste0("T-", rid))
+      # (the analysis set an argument left at the template's default, SAF:
+      # not written, A2-T)
       expect_setequal(names(args), c("by", "continuous", "categorical"))
       expect_identical(add_row(rv$p, paste0("T-", rid))$population, "SAF")
     }
@@ -573,7 +581,7 @@ test_that("the dialog writes only the optional arguments changed in it: demog an
   })
 })
 
-test_that("a switch keeps the report's set by one rule: to demog the report's population alone, back from demog the argument again, the same set (review M12)", {
+test_that("a switch to demog and back keeps the report's set by one rule, as the template's argument (A2-T: demog's is shown; review M12)", {
   id <- sample_for_add()
   shown <- watch_add()
   shiny::testServer(server_for(id), {
@@ -587,38 +595,43 @@ test_that("a switch keeps the report's set by one rule: to demog the report's po
     session$setInputs(tpl_switch = "demog")
     dlg <- add_text(add_modal(shown))
     expect_match(dlg, "Analysis set SAF: the report's, kept", fixed = TRUE)
+    expect_false(grepl("To the report's population", dlg, fixed = TRUE))
     expect_false(grepl("Arguments dropped:[^.]*population", dlg))
     suppressWarnings(suppressMessages(session$setInputs(tpl_switch_ok = 1)))
     expect_identical(.tpl_of(rv$p, "T-ZZ-7")$name, "demog")
-    expect_null(add_args(rv$p, "T-ZZ-7")$population)
-    expect_identical(rv$p$spec$outputs[["T-ZZ-7"]]$common$population, "SAF")
-    # (back: the report's population is the argument again)
+    expect_identical(add_args(rv$p, "T-ZZ-7")$population, "SAF")
+    expect_null(rv$p$spec$outputs[["T-ZZ-7"]]$common)
+    # (back: the argument kept as it is)
     session$setInputs(tpl_switch = "shift")
     dlg <- add_text(add_modal(shown))
     expect_match(dlg, "Analysis set SAF: the report's, kept", fixed = TRUE)
+    expect_false(grepl("From the report's population", dlg, fixed = TRUE))
     suppressWarnings(suppressMessages(session$setInputs(tpl_switch_ok = 2)))
     expect_identical(.tpl_of(rv$p, "T-ZZ-7")$name, "shift")
     expect_identical(.tpl_of(rv$p, "T-ZZ-7")$args$population, "SAF")
-    expect_identical(rv$p$spec$outputs[["T-ZZ-7"]]$common$population, "SAF")
+    # (never `common:` -- A2-T)
+    expect_null(rv$p$spec$outputs[["T-ZZ-7"]]$common)
   })
 })
 
-test_that("demog with no population: no ARD run and no error note, the preview waits; its field's tip is the usual one", {
+test_that("a template with no population: no ARD run and no error note, the preview waits; its field's tip is the usual one", {
+  # (disposition: its analysis set an argument with no default, A2-T --
+  # demog's has the template's, SAF)
   id <- sample_for_add()
   shown <- watch_add()
   shiny::testServer(server_for(id), {
     rv <- session$userData$rv
-    session$setInputs(add = 1, modal_type = "table", modal_how = "template", modal_tpl_table = "demog",
+    session$setInputs(add = 1, modal_type = "table", modal_how = "template", modal_tpl_table = "disposition",
                       modal_id = "ZZ-8", modal_desc = "", modal_section = "",
-                      mtpl_demog__population = "SAF", mtpl_demog__by = "TRT01A",
-                      mtpl_demog__continuous = "AGE")
+                      mtpl_disposition__population = "SAF", mtpl_disposition__by = "TRT01A",
+                      mtpl_disposition__categorical = "EOSSTT")
     # (the dialog's population field: the analysis set's tip, not tflspec's note)
     dlg <- add_html(add_modal(shown))
     expect_false(grepl("not a template parameter", dlg, fixed = TRUE))
     suppressMessages(session$setInputs(add_ok = 1))
     session$setInputs(target = "T-ZZ-8", nav = "make", step = "data", content_nav = "content")
     expect_false(grepl("not a template parameter", add_html(output$tpl_card_data$html), fixed = TRUE))
-    session$setInputs(tpl_report_pop = "")
+    session$setInputs(tpl_disposition__population = "")
     expect_identical(.tpl_missing_report(rv$p, "T-ZZ-8"), "population")
     n0 <- length(shown$notes)
     suppressWarnings(session$setInputs(tpl_preview = 1))
@@ -743,7 +756,8 @@ test_that("a KM template's data card: its button says what it does, an action, n
     expect_false(f$join)
     expect_identical(vapply(o$data$steps, function(s) s$step, ""), "read")
     expect_identical(o$data$population, "SAF")
-    expect_null(o$common$population)
+    # (the set on the report's data map, never `common:` -- A2-T)
+    expect_null(o$common)
     expect_false(grepl("join", paste(rv$p$spec$text[["spec/outputs/F-KMB-1.yml"]], collapse = "\n"),
                        fixed = TRUE))
     # (the card says what keeps the subjects: the report's set, not a join)
@@ -884,14 +898,21 @@ test_that("Create for a figure template with a shown `population`: the set on th
     expect_false(grepl("join", txt, fixed = TRUE))
     toc <- Filter(function(e) identical(e$id, "F-FP-1"), rv$p$spec$study$toc$outputs)
     expect_identical(toc[[1L]]$population, "SAF")
-    # (a table's set stays in `common:` -- not this rule's)
+    # (a table's set: its template's argument, never `common:` -- A2-T.
+    # SAF is demog's own default, so it is not written: the template holds
+    # it (canon 11-15 (1), L463); the toc line says it)
     session$setInputs(add = 2, modal_type = "table", modal_how = "template", modal_tpl_table = "demog",
                       modal_id = "FP-2", modal_desc = "", modal_section = "",
                       mtpl_demog__population = "SAF", mtpl_demog__by = "TRT01A",
                       mtpl_demog__continuous = "AGE")
     suppressMessages(session$setInputs(add_ok = 2))
-    expect_identical(rv$p$spec$outputs[["T-FP-2"]]$common$population, "SAF")
-    expect_null(rv$p$spec$outputs[["T-FP-2"]]$data$population)
+    o2 <- rv$p$spec$outputs[["T-FP-2"]]
+    expect_null(add_args(rv$p, "T-FP-2")$population)
+    expect_null(o2$common$population)
+    expect_null(o2$data$population)
+    expect_identical(tflspec::tfl_report_set(o2, rv$p$spec$study), "SAF")
+    toc2 <- Filter(function(e) identical(e$id, "T-FP-2"), rv$p$spec$study$toc$outputs)
+    expect_identical(toc2[[1L]]$population, "SAF")
   })
 })
 
