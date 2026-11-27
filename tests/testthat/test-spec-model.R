@@ -199,10 +199,12 @@ test_that("a report written into the spec has its view made again", {
   # the same report: the same view
   expect_identical(.planner_body(p)$sheets, .planner_body(s$planner)$sheets)
   expect_identical(p$outputs, s$planner$outputs)
-  # its population changed in the spec: the report list says it
-  o$population <- "SAF"
+  # its population changed in the spec (`common:`; a top-level
+  # `population:` is an old form): the report list says it
+  o$common$population <- "ENR"
   p <- .spec_set_output(s$planner, id, o)
-  expect_identical(.spec_output(p, id)$population, "SAF")
+  expect_identical(.spec_output(p, id)$common$population, "ENR")
+  expect_identical(p$outputs$population[p$outputs$output_id == id], "ENR")
   expect_true(.same_planner(p$spec$base, p))
   expect_error(.spec_set_output(.planner_body(s$planner), id, o), "no YAML spec")
 })
