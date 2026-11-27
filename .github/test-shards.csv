@@ -72,6 +72,7 @@ test-error-view.R,2,0.0
 test-fig-key.R,2,1.1
 test-fig-page-size.R,2,0.4
 test-fig-step1.R,2,1.5
+test-i18n-coverage.R,2,0.5
 test-lf.R,2,0.0
 test-live-runs.R,2,0.3
 test-page-patterns.R,2,3.7

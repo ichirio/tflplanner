@@ -162,7 +162,7 @@
     v$rtf <- htmltools::htmlEscape(v$rtf)
     # "Title" here is the report's title; t("Title") is the study's
     v$how <- htmltools::htmlEscape(v$how)
-    names(v) <- c(t(c("output_id", "Section", "Report sets", "Type", "How it is made", "Program", "RTF", "Data")),
+    names(v) <- c(t(c("Report ID (output_id)", "Section", "Report sets", "Type", "How it is made", "Program", "RTF", "Data")),
                   if (identical(lang, "en")) "Title" else t("Report title"))
     v$.key <- .report_search_keys(shiny::isolate(picker_rows()), outputs_view()$output_id)
     DT::datatable(v, rownames = FALSE, escape = FALSE,
@@ -664,9 +664,9 @@
   ask_id <- function(title, button, value = "", type = FALSE) {
     # (a new report: its type first, then its ID after the type's prefix,
     # T- / F- / L-: .id_prefix)
-    id_ui <- if (!type) shiny::textInput("modal_id", "output_id", value = value) else shiny::div(
+    id_ui <- if (!type) shiny::textInput("modal_id", t("Report ID (output_id)"), value = value) else shiny::div(
       class = "form-group shiny-input-container",
-      shiny::tags$label(class = "control-label", `for` = "modal_id", "output_id"),
+      shiny::tags$label(class = "control-label", `for` = "modal_id", t("Report ID (output_id)")),
       shiny::div(class = "input-group",
                  shiny::span(class = "input-group-text", id = "modal_id_prefix", .id_prefix[["table"]]),
                  shiny::tags$input(id = "modal_id", type = "text", class = "shiny-input-text form-control", value = value)),

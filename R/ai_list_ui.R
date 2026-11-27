@@ -284,7 +284,7 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
         if (!is.null(diff)) shiny::tags$details(
           open = NA, shiny::tags$summary(sprintf(t("What replacing changes (%d)"), nrow(diff))),
           table_of(diff, c("output_id", "where", "change", "adopted", "draft"),
-                   c("output_id", t("Where"), t("Change"), t("In the study"), t("Draft"))))),
+                   c(t("Report ID (output_id)"), t("Where"), t("Change"), t("In the study"), t("Draft"))))),
       footer = shiny::tagList(
         shiny::modalButton(t("Cancel")),
         if (length(s$over)) .btn(ns("adopt_over"), sprintf(t("Overwrite %d and copy"), length(s$over)),
