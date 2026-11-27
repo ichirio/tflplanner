@@ -61,8 +61,15 @@
        series = series, options = o[sort(grep("^(tflspec|rtfreporter)[.]", names(o), value = TRUE))])
 }
 
+# The md5 of an R object (its serialized bytes).  Written to a file of
+# its own first: md5sum()'s `bytes` argument is R 4.5 and later only, and
+# tflplanner runs on R 4.3.  (The hashes are compared only with hashes
+# made here, so how the bytes reach md5sum() does not matter.)
 .code_hash_md5 <- function(x) {
-  unname(tools::md5sum(bytes = serialize(x, NULL, xdr = FALSE)))
+  f <- tempfile("hash-")
+  on.exit(unlink(f), add = TRUE)
+  writeBin(serialize(x, NULL, xdr = FALSE), f)
+  unname(tools::md5sum(f))
 }
 
 # The md5 of one program's inputs: `kind` (report, ard), the output and

@@ -166,3 +166,12 @@ test_that("a program file's own checksum, only while its body has it", {
   writeLines("x <- 1", f)
   expect_identical(.program_file_hash(f), NA_character_)
 })
+
+test_that("an object's md5 works on R before 4.5 and leaves no file", {
+  before <- list.files(tempdir())
+  h <- .code_hash_md5(list("report", "t1", 1:3))
+  expect_true(is.character(h) && length(h) == 1L && grepl("^[0-9a-f]{32}$", h))
+  expect_identical(.code_hash_md5(list("report", "t1", 1:3)), h)
+  expect_false(identical(.code_hash_md5(list("report", "t2", 1:3)), h))
+  expect_identical(list.files(tempdir()), before)
+})
