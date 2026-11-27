@@ -508,13 +508,13 @@ test_that("a template that takes the set as an argument: every write of the repo
   }
   for (id in names(tpls)) {
     kind <- if (startsWith(id, "F-")) "figure" else "table"
-    # (an older file: the argument alone, no set where the data keeps it)
+    # (the argument alone: the report's set is its template's set argument, A2-T)
     # (a figure's group has no default: the report says it, PRINCIPLES 1.14)
     args <- c(list(population = "SAF"), if (identical(kind, "figure")) list(group = "TRT01A"))
     o <- tflspec::tfl_output(id, kind, label = id,
                              template = list(name = tpls[[id]], args = args))
     p <- .spec_add_output(p, o, label = id)
-    expect_true(is.na(set_of(p, id)))
+    expect_identical(set_of(p, id), "SAF", info = id)
     # a write of its template (no set given): the argument's set taken as
     # the report's, in both places
     p <- .write_report_population(p, id, output = p$spec$outputs[[id]])
@@ -525,9 +525,11 @@ test_that("a template that takes the set as an argument: every write of the repo
     agree(p, id, other)
     p <- set_report_population(p, id, "SAF")
     agree(p, id, "SAF")
-    # (none: both taken out)
+    # (none: both taken out -- the report's set is then its template's own
+    # default, canon 11-15 (1), as a report of that template that says none)
     q <- set_report_population(p, id, NA)
-    expect_true(is.na(set_of(q, id)))
+    bare <- tflspec::tfl_output(id, kind, label = id, template = list(name = tpls[[id]]))
+    expect_identical(set_of(q, id), .o_population(bare), info = id)
     expect_null(arg_of(q, id))
   }
   # a figure's set on its data, a table's its template's argument, never in

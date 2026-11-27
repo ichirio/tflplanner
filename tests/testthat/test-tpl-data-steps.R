@@ -108,14 +108,17 @@ test_that("the report's set control is for every template; a shown `population` 
 })
 
 test_that("a report's analysis set is read and set where its file has it: the data map's, else its rows', never common: (#868, A2-T)", {
-  o <- list(data = list(population = "SAF", steps = list(list(step = "read", dataset = "ADTTE"))))
+  # (a KM type's figure: its data map of steps, the set on it -- the writer's
+  # rule for a report's map, tflspec::tfl_set_report_set())
+  o <- list(kind = "figure", data = list(population = "SAF", steps = list(list(step = "read", dataset = "ADTTE"))))
   expect_identical(.o_population(o), "SAF")
   o2 <- .o_set_population(o, "ITT")
   expect_identical(o2$data$population, "ITT")
   expect_null(o2$common)
   expect_identical(.o_population(o2), "ITT")
   # (a data map with the set in `common:`: moved onto the data)
-  o3 <- .o_set_population(list(common = list(population = "SAF"), data = list(steps = list())), "ITT")
+  o3 <- .o_set_population(list(kind = "figure", common = list(population = "SAF"), data = list(steps = list())),
+                          "ITT")
   expect_identical(o3$data$population, "ITT")
   expect_null(o3$common)
   expect_null(.o_set_population(o, NA_character_)$data$population)

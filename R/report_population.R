@@ -374,6 +374,17 @@ set_report_population <- function(x, output_id, population) {
     for (id in ids) {
       o <- output %||% x$spec$outputs[[id]]
       if (is.null(o)) next
+      # (the planner's own report of rows, no template and no data map: its
+      # rows are the view's, synced above -- the set's data made, its
+      # analyses moved: the file says the set as its rows do, and the toc
+      # line is the report list's set)
+      d <- o$data
+      rows_own <- is.null(output) && !is.null(pops) && is.null(o$template) &&
+        !(is.list(d) && length(d) && !is.null(names(d)))
+      if (rows_own) {
+        x <- .spec_set_toc_population(x, id, pops[match(id, output_id)])
+        next
+      }
       if (!is.null(pops)) {
         o <- .o_write_set(o, pops[match(id, output_id)], x$spec$study)
       } else {

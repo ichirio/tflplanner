@@ -163,12 +163,15 @@ test_that("the dialog's Create waits for an ID and the required arguments, and t
     session$setInputs(mtpl_demog__by = "TRT01A")
     expect_match(add_html(output$modal_ok_js$html), "prop('disabled', false)", fixed = TRUE)
     # the template's other arguments: each its own input, counted in the heading
-    # (population among them: its default the template's, SAF -- A2-T)
-    opt0 <- Filter(function(x) !isTRUE(x$required), .tpl_shown(.tpl_params("demog")))
+    # (population not among them: the report's set control, asked first with
+    # the required ones, its start the template's default SAF -- #868, A2-T)
+    opt0 <- Filter(function(x) !isTRUE(x$required), .tpl_dialog_shown(.tpl_params("demog")))
     opt <- Filter(function(x) !.tpl_is_key(x), opt0)
     more <- add_html(output$tpl_modal_more$html)
     expect_match(more, sprintf("More arguments (%d)", length(opt)), fixed = TRUE)
     for (nm in names(opt0)) expect_match(more, sprintf('id="mtpl_demog__%s"', nm), fixed = TRUE)
+    expect_false(grepl('id="mtpl_demog__population"', more, fixed = TRUE))
+    expect_match(add_html(output$mtpl_demog___req_box$html), 'id="mtpl_demog__population"', fixed = TRUE)
   })
 })
 

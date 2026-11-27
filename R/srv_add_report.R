@@ -606,29 +606,29 @@
     tpl_pending$id <- id
     if (identical(kind, "table")) tpl_autoprev$want <- id
     # (a KM type: its data the report's own `data:` steps, from the dialog.
-    # The analysis set is not written here: the one setter,
-    # .write_report_population(), puts it where the report's set lives -- a
-    # figure's on its data's `population:` (no `common:` and no step of it,
-    # canon 11-15), a table's in `common:` -- and in the template's
-    # `population` argument where it takes one, the same value (#868, H5))
+    # The analysis set -- the dialog's one set control, #868 -- is written by
+    # the one setter, .write_report_population(), where the report's set
+    # lives, never in `common:` (A2-T): a figure's on its data's
+    # `population:` (no step of it, canon 11-15), a template's set argument,
+    # and the template's `population` argument where it takes one, the same
+    # value (H5).  A set the template's own default already is (demog's
+    # SAF, canon 11-15 (1)) is not written: the template holds it)
     dat <- tpl_modal_data(nm)
     pop <- as.character(attr(args, "population") %||% NA_character_)
     attr(args, "population") <- NULL
     o <- tflspec::tfl_output(id, kind, label = if (is.na(desc)) NA_character_ else desc,
                              template = .tpl_write_args(list(name = nm), args, by_step = TRUE),
                              data = if (length(dat$steps)) list(steps = dat$steps))
-    # (the analysis set where the report's data says it, never in `common:`
-    # (A2-T): a set argument the dialog wrote is it; else written by
-    # tflspec (a KM type's data map).  The toc line's set: the one the
-    # report has, its template's default too)
-    if (!is.na(pop) && is.null(args$population)) o <- .o_set_population(o, pop, rv$p$spec$study)
-    pop <- tryCatch(tflspec::tfl_report_set(o, rv$p$spec$study), error = function(e) pop)
+    own <- tryCatch(tflspec::tfl_report_set(o, rv$p$spec$study), error = function(e) NA_character_)
+    if (.is_blank(pop)) pop <- own
+    write_set <- !.is_blank(pop) && !identical(pop, own)
     # (straight into the spec: its toc line and its file, the view of
     # that report alone -- .spec_add_output(); its set then written as every
     # report's is, .write_report_population())
     p2 <- guarded(.spec_add_output(rv$p, o, label = desc,
-                                   section = if (nzchar(sec)) sec else NA_character_))
-    if (!is.null(p2) && !.is_blank(pop)) p2 <- guarded(.write_report_population(p2, id, pop, output = o))
+                                   section = if (nzchar(sec)) sec else NA_character_,
+                                   population = if (.is_blank(pop)) NA_character_ else pop))
+    if (!is.null(p2) && write_set) p2 <- guarded(.write_report_population(p2, id, pop, output = o))
     .tpl_trace("written into the spec")
     if (is.null(p2)) {
       tpl_pending$id <- NULL
