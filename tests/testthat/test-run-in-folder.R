@@ -164,3 +164,35 @@ test_that("an official run's R reads no .Rprofile (B2): not the runner's, not a 
   expect_true(b$ok)
   expect_false(file.exists(mark))
 })
+
+test_that("a batch folder holds the study key source files and runs again on its own (#792)", {
+  skip_if_not_installed("cards")
+  bs_home()
+  p <- bs_planner()
+  # a fictional function file, named by the study key `source`
+  p$ard$study <- rbind(p$ard$study, data.frame(
+    key = "source", value = "programs/ard/functions/ard_mine.R"))
+  s <- create_study("RIF792", planner = p)
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  fdir <- file.path(s$path, "programs", "ard", "functions")
+  dir.create(fdir, recursive = TRUE, showWarnings = FALSE)
+  writeLines("ard_mine <- function(data, ...) NULL", file.path(fdir, "ard_mine.R"))
+  o <- open_study("RIF792")
+  b <- run_batch(o, "ard", data = TRUE)
+  expect_true(b$ok)
+  expect_true(file.exists(file.path(b$batch, "programs", "ard", "functions", "ard_mine.R")))
+  # the folder alone, away from the study: its entry file runs it again
+  away <- withr_tempdir()
+  file.copy(b$batch, away, recursive = TRUE)
+  d <- file.path(away, basename(b$batch))
+  unlink(file.path(fdir, "ard_mine.R"))
+  r <- processx::run(file.path(R.home("bin"), "Rscript"), "autoexec_ard.R", wd = d,
+                     error_on_status = FALSE,
+                     env = c("current", R_LIBS = paste(.libPaths(), collapse = .Platform$path.sep)))
+  expect_identical(r$status, 0L, info = paste(r$stdout, r$stderr))
+  expect_true(file.exists(file.path(d, "run_1.csv")))
+  run <- utils::read.csv(file.path(d, "run.csv"))
+  expect_true(nrow(run) > 0L)
+  expect_true(all(run$status == "OK"), info = paste(run$status, collapse = ", "))
+  expect_true(file.exists(file.path(d, "output", "ard", "ard.rds")))
+})
