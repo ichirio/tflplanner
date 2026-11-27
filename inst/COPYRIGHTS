@@ -6,4 +6,4 @@ and adtte.rds, are the simulated oncology sample study XYZ-ONC-01 of the
 tflspec R package (https://github.com/ichirio/tflspec; not real patient
 data), copyright (c) 2026 Yoichi Masui, Apache License 2.0: ADSL, ADAE and
 ADTTE as they are, and the systolic blood pressure of ADVS -- see
-data-raw/make-sample-study.R in the source repository.
+data-raw/make-sample-data.R in the source repository.

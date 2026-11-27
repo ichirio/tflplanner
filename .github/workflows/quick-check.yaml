@@ -165,3 +165,58 @@ jobs:
                     paste(setdiff(files, unique(d$file)), collapse = ", "))
           }
           if (sum(d$failed) > 0L || any(d$error)) quit(status = 1L)
+
+  # The sample study's whole run (tests/testthat/test-sample-run-heavy.R, about
+  # a minute): every program of SAMPLE-01 runs without error (#879).  A job of
+  # its own and not blocking: continue-on-error, so a failure shows as a red
+  # job but the pull request is not held by it; the test shards leave this
+  # test out (they do not set TFLPLANNER_HEAVY).  Its name does not start with
+  # "tests" (the automerge script waits for every tests* check).
+  sample-run:
+    if: >-
+      (github.event.action == 'labeled' && github.event.label.name == 'automerge') ||
+      (github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'automerge'))
+    concurrency:
+      group: quick-check-${{ github.event.pull_request.number }}-sample-run
+      cancel-in-progress: true
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    name: sample run (non-blocking, ubuntu-latest, R release)
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      NOT_CRAN: true
+      TFLPLANNER_HEAVY: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::testthat, any::remotes
+          needs: check
+
+      - name: tflspec and rtfreporter from next
+        shell: Rscript {0}
+        run: |
+          remotes::install_github("ichirio/rtfreporter@next", upgrade = "never", dependencies = FALSE)
+          remotes::install_github("ichirio/tflspec@next", upgrade = "never", dependencies = FALSE)
+
+      - name: Install the package
+        run: R CMD INSTALL --no-docs --no-multiarch .
+
+      - name: Test (the sample's whole run)
+        shell: Rscript {0}
+        run: |
+          library(tflplanner)
+          res <- testthat::test_file("tests/testthat/test-sample-run-heavy.R",
+                                     package = "tflplanner", load_package = "installed",
+                                     reporter = "progress", stop_on_failure = TRUE)
+          d <- as.data.frame(res)
+          stopifnot(sum(d$skipped) == 0L)

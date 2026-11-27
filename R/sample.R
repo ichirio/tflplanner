@@ -1,7 +1,8 @@
 # The sample study that ships with tflplanner.
 #
 # inst/sample/SAMPLE-01 holds what a study folder needs to be registered
-# (study.yml, spec/, data/), made by data-raw/make-sample-study.R from
+# (study.yml, spec/, data/), edited by hand (its YAML is the one source;
+# data-raw/make-sample-data.R makes only the ADaM data) on
 # tflspec's oncology sample study XYZ-ONC-01 (simulated ADaM data: tflspec::adsl,
 # adae, advs, adtte).  It is copied into
 # the studies folder a user sets up -- never into a developer's test

@@ -1,7 +1,7 @@
 # The developer's test studies (ICHIRIO-001, ICHIRIO-002 ...) live in a
 # tflplanner home of their own -- never in the default home a user sets up
 # after installing the package, and never in the sample study that ships
-# with it (make-sample-study.R builds that one in a temporary home).
+# with it (it is edited by hand; data-raw/make-sample-data.R makes only its data).
 #
 # Name the development home first, e.g. on the maintainer's PC:
 #

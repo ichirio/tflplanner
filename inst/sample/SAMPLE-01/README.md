@@ -26,6 +26,7 @@ screened set).
 | T-14-0-1 | Table | Study information: dictionary versions and the dates of the data -- no analysis set (it counts no subjects) |
 | T-14-1-1 | Table | Demographic characteristics |
 | T-14-1-1S | Table | The same table, its ARD one `cards::ard_stack()` call (the analyses inside it, and the column N it makes) |
+| T-14-1-1C | Table | Demographic characteristics written as a code SPEC (the twin of T-14-1-1) |
 | T-14-1-2 | Table | Subject disposition |
 | T-14-1-4 | Table | Demographic characteristics of the screen failures: an analysis set by a condition alone (SCRF, ARMNRS is SCREEN FAILURE; ADSL has no flag for it) |
 | T-14-1-3 | Table | Age group and sex: the ARD keeps cards' default n, N and p, the table prints n (%) (the N rows its cells do not name are left out) |
@@ -35,6 +36,7 @@ screened set).
 | T-14-2-3 | Table | Systolic blood pressure: mean change at week 24 (95% CI) and p-value of a one-sample t-test (the ARD also holds the test's method and alternative as text) |
 | T-14-2-2 | Table | Time to first skin disorder: Kaplan-Meier estimates (its ARD also holds the hazard ratio of Drug X vs Control) |
 | T-14-3-1 | Table | TEAEs by SOC / PT |
+| T-14-3-1C | Table | TEAEs by SOC / PT written as a code SPEC (the twin of T-14-3-1) |
 | L-16-2-7 | Listing | Severe treatment-emergent adverse events |
 | F-14-2-1 | Figure (R program) | Mean change from baseline in systolic blood pressure: its content step is its own R |
 | F-14-2-2 | Figure (R program) | Kaplan-Meier plot of the time to first skin disorder, its own R; the number at risk from T-14-2-2's ARD (`ard`) |
@@ -43,5 +45,12 @@ screened set).
 
 The tables are made from one study ARD (programs/ard/), the listing and
 the figures from the ADaM data, in the figure style of the company
-standards (programs/tfl/fig_setup.R).  Made by data-raw/make-sample-study.R
-of the tflplanner repository.
+standards (programs/tfl/fig_setup.R).
+
+This folder is the one source of the sample: its YAML (study.yml, spec/) and
+this README are edited by hand, in pull requests of the tflplanner repository
+(tests/testthat/test-sample-data.R keeps the data and this table in step with
+them).  data-raw/make-sample-data.R makes only the four ADaM data files
+(data/adam/*.rds) from tflspec's data.  data/adam/define.xml is a small,
+made-up Define-XML of ADSL, written by hand (tflplanner#780); it is not made
+by a script.
