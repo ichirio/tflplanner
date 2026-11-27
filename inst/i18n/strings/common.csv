@@ -1432,6 +1432,8 @@
 "The program will stop: add the value to the code list.","プログラムが止まります。値をコードリストに加えてください。"
 "The code list of %s in %s differs from the standards.","%2$s の %1$s のコードリストが会社標準と違います。"
 "Copy the code list again from the standards.","会社標準からコードリストをコピーし直してください。"
+"The code list of %s in %s has a code not in the study's list.","%2$s の %1$s のコードリストに、試験のコードリストにないコードがあります。"
+"Add the code to the study's list (spec/defaults.yml codelists:), or take it out of the report's list.","そのコードを試験のコードリスト（spec/defaults.yml の codelists:）に加えるか、帳票のリストから外してください。"
 "%s reads the column %s, which %s does not have.","%1$s が読む列 %2$s が %3$s にありません。"
 "Correct the name or add the column (derive / add).","名前を直すか、列を加えてください（derive / add）。"
 "The condition %s on %s cannot be evaluated: %s.","%2$s での条件 %1$s を評価できません：%3$s。"
