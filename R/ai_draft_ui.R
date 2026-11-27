@@ -90,7 +90,7 @@ ai_ui <- function(id, lang = "en") {
               "input.study_mode == 'new'", ns = ns,
               shiny::div(
                 class = "d-flex flex-wrap gap-2",
-                shiny::textInput(ns("new_id"), "ID (study_id)", width = "12rem",
+                shiny::textInput(ns("new_id"), t("ID (study_id)"), width = "12rem",
                                  placeholder = "ABC-123"),
                 shiny::textInput(ns("new_title"), paste0(t("Title"), " (title)"),
                                  width = "20rem")),
