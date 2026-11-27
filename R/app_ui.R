@@ -410,7 +410,8 @@ app_ui <- function(lang = "en") {
   # report's "data" arguments (.tpl_arg_section).  A step's own R program is
   # the analysis step's (its switch is there).
   step_data <- shiny::div(
-    class = "mt-2",
+    class = "mt-2 rp-fold-scope", `data-fold-stage` = "data",
+    .stage_fold_bar("data", lang),
     shiny::conditionalPanel(
       "output.data_is_code == 'yes'",
       shiny::p(class = "alert alert-info py-1 small",
@@ -483,7 +484,8 @@ app_ui <- function(lang = "en") {
   # (a listing has no ARD: only the note of ard_kind_note stays in #step_ard
   # -- rp-step-disable)
   step_ard <- shiny::div(
-    id = "step_ard", class = "mt-2",
+    id = "step_ard", class = "mt-2 rp-fold-scope", `data-fold-stage` = "ard",
+    .stage_fold_bar("ard", lang),
     # (a template report's "analysis" arguments: its only child shown then)
     shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_card_ard")),
     # the definition or the report's own code (R/step_code.R)
@@ -558,7 +560,8 @@ app_ui <- function(lang = "en") {
       shiny::uiOutput("ard_summary")))
 
   step_content <- shiny::div(
-    class = "mt-2",
+    class = "mt-2 rp-fold-scope", `data-fold-stage` = "content",
+    .stage_fold_bar("content", lang),
       # the table's rework (process_code): its data made from the ARD, folded
       # (a template report has none: its content is the template's)
       shiny::div(class = "rp-code-only",
@@ -673,7 +676,8 @@ app_ui <- function(lang = "en") {
                               shiny::div(class = "rp-code-only", .designer_ui(t))))
 
   step_page <- shiny::div(
-    class = "mt-2",
+    class = "mt-2 rp-fold-scope", `data-fold-stage` = "page",
+    .stage_fold_bar("page", lang),
     # (a template report's "page" arguments)
     shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_card_page")),
     pane_head(t("This report's page"), t("The page of the report chosen on the left: its titles, footnotes, its own header or footer, and values of your own to insert ({STUDY} ...). Study defaults = every report's.")),
@@ -762,6 +766,8 @@ app_ui <- function(lang = "en") {
                             shiny::tags$style(shiny::HTML(.result_tabs_css)),
                             shiny::tags$style(shiny::HTML(.builder_cards_css)),
                             shiny::tags$script(shiny::HTML(.builder_cards_js)),
+                            shiny::tags$style(shiny::HTML(.stage_fold_css)),
+                            shiny::tags$script(shiny::HTML(.stage_fold_js)),
                             shiny::tags$style(shiny::HTML(.tpl_css)),
                             shiny::tags$script(shiny::HTML(.tpl_js)),
                             shiny::tags$style(shiny::HTML(.none_css)),
