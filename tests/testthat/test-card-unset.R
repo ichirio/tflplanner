@@ -284,6 +284,37 @@ test_that("fields without an unset render as before; a required one has no (none
   }
 })
 
+test_that("a template's defs: (none) only where !unset is allowed (not unset: stop, not required)", {
+  # (tflspec's tfl_arg_defs() as km_cards' `param` gives it: optional, but
+  # `unset: stop`; tflspec gives every required argument "stop" too)
+  defs <- data.frame(name = c("param", "by", "note"), step = "call", input = "text",
+                     type = "string", required = c(FALSE, TRUE, FALSE),
+                     unset = c("stop", "stop", "omit"))
+  prm <- .tpl_params_from_defs(defs)
+  expect_identical(prm$param$unset, "stop")
+  expect_identical(prm$note$unset, "omit")
+  w <- shiny::textInput("w", "W", value = "abc")
+  base <- as.character(w)
+  # (an `unset: stop` argument and a required one: the field as it was, no (none))
+  for (n in c("param", "by")) {
+    expect_false(.tpl_none_ok(prm[[n]]), info = n)
+    expect_identical(as.character(.tpl_none_wrap(w, "w", "text", prm[[n]], FALSE)), base, info = n)
+    expect_identical(.tpl_value("(none)", "text", prm[[n]]), "(none)", info = n)
+    expect_false(inherits(.tpl_field_arg("(none)", "text", prm[[n]]), "tfl_unset"), info = n)
+  }
+  # (an optional argument with no `unset: stop`: (none) kept, and read back as !unset)
+  expect_true(.tpl_none_ok(prm$note))
+  expect_match(as.character(.tpl_none_wrap(w, "w", "text", prm$note, FALSE)), "(none)", fixed = TRUE)
+  expect_s3_class(.tpl_value("(none)", "text", prm$note), "tfl_unset")
+  # (a tflspec whose defs do not say `unset`: the optional ones keep (none), a required one has none)
+  prm0 <- .tpl_params_from_defs(defs[setdiff(names(defs), "unset")])
+  expect_null(prm0$param$unset)
+  expect_true(.tpl_none_ok(prm0$param))
+  expect_true(.tpl_none_ok(prm0$note))
+  expect_false(.tpl_none_ok(prm0$by))
+  expect_true(.tpl_none_ok(list(name = "x", unset = NA_character_)))
+})
+
 test_that("a code SPEC card: !unset shows (none), is chosen, kept in the SPEC YAML and out of the program", {
   skip_on_cran()
   home <- local_home()

@@ -13,18 +13,25 @@
 #     empties the table (its rows typed again are a value again).
 # The words in the screen's language; a field gives back either word
 # (.is_none_text()), an item of a select the value "(none)".
-# Not on a required argument (it cannot be left out), nor on one tflspec
-# marks `unset: "stop"`, nor on the columns
+# Not where .tpl_none_ok() says no (a required argument, or one tflspec
+# marks `unset: "stop"`), nor on the columns
 # field (its own table).  What an input then gives is read by .tpl_value().
 
 .tpl_none_selects <- c("population", "data", "levels", "vars", "var", "chips", "choice", "choices",
                        "pick", "picks")
 .tpl_none_buttons <- c("text", "number", "flag", "list", "lines", "table")
 
+# Whether an argument takes "(none)": not a required one (it cannot be left
+# out), nor one tflspec says cannot be left unset (its `unset` "stop", which
+# tflspec gives every required one too); NULL or NA, a template not yet
+# marked, still takes it.  The field offers it and reads it back by this
+# rule alone (.tpl_none_wrap(), .tpl_value(), .tpl_field_arg()).
+.tpl_none_ok <- function(prm) {
+  !isTRUE(prm$required) && !identical(as.character(prm$unset)[1L], "stop")
+}
+
 .tpl_none_wrap <- function(w, input_id, type, prm, none, t = identity) {
-  # (nor on one tflspec says cannot be left unset: its `unset` "stop"; NA, a
-  # template not yet marked, still offers it)
-  if (isTRUE(prm$required) || identical(prm$unset, "stop")) return(w)
+  if (!.tpl_none_ok(prm)) return(w)
   if (type %in% .tpl_none_selects) {
     q <- htmltools::tagQuery(w)
     sel <- q$find("select")
