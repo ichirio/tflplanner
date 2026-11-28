@@ -1,32 +1,36 @@
 # A report's steps of its own code at run time (R/step_code.R says what
-# they are): the content step leaves `content` -- a data frame, rtftable
-# pages, a ggplot (made an rtfplot here), rtfplot figures, or a list of
-# them -- and the report spec dresses it as any other report: page,
-# running header and footer, titles, footnotes.  The data step leaves
-# `data` (a figure: `df`).
+# they are): the content step leaves `content` -- a ggplot (made an
+# rtfplot here), an rtfplot, a table_plan, a data frame or rtftable pages,
+# or a list of them, for any kind of report -- and the report spec dresses
+# it as any other report: page, running header and footer, titles,
+# footnotes.  The data step leaves `data` (a figure: `df`).
 
 # The small functions a report's own code is checked with, written once in
 # the study's programs/tfl/fig_setup.R (which those reports source):
-# report_content() -- a ggplot (alone or in a list) becomes a figure;
-# anything else than the contract's -- a data frame, rtftable pages, a
-# ggplot, an rtfplot, or a list of them -- stops, saying which item it is
-# and what it was; report_data() -- the data step left a data frame.
-# The preview runs a report's own code with them; tflspec writes them into
-# fig_setup.R (tfl_setup_program()), and a test keeps the two the same.
+# report_content() -- the content contract (canon 11-28): a ggplot (alone
+# or in a list) becomes a figure; anything else than a ggplot, an rtfplot,
+# a table_plan, a data frame or rtftable pages, or a list of them, stops
+# (class tfl_content_contract), saying which item it is and what it was;
+# report_data() -- the data step left a data frame.  The preview runs a
+# report's own code with them; tflspec writes them into fig_setup.R
+# (tfl_setup_program()), and a test keeps the two the same.
 .report_content_fun <- c(
   "# ---- a report of your own code: its `content` as rtfreporter takes it",
-  "# (a ggplot becomes a figure; what is not a data frame, rtftable pages, a",
-  "# ggplot or an rtfplot, or a list of them, stops, saying which item)",
-  "report_content <- function(x) {",
+  "# (a ggplot becomes a figure; what is not a ggplot, an rtfplot, a table_plan,",
+  "# a data frame or rtftable pages, or a list of them, stops, saying which item)",
+  "report_content <- function(x, id = NULL) {",
   "  ok <- function(p) is.data.frame(p) ||",
-  "    inherits(p, c(\"rtftable\", \"rtfplot\", \"ggplot\"))",
+  "    inherits(p, c(\"rtftable\", \"rtfplot\", \"ggplot\", \"table_plan\"))",
   "  fig <- function(p) if (inherits(p, \"ggplot\")) rtfplot(p) else p",
   "  one <- ok(x)",
   "  items <- if (one) list(x) else if (is.list(x)) x else list(x)",
   "  for (i in seq_along(items)) if (!ok(items[[i]])) {",
-  "    stop(sprintf(\"`content`%s is %s: make it a data frame, rtftable pages, a ggplot or an rtfplot (or a list of them).\",",
-  "                 if (one || !is.list(x)) \"\" else sprintf(\" (item %d)\", i),",
-  "                 class(items[[i]])[1L]), call. = FALSE)",
+  "    msg <- sprintf(\"%s`content`%s is %s: make it a ggplot, an rtfplot, a table_plan, a data frame or rtftable pages (or a list of them).\",",
+  "                   if (length(id)) paste0(id, \": \") else \"\",",
+  "                   if (one || !is.list(x)) \"\" else sprintf(\" (item %d)\", i),",
+  "                   class(items[[i]])[1L])",
+  "    stop(structure(class = c(\"tfl_content_contract\", \"error\", \"condition\"),",
+  "                   list(message = msg, call = NULL)))",
   "  }",
   "  if (one) fig(x) else lapply(items, fig)",
   "}",
