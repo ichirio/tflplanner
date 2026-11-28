@@ -153,7 +153,11 @@ test_that("a report has its own lists only: no layer (the defaults) gives it one
   # the programs
   expect_false(any(grepl("^cl_sex <- ", cl_ard(s, "DM"))))
   expect_false(any(grepl("^cl_sex <- ", cl_ard(s, "DM2"))))
-  expect_true("cl_sex <- c(F = \"OwnF\", M = \"OwnM\")" %in% cl_ard(s, "DM3"))
+  # (the ARD program: the list's codes in its order -- since tflspec's
+  # CANON-3 without labels, which are the report program's plan_labels();
+  # the labelled form is the tflspec before it)
+  expect_true(any(c("cl_sex <- c(\"F\", \"M\")", "cl_sex <- c(F = \"OwnF\", M = \"OwnM\")") %in%
+                    cl_ard(s, "DM3")))
 })
 
 test_that("an own list edited in the sheet wins at once; one removed there is none", {
