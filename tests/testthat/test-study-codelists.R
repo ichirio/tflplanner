@@ -30,9 +30,10 @@ cl_planner <- function() {
   p
 }
 
-# A study of the YAML spec, in step with its files, with: DM extending the
-# defaults (code list SEX there); DM2 extending the pattern pp (TRT01A and
-# SEX there); DM3 extending the defaults, with a list SEX of its own; and
+# A study of the YAML spec, in step with its files, with: DM and DM2
+# extending the defaults (code list SEX there), with the page configuration
+# pp; DM3 extending the
+# defaults, with a list SEX of its own; and
 # a left-over spec/codelists.yml (read by no one since tflspec #659) if
 # `file`.
 cl_study <- function(id, file = TRUE) {
@@ -46,18 +47,16 @@ cl_study <- function(id, file = TRUE) {
   p <- copy_output(p, "DM", "DM3")
   p <- set_codelist(p, "DM3", data.frame(variable = "SEX", value = c("F", "M"),
                                          label = c("OwnF", "OwnM"), order = c("1", "2")))
+  # (DM and DM2 pick the page configuration pp: their rows of the report
+  # sheet, which a program written from the sheets reads -- a report the
+  # sheets say nothing of has no row there)
+  p <- add_page_pattern(p, "pp")
+  for (o in c("DM", "DM2")) p <- set_report_pattern(p, o, "pp")
   s <- create_study(id, planner = p)
   saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
   sp <- file.path(s$path, "spec")
   cat("codelists:\n  SEX: [{value: F, label: DefF}, {value: M, label: DefM}]\n",
       file = file.path(sp, "defaults.yml"), append = TRUE)
-  dir.create(file.path(sp, "patterns"))
-  # (a pattern holds no page: that is a page configuration's, tflspec PP-1b)
-  # (a pattern holds no code list: tflspec#857)
-  writeLines(c("content:", "  - plan_style: {align_count_pct: true}"),
-             file.path(sp, "patterns", "pp.yml"))
-  f <- file.path(sp, "outputs", "DM2.yml")
-  writeLines(sub("^  - defaults$", "  - patterns/pp", readLines(f)), f)
   if (file) writeLines(cl_file_text, file.path(sp, "codelists.yml"))
   # (taken in as an open does it: the files changed outside are read)
   open_study(id)
@@ -140,7 +139,7 @@ test_that("a left-over spec/codelists.yml is ignored: its lists reach no report 
   expect_false(grepl("ANRIND", txt, fixed = TRUE))
 })
 
-test_that("a report has its own lists only: no layer (defaults, a pattern) gives it one", {
+test_that("a report has its own lists only: no layer (the defaults) gives it one", {
   cl_home()
   s <- cl_study("CL2")
   cl <- .study_codelists(s$planner)
@@ -154,7 +153,11 @@ test_that("a report has its own lists only: no layer (defaults, a pattern) gives
   # the programs
   expect_false(any(grepl("^cl_sex <- ", cl_ard(s, "DM"))))
   expect_false(any(grepl("^cl_sex <- ", cl_ard(s, "DM2"))))
-  expect_true("cl_sex <- c(F = \"OwnF\", M = \"OwnM\")" %in% cl_ard(s, "DM3"))
+  # (the ARD program: the list's codes in its order -- since tflspec's
+  # CANON-3 without labels, which are the report program's plan_labels();
+  # the labelled form is the tflspec before it)
+  expect_true(any(c("cl_sex <- c(\"F\", \"M\")", "cl_sex <- c(F = \"OwnF\", M = \"OwnM\")") %in%
+                    cl_ard(s, "DM3")))
 })
 
 test_that("an own list edited in the sheet wins at once; one removed there is none", {
@@ -193,7 +196,7 @@ test_that("a report that cannot be resolved does not stop the lists: the sheet's
   cl_home()
   s <- cl_study("CL4")
   p <- s$planner
-  p$spec$outputs[["DM2"]]$extends <- "patterns/nothing_here"
+  p$spec$outputs[["DM2"]]$extends <- "nothing_here"
   cl <- expect_no_error(.study_codelists(p))
   expect_identical(unique(cl$output_id), "DM3")
 })
@@ -285,9 +288,7 @@ test_that("a program is written with the view ahead of the spec, like the one fr
     # table program has a line for them; the labels reach the table through
     # one plan_labels() (the sheets path has the lists its sheets hold: an
     # own list, not the inherited ones)
-    # (DM2 extends a pattern with no normalize_ard(): its two paths differ
-    # there, not in the lists)
-    if (id != "DM2") expect_identical(cl_body(cl_unlabel(b)), cl_body(cl_unlabel(a)))
+    expect_identical(cl_body(cl_unlabel(b)), cl_body(cl_unlabel(a)), info = id)
   }
 })
 

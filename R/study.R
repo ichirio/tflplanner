@@ -297,7 +297,9 @@ create_study <- function(study_id, title = NA, compound = NA, phase = NA,
   for (d in study_layout()) {
     dir.create(file.path(path, d), recursive = TRUE, showWarnings = FALSE)
   }
-  .write_meta(meta, path)
+  # (study.yml says the SPEC's form from its first write: tflspec reads no
+  # study.yml without it; the save writes the file again as tflspec does)
+  .write_meta(c(meta, list(spec_version = .tflspec_spec_version())), path)
   writeLines(.rproj, file.path(path, paste0(study_id, ".Rproj")))
   s <- .new_study(path, .read_meta(path)[.study_fields], p)
   s <- save_study(s, home = home)
@@ -312,6 +314,12 @@ create_study <- function(study_id, title = NA, compound = NA, phase = NA,
     .write_state(s, home)
   }
   invisible(s)
+}
+
+# The form of the SPEC the installed tflspec reads and writes (study.yml's
+# `spec_version`: tflspec's own number, not one of tflplanner's)
+.tflspec_spec_version <- function() {
+  get(".spec_version", envir = asNamespace("tflspec"), inherits = FALSE)
 }
 
 .new_study <- function(path, meta, planner) {
@@ -369,6 +377,13 @@ open_study <- function(study, home = tflplanner_home()) {
   if (identical(sp$status, "adopted")) {
     message("The definition files were changed outside tflplanner; the ",
             "changes were loaded: ", paste(sp$files$file, collapse = ", "), ".")
+  } else if (identical(sp$status, "invalid") && isTRUE(sp$old_form)) {
+    message("The definition files are of an older form of the SPEC, which this ",
+            "tflspec no longer reads; the study is open as last saved and cannot ",
+            "be saved until they are changed as each line says (then ",
+            "reload_from_spec()):\n",
+            paste0("  ", sp$problems$file, ": ", sp$problems$message,
+                   collapse = "\n"))
   } else if (identical(sp$status, "invalid")) {
     message("The definition files were changed outside tflplanner but do not ",
             "read; the study is open as last saved and cannot be saved until ",

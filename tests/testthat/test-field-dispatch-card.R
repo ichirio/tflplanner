@@ -21,8 +21,8 @@
 .dispatch_sources <- list(
   vars = c("AGE", "SEX", "RACE", "TRT01A"), levels = c("Placebo", "Drug A"),
   codelist = c("C1", "C2"), columns = c("COL1", "COL2"), populations = c("SAF", "ITT"),
-  report_data = c("adsl", "adae"), study_data = c("ADSL", "ADAE"), ard = c("ard_1"),
-  study_info = c("STUDYID"), tokens = c("{n}", "{p}"), stats = c("n", "mean", "sd"),
+  objects = list(data = c("adsl", "adae"), ard = c("ard_1")), study_data = c("ADSL", "ADAE"),
+  tokens = c("{n}", "{p}"), stats = c("n", "mean", "sd"),
   styles = c("default"))
 # the functions drawn in Japanese too
 .dispatch_ja <- c("plan_style", "plan_filter", "plan_columns", "plan_titles", "normalize_ard",
