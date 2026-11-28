@@ -484,6 +484,49 @@ test_that("a TOC taken in moves a report's set where its data keeps it, its toc 
   expect_length(.toc_set_lines(attr(q2, "set_moved")), 0L)
 })
 
+test_that("a report of its own rows set to another set has one set on its rows, not two (tflspec#997)", {
+  home <- local_home()
+  s <- suppressMessages(sample_study_copy(home))
+  p <- s$planner
+  id <- "T-14-1-1"
+  other <- setdiff(as.character(stats::na.omit(p$ard$populations$population_id)), "SAF")[1L]
+  skip_if(is.na(other), "the sample study has one population")
+  rows_sets <- function(w) {
+    rows <- c(if (is.list(w$data) && is.null(names(w$data))) w$data, w$ard$analysis_data)
+    unique(unlist(lapply(rows, function(a) if (is.null(a$subjects_in)) a$population)))
+  }
+  set_errors <- function(w) {
+    r <- tflspec:::.check_static_rows(w, id)
+    r[r$item %in% "data$population" & r$level %in% "error", ]
+  }
+  # (the sample's report with a BIGN analysis: the old set's row the view
+  # leaves is a denominator's, BIGN says the report's set)
+  b <- set_report_population(p, id, other)
+  expect_identical(tflspec::tfl_report_set(b$spec$outputs[[id]]), other)
+  expect_identical(nrow(set_errors(b$spec$outputs[[id]])), 0L)
+  # the issue's report: written by hand, no template, no data map, no BIGN
+  # analysis, its set SAF
+  o <- p$spec$outputs[[id]]
+  o$ard$analyses <- Filter(function(a) !identical(a$id, "BIGN"), o$ard$analyses)
+  p <- .spec_set_output(p, id, o)
+  o <- p$spec$outputs[[id]]
+  expect_null(o$template)
+  expect_identical(tflspec::tfl_report_set(o), "SAF")
+  q <- set_report_population(p, id, other)
+  w <- q$spec$outputs[[id]]
+  # one set on the rows (the old set's row takes the new one), the report's,
+  # and the check has nothing to say of it
+  expect_identical(rows_sets(w), other)
+  expect_identical(tflspec::tfl_report_set(w), other)
+  expect_identical(nrow(set_errors(w)), 0L)
+  expect_identical(report_population(q, id), other)
+  toc <- Filter(function(e) identical(e$id, id), q$spec$study$toc$outputs)
+  expect_identical(toc[[1L]]$population, other)
+  # (the view's edits taken in, as a save takes them: still one set)
+  now <- .spec_now(q)
+  expect_identical(rows_sets(now$outputs[[id]]), other)
+})
+
 test_that("a template that takes the set as an argument: every write of the report's set moves the argument with it (review H5)", {
   skip_on_cran()
   home <- local_home()
