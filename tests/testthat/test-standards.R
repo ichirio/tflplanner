@@ -139,6 +139,24 @@ test_that("the figure style is part of the company standards", {
   suppressMessages(setup_tflplanner(standards = "builtin"))
 })
 
+test_that("a study's figures are made and drawn with its figure style over the company's", {
+  skip_on_cran()
+  home_for_test()
+  # the report programs and fig_setup.R get the company's figure tables
+  rs <- .report_standards()
+  expect_true(all(c("figure_settings", "figure_colors", "figure_markers") %in% names(rs)))
+  expect_identical(rs$figure_settings, company_standards()$figure_settings)
+  # a study's copy that says 30 for axis_title_width: the style the
+  # preview sets and fig_setup.R writes say 30, the other keys the company's
+  st <- structure(list(figure_style = list(settings = list(
+    list(key = "axis_title_width", value = "30")))), class = "tfl_study_spec")
+  fs <- tflspec::tfl_fig_style(st, .std_fig_standards())
+  w <- fs$settings$value[fs$settings$key == "axis_title_width" & is.na(fs$settings$type)]
+  expect_identical(w, "30")
+  co <- company_standards()$figure_settings
+  expect_setequal(paste(fs$settings$type, fs$settings$key), paste(co$type, co$key))
+})
+
 test_that("a company's methods sheet written before labels still reads", {
   home_for_test()
   f <- file.path(withr_tempdir(), "old.xlsx")

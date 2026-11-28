@@ -475,8 +475,26 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 # The company's inputs a report or ARD program reads
 .report_standards <- function() {
   s <- company_standards()
-  list(code_templates = s$code_templates, ard_statistics = .std_ard_statistics(),
-       ard_methods = .std_ard_methods(), settings = s$settings)
+  c(list(code_templates = s$code_templates, ard_statistics = .std_ard_statistics(),
+         ard_methods = .std_ard_methods(), settings = s$settings),
+    .std_fig_standards())
+}
+
+# The company standards' figure style tables, as tflspec's program makers
+# take them (figure_settings, figure_colors, figure_markers; one the
+# standards lack is left out: tflspec's own)
+.std_fig_standards <- function() {
+  s <- company_standards()[c("figure_settings", "figure_colors", "figure_markers")]
+  s[!vapply(s, is.null, NA)]
+}
+
+# The figure style a study's figures are made and drawn with: the study's
+# copy over the company's over tflspec's (tflspec::tfl_fig_style(), one
+# rule for every key, as the programs have it); NULL (tflspec's own) when
+# the standards cannot be read
+.study_fig_style <- function(p) {
+  tryCatch(tflspec::tfl_fig_style(.code_spec(p)$study, .std_fig_standards()),
+           error = function(e) NULL)
 }
 
 # The values a report's program is made from (tflspec::tfl_report_program()'s

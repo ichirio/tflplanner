@@ -211,14 +211,14 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
 
 # programs/tfl/fig_setup.R: the study's setup, the packages the figures'
 # code uses (the designed figures': ggsurvfit for a KM ...), the figure
-# style of the company standards, and report_content() -- tflspec writes
-# it (tfl_setup_program(), G5-1b)
+# style (the study's over the company standards'), and report_content() --
+# tflspec writes it (tfl_setup_program(), G5-1b)
 .fig_setup_code <- function(p = NULL) {
-  s <- company_standards()
   ctx <- .setup_context_args()
   libs <- .fig_setup_libs(p)
   tflspec::tfl_setup_program(
-    "fig_setup", standards = s[c("figure_settings", "figure_colors", "figure_markers")],
+    "fig_setup", study = if (!is.null(p)) .code_spec(p)$study,
+    standards = .std_fig_standards(),
     attached = ctx$attached, study_code = ctx$study_code, fig_libs = libs,
     layout = study_layout())
 }
