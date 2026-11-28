@@ -60,6 +60,7 @@ test-ard-own-ui.R,2,0.6
 test-ard-stack-ui.R,2,1.2
 test-ard-study.R,2,0.4
 test-ars-dialog.R,2,0.2
+test-builder-add-dirty.R,2,0.8
 test-builder-args-branches.R,2,0.0
 test-builder-args-kind.R,2,0.0
 test-builder-forms.R,2,0.7
