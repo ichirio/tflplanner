@@ -899,11 +899,8 @@
   d$content <- content
   sp$study$defaults <- d
   rel <- file.path(study_layout()[["spec"]], "defaults.yml")
-  f <- tempfile("tflplanner-defaults", fileext = ".yml")
-  on.exit(unlink(f), add = TRUE)
-  tflspec::tfl_write_study_part(sp$study, "defaults", f)
-  sp$text[[rel]] <- .keep_study_blocks(readLines(f, encoding = "UTF-8", warn = FALSE),
-                                       sp$text[[rel]] %||% character())
+  # (one writer of defaults.yml: every block it does not write is kept)
+  sp$text[[rel]] <- .study_part_lines(sp$study, "defaults", old = sp$text[[rel]])
   p$spec <- sp
   p$study[["rounding"]] <- v
   if (!is.null(p$spec$base)) p$spec$base$study[["rounding"]] <- v

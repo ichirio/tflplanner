@@ -1107,10 +1107,84 @@ test_that(".running_versions(): the loaded version; dev, tag, local and release 
                                           dev = "d"), "x 1.0.0 (d: db4b1546), R 4.6.1")
   expect_identical(.running_versions_lines(list(packages = cm, r = "4.6.1")),
                    c("x 1.0.0 (development version: db4b1546)", "R 4.6.1"))
-  # a package that is not there: a "?"
-  v2 <- .running_versions("tflspec", desc = function(p) NULL, running = function(p) NA_character_,
+  # a package that is not there: no version known, so no entry (not "NA", not "?")
+  v2 <- .running_versions(c("rtfreporter", "tflspec"),
+                          desc = function(p) if (p == "rtfreporter") list(Version = "0.9.0"),
+                          running = function(p) NA_character_, git = function(p) NULL,
                           r = "4.5.0")
-  expect_identical(.running_versions_text(v2), "tflspec ?, R 4.5.0")
+  expect_identical(v2$packages$version, c("0.9.0", NA))
+  expect_identical(.running_versions_text(v2), "rtfreporter 0.9.0, R 4.5.0")
+  expect_false(any(grepl("NA|\\?", .running_versions_lines(v2))))
+})
+
+test_that(".running_versions(): a load_all() folder shows its git branch and commit (#785)", {
+  sha <- "0fedcba9876543210fedcba9876543210fedcba9"
+  one <- function(d, g) .running_versions("x", desc = function(p) d, running = function(p) "1.0.0",
+                                          git = function(p) g, r = "4.6.1")
+  # a branch: dev, the branch and 8 characters
+  b <- one(list(Version = "1.0.0"), list(ref = "c/785-help-versions", sha = sha))
+  expect_identical(c(b$packages$kind, b$packages$ref, b$packages$sha),
+                   c("dev", "c/785-help-versions", "0fedcba9"))
+  expect_identical(.running_versions_lines(b, dev = "d"),
+                   c("x 1.0.0 (d: c/785-help-versions 0fedcba9)", "R 4.6.1"))
+  # a branch named like a version is still a branch, not a tag
+  expect_identical(one(list(Version = "1.0.0"), list(ref = "v1.0", sha = sha))$packages$kind, "dev")
+  # a checkout on a commit: no branch, the commit only
+  d <- one(list(Version = "1.0.0"), list(ref = NA_character_, sha = sha))
+  expect_identical(.running_versions_text(d, dev = "d"), "x 1.0.0 (d: 0fedcba9), R 4.6.1")
+  # not known (no checkout): no mark, nothing shown as NA
+  n <- one(list(Version = "1.0.0"), NULL)
+  expect_identical(.running_versions_text(n), "x 1.0.0, R 4.6.1")
+  # an installed package's own Remote fields win: git is not asked
+  asked <- FALSE
+  i <- .running_versions("x", desc = function(p) list(Version = "1.0.0", RemoteType = "github",
+                                                      RemoteRef = "next", RemoteSha = sha),
+                         running = function(p) "1.0.0",
+                         git = function(p) { asked <<- TRUE; list(ref = "other", sha = sha) })
+  expect_false(asked)
+  expect_identical(i$packages$ref, "next")
+  # an installed package (not load_all()) is never read for git
+  expect_null(.running_git("stats"))
+})
+
+test_that(".git_head(): branch, detached commit, packed-refs, worktree, none (#785)", {
+  root <- tempfile("githead")
+  on.exit(unlink(root, recursive = TRUE), add = TRUE)
+  sha <- "1111111111111111111111111111111111111111"
+  sha2 <- "2222222222222222222222222222222222222222"
+  pkg <- file.path(root, "repo", "pkg")
+  g <- file.path(root, "repo", ".git")
+  dir.create(pkg, recursive = TRUE)
+  dir.create(file.path(g, "refs", "heads", "c"), recursive = TRUE)
+  # no .git anywhere up to here (a folder of its own, outside the repo)
+  lone <- file.path(root, "lone")
+  dir.create(lone)
+  # (only when no folder above the temp folder is a checkout)
+  if (is.null(.git_head(dirname(root)))) expect_null(.git_head(lone))
+  # a branch, read from a folder below the checkout's root
+  writeLines("ref: refs/heads/c/785-help-versions", file.path(g, "HEAD"))
+  writeLines(sha, file.path(g, "refs", "heads", "c", "785-help-versions"))
+  expect_identical(.git_head(pkg), list(ref = "c/785-help-versions", sha = sha))
+  # a branch only in packed-refs
+  writeLines("ref: refs/heads/next", file.path(g, "HEAD"))
+  writeLines(c("# pack-refs with: peeled fully-peeled sorted",
+               paste(sha2, "refs/heads/next")), file.path(g, "packed-refs"))
+  expect_identical(.git_head(pkg), list(ref = "next", sha = sha2))
+  # a branch with no commit yet: not known
+  writeLines("ref: refs/heads/empty", file.path(g, "HEAD"))
+  expect_null(.git_head(pkg))
+  # detached: the commit, no branch
+  writeLines(sha, file.path(g, "HEAD"))
+  expect_identical(.git_head(pkg), list(ref = NA_character_, sha = sha))
+  # a worktree: .git is a file; its branches are in the common folder
+  wt <- file.path(root, "wt")
+  wg <- file.path(g, "worktrees", "wt")
+  dir.create(wt)
+  dir.create(wg, recursive = TRUE)
+  writeLines(paste("gitdir:", wg), file.path(wt, ".git"))
+  writeLines("ref: refs/heads/c/785-help-versions", file.path(wg, "HEAD"))
+  writeLines("../..", file.path(wg, "commondir"))
+  expect_identical(.git_head(wt), list(ref = "c/785-help-versions", sha = sha))
 })
 
 test_that(".running_versions() of this process: the three packages and this R, read once", {

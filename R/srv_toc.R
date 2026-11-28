@@ -354,7 +354,7 @@
       shiny::tags$table(
         class = "table table-sm small",
         shiny::tags$thead(shiny::tags$tr(lapply(
-          t(c("output_id", "Phase", "Label", "Titles", "Shell", "Report sets")), shiny::tags$th))),
+          t(c("Report ID (output_id)", "Phase", "Label", "Titles", "Shell", "Report sets")), shiny::tags$th))),
         shiny::tags$tbody(lapply(show, function(i) shiny::tags$tr(
           shiny::tags$td(r$output_id[i]),
           shiny::tags$td(if (is.na(r$phase[i])) "\u2014" else r$phase[i]),
@@ -624,7 +624,7 @@
       shiny::tags$table(
         class = "table table-sm align-middle",
         shiny::tags$thead(shiny::tags$tr(lapply(
-          t(c("output_id", "State", "Type", "Titles and footnotes")), shiny::tags$th))),
+          t(c("Report ID (output_id)", "State", "Type", "Titles and footnotes")), shiny::tags$th))),
         shiny::tags$tbody(lapply(shown, toc_row))),
       if (any(r$guessed[shown] & r$status[shown] == "new")) shiny::p(
         class = "small text-muted",

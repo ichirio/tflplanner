@@ -291,6 +291,9 @@
     list(name = n,
          default = if (identical(kind, "value")) (if (tagged) dv$value else dv),
          required = isTRUE(d$required),
+         # (what "(none)" does, tfl_arg_defs()'s `unset`: "stop" offers no
+         # "(none)", .tpl_none_ok(); NULL for a tflspec that does not say)
+         unset = .def_unset(d),
          doc = if (length(d$description) && !is.na(d$description) && nzchar(d$description)) d$description,
          # (tflspec's Japanese help, `help: {en, ja}`: shown in the Japanese UI)
          doc_ja = if (length(d$help_ja) && !is.na(d$help_ja) && nzchar(d$help_ja)) as.character(d$help_ja),

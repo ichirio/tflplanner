@@ -1,35 +1,32 @@
 # app_server(): add report -- moved from R/app.R as it was.  Run in
 # app_server()'s environment (.srv_part()); what it makes is copied back
 # there for the parts after it (.srv_keep()).
-# A report's analysis set as its file says it: its data map's `population`
-# (a KM type's `data: {population:, steps:}`, canon 11-15), else `common:
-# population`; NA none
-.o_population <- function(o) {
-  d <- o$data
-  map <- is.list(d) && !is.null(names(d))
-  v <- if (map && !is.null(d[["population"]])) d[["population"]] else o$common[["population"]]
-  v <- as.character(v %||% NA_character_)[1L]
+# A report's analysis set as its file says it (A2-T, canon 11-15: the
+# `population:` of its data -- a data map's key, a template's set argument,
+# the set its subjects rows carry -- tflspec::tfl_report_set(); `study` the
+# study's spec, whose copies of the templates it reads); NA none
+.o_population <- function(o, study = NULL) {
+  if (!is.list(o)) return(NA_character_)
+  # (a report the screens draw half made: no set rather than an error)
+  v <- tryCatch(as.character(tflspec::tfl_report_set(o, study))[1L], error = function(e) NA_character_)
   if (is.na(v) || !nzchar(v)) NA_character_ else v
 }
-# A report's analysis set set (NA: taken out): on its data map -- a
-# figure's always (canon 11-15: a figure's subjects are its report's set,
-# its data's `population:`), any report's that has a data map -- with no
-# `common:` beside it; else (a table or listing with no data map, or data
-# entries) `common: population`.  The empty `common:` and data map taken out
-.o_set_population <- function(o, population) {
+# A report's analysis set set (NA: taken out) where tfl_report_set() reads
+# it, never in `common:` (tflspec::tfl_set_report_set(); `study` the
+# study's spec, for a template that fills its set from no argument)
+.o_set_population <- function(o, population, study = NULL) {
   has <- length(population) && !is.na(population[1L]) && nzchar(population[1L])
+  # (a figure with no data yet: its set on a data map made for it, canon 11-15)
+  if (has && identical(o$kind, "figure") && !length(o$data)) o$data <- list(population = population[1L])
+  o <- tflspec::tfl_set_report_set(o, if (has) population[1L] else NA_character_, study)
+  # (a data map's set first in it, as the YAML reads it; a map left empty and
+  # the `common:` left empty taken out)
   d <- o$data
-  map <- is.list(d) && !is.null(names(d))
-  if (map || (identical(o$kind, "figure") && !length(d))) {
-    # (the set first in the map, as the YAML reads it; `data` kept in its place)
-    rest <- if (map) d[setdiff(names(d), "population")] else list()
-    dd <- c(if (has) list(population = population[1L]), rest)
-    o["data"] <- list(if (length(dd)) dd)
-    o$common$population <- NULL
-  } else {
-    o$common$population <- if (has) population[1L]
+  if (is.list(d) && !is.null(names(d)) && "population" %in% names(d)) {
+    o$data <- d[c("population", setdiff(names(d), "population"))]
   }
-  if (!length(o$common)) o$common <- NULL
+  if (is.list(o$data) && !length(o$data)) o$data <- NULL
+  if (is.list(o$common) && !length(o$common)) o$common <- NULL
   o
 }
 .srv_add_report <- function() {
@@ -301,7 +298,8 @@
     shiny::uiOutput("tpl_modal_more"))
   }
   # the dialog's required arguments of a template, for the dataset `ds` (NULL:
-  # the template's default); the study's value first: its treatment for `by`
+  # the template's default); the study's value first (a table's `by` has none:
+  # the planner only suggests settings.treatment, in grey)
   tpl_req_widgets <- function(nm, ds = NULL) {
     prm_all <- .tpl_params(nm)
     prm <- .tpl_shown(prm_all)
@@ -609,23 +607,29 @@
     tpl_pending$id <- id
     if (identical(kind, "table")) tpl_autoprev$want <- id
     # (a KM type: its data the report's own `data:` steps, from the dialog.
-    # The analysis set is not written here: the one setter,
-    # .write_report_population(), puts it where the report's set lives -- a
-    # figure's on its data's `population:` (no `common:` and no step of it,
-    # canon 11-15), a table's in `common:` -- and in the template's
-    # `population` argument where it takes one, the same value (#868, H5))
+    # The analysis set -- the dialog's one set control, #868 -- is written by
+    # the one setter, .write_report_population(), where the report's set
+    # lives, never in `common:` (A2-T): a figure's on its data's
+    # `population:` (no step of it, canon 11-15), a template's set argument,
+    # and the template's `population` argument where it takes one, the same
+    # value (H5).  A set the template's own default already is (demog's
+    # SAF, canon 11-15 (1)) is not written: the template holds it)
     dat <- tpl_modal_data(nm)
     pop <- as.character(attr(args, "population") %||% NA_character_)
     attr(args, "population") <- NULL
     o <- tflspec::tfl_output(id, kind, label = if (is.na(desc)) NA_character_ else desc,
                              template = .tpl_write_args(list(name = nm), args, by_step = TRUE),
                              data = if (length(dat$steps)) list(steps = dat$steps))
+    own <- tryCatch(tflspec::tfl_report_set(o, rv$p$spec$study), error = function(e) NA_character_)
+    if (.is_blank(pop)) pop <- own
+    write_set <- !.is_blank(pop) && !identical(pop, own)
     # (straight into the spec: its toc line and its file, the view of
     # that report alone -- .spec_add_output(); its set then written as every
     # report's is, .write_report_population())
     p2 <- guarded(.spec_add_output(rv$p, o, label = desc,
-                                   section = if (nzchar(sec)) sec else NA_character_))
-    if (!is.null(p2) && !.is_blank(pop)) p2 <- guarded(.write_report_population(p2, id, pop, output = o))
+                                   section = if (nzchar(sec)) sec else NA_character_,
+                                   population = if (.is_blank(pop)) NA_character_ else pop))
+    if (!is.null(p2) && write_set) p2 <- guarded(.write_report_population(p2, id, pop, output = o))
     .tpl_trace("written into the spec")
     if (is.null(p2)) {
       tpl_pending$id <- NULL
@@ -1018,7 +1022,8 @@
     if (is.null(steps)) o$data$steps <- NULL else o$data$steps <- steps
     # (the set written after the steps: on the data map they make --
     # .write_report_population())
-    o <- .o_set_population(o, if (is.null(join) && nzchar(sel)) sel else NA_character_)
+    o <- .o_set_population(o, if (is.null(join) && nzchar(sel)) sel else NA_character_,
+                            rv$p$spec$study)
     if (!length(o$data)) o$data <- NULL
     p2 <- guarded(.write_report_population(rv$p, id, output = o))
     if (is.null(p2)) return()
