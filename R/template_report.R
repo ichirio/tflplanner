@@ -208,10 +208,10 @@
 # template's own parameters), and any other key directly under `template:`
 # -- all read as one map in the file's order, a later one winning.  A
 # built-in template (tflspec's .tpl_spec_args()): `args:` and the two parts
-# `ard:` and `content:` (a name in two places stops there; here the first
+# `analysis:` and `content:` (a name in two places stops there; here the first
 # is kept).
 .tpl_arg_steps <- c("data", "analysis", "content", "page")
-.tpl_builtin_parts <- c("ard", "content")
+.tpl_builtin_parts <- c("analysis", "content")
 .tpl_is_series <- function(name) grepl("/", as.character(name)[1L], fixed = TRUE)
 .tpl_secs_for <- function(name) if (.tpl_is_series(name)) .tpl_arg_steps else .tpl_builtin_parts
 .tpl_is_map <- function(v) is.list(v) && !is.null(names(v))
@@ -304,18 +304,12 @@
   t
 }
 
-# The section a new argument of a report by step goes to: its `step:` as
-# the template's form names it (a built-in template's analysis step is its
-# `ard:` part); NA (flat) when the template does not say, or the step is no
-# section of that form
+# The section a new argument of a report by step goes to: its `step:` (the
+# step's name is the YAML key in both forms, `analysis:`); NA (flat) when
+# the template does not say, or the step is no section of that form
 .tpl_arg_step <- function(name, arg, secs = character()) {
   st <- as.character(.arg_def(.tpl_defs(name), arg)$step %||% NA_character_)[1L]
   if (is.na(st)) return(NA_character_)
-  if (.tpl_is_series(name)) {
-    if (identical(st, "ard")) st <- "analysis"
-  } else if (identical(st, "analysis")) {
-    st <- "ard"
-  }
   if (st %in% .tpl_secs_for(name)) st else NA_character_
 }
 
@@ -770,10 +764,10 @@
 # What an input gives, as the argument's value (NULL: none -- the default)
 .tpl_value <- function(v, type, prm = NULL) {
   if (is.null(v)) return(NULL)
-  # ("(none)" on an argument that may be left out: `!unset`; among other
+  # ("(none)" on an argument that may be left out, .tpl_none_ok(): `!unset`; among other
   # items of a many-valued field it is just not one of them)
   # (in any language: "(none)", "\uff08\u306a\u3057\uff09")
-  nn <- is.character(v) && !isTRUE(prm$required) && any(trimws(v) %in% .none_texts())
+  nn <- is.character(v) && .tpl_none_ok(prm) && any(trimws(v) %in% .none_texts())
   if (nn) {
     if (length(v) == 1L) return(tflspec::tfl_unset())
     v <- v[!trimws(v) %in% .none_texts()]
@@ -844,7 +838,7 @@
   if (is.null(raw)) return(NULL)
   if (identical(type, "list") && is.null(.tpl_list_text(shown, prm))) {
     txt <- paste(as.character(raw), collapse = "\n")
-    if (!isTRUE(prm$required) && trimws(txt) %in% .none_texts()) return(tflspec::tfl_unset())
+    if (.tpl_none_ok(prm) && trimws(txt) %in% .none_texts()) return(tflspec::tfl_unset())
     v <- .tpl_yaml_read(txt)
   } else {
     v <- .tpl_value(raw, type, prm)
@@ -1103,8 +1097,8 @@
 .tpl_missing <- function(name, args, study = NULL) {
   prm <- .tpl_shown(.tpl_params(name))
   req <- names(prm)[vapply(prm, function(x) isTRUE(x$required), NA)]
-  # (a required argument the study gives -- its treatment for `by` -- is
-  # not empty: tflspec fills it)
+  # (a required argument the study gives -- not `by`, whose treatment is a
+  # grey suggestion only -- is not empty: tflspec fills it)
   given <- function(a) {
     v <- args[[a]] %||% if (!is.null(study)) .tpl_study_value(study, prm[[a]])
     length(v) > 0L && any(nzchar(as.character(v)))
@@ -1395,14 +1389,15 @@
   if (!is.null(name)) o$template$name <- name
   prm <- .tpl_params(o$template$name)
   args <- args[c(intersect(names(prm), names(args)), setdiff(names(args), names(prm)))]
-  # (the report's set written where the report's set lives -- a figure's
-  # data `population:` (canon 11-15), a data map's, else `common:` --
-  # .o_set_population(); #868.  Every write of this file then goes through
-  # the setter, .write_report_population(), which keeps the template's
-  # `population` argument the same value: H5)
-  if (!is.null(args$population)) o <- .o_set_population(o, as.character(args$population))
-  # (a template whose analysis set is the report's population (demog) holds
-  # it in `common:`, not in its arguments)
+  # (the report's set written where the report's set lives, never `common:`
+  # (A2-T, tflspec::tfl_set_report_set()): a figure's data `population:`
+  # (canon 11-15), a data map's, a template's set argument -- .o_set_population();
+  # #868.  Every write of this file then goes through the setter,
+  # .write_report_population(), which keeps the template's `population`
+  # argument the same value: H5)
+  if (!is.null(args$population)) o <- .o_set_population(o, as.character(args$population), p$spec$study)
+  # (a template whose analysis set is the report's population (a hidden data
+  # stage) holds it on the report's data, not in its arguments)
   if (.tpl_pop_of_report(prm)) args$population <- NULL
   o$template <- .tpl_write_args(o$template, args)
   o
@@ -1758,8 +1753,7 @@ $(document).on('shiny:connected', function() {
 }
 
 # A template report's analysis set, for its data step (#751 item 6): the
-# report's own (.o_population(): a figure's data `population:`, else
-# `common: population`) and the analysis data the template
+# report's own (as its data says it, .o_population()) and the analysis data the template
 # makes with the population each has as tflspec resolves it (a template
 # row's own, else the report's) -- a data frame id, from, population; NULL
 # rows when it cannot be resolved

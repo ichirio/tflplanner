@@ -709,12 +709,16 @@ export_spec_files <- function(study, path, home = tflplanner_home()) {
   # a file of the YAML spec in its place (a folder or zip exported)
   if (identical(rel, .study_file) || grepl(paste0("(^|/)", .study_file, "$"), rel) &&
       !grepl("(^|/)spec/", rel)) return(.study_file)
-  m <- regmatches(rel, regexpr(paste0(sp, "/(outputs|patterns)/.+$|", sp, "/[^/]+$"), rel))
+  # (and an old figure design, spec/figures/<id>.yml, by its place: a design
+  # need not have layers or a template, and one with only `content` would
+  # read as spec/defaults.yml)
+  fd <- paste0(sp, "/", .fig_design_dir, "/")
+  m <- regmatches(rel, regexpr(paste0(sp, "/(outputs|patterns)/.+$|", fd, "[^/]+$|",
+                                      sp, "/[^/]+$"), rel))
   if (length(m) && !grepl("_not_converted", m)) {
     # (not spec/codelists.yml: a code list is a report's or a layer's)
     if (identical(m, file.path(sp, "codelists.yml"))) return(NA_character_)
-    # (an old figure design, spec/figures/<id>.yml)
-    if (startsWith(m, file.path(sp, .fig_design_dir))) return("(old)")
+    if (startsWith(m, fd)) return("(old)")
     return(m)
   }
   # one file on its own: by what it holds

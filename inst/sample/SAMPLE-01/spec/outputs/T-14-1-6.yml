@@ -2,20 +2,20 @@ id: T-14-1-6
 kind: table
 label: Demographics, race's Asian sub-categories as a block of their own (screened
   subjects by arm, Total; ASIANSUB derived for demonstration)
-common:
-  population: ENR
 extends:
   - defaults
 data:
   - id: adsl_enr
     from: ADSL
+    population: ENR
     derive: !r ARMGRP = dplyr::if_else(ARMNRS %in% "SCREEN FAILURE", "Screen Failure",
       as.character(ARM)) | ASIANSUB = dplyr::case_when(RACE == "ASIAN" & COUNTRY ==
       "CHN" ~ "CHINESE", RACE == "ASIAN" & COUNTRY == "JPN" ~ "JAPANESE", RACE ==
       "ASIAN" & COUNTRY == "KOR" ~ "KOREAN", RACE == "ASIAN" ~ "OTHER")
   - id: adsl_enr_1
     from: ADSL
-ard:
+    population: ENR
+analysis:
   analyses:
     - id: BIGN
       method: categorical

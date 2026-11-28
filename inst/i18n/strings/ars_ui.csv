@@ -1,5 +1,5 @@
 "en","ja"
-"%d analyses · %d outputs · %d analysis sets · %d data subsets","分析 %d · 出力 %d · 解析対象集団 %d · データの部分集合 %d"
+"%d analyses · %d outputs · %d analysis sets · %d data subsets","解析 %d · 出力 %d · 解析対象集団 %d · データの部分集合 %d"
 "%d errors","エラー %d 件"
 "%d not in the ARS","ARS に入らないもの %d 件"
 "not in the ARS","ARS に入らない"

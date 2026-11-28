@@ -52,13 +52,7 @@
 # each refresh (study_status()), and the definition rarely changed between
 .program_cache <- new.env()
 .program_code_last <- function(p, id) {
-  if (!identical(.program_cache$date, Sys.Date()) ||
-      !identical(.program_cache$opts, .code_context$opts)) {
-    .program_cache$date <- Sys.Date()
-    .program_cache$opts <- .code_context$opts
-    .program_cache$code <- list()
-    .program_cache$key <- list()
-  }
+  .program_cache_fresh()
   # (kept report by report: an edit of one report -- a card of the table
   # builder -- writes the others' programs from the cache, #417)
   key <- .program_key(p, id)
@@ -67,6 +61,18 @@
     .program_cache$key[[id]] <- key
   }
   .program_cache$code[[id]]
+}
+
+# (the programs made on another day, or in another study's context: none)
+.program_cache_fresh <- function() {
+  if (!identical(.program_cache$date, Sys.Date()) ||
+      !identical(.program_cache$opts, .code_context$opts)) {
+    .program_cache$date <- Sys.Date()
+    .program_cache$opts <- .code_context$opts
+    .program_cache$code <- list()
+    .program_cache$key <- list()
+  }
+  invisible()
 }
 
 # What a report's program is written from: the planner with the other
@@ -125,13 +131,25 @@
   st
 }
 
-# its checksum, kept with it
+# its checksum, kept with it.  A program not made in this session for its
+# key: the checksum recorded for the same inputs in an earlier one
+# (R/program_hashes.R), without making it (#749)
 .program_hash_last <- function(p, id) {
+  .program_cache_fresh()
+  key <- .program_key(p, id)
+  made <- !is.null(.program_cache$code[[id]]) && identical(.program_cache$key[[id]], key)
+  rec <- NULL
+  if (!made) {
+    rec <- .code_hash_key("report", id, key)
+    h <- .code_hash_get(id, rec)
+    if (!is.null(h)) return(h)
+  }
   code <- .program_code_last(p, id)
   if (is.null(.program_cache$hash)) .program_cache$hash <- list()
   if (is.null(.program_cache$hash[[id]]) ||
       !identical(.program_cache$hash[[id]]$code, code)) {
     .program_cache$hash[[id]] <- list(code = code, hash = .body_hash(code))
+    .code_hash_put(id, rec %||% .code_hash_key("report", id, key), .program_cache$hash[[id]]$hash)
   }
   .program_cache$hash[[id]]$hash
 }

@@ -13,8 +13,6 @@
 "Setup code every report runs first (library(), common data)","全帳票共通の前処理（library()、共通データの読み込みなど）"
 "Add files","ファイルを取り込む"
 "Open folder","フォルダを開く"
-"Open output/tfl","output/tfl を開く"
-"Download the RTF","RTF をダウンロード"
 "Methods","手法の一覧"
 "Study ARD","試験 ARD"
 "Build the ARD output by output as each is ready: tables can be made from the outputs already in it, while others are still being defined.","準備ができた帳票から 1 つずつ ARD に入れられます。入った帳票から Table を作り始められ、他の帳票はその間も定義を続けられます。"

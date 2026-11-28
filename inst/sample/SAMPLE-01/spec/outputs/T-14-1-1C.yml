@@ -2,14 +2,14 @@ id: T-14-1-1C
 kind: table
 label: Demographics (a code SPEC)
 common:
-  population: SAF
   treatment: TRT01A
 extends:
   - defaults
 data:
   - id: adsl_sub
     from: ADSL
-ard:
+    population: SAF
+analysis:
   analyses:
     - id: BIGN
       method: cards::ard_tabulate

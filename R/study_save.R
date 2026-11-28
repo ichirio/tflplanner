@@ -171,6 +171,9 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
                  .save_study_helpers(root),
                  .save_batch_programs(p, root))
   study$meta <- .read_meta(root)[.study_fields]
+  # (the programs' checksums by their inputs, for the next session's first
+  # save: R/program_hashes.R)
+  .code_hash_flush()
   .write_state(study, home)
   done <- TRUE
   .set_config("last_study", study$meta$study_id, home)

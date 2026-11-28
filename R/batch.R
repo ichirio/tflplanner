@@ -82,22 +82,8 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
   # run: its rows go (an NA name would make batch.R fail to parse)
   need <- need[!is.na(names(need))]
   unresolved <- unresolved[!is.na(names(unresolved))]
-  # (the definition: the YAML spec's files)
-  spec_files <- setdiff(.spec_files_yaml(root), .study_file)
-  # (the study's own analysis functions, study key `source`: every ARD
-  # program sources them, by their path from the study folder; #792)
-  own_src <- .split_bar(.study_value(spec, "source", NA))
-  support <- list(
-    ard = c(file.path(lay[["programs_ard"]], c(.ard_setup_file,
-                                               .ard_autoexec_file)),
-            own_src, spec_files),
-    tfl = c(file.path(lay[["programs_tfl"]], c(.autoexec_report_file,
-                                               .fig_setup_file,
-                                               .report_setup_file)),
-            spec_files),
-    all = c(file.path("programs", c(.batch_file, .autoexec_all_file,
-                                    .study_helpers_file)),
-            .study_setup_files(), .study_file))
+  support <- .batch_support(spec, root)
+  own_src <- .batch_own_sources(spec)
   # the study's id (study.yml's; a study folder is named by its id): each
   # run records it, and only its own runs count (tflspec::tfl_run_index())
   sf <- file.path(root, .study_file)
@@ -125,7 +111,7 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
     data = dat,
     data_vars = .batch_data_vars(dat),
     data_dirs = lay[c("adam", "sdtm", "other")],
-    sources = own_src[!is.na(own_src) & nzchar(own_src)],
+    sources = own_src,
     check_code = .batch_check_code(root),
     kind = "run", paths = list())
   c(.banner(
@@ -139,6 +125,59 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
     "",
     tflspec::tfl_runner_code(manifest),
     "")
+}
+
+# The files a run's programs source(), relative to the study folder, by the
+# part whose programs source them (#792).  Every source() the generated code
+# writes is named here, and nowhere else: a new one is added here (the test
+# "every file the saved programs source() is in the batch's support list"
+# fails when it is not).
+#   ard  every ARD program: programs/ard/ard_setup.R, then the study's own
+#        analysis functions (study key `source`)
+#   tfl  every report program: programs/tfl/report_setup.R; a figure's,
+#        programs/tfl/fig_setup.R too
+#   all  both setups source the study's setup (company_setup.R,
+#        study_setup.R, study_user.R), which sources study_helpers.R; every
+#        autoexec program sources programs/batch.R
+.batch_sourced <- function(spec) {
+  lay <- study_layout()
+  list(
+    ard = c(file.path(lay[["programs_ard"]], .ard_setup_file), .batch_own_sources(spec)),
+    tfl = file.path(lay[["programs_tfl"]], c(.report_setup_file, .fig_setup_file)),
+    all = c(unname(.study_setup_files()), .study_helpers_path(),
+            file.path("programs", .batch_file)))
+}
+
+# The study's own analysis functions (study key `source`) as the ARD
+# programs source them: tflspec's .path_code() with the study's folders
+# (option tflspec.paths), so "./programs\\ard\\f.R" is programs/ard/f.R
+.batch_own_sources <- function(spec) {
+  src <- .split_bar(.study_value(spec, "source", NA))
+  src <- src[!is.na(src) & nzchar(src)]
+  if (!length(src)) return(character())
+  path_code <- utils::getFromNamespace(".path_code", "tflspec")
+  pv <- .study_path_vars()
+  old <- options(tflspec.paths = pv)
+  on.exit(options(old), add = TRUE)
+  env <- list2env(as.list(pv), parent = baseenv())
+  unique(vapply(src, function(s) {
+    as.character(eval(str2lang(path_code(s)), env))
+  }, "", USE.NAMES = FALSE))
+}
+
+# The files kept with the code of a run (the manifest's `support`): what
+# the programs source (.batch_sourced()), the programs that start a run, and
+# the definition (the YAML spec's files, study.yml)
+.batch_support <- function(spec, root) {
+  lay <- study_layout()
+  spec_files <- setdiff(.spec_files_yaml(root), .study_file)
+  src <- .batch_sourced(spec)
+  list(
+    ard = unique(c(src$ard, file.path(lay[["programs_ard"]], .ard_autoexec_file),
+                   spec_files)),
+    tfl = unique(c(src$tfl, file.path(lay[["programs_tfl"]], .autoexec_report_file),
+                   spec_files)),
+    all = unique(c(src$all, file.path("programs", .autoexec_all_file), .study_file)))
 }
 
 # The data-folder variable (path_adam, path_sdtm, path_other) the generated

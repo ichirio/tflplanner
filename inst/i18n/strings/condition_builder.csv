@@ -13,7 +13,7 @@
 "is not blank","空でない"
 "= (any of)","= （いずれか）"
 "≠ (none of)","≠ （いずれでもない）"
-"Population flags","集団フラグ"
+"Population flags","解析対象集団フラグ"
 "Analysis flags","解析フラグ"
 "Treatment","治療"
 "Timing","時点"

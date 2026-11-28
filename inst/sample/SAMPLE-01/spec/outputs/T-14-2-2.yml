@@ -1,18 +1,17 @@
 id: T-14-2-2
 kind: table
 label: 'Time to first skin disorder: KM estimates'
-common:
-  population: SAF
 extends:
   - defaults
 data:
   - id: adsl_saf
     from: ADSL
+    population: SAF
   - id: adtte_saf_ttskin
     from: ADTTE
     subjects_in: adsl_saf
     where: !r PARAMCD == "TTSKIN"
-ard:
+analysis:
   analyses:
     - id: BIGN
       method: categorical

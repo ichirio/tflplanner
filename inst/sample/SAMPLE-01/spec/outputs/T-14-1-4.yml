@@ -2,14 +2,13 @@ id: T-14-1-4
 kind: table
 label: Demographic characteristics of the screen failures (an analysis set by a condition
   alone)
-common:
-  population: SCRF
 extends:
   - defaults
 data:
   - id: adsl_scrf
     from: ADSL
-ard:
+    population: SCRF
+analysis:
   analyses:
     - id: BIGN
       method: categorical

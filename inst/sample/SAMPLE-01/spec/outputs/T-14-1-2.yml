@@ -1,14 +1,13 @@
 id: T-14-1-2
 kind: table
 label: Subject disposition
-common:
-  population: SAF
 extends:
   - defaults
 data:
   - id: adsl_saf
     from: ADSL
-ard:
+    population: SAF
+analysis:
   analyses:
     - id: BIGN
       method: categorical

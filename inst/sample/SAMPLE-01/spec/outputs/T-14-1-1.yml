@@ -1,14 +1,13 @@
 id: T-14-1-1
 kind: table
 label: Demographic characteristics
-common:
-  population: SAF
 extends:
   - defaults
 data:
   - id: adsl_saf
     from: ADSL
-ard:
+    population: SAF
+analysis:
   analyses:
     - id: BIGN
       label: Subjects per group

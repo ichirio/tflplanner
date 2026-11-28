@@ -352,11 +352,16 @@ update_tflplanner <- function(channel = NULL, from = NULL,
 #              the date it was built;
 #            NA CRAN, a release, a standard install (pak writes RemoteType
 #              standard, with the version as RemoteSha): no mark.
+#            A source folder loaded with load_all() (no Remote fields) is
+#            "dev" too when it is a git checkout: its branch (none when the
+#            checkout is on a commit) and the first 8 characters of its commit.
 # `desc(p)` is the package's DESCRIPTION as a list; `running(p)` its loaded
-# version.  Returns list(packages, r).
+# version; `git(p)` the branch and commit of a load_all() folder
+# (list(ref, sha); NULL: not one, or not known).  Returns list(packages, r).
 .running_versions <- function(pkgs = c("rtfreporter", "tflspec", "tflplanner"),
                               desc = .running_description,
                               running = .running_version,
+                              git = .running_git,
                               r = as.character(getRversion())) {
   rows <- lapply(pkgs, function(p) {
     d <- desc(p)
@@ -367,6 +372,14 @@ update_tflplanner <- function(channel = NULL, from = NULL,
     sha <- one("RemoteSha")
     ref <- one("RemoteRef")
     type <- one("RemoteType")
+    if (is.na(sha) && is.na(type)) {
+      g <- git(p)
+      if (is.list(g) && .one_chr(g$sha)) {
+        sha <- g$sha
+        ref <- if (.one_chr(g$ref)) g$ref else NA_character_
+        type <- "git"
+      }
+    }
     # an install by commit (owner/repo@<sha>): RemoteRef is the commit id
     # itself; only the 8 characters of `sha` are shown
     by_commit <- !is.na(ref) && !is.na(sha) && grepl("^[0-9a-f]{7,40}$", ref) &&
@@ -376,7 +389,7 @@ update_tflplanner <- function(channel = NULL, from = NULL,
       "local"
     } else if (is.na(sha) || identical(type, "standard")) {
       NA_character_
-    } else if (by_commit) {
+    } else if (by_commit || identical(type, "git")) {
       "dev"
     } else if (!is.na(ref) && grepl("^v?[0-9]+([.-][0-9A-Za-z]+)*$", ref)) {
       "tag"
@@ -411,6 +424,71 @@ update_tflplanner <- function(channel = NULL, from = NULL,
   if (is.null(d)) NULL else as.list(d[1L, ])
 }
 
+# TRUE for one string, not NA nor ""
+.one_chr <- function(x) is.character(x) && length(x) == 1L && !is.na(x) && nzchar(x)
+
+# The branch and commit of the source folder a package was loaded from with
+# load_all() (pkgload marks such a namespace with .__DEVTOOLS__); NULL for an
+# installed package, which is never read for git: a library inside a git
+# folder (renv) would give the folder's branch.
+.running_git <- function(p) {
+  ns <- tryCatch(asNamespace(p), error = function(e) NULL)
+  if (is.null(ns) || !exists(".__DEVTOOLS__", envir = ns, inherits = FALSE)) return(NULL)
+  path <- tryCatch(getNamespaceInfo(p, "path"), error = function(e) NULL)
+  if (is.null(path)) NULL else .git_head(path)
+}
+
+# The checkout's branch and commit, read from the .git folder of `dir` or of
+# a folder above it (no git program needed): list(ref, sha), ref NA when
+# HEAD is a commit, not a branch; NULL when there is no checkout or HEAD
+# cannot be read.  A worktree's .git file ("gitdir: ...") is followed, and
+# a branch's commit is looked for in packed-refs too.
+.git_head <- function(dir) {
+  dir <- normalizePath(dir, winslash = "/", mustWork = FALSE)
+  repeat {
+    g <- file.path(dir, ".git")
+    if (file.exists(g)) break
+    up <- dirname(dir)
+    if (identical(up, dir)) return(NULL)
+    dir <- up
+  }
+  first <- function(f) {
+    if (!file.exists(f) || dir.exists(f)) return(NA_character_)
+    x <- tryCatch(readLines(f, n = 1L, warn = FALSE), error = function(e) character())
+    if (length(x)) trimws(x) else NA_character_
+  }
+  if (!dir.exists(g)) {
+    to <- sub("^gitdir:[[:space:]]*", "", first(g))
+    if (is.na(to) || !nzchar(to)) return(NULL)
+    g <- if (grepl("^(/|[A-Za-z]:)", to)) to else file.path(dir, to)
+  }
+  head <- first(file.path(g, "HEAD"))
+  if (is.na(head)) return(NULL)
+  is_sha <- function(x) !is.na(x) && grepl("^[0-9a-f]{40}([0-9a-f]{24})?$", x)
+  if (is_sha(head)) return(list(ref = NA_character_, sha = head))
+  if (!startsWith(head, "ref:")) return(NULL)
+  name <- trimws(sub("^ref:", "", head))
+  # (a worktree's branches are in the common folder)
+  common <- first(file.path(g, "commondir"))
+  roots <- c(g, if (!is.na(common)) {
+    if (grepl("^(/|[A-Za-z]:)", common)) common else file.path(g, common)
+  })
+  sha <- NA_character_
+  for (rt in roots) {
+    sha <- first(file.path(rt, name))
+    if (is_sha(sha)) break
+    pk <- file.path(rt, "packed-refs")
+    if (file.exists(pk)) {
+      l <- tryCatch(readLines(pk, warn = FALSE), error = function(e) character())
+      hit <- l[endsWith(l, paste0(" ", name))]
+      sha <- if (length(hit)) sub(" .*$", "", hit[1L]) else NA_character_
+      if (is_sha(sha)) break
+    }
+  }
+  if (!is_sha(sha)) return(NULL)
+  list(ref = sub("^refs/heads/", "", name), sha = sha)
+}
+
 .running_version <- function(p) {
   if (p %in% loadedNamespaces()) as.character(getNamespaceVersion(p)) else .installed_version(p)
 }
@@ -429,11 +507,13 @@ update_tflplanner <- function(channel = NULL, from = NULL,
 # words (translated by the caller).
 .running_versions_text <- function(...) paste(.running_versions_lines(...), collapse = ", ")
 
-# The same, one entry per element: each package, then "R 4.6.1".
+# The same, one entry per element: each package, then "R 4.6.1".  A value
+# not known is left out: a package with no version known has no entry.
 .running_versions_lines <- function(v = .running_versions_once(),
                                     dev = "development version",
                                     local = "installed from a folder") {
   p <- v$packages
+  p <- p[!is.na(p$version), , drop = FALSE]
   pk <- vapply(seq_len(nrow(p)), function(i) {
     mark <- switch(
       if (is.na(p$kind[i])) "none" else p$kind[i],
@@ -441,8 +521,7 @@ update_tflplanner <- function(channel = NULL, from = NULL,
       tag = p$ref[i],
       local = paste0(local, if (!is.na(p$built[i])) paste0(", ", p$built[i])),
       NULL)
-    paste0(p$package[i], " ", if (is.na(p$version[i])) "?" else p$version[i],
-           if (!is.null(mark)) paste0(" (", mark, ")"))
+    paste0(p$package[i], " ", p$version[i], if (!is.null(mark)) paste0(" (", mark, ")"))
   }, "")
   c(pk, paste("R", v$r))
 }

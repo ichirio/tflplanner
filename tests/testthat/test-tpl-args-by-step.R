@@ -16,8 +16,10 @@ test_that("a template's arguments by step are read as one map, flat ones first",
   expect_identical(a$max_rows, 30L)
   # (flat `args:` alone, as before)
   expect_identical(.tpl_args_of(list(name = "x", args = list(by = "ARM"))), list(by = "ARM"))
-  # (a name in both: the flat value)
+  # (a name in both: the later in the file, here the flat value written
+  # last -- the twin's own `args:`, its set, comes first: A2-T)
   t2 <- o$template
+  t2$args <- NULL
   t2$args <- list(max_rows = 10L)
   expect_identical(.tpl_args_of(t2)$max_rows, 10L)
   # (not a map: not a step section)
@@ -37,7 +39,8 @@ test_that(".tpl_of() gives T-14-1-1T's values, and .tpl_output() writes it back 
   args$max_rows <- 20L
   args$continuous <- c("AGE", "HEIGHTBL")
   w <- .tpl_output(p, "T-14-1-1T", args)
-  expect_null(w$template$args)
+  # (no other flat argument: the twin's set alone, as it gives it -- A2-T)
+  expect_identical(w$template$args, list(population = "SAF"))
   expect_identical(w$template$content$max_rows, 20L)
   expect_identical(w$template$analysis$continuous, c("AGE", "HEIGHTBL"))
   expect_identical(.tpl_args_of(w$template)$max_rows, 20L)
@@ -128,7 +131,7 @@ test_that("T-14-1-1T in SAMPLE-01 has no empty required argument and its preview
   expect_false(identical(e$content, a$content))
 })
 
-test_that("the arguments are read where tflspec reads them: directly under template:, and a built-in template's ard: (#751 item 1)", {
+test_that("the arguments are read where tflspec reads them: directly under template:, and a built-in template's analysis: (#751 item 1)", {
   # (a series template: an argument directly under `template:` is one)
   t <- list(name = "s/x", continuous = "AGE", analysis = list(by = "TRT01A"))
   expect_identical(.tpl_args_of(t), list(continuous = "AGE", by = "TRT01A"))
@@ -142,9 +145,9 @@ test_that("the arguments are read where tflspec reads them: directly under templ
   expect_identical(.tpl_args_of(w), list(by = "TRT01A"))
   # (an empty map is no section for tflspec: an argument)
   expect_identical(.tpl_args_of(list(name = "s/x", content = list())), list(content = list()))
-  # (a built-in template: args:, then its ard: and content: parts; other keys are not read)
-  b <- list(name = "demog", args = list(by = "ARM"), ard = list(continuous = "AGE", by = "X"),
-            content = list(max_rows = 9L), analysis = list(categorical = "SEX"))
+  # (a built-in template: args:, then its analysis: and content: parts; other keys, the old ard: too, are not read)
+  b <- list(name = "demog", args = list(by = "ARM"), analysis = list(continuous = "AGE", by = "X"),
+            content = list(max_rows = 9L), ard = list(categorical = "SEX"))
   expect_identical(.tpl_args_of(b), list(by = "ARM", continuous = "AGE", max_rows = 9L))
 })
 

@@ -2,18 +2,17 @@ id: T-14-2-3
 kind: table
 label: 'Systolic blood pressure: mean change at week 24 (95% CI), p-value; the ARD
   also holds the test''s method and alternative as text'
-common:
-  population: SAF
 extends:
   - defaults
 data:
   - id: adsl_saf
     from: ADSL
+    population: SAF
   - id: advs_saf_sysbp
     from: ADVS
     subjects_in: adsl_saf
     where: !r PARAMCD == "SYSBP" & AVISIT == "CYCLE 9 DAY 1"
-ard:
+analysis:
   analyses:
     - id: BIGN
       method: categorical
