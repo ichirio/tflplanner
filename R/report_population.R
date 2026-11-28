@@ -290,8 +290,9 @@ report_population <- function(x, output_id) {
 #' as it is and named in attribute `left`.  Analysis data are the study's:
 #' none is removed.  The set is written where the report's data keeps it:
 #' a listing's row (its `population_id`); in the study's YAML spec, a
-#' figure's and a listing's data (`data: population`), a table's `common:`,
-#' and the report's TOC line with it.
+#' figure's and a listing's data (`data: population`), a table's subjects
+#' rows or its template's set argument (never `common:`), and the report's
+#' TOC line with it.
 #'
 #' @param x A `tflplanner`.
 #' @param output_id The report.
@@ -327,7 +328,9 @@ set_report_population <- function(x, output_id, population) {
 #   set's analysis data made and the report's analyses moved to it
 #   (.report_set_view(); attributes `made` and `left`, every report's);
 # - a report the YAML spec has: its file's set as .o_set_population() puts
-#   it (a figure's and a data map's on the data, else `common:`), its toc
+#   it (tflspec::tfl_set_report_set(): a figure's and a data map's on the
+#   data, a table's on its subjects rows or its template's set argument,
+#   never `common:`), its toc
 #   line following it (.spec_set_toc_population()), and the view's rows
 #   made again from the file (.spec_set_output()), so the save does not
 #   take it back.  The planner's own reports the spec has are written after
@@ -371,14 +374,25 @@ set_report_population <- function(x, output_id, population) {
     for (id in ids) {
       o <- output %||% x$spec$outputs[[id]]
       if (is.null(o)) next
+      # (the planner's own report of rows, no template and no data map: its
+      # rows are the view's, synced above -- the set's data made, its
+      # analyses moved: the file says the set as its rows do, and the toc
+      # line is the report list's set)
+      d <- o$data
+      rows_own <- is.null(output) && !is.null(pops) && is.null(o$template) &&
+        !(is.list(d) && length(d) && !is.null(names(d)))
+      if (rows_own) {
+        x <- .spec_set_toc_population(x, id, pops[match(id, output_id)])
+        next
+      }
       if (!is.null(pops)) {
-        o <- .o_write_set(o, pops[match(id, output_id)])
+        o <- .o_write_set(o, pops[match(id, output_id)], x$spec$study)
       } else {
         # (the set kept: its argument made the same -- the set where the
         # data keeps it, else, an older file's, the argument's)
         now <- .o_population(o)
         if (is.na(now)) now <- .o_arg_population(o)
-        if (!is.na(now)) o <- .o_write_set(o, now)
+        if (!is.na(now)) o <- .o_write_set(o, now, x$spec$study)
       }
       if (is.null(output)) {
         w <- x$spec$where
@@ -386,11 +400,11 @@ set_report_population <- function(x, output_id, population) {
         # (a file several reports share is written by the save, as before;
         # its TOC line follows the set now all the same)
         if (!is.null(rel) && sum(unlist(w) == rel) > 1L) {
-          x <- .spec_set_toc_population(x, id, .o_population(o))
+          x <- .spec_set_toc_population(x, id, .o_population(o, x$spec$study))
           next
         }
       }
-      x <- .spec_set_output(.spec_set_toc_population(x, id, .o_population(o)), id, o)
+      x <- .spec_set_output(.spec_set_toc_population(x, id, .o_population(o, x$spec$study)), id, o)
     }
   }
   if (is.null(output)) {
@@ -405,8 +419,8 @@ set_report_population <- function(x, output_id, population) {
 # takes the set as an argument of its own (a shown `population`
 # parameter, .tpl_pop_is_arg()), that argument -- the same value, or taken
 # out with it.  The one rule .write_report_population() writes by (H5).
-.o_write_set <- function(o, population) {
-  o <- .o_set_population(o, population)
+.o_write_set <- function(o, population, study = NULL) {
+  o <- .o_set_population(o, population, study)
   if (!.o_takes_set_arg(o)) return(o)
   has <- length(population) && !is.na(population[1L]) && nzchar(population[1L])
   t <- o$template

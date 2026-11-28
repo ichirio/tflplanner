@@ -107,23 +107,29 @@ test_that("the report's set control is for every template; a shown `population` 
   expect_true("data" %in% names(.tpl_dialog_shown(c(shn, list(data = list(name = "data"))))))
 })
 
-test_that("a report's analysis set is read and set where its file has it: the data map's, else common: (#868)", {
-  o <- list(data = list(population = "SAF", steps = list(list(step = "read", dataset = "ADTTE"))))
+test_that("a report's analysis set is read and set where its file has it: the data map's, else its rows', never common: (#868, A2-T)", {
+  # (a KM type's figure: its data map of steps, the set on it -- the writer's
+  # rule for a report's map, tflspec::tfl_set_report_set())
+  o <- list(kind = "figure", data = list(population = "SAF", steps = list(list(step = "read", dataset = "ADTTE"))))
   expect_identical(.o_population(o), "SAF")
   o2 <- .o_set_population(o, "ITT")
   expect_identical(o2$data$population, "ITT")
   expect_null(o2$common)
   expect_identical(.o_population(o2), "ITT")
   # (a data map with the set in `common:`: moved onto the data)
-  o3 <- .o_set_population(list(common = list(population = "SAF"), data = list(steps = list())), "ITT")
+  o3 <- .o_set_population(list(kind = "figure", common = list(population = "SAF"), data = list(steps = list())),
+                          "ITT")
   expect_identical(o3$data$population, "ITT")
   expect_null(o3$common)
   expect_null(.o_set_population(o, NA_character_)$data$population)
-  # (no data map -- a table's rows, or none: `common:` as before)
+  # (no data map -- a table's rows: on its subjects row, never `common:` -- A2-T)
   t1 <- .o_set_population(list(data = list(list(id = "adsl_sub", from = "ADSL"))), "SAF")
-  expect_identical(t1$common$population, "SAF")
+  expect_identical(t1$data[[1L]]$population, "SAF")
+  expect_null(t1$common)
   expect_identical(.o_population(t1), "SAF")
-  expect_null(.o_set_population(t1, "")$common)
+  t0 <- .o_set_population(t1, "")
+  expect_null(t0$common)
+  expect_true(is.na(.o_population(t0)))
   expect_true(is.na(.o_population(list())))
   # (a figure: its set on its data always, a map made for it -- canon 11-15)
   f1 <- .o_set_population(list(id = "F-1", kind = "figure", common = list(), data = NULL), "SAF")
@@ -143,9 +149,11 @@ test_that("a report's analysis set is read and set where its file has it: the da
   expect_identical(names(o4$data), c("population", "steps"))
   expect_identical(o4$data$steps, old$data$steps)
   expect_null(o4$common)
-  # (a table with no data map: `common:` still -- S1's move, not this rule)
-  t2 <- .o_set_population(list(id = "T-1", kind = "table"), "SAF")
-  expect_identical(t2$common$population, "SAF")
+  # (a table with no rows that make its subjects: no `common:` either -- A2-T;
+  # the writer says the set is on no data)
+  expect_warning(t2 <- .o_set_population(list(id = "T-1", kind = "table"), "SAF"),
+                 "has no data row that makes its subjects", fixed = TRUE)
+  expect_null(t2$common)
   expect_null(t2$data)
 })
 

@@ -1,5 +1,8 @@
 # A pull request into next: the package installed and its tests run, on
-# ubuntu with R release, in 4 shards at the same time (#747); no --as-cran,
+# ubuntu with R release and with the oldest R DESCRIPTION allows (`Depends:
+# R (>= x.y)`, read from DESCRIPTION by the r-oldest job: a function or
+# argument newer than it, such as tools::md5sum(bytes =) of R 4.5 in #906,
+# fails there before the merge), each in 4 shards at the same time (#747); no --as-cran,
 # no other platforms, no pkgdown -- so that next does not queue behind the
 # full matrix.  It runs every test file (TFLPLANNER_QUICK is false), each in
 # exactly one shard: this is the one regression run before the merge.  The full R-CMD-check (6 environments)
@@ -59,11 +62,35 @@ jobs:
           done
           $ok
 
+  # The oldest R DESCRIPTION allows, for the tests shards below (one copy
+  # of it: DESCRIPTION's).  Gated as the shards are.
+  r-oldest:
+    if: >-
+      (github.event.action == 'labeled' && github.event.label.name == 'automerge') ||
+      (github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'automerge'))
+    runs-on: ubuntu-latest
+    name: oldest R (from DESCRIPTION)
+    outputs:
+      r: ${{ steps.r.outputs.r }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Depends R (>= x.y)
+        id: r
+        shell: bash
+        run: |
+          r=$(tr -d '\r' < DESCRIPTION | grep -oE '(^|[ ,])R \(>= *[0-9.]+\)' | head -n 1 | grep -oE '[0-9.]+' || true)
+          if [ -z "$r" ]; then echo "::error::No 'R (>= x.y)' in DESCRIPTION"; exit 1; fi
+          echo "oldest R: $r"
+          echo "r=$r" >> "$GITHUB_OUTPUT"
+
   # The test files in 4 shards that run at the same time (#747): each is a
-  # job of its own, with the files .github/test-shards.csv gives it.  A job's
-  # name starts with "tests" (the automerge script waits for every tests*
-  # check).
+  # job of its own, with the files .github/test-shards.csv gives it, once on
+  # R release and once on the oldest R (every file runs once on each).  A
+  # job's name starts with "tests" (the automerge script waits for every
+  # tests* check).
   tests:
+    needs: r-oldest
     # the automerge label just added, or a push to a pull request that has it
     # (another label added does not run it again)
     if: >-
@@ -73,15 +100,18 @@ jobs:
     # not on the workflow: a skipped run must not cancel a running one); one
     # group per shard, so the shards do not cancel one another
     concurrency:
-      group: quick-check-${{ github.event.pull_request.number }}-${{ matrix.shard }}
+      group: quick-check-${{ github.event.pull_request.number }}-${{ matrix.shard }}-${{ matrix.r }}
       cancel-in-progress: true
     runs-on: ubuntu-latest
-    name: tests (shard ${{ matrix.shard }}/4, ubuntu-latest, R release)
+    # (the release jobs keep their names: tests (shard k/4, ubuntu-latest, R release))
+    name: tests (shard ${{ matrix.shard }}/4, ubuntu-latest, R ${{ matrix.r == 'oldest' && needs.r-oldest.outputs.r || 'release' }})
 
     strategy:
       fail-fast: false
       matrix:
         shard: [1, 2, 3, 4]
+        # oldest: DESCRIPTION's Depends R, from the r-oldest job
+        r: [release, oldest]
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -94,12 +124,17 @@ jobs:
 
       - uses: r-lib/actions/setup-r@v2
         with:
+          r-version: ${{ matrix.r == 'oldest' && needs.r-oldest.outputs.r || 'release' }}
           use-public-rspm: true
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::testthat, any::remotes
           needs: check
+
+      - name: The R tested
+        shell: Rscript {0}
+        run: cat(R.version.string, "\n")
 
       # tflspec and rtfreporter from their next, the commits in the log (every
       # shard prints them: they test the same ones)
@@ -150,7 +185,7 @@ jobs:
                                     reporter = testthat::ProgressReporter$new(show_praise = FALSE),
                                     stop_on_failure = FALSE)
           d <- as.data.frame(res)
-          out <- c(sprintf("## Tests, shard %s (TFLPLANNER_QUICK=false)", Sys.getenv("SHARD")),
+          out <- c(sprintf("## Tests, shard %s, R %s (TFLPLANNER_QUICK=false)", Sys.getenv("SHARD"), getRversion()),
                    sprintf("%d files, %d tests, %d expectations; %d failed, %d errors, %d skipped",
                            length(unique(d$file)), nrow(d), sum(d$nb), sum(d$failed),
                            sum(d$error), sum(d$skipped)),

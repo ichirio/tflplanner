@@ -1,13 +1,12 @@
 id: T-14-3-1
 kind: table
 label: TEAEs by SOC / PT
-common:
-  population: SAF
 extends:
   - defaults
 data:
   - id: adsl_saf
     from: ADSL
+    population: SAF
   - id: adae_saf
     from: ADAE
     subjects_in: adsl_saf

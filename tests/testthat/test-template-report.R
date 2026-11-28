@@ -320,7 +320,7 @@ test_that("a template report's preview is its content run on its ARD, not the st
   s <- suppressMessages(open_study("SAMPLE-01", home = home))
   o <- tflspec::tfl_output("T-TPL", "table", label = "Shift", common = list(population = "SAF"),
                            template = list(name = "shift",
-                                           args = list(population = "SAF",
+                                           args = list(population = "SAF", by = "TRT01A",
                                                        post_header = "Worst: {col}")))
   s$planner <- .spec_add_output(s$planner, o, label = "Shift", population = "SAF")
   s <- suppressMessages(save_study(s, home = home))
