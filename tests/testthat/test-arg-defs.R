@@ -141,9 +141,9 @@ test_that("each input form draws its field", {
   expect_match(h, "X1", fixed = TRUE)
   expect_false(grepl("AGE", h, fixed = TRUE))
   # pick of one from sources: a select of the groups
-  h <- html(arg_field("c", "from", "string", def = list(input = "pick", choices = c("report_data", "study_data")),
-                      ctx = list(report_data = "adsl_sub", study_data = c("ADSL", "ADAE"))))
-  expect_match(h, "<optgroup label=\"This report&#39;s data\">", fixed = TRUE)
+  h <- html(arg_field("c", "from", "string", def = list(input = "pick", choices = c("objects(data)", "study_data")),
+                      ctx = list(objects = list(data = "adsl_sub"), study_data = c("ADSL", "ADAE"))))
+  expect_match(h, "<optgroup label=\"This report&#39;s objects\">", fixed = TRUE)
   expect_match(h, "<optgroup label=\"Study data\">", fixed = TRUE)
   expect_match(h, "rp-field-column", fixed = TRUE)
   # (a pick of text with nothing to choose from stays a text field)
@@ -198,11 +198,10 @@ test_that("the 14 source words give their choices", {
     codelist = list(NY = c("N", "Y")),
     columns = function(obj) if (identical(obj, "ard")) c("group1", "stat_name"),
     populations = c(SAF = "Safety", ITT = "ITT"),
-    report_data = c("adsl_sub"),
+    objects = list(data = c("adsl_sub"), ard = c("demog_ard")),
     study_data = c("ADSL", "ADAE"),
-    ard = c("demog_ard"),
-    study_info = c("STUDYID", "PROTOCOL"),
     tokens = c("{N}", "{PAGE}"),
+    figure_style = list(palette = c("#1b9e77", "#d95f02"), marker = c("circle", "square")),
     stats = function() c("n", "mean"),
     styles = c("bold", "italic"),
     args = list(data = "adsl", var = "SEX", variables = c("AGE", "SEX"), by = "TRT01A"))
@@ -222,31 +221,31 @@ test_that("the 14 source words give their choices", {
   expect_identical(unname(v("columns(ard)")), c("group1", "stat_name"))
   expect_identical(unname(v("populations")), c("Safety", "ITT"))
   expect_identical(names(v("populations")), c("SAF", "ITT"))
-  expect_identical(unname(v("report_data")), "adsl_sub")
+  expect_identical(unname(v("objects(data)")), "adsl_sub")
+  expect_identical(unname(v("objects(ard)")), "demog_ard")
+  expect_length(v("objects(model)"), 0L)
   expect_identical(unname(v("study_data")), c("ADSL", "ADAE"))
-  expect_identical(unname(v("ard")), "demog_ard")
-  expect_identical(unname(v("study_info")), c("STUDYID", "PROTOCOL"))
+  expect_identical(unname(v("figure_style(palette)")), c("#1b9e77", "#d95f02"))
+  expect_identical(unname(v("figure_style(marker)")), c("circle", "square"))
+  # (format_sets: no provider until format sets are built -- no choices, no error)
+  expect_identical(v("format_sets"), character())
   expect_identical(unname(v("tokens")), c("{N}", "{PAGE}"))
   expect_identical(unname(v("stats")), c("n", "mean"))
   expect_identical(unname(v("styles")), c("bold", "italic"))
   expect_identical(unname(v("fixed", values = c("x", "y"))), c("x", "y"))
   expect_identical(unname(v("from_args(variables, by)")), c("AGE", "SEX", "TRT01A"))
-  expect_identical(unname(v("from_args")), c("data", "var", "variables", "by"))
-  expect_identical(unname(.choice_values("from_args", list(arg_names = c("a", "b")))), c("a", "b"))
-  # (from_args(params): the template's params' names)
-  expect_identical(unname(.choice_values("from_args(params)", list(params = c("p1", "p2")))),
-                   c("p1", "p2"))
   expect_identical(unlist(unname(.choice_values("vars(from_args(from)), fixed",
                                          list(vars = list(adsl = "AGE"), args = list(from = "adsl")),
                                                 values = "none")[[1L]])), "AGE")
   # several: the groups in the words' order, each named
-  g <- v("report_data, study_data")
-  expect_identical(names(g), c("This report's data", "Study data"))
+  g <- v("objects(data), study_data")
+  expect_identical(names(g), c("This report's objects", "Study data"))
   expect_identical(unlist(g[[2L]]), c(ADSL = "ADSL", ADAE = "ADAE"))
-  g <- v(c("study_data", "report_data"), lang = "ja")
-  expect_identical(names(g)[2L], "この帳票のデータ")
+  g <- v(c("study_data", "objects(data)"), lang = "ja")
+  expect_identical(names(g), tflspec::tfl_choice_sources()$label_ja[c(6L, 7L)])
   # (one of several gives nothing: the other alone, no group)
-  expect_identical(unname(.choice_values(c("report_data", "ard"), list(ard = "a1"))), "a1")
+  expect_identical(unname(.choice_values(c("objects(data)", "objects(ard)"),
+                                         list(objects = list(ard = "a1")))), "a1")
   # a source the ctx cannot answer: nothing
   expect_identical(.choice_values("vars(data)", list()), character())
   expect_identical(.choice_values("populations", NULL), character())
@@ -255,6 +254,25 @@ test_that("the 14 source words give their choices", {
   # an unknown word stops
   expect_error(.choice_values("datasets", ctx), "Unknown choice source \"datasets\"")
   expect_error(.choice_values("vars(data), colours", ctx), "colours")
+  # an old word stops naming the new one (tflspec's list, CG-4)
+  expect_error(.choice_values("report_data", ctx), "write objects\\(data\\)")
+  expect_error(.choice_values("ard", ctx), "columns\\(ard\\)")
+  expect_error(.choice_values("study_info", ctx), "write tokens")
+})
+
+test_that("the choice words are tflspec's list, no copy (CG-4)", {
+  expect_identical(.choice_sources()$word, tflspec::tfl_choice_sources()$word)
+  expect_length(.choice_sources()$word, 14L)
+  # (every word is served: a ctx of each gives its value, none stops)
+  ctx <- list(vars = "V", levels = list(X = "L"), codelist = list(C = "c"), columns = "K",
+              populations = "P", study_data = "S", objects = list(data = "O"), stats = "st",
+              format_sets = "F", styles = "sy", figure_style = list(palette = "#000"),
+              tokens = "{T}", args = list(a = "A", v = "X"))
+  words <- c("vars", "levels(from_args(v))", "codelist(C)", "columns", "populations", "study_data",
+             "objects(data)", "stats", "format_sets", "styles", "figure_style(palette)", "tokens",
+             "fixed", "from_args(a)")
+  expect_identical(sub("[(].*$", "", words), tflspec::tfl_choice_sources()$word)
+  for (w in words) expect_length(.choice_values(w, ctx, values = "f"), 1L)
 })
 
 test_that("a template of no series file: today's params and sections", {
@@ -384,11 +402,11 @@ test_that("a series template's table params (conditions, formats): the table fie
                    .tpl_table_key(.tpl_value(st, "table", p$formats), p$formats))
 })
 
-test_that("a series template's pick of source words: chosen from them (report_data, study_data)", {
+test_that("a series template's pick of source words: chosen from them (objects(data), study_data)", {
   defs <- mk_defs(
-    list(name = "from", input = "pick", choices = "report_data, study_data", free = FALSE),
+    list(name = "from", input = "pick", choices = "objects(data), study_data", free = FALSE),
     list(name = "population", input = "pick", choices = "populations"),
-    list(name = "tags", input = "pick", type = "list<string>", choices = "report_data"),
+    list(name = "tags", input = "pick", type = "list<string>", choices = "objects(data)"),
     list(name = "note", input = "text"))
   prm <- .tpl_params_from_defs(defs)
   expect_identical(vapply(prm, function(x) x$type, ""),
@@ -403,7 +421,7 @@ test_that("a series template's pick of source words: chosen from them (report_da
   expect_identical(unname(unlist(ch[[2L]])), c("ADSL", "ADAE"))
   # (the report's `data` argument before its dataset)
   ctx <- .tpl_table_ctx(data, "ADAE", args = list(data = "adsl"))
-  expect_identical(unname(.choice_values("report_data", ctx)), "ADSL")
+  expect_identical(unname(.choice_values("objects(data)", ctx)), "ADSL")
   expect_identical(unname(.choice_values(prm$population$sources,
                                          .tpl_table_ctx(data, populations = c(SAF = "SAFFL")))), "SAFFL")
   # the value read back: one a text, several a vector, none NULL
@@ -413,10 +431,10 @@ test_that("a series template's pick of source words: chosen from them (report_da
   expect_identical(.tpl_untouched(c("ADSL", "ADAE"), "picks", prm$tags), c("ADSL", "ADAE"))
 })
 
-test_that("a level def's choices word levels(<param>) gives the card the variable to read", {
+test_that("a level def's choices word levels(from_args(<param>)) gives the card the variable to read", {
   defs <- mk_defs(
     list(name = "category", input = "pick", type = "column", choices = "vars(ADSL)"),
-    list(name = "responder", input = "pick", type = "level", choices = "levels(category)", free = TRUE),
+    list(name = "responder", input = "pick", type = "level", choices = "levels(from_args(category))", free = TRUE),
     list(name = "ref", input = "pick", type = "level", choices = "levels(from_args(category))"),
     list(name = "many", input = "pick", type = "list<level>", choices = "levels(SEX)"),
     list(name = "other", input = "pick", type = "level"))

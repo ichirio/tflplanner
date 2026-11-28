@@ -1,7 +1,7 @@
 # The template cards' table fields (gui-checks-1, table screens): a field's
 # column choices are its data row's dataset's, the card is not drawn again
 # while a table is typed in, "(none)" on picks and tables, the report's data
-# rows as report_data, and a !series default shown light as candidates.
+# rows as objects(data), and a !series default shown light as candidates.
 
 skip_on_cran()
 
@@ -76,8 +76,8 @@ test_that("a table field's columns are its data row's dataset's, the report's da
   ctx <- .tpl_table_ctx(data, NULL, rows = rows)
   expect_identical(.choice_values("vars(adsl_sub)", ctx), c(USUBJID = "USUBJID", TRT01A = "TRT01A", AGE = "AGE"))
   expect_identical(unname(.choice_values("vars(rec_sub)", ctx)), c("USUBJID", "AEDECOD"))
-  # (report_data: the data rows' ids, not the datasets' names)
-  expect_identical(unname(.choice_values("report_data", ctx)), c("adsl_sub", "rec_sub"))
+  # (objects(data): the data rows' ids, not the datasets' names)
+  expect_identical(unname(.choice_values("objects(data)", ctx)), c("adsl_sub", "rec_sub"))
   expect_identical(unname(.choice_values("study_data", ctx)), c("ADSL", "ADAE"))
   # (no rows: the dataset the id begins with, as #717's fix; a dataset's name itself)
   ctx0 <- .tpl_table_ctx(data, NULL)

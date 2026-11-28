@@ -364,10 +364,10 @@ test_that("{OUTPUT_SECTION} by default the report's section; a row wins", {
   expect_identical(d$value[d$name == "OUTPUT_SECTION"], "14.1")
 })
 
-# A report whose `extends` cell (tflspec's report sheet) names a chain: the
-# pattern chosen rewrites the cell so the rest of the chain's meaning stays.
-# The page step has no files (tflspec PP-1b: a page is a configuration's, the
-# report's `style:`), so a pattern in a chain is a data / content one.
+# A report whose `extends` cell (tflspec's report sheet) says what it
+# extends: the pattern chosen is its page configuration (the `pattern` cell,
+# the report's `style:`), and the cell stays as it is.  A pattern in the
+# cell (`patterns/<name>`) is an old form tflspec stops on.
 ext_sample <- function(env = parent.frame()) {
   home <- withr_tempdir(env)
   old <- options(tflplanner.home = home)
@@ -398,43 +398,42 @@ ext_cells <- function(p, id, pattern, extends) {
   p
 }
 
-test_that("choosing a pattern keeps the rest of the report's extends chain", {
+test_that("choosing a pattern leaves the report's extends cell as it is", {
   skip_on_cran()
   p0 <- ext_sample()
   skip_if_not("extends" %in% names(p0$sheets$report), "tflspec without the extends cell")
   id <- "T-14-1-1"
-  # (start pattern cell, start extends cell, new pattern, chain after, extends cell after,
-  # the pattern cell after if not the new pattern)
+  # (start pattern cell, start extends cell, new pattern, extends cell after,
+  # what the report extends after)
   cases <- list(
-    list("@Compact", "defaults | patterns/Compact", "Wide", c("defaults", "patterns/Wide"), "defaults | patterns/Wide"),
-    list("@Compact", "defaults | patterns/Compact", NA_character_, "defaults", NA_character_),
-    list("@Compact", "patterns/Compact", "Wide", "patterns/Wide", "patterns/Wide"),
-    list("@Compact", "patterns/Compact", NA_character_, "defaults", NA_character_),
-    list("@Compact", "patterns/Compact | defaults", "Wide", c("patterns/Wide", "defaults"), NA_character_),
-    list(NA_character_, "none", "Compact", "patterns/Compact", "patterns/Compact"),
+    list("@Compact", "none", "Wide", "none", "none"),
+    list("@Compact", "none", NA_character_, "none", "none"),
+    list(NA_character_, "none", "Compact", "none", "none"),
     list(NA_character_, "none", NA_character_, "none", "none"),
-    list("@Compact", "patterns/Compact | patterns/Wide | defaults", "Third",
-         c("patterns/Third", "patterns/Wide", "defaults"), "patterns/Third | patterns/Wide | defaults"),
-    list("@Compact", "patterns/Compact | patterns/Wide | defaults", NA_character_,
-         c("patterns/Wide", "defaults"), "patterns/Wide | defaults", "Wide"))
+    # (`defaults` alone is what a blank cell reads as: blank, as tflspec writes it)
+    list("@Compact", "defaults", "Wide", NA_character_, "defaults"),
+    list(NA_character_, "defaults", NA_character_, NA_character_, "defaults"))
   for (cs in cases) {
     p <- ext_cells(p0, id, cs[[1L]], cs[[2L]])
     p <- set_report_pattern(p, id, cs[[3L]])
     r <- p$sheets$report[which(p$sheets$report$output_id == id), ]
-    expect_identical(r$extends, cs[[5L]], info = cs[[2L]])
-    expect_identical(report_pattern(p, id), if (length(cs) > 5L) cs[[6L]] else cs[[3L]], info = cs[[2L]])
+    expect_identical(r$extends, cs[[4L]], info = cs[[2L]])
+    expect_identical(report_pattern(p, id), cs[[3L]], info = cs[[2L]])
     q <- expect_no_error(.spec_sync(p, p$spec$meta))
-    expect_identical(as.character(q$spec$outputs[[id]]$extends), cs[[4L]], info = cs[[2L]])
-    # and the YAML says it
-    txt <- q$spec$text[[paste0("spec/outputs/", id, ".yml")]]
-    y <- yaml::yaml.load(paste(txt, collapse = "\n"))
-    expect_identical(as.character(unlist(y$extends)), cs[[4L]], info = cs[[2L]])
+    expect_identical(as.character(unlist(q$spec$outputs[[id]]$extends %||% "defaults")), cs[[5L]],
+                     info = cs[[2L]])
+    # the pattern is the report's page configuration, its style:
+    expect_identical(q$spec$outputs[[id]]$style, if (!is.na(cs[[3L]])) cs[[3L]], info = cs[[2L]])
   }
-  # no cell: as before (the pattern first, then the defaults)
+  # no cell: the pattern alone, the report extends the defaults
   p <- set_report_pattern(ext_cells(p0, id, NA, NA), id, "Wide")
   expect_true(is.na(p$sheets$report$extends[which(p$sheets$report$output_id == id)]))
   q <- .spec_sync(p, p$spec$meta)
-  expect_identical(as.character(q$spec$outputs[[id]]$extends), c("patterns/Wide", "defaults"))
+  expect_identical(as.character(unlist(q$spec$outputs[[id]]$extends %||% "defaults")), "defaults")
+  expect_identical(q$spec$outputs[[id]]$style, "Wide")
+  # a pattern in the cell is an old form: tflspec stops on it, and says so
+  p <- ext_cells(p0, id, "@Compact", "defaults | patterns/Compact")
+  expect_error(.spec_sync(p, p$spec$meta), class = "tflspec_old_form")
 })
 
 test_that("a per-step extends cell keeps its steps when the pattern changes (it has no page step)", {
@@ -447,22 +446,22 @@ test_that("a per-step extends cell keeps its steps when the pattern changes (it 
   # reads, is not written back
   cases <- list(
     list("content=none", "Wide", "content=none", "Wide"),
-    list("content=none; page=patterns/Compact | defaults", "Wide", "content=none", "Wide"),
-    list("content=none; page=patterns/Compact | defaults", NA_character_, "content=none", NA_character_),
-    list("page=patterns/Compact | defaults", NA_character_, NA_character_, NA_character_),
-    list("page=defaults | patterns/Compact; content=none", "Wide", "content=none", "Wide"),
-    list("content=none; data=patterns/Compact | defaults", "Wide",
-         "content=none; data=patterns/Compact | defaults", "Wide"))
+    list("content=none; page=defaults", "Wide", "content=none", "Wide"),
+    list("content=none; page=defaults", NA_character_, "content=none", NA_character_),
+    list("page=defaults", NA_character_, NA_character_, NA_character_),
+    list("page=defaults; content=none", "Wide", "content=none", "Wide"),
+    list("content=none; data=defaults", "Wide", "content=none; data=defaults", "Wide"))
   for (cs in cases) {
     p <- set_report_pattern(ext_cells(p0, id, NA_character_, cs[[1L]]), id, cs[[2L]])
     r <- p$sheets$report[which(p$sheets$report$output_id == id), ]
     expect_identical(r$extends, cs[[3L]], info = cs[[1L]])
     expect_identical(report_pattern(p, id), cs[[4L]], info = cs[[1L]])
   }
-  # renamed: the pattern in any step's chain
-  p <- ext_cells(p0, id, NA_character_, "content=none; data=patterns/Wide | defaults")
+  # renamed: the pattern cell follows, the extends cell stays
+  p <- ext_cells(p0, id, "@Wide", "content=none; data=defaults")
   r <- rename_page_pattern(p, "Wide", "Broad")$sheets$report
-  expect_identical(r$extends[r$output_id %in% id], "content=none; data=patterns/Broad | defaults")
+  expect_identical(r$pattern[r$output_id %in% id], "Broad")
+  expect_identical(r$extends[r$output_id %in% id], "content=none; data=defaults")
   # and tflspec reads such a cell
   p <- set_report_pattern(ext_cells(p0, id, NA_character_, "content=none"), id, "Wide")
   q <- expect_no_error(.spec_sync(p, p$spec$meta))
@@ -509,31 +508,17 @@ test_that("a template report takes the style: like any report; the page step has
   expect_identical(.extends_cell_inherited(p0, "T-14-1-1"), "defaults")
 })
 
-test_that("the page form's pattern choice keeps the order of the report's chain", {
+test_that("the page form's pattern choice keeps the report's extends chain", {
   skip_on_cran()
-  p0 <- .pgs_add_pattern(ext_sample(), "Wide")
-  skip_if_not("extends" %in% names(p0$sheets$report), "tflspec without the extends cell")
-  id <- "T-14-1-1"
-  p <- ext_cells(p0, id, "@Compact", "defaults | patterns/Compact")
-  q <- expect_no_error(.pgs_set_pattern(p, id, "Wide"))
-  chain <- c("defaults", "patterns/Compact")
-  expect_identical(as.character(q$spec$outputs[[id]]$extends), chain)
-  expect_identical(q$spec$outputs[[id]]$style, "Wide")
-  r <- expect_no_error(.pgs_set_pattern(q, id, NA_character_))
-  expect_identical(as.character(r$spec$outputs[[id]]$extends), chain)
-  expect_null(r$spec$outputs[[id]]$style)
-})
-
-test_that("renaming a pattern renames it in the reports' extends chains", {
-  skip_on_cran()
+  # (the sheets' patterns, Wide among them, are page configurations)
   p0 <- ext_sample()
   skip_if_not("extends" %in% names(p0$sheets$report), "tflspec without the extends cell")
-  p <- ext_cells(p0, "T-14-1-1", "@Wide", "defaults | patterns/Wide")
-  p <- ext_cells(p, "T-14-1-2", "@Third", "patterns/Third|defaults")
-  p <- rename_page_pattern(p, "Wide", "Broad")
-  r <- p$sheets$report
-  expect_identical(r$pattern[r$output_id %in% "T-14-1-1"], "Broad")
-  expect_identical(r$extends[r$output_id %in% "T-14-1-1"], "defaults | patterns/Broad")
-  # (a chain that does not name it is left as written)
-  expect_identical(r$extends[r$output_id %in% "T-14-1-2"], "patterns/Third|defaults")
+  id <- "T-14-1-1"
+  p <- ext_cells(p0, id, "@Compact", "none")
+  q <- expect_no_error(.pgs_set_pattern(p, id, "Wide"))
+  expect_identical(as.character(q$spec$outputs[[id]]$extends), "none")
+  expect_identical(q$spec$outputs[[id]]$style, "Wide")
+  r <- expect_no_error(.pgs_set_pattern(q, id, NA_character_))
+  expect_identical(as.character(r$spec$outputs[[id]]$extends), "none")
+  expect_null(r$spec$outputs[[id]]$style)
 })
