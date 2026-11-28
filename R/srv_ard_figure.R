@@ -41,7 +41,7 @@
   fig_ard_table_view <- function(id, tb) {
     rv$ard_ver
     an <- ard_rows(rv$p, "analyses", tb)
-    rows <- tryCatch(study_ard_rows(rv$study, tb), error = function(e) NULL)
+    rows <- tryCatch(.report_ard_rows(rv$study, tb), error = function(e) NULL)
     d <- fig_design(rv$p, id)
     used <- unique(c(unlist(lapply(d$data, function(s) if (identical(s$step, "ard_stats")) .ard_ids(s$analysis_id))),
                      unlist(lapply(d$layers, function(l) if (identical(l$layer, "ard_number")) l$analysis_id))))

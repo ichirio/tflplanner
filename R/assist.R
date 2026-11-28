@@ -234,7 +234,7 @@ ard_meta <- function(ard = NULL, data = NULL) {
 #' made from the definition as it is now ([ard_status()]: built); else its
 #' ARD is made here, in a folder of its own, and the study ARD
 #' (`output/ard/ard.rds`) is not written -- making the study ARD is
-#' [update_study_ard()]'s, and the official run's.  The data frames the
+#' a preview's ([run_study()]), and the official run's.  The data frames the
 #' code loaded (`adsl`, ...) add what the ARD lacks: each variable's label,
 #' and the order of its values (a factor's levels, or the order of a
 #' numeric companion `<name>N`: `TRT01A` by `TRT01AN`).  The result is kept
@@ -290,28 +290,23 @@ fetch_ard <- function(study, output_id, timeout = 300,
   f_proc <- file.path(tmp, "process.R")
   f_out <- file.path(tmp, "out.rds")
   q <- function(x) encodeString(normalizePath(x, "/", FALSE), quote = "\"")
-  # its data is its part of the study ARD: those rows while they are the
-  # definition's as it is now; else the report's ARD made here (its ARD
-  # program's code, the study ARD left alone), and its data code reads that
+  # its data is its own ARD file (PROTOTYPE, tflspec#1032): those rows
+  # while they are the definition's as it is now; else the report's ARD
+  # made here (its ARD program's code), and its data code reads that
   made <- "here"
   rows <- NULL
   f_make <- NULL
   if (.ard_from_definition(p, output_id)) {
-    st <- tryCatch(ard_status(study), error = function(e) NULL)
-    if (.ard_rows_ready(study, output_id, st)) {
-      rows <- tryCatch(study_ard_rows(study, output_id), error = function(e) NULL)
-    }
+    rows <- tryCatch(.report_ard_rows(study, output_id, current = TRUE),
+                     error = function(e) NULL)
     if (!is.null(rows) && nrow(rows)) {
       made <- "study"
-      # (the rows are the latest official run's, not the working ARD's: the
-      # code reads them from a file of its own in place of the study ARD's)
-      if (!identical(st$state[match(output_id, st$output_id)], "built")) {
-        f_rows <- file.path(tmp, "study_ard.rds")
-        saveRDS(rows, f_rows)
-        ard_code <- gsub(.path_lit(.study_ard_rel(p$ard)),
-                         encodeString(normalizePath(f_rows, "/", FALSE), quote = "\""),
-                         ard_code, fixed = TRUE)
-      }
+      # (the code reads them from a file of its own in place of the study ARD's)
+      f_rows <- file.path(tmp, "study_ard.rds")
+      saveRDS(rows, f_rows)
+      ard_code <- gsub(.path_lit(.study_ard_rel(p$ard)),
+                       encodeString(normalizePath(f_rows, "/", FALSE), quote = "\""),
+                       ard_code, fixed = TRUE)
     } else {
       rows <- NULL
       f_make <- file.path(tmp, "make_ard.R")

@@ -163,7 +163,7 @@ preview_code <- function(study, output_id, timeout = 300) {
   if (identical(src$kind, "table")) return(list(kind = "table", id = src$id))
   n <- nrow(ard_rows(x, "analyses", output_id))
   if (!n) return(list(kind = "none"))
-  rows <- tryCatch(study_ard_rows(study, output_id), error = function(e) NULL)
+  rows <- tryCatch(.report_ard_rows(study, output_id), error = function(e) NULL)
   list(kind = "own", n = n, built = !is.null(rows) && nrow(rows) > 0L)
 }
 

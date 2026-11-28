@@ -85,7 +85,7 @@ test_that("the checks: no source, not made yet, then each piece against the rows
   expect_identical(pr$severity, "warning")
   expect_match(pr$problem, "not made yet")
   # made: the design's pieces are in it
-  u <- suppressMessages(update_study_ard(s, "T-14-2-2"))
+  u <- suppressMessages(proto_make_ard(s, "T-14-2-2"))
   expect_true(u$ok)
   expect_identical(nrow(.fig_ard_problems(s, "F-14-2-3")), 0L)
   d <- fig_design(s$planner, "F-14-2-3")
@@ -128,7 +128,7 @@ test_that("a figure whose ARD has no rows yet says which and how to make it", {
 test_that("the preview prints the table's medians", {
   skip_if_not_installed("ggsurvfit")
   s <- fig_ard_study()
-  suppressMessages(update_study_ard(s, "T-14-2-2"))
+  suppressMessages(proto_make_ard(s, "T-14-2-2"))
   r <- preview_figure(s, "F-14-2-3", max_px = 600)
   expect_null(r$error)
   expect_true(file.exists(r$png))
@@ -172,7 +172,7 @@ test_that("a table deleted, or an analysis dropped from it: the figure's checks 
   # its KM analysis dropped from the definition: an error even while the
   # ARD made before still has the rows
   s$planner <- p
-  suppressMessages(update_study_ard(s, "T-14-2-2"))
+  suppressMessages(proto_make_ard(s, "T-14-2-2"))
   an <- p$ard$analyses
   p2 <- p
   p2$ard$analyses <- an[!(an$output_id %in% "T-14-2-2" & an$analysis_id == "KM"), , drop = FALSE]
@@ -239,7 +239,7 @@ test_that("the study review lists a figure's ARD problems as F04-F08, each with 
   expect_identical(r$args[[1L]], "T-GONE")
   expect_match(r$message, "(deleted, or renamed by hand)", fixed = TRUE)
   # made, then a piece the ARD cannot answer: F08, in the designer
-  expect_true(suppressMessages(update_study_ard(s, "T-14-2-2"))$ok)
+  expect_true(suppressMessages(proto_make_ard(s, "T-14-2-2"))$ok)
   expect_identical(nrow(rv(s)), 0L)
   d <- fig_design(s$planner, "F-14-2-3")
   k <- which(vapply(d$layers, function(l) identical(l$layer, "ard_number"), NA))[1L]

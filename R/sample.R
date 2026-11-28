@@ -100,7 +100,7 @@ create_sample_study <- function(root = studies_root(home), run = TRUE,
               " and run it from the app (Results: official run).")
     } else {
       message("Making the sample study's ARD and reports (about a minute) ...")
-      b <- run_batch(s, c("ard", "tfl"))
+      b <- run_batch(s, "full")
       message(if (b$ok) "Done: " else "Done, with errors: ",
               sum(b$result$status == "OK"), " of ", nrow(b$result),
               " programs ran without error (", b$batch, ").")

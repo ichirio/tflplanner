@@ -51,7 +51,6 @@ test_that("a table the ARD definition serves reads its part of the study ARD", {
   p <- set_step_code(p, "DM", "data", "ard <- my_ard()")
   expect_true("ard <- my_ard()" %in% data_lines(p, "DM"))
   expect_false(any(grepl("ard.rds", data_lines(p, "DM"))))
-  expect_false(any(grepl("make_ard", autoexec_code(p))))
 })
 
 test_that("the definition is saved, reopened and run", {
@@ -82,7 +81,7 @@ test_that("the definition is saved, reopened and run", {
                     names(v)))
   expect_false(file.exists(file.path(s$path, "output", "ard", "ard.rds")))
   # a preview of one output: the working ARD, no log
-  u <- update_study_ard(o, "DM")
+  u <- proto_make_ard(o, "DM")
   expect_true(u$ok)
   expect_true(file.exists(file.path(s$path, "output", "ard", "ard.rds")))
   expect_equal(ard_status(o)$state, "built")
@@ -122,13 +121,14 @@ test_that("the definition is saved, reopened and run", {
   o2$planner$ard$analyses$method[2] <- "cards::ard_nope"
   o2 <- suppressMessages(save_study(o2))
   expect_match(o2$ard_problem %||% "", "ard_nope")
-  # a failing ARD program leaves the study ARD and records its error
+  # a failing ARD program leaves the study ARD as it was (PROTOTYPE: a hand
+  # run's error is in what it printed, not in the working status)
   f <- file.path(s$path, "programs", "ard", "DM.R")
   writeLines(c(readLines(f), "stop(\"ard_nope failed at run time\")"), f)
-  u <- update_study_ard(o2, "DM")
+  u <- proto_make_ard(o2, "DM")
   expect_false(u$ok)
   expect_match(u$error, "ard_nope")
-  expect_equal(ard_status(o2)$state, "error")
+  expect_equal(ard_status(o2)$state, "outdated")
   expect_true(file.exists(file.path(s$path, "output", "ard", "ard.rds")))
 
   bad <- o
@@ -259,7 +259,7 @@ test_that("a report's code lists reach its ARD program", {
   expect_true(any(grepl("AGEGR1 = cl_agegr1", prog, fixed = TRUE)))
   # the ARD counts the value no record has, in the code list's order
   o <- open_study("A2")
-  u <- update_study_ard(o, "DM")
+  u <- proto_make_ard(o, "DM")
   expect_true(u$ok)
   a <- readRDS(file.path(s$path, "output", "ard", "ard.rds"))
   a <- a[a$analysis_id == "AGEGR" & a$stat_name == "n", ]

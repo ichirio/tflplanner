@@ -23,7 +23,7 @@ are in the study ARD, made from the definition as it is now), \code{outdated}
 \code{programs/study_setup.R} than the one there now), \verb{not built}, or
 \code{error} (its last
 update failed).  Many people may work on one study: the study ARD is
-updated output by output (\code{\link[=update_study_ard]{update_study_ard()}}), and a table is made
+updated output by output (a preview, \code{\link[=run_study]{run_study()}}), and a table is made
 from whatever of it is there.
 }
 \details{

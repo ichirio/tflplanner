@@ -214,7 +214,7 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
   src <- .fig_ard_source(x, output_id)
   switch(src$kind,
     none = NULL,
-    own = , table = tryCatch(study_ard_rows(study, src$id), error = function(e) NULL),
+    own = , table = tryCatch(.report_ard_rows(study, src$id), error = function(e) NULL),
     import = {
       p <- file.path(.import_dir(study), src$file)
       if (!file.exists(p)) return(NULL)
@@ -270,9 +270,9 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
   now <- .ard_print(study, tb)
   hit <- .fig_ard_memo[[key]]
   if (!is.null(hit) && identical(hit$print, now)) return(hit)
-  st <- tryCatch(ard_status(study), error = function(e) NULL)
-  out <- if (.ard_rows_ready(study, tb, st)) {
-    list(rows = study_ard_rows(study, tb), print = now, error = NULL)
+  rows <- .report_ard_rows(study, tb, current = TRUE)
+  out <- if (!is.null(rows)) {
+    list(rows = rows, print = now, error = NULL)
   } else {
     a <- run_ard(study, tb)
     list(rows = a$ard, print = now,

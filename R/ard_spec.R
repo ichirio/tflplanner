@@ -280,7 +280,7 @@ set_ard_rows <- function(x, sheet, output_id = "", rows) {
     NULL
   })
   if (!is.null(spec) && nrow(a$analyses)) {
-    out <- rbind(out, .save_ard_programs(spec, root, .study_codelists(p)))
+    out <- rbind(out, .save_ard_programs(p, spec, root, .study_codelists(p)))
   }
   if (nrow(a$analyses)) attr(out, "problem") <- problem
   out
@@ -390,41 +390,37 @@ ard_view <- function(ard) {
   out
 }
 
-# One output's rows of the study ARD (NULL when there are none): the
-# working ARD's (what previews and hand runs left) while it is built from
-# the definition as it is now; else, read only, the latest official run's
-# ARD of that output when that was made from the definition as it is now
-# (nothing is copied into output/); else the working rows as they are, or
-# NULL.
-study_ard_rows <- function(study, output_id) {
-  a <- .read_study_ard(.study_ard_file(study))
-  work <- if (!is.null(a) && "output_id" %in% names(a)) a
-  pick <- function(x, ids) x[x$output_id %in% ids, , drop = FALSE]
-  ids <- unique(output_id)
-  # (no official run made an ARD: no hash to work out)
-  ok <- if (length(ids)) .latest_ok(study, ids, "ard")
-  if (is.null(ok) || all(is.na(ok$path))) {
-    return(if (!is.null(work)) pick(work, output_id))
-  }
-  wst <- .read_ard_status(study)
-  from_run <- character()
-  runs <- list()
-  for (i in which(!is.na(ok$path))) {
-    id <- ids[i]
+# PROTOTYPE (tflspec#1032): the outputs' own ARD (NULL when there is
+# none), from each report's own file output/ard/report/<id>.rds -- the
+# working one (what previews and hand runs left) while it was made from the
+# definition as it is now; else, read only, the latest official run's file
+# of that output when it was; else (`current = FALSE`) the working rows as
+# they are.  `current = TRUE`: only rows made from the definition now.
+.report_ard_rows <- function(study, output_id, current = FALSE) {
+  got <- lapply(unique(output_id), function(id) {
     now <- .ard_hash_now(study, id)
-    r <- wst[wst$output_id == id, , drop = FALSE][1L, ]
-    if (identical(.ard_row_state(study, r, now), "built")) next
-    pth <- .ard_run_current(study, id, ok[i, ], now)
-    if (is.na(pth)) next
-    b <- tryCatch(.read_study_ard(.study_ard_file(study, pth), slot = "run"),
-                  error = function(e) NULL)
-    if (is.null(b) || !"output_id" %in% names(b)) next
-    from_run <- c(from_run, id)
-    runs[[id]] <- pick(b, id)
-  }
-  if (!length(from_run)) return(if (!is.null(work)) pick(work, output_id))
-  mine <- if (!is.null(work)) pick(work, setdiff(output_id, from_run))
-  do.call(rbind, c(list(mine)[!is.null(mine)], unname(runs)))
+    work <- .read_report_ard(study$path, id)
+    if (!is.null(work) && identical(attr(work, "made")$definition, now)) return(work)
+    ok <- .latest_ok(study, id, c("ard", "tfl"))
+    run <- if (!is.na(ok$path[1L])) .read_report_ard(ok$path[1L], id, slot = "run")
+    if (!is.null(run) && identical(attr(run, "made")$definition, now)) return(run)
+    if (!current) work
+  })
+  got <- lapply(Filter(Negate(is.null), got), function(a) {
+    attr(a, "made") <- NULL
+    a
+  })
+  if (length(got)) do.call(rbind, got)
+}
+
+# a report's own ARD file under `root` (the study, or a batch folder), read
+# once per file (NULL: none)
+.read_report_ard <- function(root, id, slot = "ard") {
+  f <- file.path(root, "output", "ard", "report",
+                 paste0(gsub("[^A-Za-z0-9._-]", "_", id), ".rds"))
+  a <- .read_study_ard(f, slot = paste(slot, id))
+  if (!is.null(a) && !"output_id" %in% names(a)) a$output_id <- id
+  a
 }
 
 # The fingerprint of an output's ARD definition as it is now
@@ -433,27 +429,6 @@ study_ard_rows <- function(study, output_id) {
                                       dir = study$path,
                                       codelists = .study_codelists(study$planner)),
            error = function(e) NA_character_)
-}
-
-# The batch folder of the latest OK run of an output's ARD when that was made
-# from the definition as it is now (its ard_status.csv row has the
-# fingerprint), else NA: the design aids read its rows, read only, when the
-# working ARD does not have them
-.ard_run_current <- function(study, id, ok = .latest_ok(study, id, "ard"),
-                             now = .ard_hash_now(study, id)) {
-  pth <- ok$path[1L]
-  if (is.na(pth)) return(NA_character_)
-  rs <- .read_ard_status(study, root = pth)
-  rs <- rs[rs$output_id == id, , drop = FALSE]
-  if (!nrow(rs) || is.na(now) || !identical(rs$definition[1L], now)) NA_character_ else pth
-}
-
-# An output's ARD rows are there for the design aids to read: the working
-# ARD's are made from the definition as it is now (`st`, ard_status()'s
-# data frame), or the latest official run's are
-.ard_rows_ready <- function(study, id, st) {
-  identical(st$state[match(id, st$output_id)], "built") ||
-    !is.na(.ard_run_current(study, id))
 }
 
 # The study ARD read once per file: every report asks for its rows as a
@@ -506,14 +481,6 @@ study_ard_rows <- function(study, output_id) {
           .setup_changed(.ard_recorded_setup(r), study$path)) "outdated" else "built"
 }
 
-.write_ard_status <- function(study, d) {
-  f <- .ard_status_file(study)
-  dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
-  tmp <- paste0(f, ".tmp")
-  utils::write.csv(d, tmp, row.names = FALSE)
-  file.rename(tmp, f)
-}
-
 #' Where each output's ARD stands
 #'
 #' For every output the ARD definition has analyses for: `built` (its rows
@@ -522,7 +489,7 @@ study_ard_rows <- function(study, output_id) {
 #' `programs/study_setup.R` than the one there now), `not built`, or
 #' `error` (its last
 #' update failed).  Many people may work on one study: the study ARD is
-#' updated output by output ([update_study_ard()]), and a table is made
+#' updated output by output (a preview, [run_study()]), and a table is made
 #' from whatever of it is there.
 #'
 #' There are two places to look.  `from = "working"` reads the study's
@@ -559,8 +526,8 @@ ard_status <- function(study, from = c("working", "run")) {
     st <- .read_ard_status(study)
   } else {
     idx <- .run_index(study)
-    ok <- .latest_ok(study, ids, "ard", idx)
-    att <- .latest_attempt(study, ids, "ard", idx)
+    ok <- .latest_ok(study, ids, c("ard", "tfl"), idx)
+    att <- .latest_attempt(study, ids, c("ard", "tfl"), idx)
     seen <- list()
   }
   rows <- lapply(seq_along(ids), function(i) {

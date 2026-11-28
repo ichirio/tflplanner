@@ -98,11 +98,13 @@ test_that("the programs read the path as written, and a save changes nothing (#4
   # the one difference: the path, written whole instead of under path_adam
   ref <- lapply(code(ref), gsub, pattern = 'file[.]path[(]path_adam, "([^"]+)"[)]',
                 replacement = paste0('"', st$adam, '/\\1"'))
-  expect_identical(mine, ref)
+  # (PROTOTYPE: and the ARD definition's fingerprint, which has the path)
+  def <- function(x) lapply(x, gsub, pattern = '(definition = |ard_built <- )"[0-9a-f]{32}"',
+                            replacement = '\\1"-"')
+  expect_identical(def(mine), def(ref))
   # the data is read once, in the study's setup: the programs have no path
   expect_false(any(grepl(st$adam, unlist(mine), fixed = TRUE)))
-  ard <- ard_program_code(.ard_spec(p$ard), "T-14-1-1", date = d, dir = s$path,
-                          codelists = .study_codelists(p))
+  ard <- ard_program_code(p, "T-14-1-1", date = d)
   expect_false(any(grepl(st$adam, ard, fixed = TRUE)))
   # a save with nothing changed: no file changes
   s2 <- suppressMessages(save_study(s))

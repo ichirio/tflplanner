@@ -39,22 +39,18 @@
 #' the stat_fmt formats, and the option that makes `save_ard()` (the
 #' study's `programs/study_helpers.R`, see [study_helpers_code()]) record
 #' the study setup each ARD was built with.
-#' `ard_program_code()` is one output's program, `programs/ard/<output_id>.R`.  `ard_autoexec_code()` is
+#' `ard_program_code()` is one report's ARD program, `programs/ard/<output_id>.R`
+#' (PROTOTYPE, tflspec#1032: the data and analysis lines of the report's
+#' full program, [tflspec::tfl_onepass_program()]; `NULL` when the report
+#' makes no ARD).  `ard_autoexec_code()` is
 #' `programs/ard/autoexec_ard.R`, which runs them from the study folder --
 #' all, or the ones named (`Rscript programs/ard/autoexec_ard.R T-14-1-1`)
 #' -- each in its own R process with its log in `logs/ard/`.
 #'
 #' @param spec An [tflspec::tfl_ard_spec()] (or the path of one).
+#' @param x A `tflplanner`.
 #' @param output_id The output.
 #' @param date The date stamped in the banner.
-#' @param dir The study folder: the fingerprint recorded with the ARD reads
-#'   the study's own analysis functions (its key `source`) from it.
-#' @param codelists The reports' code lists (the table definition's
-#'   `codelists` sheet, every row a report's), or `NULL`: each column the
-#'   report's analyses read that its code lists list becomes a factor in
-#'   their order before the analyses, so the ARD keeps the order and counts
-#'   a value no record has (0) ([tflspec::tfl_ard_code()]).  They are part of
-#'   the fingerprint.
 #' @return The code, one element per line.
 #' @examples
 #' # a home in the temporary folder: used in this R session only, nothing
@@ -88,19 +84,8 @@ ard_setup_code <- function(spec, date = Sys.Date()) {
 
 #' @rdname ard_setup_code
 #' @export
-ard_program_code <- function(spec, output_id, date = Sys.Date(), dir = ".",
-                             codelists = NULL) {
-  .with_study_code(.ard_program_code(spec, output_id, date, dir, codelists))
-}
-
-.ard_program_code <- function(spec, output_id, date = Sys.Date(), dir = ".",
-                              codelists = NULL) {
-  x <- if (is.character(spec)) .read_ard_spec(spec) else spec
-  ctx <- .live_context_args()
-  tflspec::tfl_ard_program(x, output_id, standards = .ard_standards(), dir = dir,
-                           codelists = codelists, attached = ctx$attached,
-                           study_code = ctx$study_code, layout = study_layout(),
-                           date = date, generator = .setup_generator())
+ard_program_code <- function(x, output_id, date = Sys.Date()) {
+  .with_study_code(.report_program(x, output_id, date = date, kind = "ard"))
 }
 
 #' @rdname ard_setup_code
@@ -151,13 +136,13 @@ ard_autoexec_code <- function(spec, date = Sys.Date()) {
 
 .ard_prog_cache <- new.env()
 
-# the ARD programs, written with the study: the setup, one per output, the
+# the ARD programs, written with the study: the setup, one per report that
+# makes an ARD (PROTOTYPE: tfl_onepass_program(kind = "ard")), the
 # autoexec; a program of an output no longer defined goes (one edited by
 # hand copied to programs/.edited/ first)
-.save_ard_programs <- function(spec, root, codelists = NULL) {
+.save_ard_programs <- function(p, spec, root, codelists = NULL) {
   lay <- study_layout()
   dir <- file.path(root, lay[["programs_ard"]])
-  ids <- unique(stats::na.omit(spec$analyses$output_id))
   out <- data.frame(file = character(), status = character(),
                     stringsAsFactors = FALSE)
   put <- function(code, name) {
@@ -165,31 +150,39 @@ ard_autoexec_code <- function(spec, date = Sys.Date()) {
     out[nrow(out) + 1L, ] <<- list(f, .put_program(code, f, root))
   }
   put(ard_setup_code(spec), .ard_setup_file)
-  # (an output's ARD program kept while the ARD definition, the code lists
-  # and the day are the same: a save after an edit of a table writes the
-  # same programs, #417)
+  # (a report's ARD program kept while its inputs and the day are the same:
+  # a save after an edit of a table writes the same programs, #417)
   key <- list(spec, root, codelists, Sys.Date(), .code_context$opts)
   if (!identical(.ard_prog_cache$key, key)) {
     .ard_prog_cache$key <- key
     .ard_prog_cache$code <- list()
   }
-  for (id in ids) {
-    if (is.null(.ard_prog_cache$code[[id]])) {
+  ids <- character()
+  for (id in p$outputs$output_id) {
+    k <- .program_key(p, id)
+    hit <- .ard_prog_cache$code[[id]]
+    f <- file.path(dir, .ard_prog_name(id))
+    if (is.null(hit) || !identical(hit$key, k)) {
       # (not made in this session: a file whose checksum is the one
       # recorded for the same inputs in an earlier session is current, and
-      # its program is not made again -- R/program_hashes.R, #749)
-      rec <- .code_hash_key("ard", id, list(spec, root, codelists))
+      # its program is not made again -- R/program_hashes.R, #749; "none":
+      # the report makes no ARD)
+      rec <- .code_hash_key("ard", id, list(spec, root, codelists, k))
       prog <- paste0("ard:", id)
       h <- .code_hash_get(prog, rec)
-      f <- file.path(dir, .ard_prog_name(id))
+      if (identical(h, "none") && !file.exists(f)) next
       if (!is.null(h) && identical(.program_file_hash(f), h)) {
+        ids <- c(ids, id)
         out[nrow(out) + 1L, ] <- list(f, "unchanged")
         next
       }
-      .ard_prog_cache$code[[id]] <- ard_program_code(spec, id, dir = root, codelists = codelists)
-      .code_hash_put(prog, rec, .body_hash(.ard_prog_cache$code[[id]]))
+      hit <- list(key = k, code = ard_program_code(p, id))
+      .ard_prog_cache$code[[id]] <- hit
+      .code_hash_put(prog, rec, if (is.null(hit$code)) "none" else .body_hash(hit$code))
     }
-    put(.ard_prog_cache$code[[id]], .ard_prog_name(id))
+    if (is.null(hit$code)) next
+    ids <- c(ids, id)
+    put(hit$code, .ard_prog_name(id))
   }
   put(ard_autoexec_code(spec), .ard_autoexec_file)
   keep <- c(.ard_setup_file, .ard_autoexec_file, vapply(ids, .ard_prog_name, ""))
@@ -214,63 +207,10 @@ ard_autoexec_code <- function(spec, date = Sys.Date()) {
   out
 }
 
-#' Preview one output's ARD
-#'
-#' Runs the output's saved ARD program (`programs/ard/<output_id>.R`) on its
-#' own, from the study folder: it replaces the output's rows of the study's
-#' working ARD, so its table can be made, and keeps no log.  A program that
-#' fails leaves the ARD alone and records its error ([ard_status()]).  The
-#' official run is [run_batch()].
-#'
-#' @param study An `rtfstudy` (saved: the program runs from disk).
-#' @param output_id The output.
-#' @param timeout Seconds to allow.
-#' @return A list: `ok`, `rows`, `error`, `output` (what the program
-#'   printed).
-#' @examples
-#' # a home in the temporary folder: used in this R session only, nothing
-#' # is written to your settings
-#' old <- options(tflplanner.home = NULL)
-#' setup_tflplanner(home = tempfile("tflplanner-home"))
-#' \donttest{
-#' # (about 10 seconds: it saves the sample study and runs one ARD program)
-#' s <- save_study(create_sample_study(run = FALSE))
-#' r <- update_study_ard(s, "T-14-1-1")
-#' r$ok
-#' r$rows  # its rows in the study's working ARD
-#' }
-#' options(old)
-#' @export
-update_study_ard <- function(study, output_id, timeout = 600) {
-  prog <- file.path(study_layout()[["programs_ard"]], .ard_prog_name(output_id))
-  if (!file.exists(file.path(study$path, prog))) {
-    stop("No ", prog, " yet: save the study first.", call. = FALSE)
-  }
-  # (a definition that does not hold: no ARD program was written for it --
-  # save_study()'s ard_problem -- and the one there is of the one before:
-  # not run, an error)
-  if (!is.null(study$ard_problem)) {
-    out <- strsplit(study$ard_problem, "\r?\n")[[1L]]
-    px <- list(status = 1L)
-  } else {
-    px <- processx::run(file.path(R.home("bin"), "Rscript"), prog,
-                        wd = study$path, error_on_status = FALSE,
-                        timeout = timeout, stderr_to_stdout = TRUE)
-    out <- strsplit(px$stdout, "\r?\n")[[1L]]
-  }
-  ok <- identical(px$status, 0L)
-  if (!ok) {
-    err <- grep("^Error", out, value = TRUE)
-    note <- if (length(err)) err[1L] else if (!is.null(study$ard_problem)) out[1L] else "failed"
-    st <- .read_ard_status(study)
-    st <- st[st$output_id != output_id, , drop = FALSE]
-    st[nrow(st) + 1L, ] <- list(output_id, "", format(Sys.time(),
-      "%Y-%m-%d %H:%M:%S"), NA_integer_, note, "")
-    .write_ard_status(study, st)
-  }
-  st <- ard_status(study)
-  st <- st[st$output_id == output_id, , drop = FALSE]
-  list(ok = ok, rows = if (nrow(st)) st$rows[1L] else NA_integer_,
-       error = if (!ok) paste(utils::tail(out, 15L), collapse = "\n"),
-       output = out)
+# The reports that have an ARD program (PROTOTYPE): tflspec's rule for
+# tfl_onepass_program(kind = "ard") -- analyses in the definition, or a
+# data step of their own code
+.ard_program_ids <- function(p) {
+  a <- unique(stats::na.omit((p$ard %||% .empty_ard_spec())$analyses$output_id))
+  Filter(function(id) id %in% a || .is_code_step(p, id, "data"), p$outputs$output_id)
 }

@@ -46,7 +46,7 @@ test_that("the study ARD grows output by output, and says where it stands", {
   s2$planner$ard$analyses$label[1] <- "Age"
   expect_equal(ard_preview_state(s2, "DM"), "outdated")
 
-  update_study_ard(s, "DM")
+  proto_make_ard(s, "DM")
   st <- ard_status(s)
   expect_equal(st$state, c("built", "not built"))
   a <- readRDS(file.path(s$path, "output", "ard", "ard.rds"))
@@ -55,19 +55,20 @@ test_that("the study ARD grows output by output, and says where it stands", {
   # (the study ARD's rows, made from the definition as it is now: read)
   expect_identical(ard_info(s, "DM")$made, "study")
 
-  update_study_ard(s, "SEX")
+  proto_make_ard(s, "SEX")
   a2 <- readRDS(file.path(s$path, "output", "ard", "ard.rds"))
   expect_setequal(unique(a2$output_id), c("DM", "SEX"))
   # DM's rows were left as they were
   expect_equal(nrow(a2[a2$output_id == "DM", ]), nrow(a[a$output_id == "DM", ]))
 
-  # the definition moves on: outdated; a failed update: error, ARD kept
+  # the definition moves on: outdated; a failed update (PROTOTYPE: a hand
+  # run, its error not recorded): still outdated, ARD kept
   s$planner$ard$analyses$statistics[1] <- "N | mean"
   expect_equal(ard_status(s)$state[1], "outdated")
   s$planner$ard$analyses$method[2] <- "cards::ard_nope"
   s <- save_study(s)
-  update_study_ard(s, "SEX")
-  expect_equal(ard_status(s)$state[2], "error")
+  expect_false(proto_make_ard(s, "SEX")$ok)
+  expect_equal(ard_status(s)$state[2], "outdated")
   a3 <- readRDS(file.path(s$path, "output", "ard", "ard.rds"))
   expect_identical(a3, a2)
 

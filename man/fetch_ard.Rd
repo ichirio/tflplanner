@@ -38,7 +38,7 @@ its ARD definition makes reads its rows of the study ARD when they are
 made from the definition as it is now (\code{\link[=ard_status]{ard_status()}}: built); else its
 ARD is made here, in a folder of its own, and the study ARD
 (\code{output/ard/ard.rds}) is not written -- making the study ARD is
-\code{\link[=update_study_ard]{update_study_ard()}}'s, and the official run's.  The data frames the
+a preview's (\code{\link[=run_study]{run_study()}}), and the official run's.  The data frames the
 code loaded (\code{adsl}, ...) add what the ARD lacks: each variable's label,
 and the order of its values (a factor's levels, or the order of a
 numeric companion \verb{<name>N}: \code{TRT01A} by \code{TRT01AN}).  The result is kept
