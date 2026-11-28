@@ -6,7 +6,7 @@
 #   .arg_defs(fn = , template = )    the table, NULL when tflspec has none
 #   .arg_def(defs, name)             one row as a list
 #   .choice_values(sources, ctx)     the source words -> the choices offered
-#                                    (ctx: vars, levels, ..., args, arg_names, params)
+#                                    (ctx: vars, levels, objects, ..., args)
 #   .tpl_params_from_defs(defs)      a template's defs as its card's params
 
 # ---- the table, cached -------------------------------------------------------
@@ -103,19 +103,24 @@
 
 # ---- the choices of a pick ---------------------------------------------------
 
-# the closed list of choice sources (tflspec's canon 11-14)
-.choice_sources <- c("vars", "levels", "codelist", "populations", "report_data",
-                     "study_data", "ard", "columns", "study_info", "tokens",
-                     "stats", "fixed", "styles", "from_args")
+# the closed list of choice sources: tflspec's one list (tfl_choice_sources(),
+# canon 2 row 11-28), read here and never copied -- its words, their groups'
+# names and the old words with what to write instead
+.choice_sources <- function() tflspec::tfl_choice_sources()
 
-# the name of a source's group, where several make the list
-.choice_group_labels <- c(
-  vars = "Columns", levels = "Values", codelist = "Code list", populations = "Analysis sets",
-  report_data = "This report's data", study_data = "Study data", ard = "ARD",
-  columns = "Columns", study_info = "Study information", tokens = "Values to insert",
-  stats = "Statistics", fixed = "Fixed values", styles = "Styles", from_args = "Arguments")
+# an old word (report_data, ard, study_info) stops, naming the new one
+.choice_old_stop <- function(w) {
+  old <- attr(.choice_sources(), "old")
+  stop(sprintf("The choice source \"%s\" is gone; write %s.", w, old[[w]]), call. = FALSE)
+}
 
-# "report_data, study_data" or c("vars(from)", "from_args(a, b)") -> the
+.choice_unknown_stop <- function(w) {
+  if (w %in% names(attr(.choice_sources(), "old"))) .choice_old_stop(w)
+  stop(sprintf("Unknown choice source \"%s\"; the sources are %s.", w,
+               paste(.choice_sources()$word, collapse = ", ")), call. = FALSE)
+}
+
+# "objects(data), study_data" or c("vars(from)", "from_args(a, b)") -> the
 # words, a comma inside brackets kept with its word
 .choice_words <- function(sources) {
   if (is.null(sources) || !length(sources)) return(character())
@@ -186,6 +191,7 @@
 .choice_one <- function(w, ctx, values = NULL) {
   p <- .choice_word_parse(w)
   ref <- function() if (length(p$args)) .choice_ref(ctx, p$args[[1L]])
+  kind <- if (length(p$args)) p$args[[1L]]
   x <- switch(
     p$name,
     vars = if (length(p$args)) {
@@ -193,23 +199,19 @@
       if (!is.null(what)) .choice_ctx(ctx, "vars", what)
     } else .choice_ctx(ctx, "vars"),
     levels = .choice_ctx(ctx, "levels", ref()),
-    codelist = .choice_ctx(ctx, "codelist", if (length(p$args)) p$args[[1L]]),
+    codelist = .choice_ctx(ctx, "codelist", kind),
+    # (columns(ard): the ARD's key columns; alone: the current content's)
     columns = .choice_ctx(ctx, "columns", ref()),
-    populations = , report_data = , study_data = , ard = , study_info = , tokens = ,
-    stats = , styles = .choice_ctx(ctx, p$name),
+    # (the objects made above in this report, of one kind -- never the
+    # study's datasets; figure_style(palette|marker))
+    objects = , figure_style = if (!is.null(kind)) .choice_ctx(ctx, p$name, kind),
+    # (format_sets: no provider until format sets are built -- no choices,
+    # free input)
+    populations = , study_data = , stats = , format_sets = , styles = ,
+    tokens = .choice_ctx(ctx, p$name),
     fixed = values,
-    from_args = {
-      # (from_args(params): the names of the template's params)
-      if (identical(p$args, "params")) {
-        ctx$params %||% ctx$arg_names %||% names(ctx$args)
-      } else if (length(p$args)) {
-        unique(unlist(lapply(ctx$args[p$args], function(v) if (is.atomic(v)) as.character(v))))
-      } else {
-        ctx$arg_names %||% names(ctx$args)
-      }
-    },
-    stop(sprintf("Unknown choice source \"%s\"; the sources are %s.", p$name,
-                 paste(.choice_sources, collapse = ", ")), call. = FALSE))
+    from_args = unique(unlist(lapply(ctx$args[p$args], function(v) if (is.atomic(v)) as.character(v)))),
+    .choice_unknown_stop(p$name))
   .choice_vec(x)
 }
 
@@ -222,28 +224,30 @@
 #   vars       the columns, by data (vars(from): the data `from` names)
 #   levels     the values, by variable
 #   codelist   the code lists, by name
-#   columns    an object's columns, by object
-#   populations, report_data, study_data, ard, stats, styles, tokens,
-#   study_info the lists themselves
+#   columns    an object's columns, by object (columns(ard): the ARD's key
+#              columns); alone, the current content's
+#   objects    the objects made above in this report, by kind (data, ard,
+#              model, value, plot)
+#   figure_style  the study's figure style's palette or markers, by kind
+#   populations, study_data, stats, styles, tokens, format_sets
+#              the lists themselves
 #   args       the card's current arguments (from_args(a), and the data or
-#              variable a word names); arg_names: the arguments from_args
-#              alone offers (default names(args))
+#              variable a word names)
 # `values`: the def's fixed values (`fixed`).
 .choice_values <- function(sources, ctx = list(), lang = "en", values = NULL) {
   words <- .choice_words(sources)
   if (!length(words)) return(character())
   names(words) <- vapply(words, function(w) .choice_word_parse(w)$name, "")
-  bad <- setdiff(names(words), .choice_sources)
-  if (length(bad)) {
-    stop(sprintf("Unknown choice source \"%s\"; the sources are %s.", bad[[1L]],
-                 paste(.choice_sources, collapse = ", ")), call. = FALSE)
-  }
+  src <- .choice_sources()
+  bad <- setdiff(names(words), src$word)
+  if (length(bad)) .choice_unknown_stop(bad[[1L]])
   ctx <- ctx %||% list()
   got <- lapply(words, .choice_one, ctx = ctx, values = values)
   got <- got[lengths(got) > 0L]
   if (!length(got)) return(character())
   if (length(got) == 1L) return(got[[1L]])
-  labs <- tr(unname(.choice_group_labels[names(got)]), lang)
+  labs <- src[[paste0("label_", lang)]] %||% src$label_en
+  labs <- labs[match(names(got), src$word)]
   # (two groups of one label -- vars(a), vars(b) -- named apart)
   labs <- make.unique(labs, sep = " ")
   stats::setNames(lapply(got, as.list), labs)
@@ -262,7 +266,7 @@
   if (grepl("^enum\\[", type)) return("choice")
   if (grepl("^(list<)?column>?$", type)) return("vars")
   if (grepl("^(list<)?level>?$", type)) return("levels")
-  # (a pick of names its source words give -- report_data, study_data,
+  # (a pick of names its source words give -- objects(data), study_data,
   # populations, ...: chosen from them, tflspec#821)
   if (identical(d$input, "pick") && grepl("^(list<)?string>?$", type) &&
       length(.choice_words(d$choices))) return("pick")
@@ -320,7 +324,7 @@
   stats::setNames(out, defs$name)
 }
 
-# The variable a level def's choices read (its words levels(by),
+# The variable a level def's choices read (its words levels(SEX),
 # levels(from_args(by))): a param's name or a column's, as levels' `of`;
 # NULL for any other def
 .tpl_levels_word <- function(d) {
