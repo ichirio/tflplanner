@@ -3,6 +3,10 @@ kind: table
 label: 'Time to first skin disorder: KM estimates'
 extends:
   - defaults
+codelists:
+  TRT01A:
+    - value: Drug X
+    - value: Control
 data:
   - id: adsl_saf
     from: ADSL
@@ -40,10 +44,6 @@ analysis:
         cox <- survival::coxph(survival::Surv(AVAL, CNSR == 0) ~ TRT01A, data = data)
         cardx::ard_regression(cox, exponentiate = TRUE)
       purpose: SECONDARY OUTCOME MEASURE
-codelists:
-  TRT01A:
-    - value: Drug X
-    - value: Control
 content:
   - rework:
       source: ard

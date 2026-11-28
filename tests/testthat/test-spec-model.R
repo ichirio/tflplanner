@@ -596,7 +596,7 @@ test_that("the builder's header, order and pages are plan_col_header(), plan_sor
   expect_false(is.null(.spec_items(q, id)))
   # whose {n}: plan_col_header(values = )
   st2 <- st
-  st2$header_n <- "page"
+  st2$col_header_values <- "page"
   q <- builder_write(p, id, st2, was = st)
   expect_identical(arg(q, "plan_col_header")$values, list(n = "page"))
   # the order of each level: plan_sort(keys = )

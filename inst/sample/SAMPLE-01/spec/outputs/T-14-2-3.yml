@@ -4,6 +4,10 @@ label: 'Systolic blood pressure: mean change at week 24 (95% CI), p-value; the A
   also holds the test''s method and alternative as text'
 extends:
   - defaults
+codelists:
+  TRT01A:
+    - value: Drug X
+    - value: Control
 data:
   - id: adsl_saf
     from: ADSL
@@ -40,10 +44,6 @@ analysis:
       variables:
         - CHG
       purpose: SECONDARY OUTCOME MEASURE
-codelists:
-  TRT01A:
-    - value: Drug X
-    - value: Control
 content:
   - table_plan:
       cols: TRT01A

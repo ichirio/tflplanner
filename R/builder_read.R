@@ -81,7 +81,7 @@
   tb$output_id <- NULL
   if (!nrow(tb)) tb[1L, ] <- NA
   tb <- tb[1L, , drop = FALSE]
-  for (k in c("cols", "rows", "label", "keep_where", "sort", "header_n")) {
+  for (k in c("cols", "rows", "label", "keep_where", "sort", "col_header_values")) {
     if (!k %in% names(tb)) tb[[k]] <- NA_character_
   }
   tp <- .builder_args(its, "table_plan")
@@ -99,13 +99,13 @@
   ps <- .builder_args(its, "plan_sort")
   keys <- as.character(unlist(ps$keys))
   tb$sort[1L] <- if (length(keys)) paste(keys, collapse = " | ") else NA_character_
-  tb$header_n[1L] <- .header_n_text(.builder_args(its, "plan_col_header")$values)
+  tb$col_header_values[1L] <- .col_header_values_text(.builder_args(its, "plan_col_header")$values)
   tb
 }
 
-# plan_col_header(values = ) as the tables sheet's header_n: "n" alone, else
+# plan_col_header(values = ) as the tables sheet's col_header_values: "n" alone, else
 # `name = value | ...`; NA none
-.header_n_text <- function(v) {
+.col_header_values_text <- function(v) {
   if (is.null(v) || !length(v)) return(NA_character_)
   v <- lapply(v, function(e) as.character(unlist(e))[1L])
   if (identical(names(v), "n")) return(v$n)
@@ -113,7 +113,7 @@
 }
 
 # ... and back
-.header_n_values <- function(txt) {
+.col_header_values_list <- function(txt) {
   if (.is_blank(txt)) return(NULL)
   parts <- trimws(strsplit(txt, "|", fixed = TRUE)[[1L]])
   if (!all(grepl("=", parts, fixed = TRUE))) return(list(n = trimws(txt)))
@@ -137,7 +137,7 @@
   # a cell the report leaves blank is its defaults' (the roles are the
   # plan's already)
   if (nrow(inh)) {
-    for (k in setdiff(names(own), c("cols", "rows", "label", "keep_where", "sort", "header_n"))) {
+    for (k in setdiff(names(own), c("cols", "rows", "label", "keep_where", "sort", "col_header_values"))) {
       if (is.na(own[[k]][1L])) own[[k]][1L] <- inh[[k]][1L]
     }
   }

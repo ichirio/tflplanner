@@ -3,6 +3,35 @@ kind: table
 label: Demographic characteristics (its ARD one ard_stack call)
 extends:
   - defaults
+codelists:
+  TRT01A:
+    - value: Drug X
+    - value: Control
+  SEX:
+    - value: F
+      label: Female
+    - value: M
+      label: Male
+  AGEGR1:
+    - value: <65
+      label: <65 years
+    - value: '>=65'
+      label: '>=65 years'
+  RACE:
+    - value: WHITE
+      label: White
+    - value: BLACK OR AFRICAN AMERICAN
+      label: Black or African American
+    - value: ASIAN
+      label: Asian
+    - value: AMERICAN INDIAN OR ALASKA NATIVE
+      label: American Indian or Alaska Native
+    - value: NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER
+      label: Native Hawaiian or Other Pacific Islander
+    - value: OTHER
+      label: Other
+  ETHNIC:
+    list: ETHNIC
 data:
   - id: adsl_saf
     from: ADSL
@@ -51,35 +80,6 @@ analysis:
         - 'n'
         - p
       purpose: PRIMARY OUTCOME MEASURE
-codelists:
-  TRT01A:
-    - value: Drug X
-    - value: Control
-  SEX:
-    - value: F
-      label: Female
-    - value: M
-      label: Male
-  AGEGR1:
-    - value: <65
-      label: <65 years
-    - value: '>=65'
-      label: '>=65 years'
-  RACE:
-    - value: WHITE
-      label: White
-    - value: BLACK OR AFRICAN AMERICAN
-      label: Black or African American
-    - value: ASIAN
-      label: Asian
-    - value: AMERICAN INDIAN OR ALASKA NATIVE
-      label: American Indian or Alaska Native
-    - value: NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER
-      label: Native Hawaiian or Other Pacific Islander
-    - value: OTHER
-      label: Other
-  ETHNIC:
-    list: ETHNIC
 content:
   - table_plan:
       cols: TRT01A

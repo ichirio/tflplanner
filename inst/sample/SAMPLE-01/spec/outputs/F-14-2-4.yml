@@ -2,8 +2,86 @@ id: F-14-2-4
 kind: figure
 label: Hazard ratio of the time to first skin disorder by subgroup (forest plot, its
   own ARD)
+template: forest_hr
 extends:
   - defaults
+codelists:
+  TRT01A:
+    - value: Control
+    - value: Drug X
+  SEX:
+    - value: F
+      label: Female
+    - value: M
+      label: Male
+  AGEGR1:
+    - value: <65
+      label: <65 years
+    - value: '>=65'
+      label: '>=65 years'
+data:
+  source: code
+  steps:
+    - step: read
+      dataset: ADTTE
+    - step: param
+      value: TTSKIN
+    - step: ard_stats
+      name: est
+      analysis_id: HR, HR_SEX, HR_AGEGR1
+      variable: TRT01A
+      stats: n_obs, estimate, conf.low, conf.high
+      by: SEX, AGEGR1
+    - step: code
+      label: 'the rows to draw: the comparison arm, a heading row per subgroup'
+      out: est
+      code: |-
+        # an upper limit above this is a model that did not converge (an arm
+        # with no event in the subgroup): its hazard ratio is NE
+        ne_upper <- 1000
+        # the comparison arm (the reference arm's row has no interval)
+        est <- filter(est, TRT01A == "Drug X")
+        # a subgroup level with no row (its Cox model failed: the ARD program
+        # left it out) is a row of its own, NE
+        est <- bind_rows(
+          est,
+          tibble(SEX = setdiff(names(cl_sex), as.character(est$SEX))),
+          tibble(AGEGR1 = setdiff(names(cl_agegr1), as.character(est$AGEGR1)))
+        )
+        # NE: no estimate, or an interval that is not finite or above ne_upper
+        est <- est |>
+          mutate(
+            subgroup = case_when(
+              !is.na(SEX) ~ "SEX",
+              !is.na(AGEGR1) ~ "AGEGR1",
+              TRUE ~ "All subjects"
+            ),
+            # (the ARD holds the codes: the code lists give the labels)
+            level = coalesce(unname(cl_sex[as.character(SEX)]),
+                         unname(cl_agegr1[as.character(AGEGR1)]), "All subjects"),
+            ok = is.finite(estimate) & is.finite(conf.low) & is.finite(conf.high) &
+              conf.high <= ne_upper,
+            txt = ifelse(ok, sprintf("%.2f (%.2f, %.2f)", estimate, conf.low, conf.high),
+                         "NE"),
+            across(c(estimate, conf.low, conf.high), ~ ifelse(ok, .x, NA))
+          )
+        # a heading row above each subgroup's levels, the levels indented
+        heads <- est |>
+          filter(subgroup != "All subjects") |>
+          distinct(subgroup) |>
+          mutate(level = subgroup, head = TRUE)
+        est <- est |>
+          mutate(head = FALSE) |>
+          bind_rows(heads) |>
+          arrange(factor(subgroup, levels = unique(est$subgroup)), desc(head),
+                  match(SEX, names(cl_sex)), match(AGEGR1, names(cl_agegr1))) |>
+          mutate(
+            label = ifelse(head | subgroup == "All subjects", level, paste0("    ", level)),
+            n = ifelse(head | is.na(n_obs), "", as.character(n_obs)),
+            txt = ifelse(head, "", txt),
+            y = rev(row_number())
+          )
+  population: SAF
 analysis:
   analysis_data:
     - id: adtte_saf_ttskin
@@ -68,83 +146,6 @@ analysis:
           )
         )
       purpose: SECONDARY OUTCOME MEASURE
-data:
-  source: code
-  steps:
-    - step: read
-      dataset: ADTTE
-    - step: param
-      value: TTSKIN
-    - step: ard_stats
-      name: est
-      analysis_id: HR, HR_SEX, HR_AGEGR1
-      variable: TRT01A
-      stats: n_obs, estimate, conf.low, conf.high
-      by: SEX, AGEGR1
-    - step: code
-      label: 'the rows to draw: the comparison arm, a heading row per subgroup'
-      out: est
-      code: |-
-        # an upper limit above this is a model that did not converge (an arm
-        # with no event in the subgroup): its hazard ratio is NE
-        ne_upper <- 1000
-        # the comparison arm (the reference arm's row has no interval)
-        est <- filter(est, TRT01A == "Drug X")
-        # a subgroup level with no row (its Cox model failed: the ARD program
-        # left it out) is a row of its own, NE
-        est <- bind_rows(
-          est,
-          tibble(SEX = setdiff(names(cl_sex), as.character(est$SEX))),
-          tibble(AGEGR1 = setdiff(names(cl_agegr1), as.character(est$AGEGR1)))
-        )
-        # NE: no estimate, or an interval that is not finite or above ne_upper
-        est <- est |>
-          mutate(
-            subgroup = case_when(
-              !is.na(SEX) ~ "SEX",
-              !is.na(AGEGR1) ~ "AGEGR1",
-              TRUE ~ "All subjects"
-            ),
-            # (the ARD holds the codes: the code lists give the labels)
-            level = coalesce(unname(cl_sex[as.character(SEX)]),
-                         unname(cl_agegr1[as.character(AGEGR1)]), "All subjects"),
-            ok = is.finite(estimate) & is.finite(conf.low) & is.finite(conf.high) &
-              conf.high <= ne_upper,
-            txt = ifelse(ok, sprintf("%.2f (%.2f, %.2f)", estimate, conf.low, conf.high),
-                         "NE"),
-            across(c(estimate, conf.low, conf.high), ~ ifelse(ok, .x, NA))
-          )
-        # a heading row above each subgroup's levels, the levels indented
-        heads <- est |>
-          filter(subgroup != "All subjects") |>
-          distinct(subgroup) |>
-          mutate(level = subgroup, head = TRUE)
-        est <- est |>
-          mutate(head = FALSE) |>
-          bind_rows(heads) |>
-          arrange(factor(subgroup, levels = unique(est$subgroup)), desc(head),
-                  match(SEX, names(cl_sex)), match(AGEGR1, names(cl_agegr1))) |>
-          mutate(
-            label = ifelse(head | subgroup == "All subjects", level, paste0("    ", level)),
-            n = ifelse(head | is.na(n_obs), "", as.character(n_obs)),
-            txt = ifelse(head, "", txt),
-            y = rev(row_number())
-          )
-  population: SAF
-codelists:
-  TRT01A:
-    - value: Control
-    - value: Drug X
-  SEX:
-    - value: F
-      label: Female
-    - value: M
-      label: Male
-  AGEGR1:
-    - value: <65
-      label: <65 years
-    - value: '>=65'
-      label: '>=65 years'
 content:
   - vline:
       xintercept: 1.0
@@ -181,7 +182,6 @@ page:
     orientation: landscape
   report:
     ard_source: own
-template: forest_hr
 plot:
   x_label: Hazard Ratio (95% CI), Drug X vs Control
   legend: none

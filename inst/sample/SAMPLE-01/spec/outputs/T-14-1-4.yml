@@ -4,6 +4,33 @@ label: Demographic characteristics of the screen failures (an analysis set by a 
   alone)
 extends:
   - defaults
+codelists:
+  ARMNRS:
+    - value: SCREEN FAILURE
+      label: Screen Failures
+  SEX:
+    - value: F
+      label: Female
+    - value: M
+      label: Male
+  AGEGR1:
+    - value: <65
+      label: <65 years
+    - value: '>=65'
+      label: '>=65 years'
+  RACE:
+    - value: WHITE
+      label: White
+    - value: BLACK OR AFRICAN AMERICAN
+      label: Black or African American
+    - value: ASIAN
+      label: Asian
+    - value: AMERICAN INDIAN OR ALASKA NATIVE
+      label: American Indian or Alaska Native
+    - value: NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER
+      label: Native Hawaiian or Other Pacific Islander
+    - value: OTHER
+      label: Other
 data:
   - id: adsl_scrf
     from: ADSL
@@ -46,33 +73,6 @@ analysis:
         - 'n'
         - p
       purpose: PRIMARY OUTCOME MEASURE
-codelists:
-  ARMNRS:
-    - value: SCREEN FAILURE
-      label: Screen Failures
-  SEX:
-    - value: F
-      label: Female
-    - value: M
-      label: Male
-  AGEGR1:
-    - value: <65
-      label: <65 years
-    - value: '>=65'
-      label: '>=65 years'
-  RACE:
-    - value: WHITE
-      label: White
-    - value: BLACK OR AFRICAN AMERICAN
-      label: Black or African American
-    - value: ASIAN
-      label: Asian
-    - value: AMERICAN INDIAN OR ALASKA NATIVE
-      label: American Indian or Alaska Native
-    - value: NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER
-      label: Native Hawaiian or Other Pacific Islander
-    - value: OTHER
-      label: Other
 content:
   - table_plan:
       cols: ARMNRS

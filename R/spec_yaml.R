@@ -42,7 +42,7 @@
   sp <- .spec_load(root)
   if (is.null(sp)) {
     # (a spec with no reports' folder: what tflspec reads of it)
-    return(.planner_from_spec(tflspec::tfl_read_study_spec(root), tflspec::tfl_read_outputs(root)))
+    return(.planner_from_spec(.study_spec_read(root), tflspec::tfl_read_outputs(root)))
   }
   p <- .planner_from_spec(sp$study, sp$outputs)
   p$spec <- sp
@@ -100,24 +100,33 @@
                                    order = character(), stringsAsFactors = FALSE)), rows))
 }
 
+# The keys study.yml takes, by the map they are keys of ("study", its top
+# level; "settings", "ai", "keys"): tflspec's one list (its R/spec_keys.R,
+# spec-keys-v2), which every reader and writer follows
+.study_yml_keys <- function(part = "study") .tflspec_fn(".spec_keys_of")(part)
+
 # study.yml's top-level keys the save writes: the study's fields, when it
 # was created and updated and by which tflplanner (.spec_sync_run()), and
 # what tflspec's tfl_yaml_from_sheets() writes from the sheets
-# (spec_version, packages, settings, keys, setup, tokens).  Always written
-# from the planner, never kept from the file before: a key the writer
-# leaves out (it is empty) is gone.
+# (spec_version, packages, settings, keys, setup, tokens) -- of the keys
+# study.yml takes (.study_yml_keys()).  Always written from the planner,
+# never kept from the file before: a key the writer leaves out (it is
+# empty) is gone.
 .study_yml_writer_keys <- function() {
-  c(.study_fields, "created", "updated", "tflplanner", "spec_version",
-    "packages", "settings", "keys", "setup", "tokens")
+  intersect(c(.study_fields, "created", "updated", "tflplanner", "spec_version",
+              "packages", "settings", "keys", "setup", "tokens"), .study_yml_keys())
 }
 
 # The keys of study.yml's `settings:` the save writes: the study sheets'
-# (.study_keys), the report sheet's study row (file, program), the study's
+# (.study_keys; the study's rounding is defaults.yml's `force:`, not a
+# setting), the report sheet's study row (file, program), the study's
 # default page configuration (style) and the app's own
-# (.study_own_settings).  The same: never kept from the file before.
+# (.study_own_settings) -- of the keys `settings:` takes
+# (.study_yml_keys("settings")).  The same: never kept from the file
+# before.
 .study_yml_writer_settings <- function() {
-  c(unlist(.study_keys, use.names = FALSE), "file", "program", "style",
-    .study_own_settings)
+  intersect(c(unlist(.study_keys, use.names = FALSE), "file", "program", "style",
+              .study_own_settings), .study_yml_keys("settings"))
 }
 
 # A YAML text's keys at `indent` spaces, each with its lines, by key: from
@@ -178,7 +187,10 @@
 #   (.study_yml_writer_settings()) and not in the new `settings:` -- a key
 #   no sheet holds -- at the end of the new `settings:` (a `settings:` of
 #   its own when `lines` has none).
-# A key the writer writes is the writer's line, never the old one.
+# A key the writer writes is the writer's line, never the old one.  A key
+# study.yml does not take (.study_yml_keys()) is kept too, as it was: it is
+# said when the study opens (.study_spec_read()), and the file's own to
+# change, never dropped by a save.
 # list(lines, kept = list(top, settings)): the text and the keys kept.
 .keep_study_yml_keys <- function(lines, old) {
   lines <- as.character(lines)
@@ -231,7 +243,7 @@
   if (!length(k$kept$top) && !length(k$kept$settings)) return(p)
   p$spec$text[[.study_file]] <- k$lines
   if (!is.null(p$spec$study$study)) {
-    y <- tryCatch(tflspec::tfl_read_study_spec(root)$study, error = .old_form_reraise)
+    y <- tryCatch(.study_spec_read(root)$study, error = .old_form_reraise)
     p$spec$study$study <- .keep_study_yml_values(p$spec$study$study, y, k$kept)
   }
   p
@@ -254,7 +266,7 @@
   # (written whole: the study's code lists, which a report's `list` cell
   # names, are the folder's defaults.yml's -- the bridge writes them back)
   scl <- if (whole && .has_yaml_spec(root)) {
-    tryCatch(tflspec::tfl_read_study_spec(root)$codelists %||% list(), error = .old_form_reraise)
+    tryCatch(.study_spec_read(root)$codelists %||% list(), error = .old_form_reraise)
   }
   p <- .spec_sync(p, meta, codelists = scl)
   attr(p, "changed") <- NULL
@@ -286,7 +298,7 @@
     # (the study's code lists, which a report's `list` cell names: the
     # spec's, else the folder's -- a study read from its state has no spec yet)
     scl <- if (!is.null(s$planner$spec)) s$planner$spec$study$codelists %||% list() else
-      tflspec::tfl_read_study_spec(s$path)$codelists %||% list()
+      .study_spec_read(s$path)$codelists %||% list()
     tflspec::tfl_yaml_from_sheets(.planner_sheets(s$planner, s$meta, codelists = scl), tmp, overwrite = TRUE)
     .study_spec_keys(.planner_from_yaml(tmp))
   }, error = function(e) NULL)

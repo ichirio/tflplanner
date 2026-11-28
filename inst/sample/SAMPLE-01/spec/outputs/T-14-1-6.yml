@@ -4,6 +4,45 @@ label: Demographics, race's Asian sub-categories as a block of their own (screen
   subjects by arm, Total; ASIANSUB derived for demonstration)
 extends:
   - defaults
+codelists:
+  ARMGRP:
+    - value: Drug X
+    - value: Control
+    - value: Screen Failure
+  RACE:
+    - value: WHITE
+      label: White
+    - value: BLACK OR AFRICAN AMERICAN
+      label: Black or African American
+    - value: ASIAN
+      label: Asian
+    - value: AMERICAN INDIAN OR ALASKA NATIVE
+      label: American Indian or Alaska Native
+    - value: NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER
+      label: Native Hawaiian or Other Pacific Islander
+    - value: OTHER
+      label: Other
+  ASIANSUB:
+    - value: CHINESE
+      label: Chinese
+    - value: JAPANESE
+      label: Japanese
+    - value: KOREAN
+      label: Korean
+    - value: OTHER
+      label: Other
+  SEX:
+    - value: F
+      label: Female
+    - value: M
+      label: Male
+  AGEGR1:
+    - value: <65
+      label: <65 years
+    - value: '>=65'
+      label: '>=65 years'
+  ETHNIC:
+    list: ETHNIC
 data:
   - id: adsl_enr
     from: ADSL
@@ -84,45 +123,6 @@ analysis:
         - p
       denominator: adsl_enr
       purpose: PRIMARY OUTCOME MEASURE
-codelists:
-  ARMGRP:
-    - value: Drug X
-    - value: Control
-    - value: Screen Failure
-  RACE:
-    - value: WHITE
-      label: White
-    - value: BLACK OR AFRICAN AMERICAN
-      label: Black or African American
-    - value: ASIAN
-      label: Asian
-    - value: AMERICAN INDIAN OR ALASKA NATIVE
-      label: American Indian or Alaska Native
-    - value: NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER
-      label: Native Hawaiian or Other Pacific Islander
-    - value: OTHER
-      label: Other
-  ASIANSUB:
-    - value: CHINESE
-      label: Chinese
-    - value: JAPANESE
-      label: Japanese
-    - value: KOREAN
-      label: Korean
-    - value: OTHER
-      label: Other
-  SEX:
-    - value: F
-      label: Female
-    - value: M
-      label: Male
-  AGEGR1:
-    - value: <65
-      label: <65 years
-    - value: '>=65'
-      label: '>=65 years'
-  ETHNIC:
-    list: ETHNIC
 content:
   - table_plan:
       cols: ARMGRP

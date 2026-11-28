@@ -240,29 +240,29 @@ test_that("a line cell by cell: read, written back, merged and split", {
 
 test_that("what {n} counts: the ARD's populations, each with its values", {
   # no ARD yet: the three in words
-  ch <- header_n_choices(NULL, "TRT01A")
+  ch <- col_header_values_choices(NULL, "TRT01A")
   expect_identical(unname(ch$choices), c("", "table", "n = page | N = table"))
   expect_identical(ch$selected, "")
   expect_match(ch$note, "not known yet")
-  expect_identical(header_n_choices(NULL, "TRT01A", "page")$choices[[1L]], "page")
-  # one population: it alone, chosen, header_n as it is
+  expect_identical(col_header_values_choices(NULL, "TRT01A", "page")$choices[[1L]], "page")
+  # one population: it alone, chosen, col_header_values as it is
   one <- data.frame(scope = "all", page = NA, column = c("A", "B", NA),
                     value = c(86, 84, 170), stringsAsFactors = FALSE)
   attr(one, "differ") <- FALSE
-  ch <- header_n_choices(one, "TRT01A")
+  ch <- col_header_values_choices(one, "TRT01A")
   expect_identical(names(ch$choices), "Subjects, by TRT01A: 86 / 84")
   expect_identical(unname(ch$choices), "")
-  expect_identical(header_n_choices(one, "TRT01A", "table")$selected, "table")
+  expect_identical(col_header_values_choices(one, "TRT01A", "table")$selected, "table")
   # only the total stated: it
   tot <- one[3L, ]
   attr(tot, "differ") <- FALSE
-  expect_match(names(header_n_choices(tot, "TRT01A")$choices), ": 170$")
+  expect_match(names(col_header_values_choices(tot, "TRT01A")$choices), ": 170$")
   # a joined key's columns are not shown: the first key's
   two <- data.frame(scope = "all", page = NA,
                     column = c("A", "A____F", "A____M", "B"),
                     value = c(86, 40, 46, 84), stringsAsFactors = FALSE)
   attr(two, "differ") <- FALSE
-  expect_match(names(header_n_choices(two, c("TRT01A", "SEX"))$choices),
+  expect_match(names(col_header_values_choices(two, c("TRT01A", "SEX"))$choices),
                "by TRT01A \u00d7 SEX: 86 / 84$")
   # two populations that differ: each, both, nothing chosen and a warning
   pg <- data.frame(scope = c("page", "page", "page", "page", "table", "table"),
@@ -271,24 +271,24 @@ test_that("what {n} counts: the ARD's populations, each with its values", {
                    value = c(22, 24, 20, 21, 25, 26), stringsAsFactors = FALSE)
   attr(pg, "differ") <- TRUE
   attr(pg, "page_col") <- "PARAMCD"
-  ch <- header_n_choices(pg, "TRT01A")
+  ch <- col_header_values_choices(pg, "TRT01A")
   expect_identical(unname(ch$choices), c("page", "table", "n = page | N = table"))
   expect_identical(names(ch$choices)[1:2], c(
     "Subjects on each page (per PARAMCD, by TRT01A): 22 / 24 (the first page, ALT)",
     "Analysis set (by TRT01A, the same on every page): 25 / 26"))
   expect_null(ch$selected)
   expect_match(ch$warn, "different numbers")
-  ch <- header_n_choices(pg, "TRT01A", "table")
+  ch <- col_header_values_choices(pg, "TRT01A", "table")
   expect_identical(ch$selected, "table")
   expect_null(ch$warn)
   # the same numbers: one choice
   attr(pg, "differ") <- FALSE
-  ch <- header_n_choices(pg, "TRT01A")
+  ch <- col_header_values_choices(pg, "TRT01A")
   expect_length(ch$choices, 1L)
   expect_match(names(ch$choices), "the same numbers", fixed = TRUE)
   # in Japanese
   ja <- function(x) tr(x, lang = "ja")
-  expect_match(names(header_n_choices(one, "TRT01A", tr = ja)$choices), "\u88ab\u9a13\u8005\u6570")
+  expect_match(names(col_header_values_choices(one, "TRT01A", tr = ja)$choices), "\u88ab\u9a13\u8005\u6570")
 })
 
 test_that("what {n} counts, read from a page-split ARD as rtfreporter prints it", {
@@ -306,7 +306,7 @@ test_that("what {n} counts, read from a page-split ARD as rtfreporter prints it"
                                   label = c(label = ".label")) |>
     rtfreporter::plan_cells("{n}") |>
     rtfreporter::plan_paginate_group(keep = FALSE)
-  ch <- header_n_choices(rtfreporter::plan_n_candidates(plan), "BASEGR")
+  ch <- col_header_values_choices(rtfreporter::plan_n_candidates(plan), "BASEGR")
   expect_identical(unname(ch$choices), c("page", "table", "n = page | N = table"))
   expect_match(names(ch$choices)[1L], "per PARAM, by BASEGR", fixed = TRUE)
   expect_match(names(ch$choices)[1L], "(the first page, ALT)", fixed = TRUE)

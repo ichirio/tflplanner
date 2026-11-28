@@ -216,3 +216,4 @@
 "its marker lines are missing, repeated or out of order","区切りの行が無いか、重なっているか、順番が違います"
 "its tflplanner part was edited by hand","tflplanner が書く部分が手で直されています"
 "company_setup.R or study_user.R is there already, with other content","company_setup.R か study_user.R が、違う中身で既にあります"
+"Some keys of the definition files are not keys the SPEC takes, so they were not read. The study is open without them. Change the files as each line below says, then load them.","定義ファイルに、SPEC が受け付けない項目があります。それらの項目は読み込んでいません。試験はそれらを除いて開いています。下の各行のとおりにファイルを直してから、読み込んでください。"

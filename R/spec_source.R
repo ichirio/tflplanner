@@ -86,8 +86,9 @@
 # planner and meta are what a part not read keeps).  Problems -- an error
 # or a warning of a reader -- are collected, not thrown: the result has
 # `problems` (file, sheet, row, message), and the parts with one are left
-# as `s` had them.  An error that is one of tflspec's old forms of the
-# SPEC (`tflspec_old_form`) also sets the attribute `old_form` (TRUE).
+# as `s` had them.  An error that is one of tflspec's forms of the SPEC it
+# does not read (`tflspec_spec_form`: an old form, a key a file does not
+# take) also sets the attribute `old_form` (TRUE).
 .read_spec <- function(s, root, parts = c("books", "ard", "lf", "meta", "fig"),
                        books_needed = FALSE) {
   sp <- file.path(root, study_layout()[["spec"]])
@@ -101,7 +102,7 @@
     out <- withCallingHandlers(
       tryCatch(expr, error = function(e) {
         errs <<- c(errs, conditionMessage(e))
-        if (inherits(e, "tflspec_old_form")) old_form <<- TRUE
+        if (inherits(e, "tflspec_spec_form")) old_form <<- TRUE
         NULL
       }),
       warning = function(w) {
@@ -169,8 +170,10 @@
 
 # The problems of an old form of the SPEC (`e`, tflspec's
 # `tflspec_old_form`) found in the study folder `root`: one row, its file
-# the place tflspec names (`e$where`, relative to the study folder)
+# the place tflspec names (`e$where`, relative to the study folder).  The
+# keys a file does not take (`tflspec_spec_keys`): a row a key.
 .old_form_problems <- function(e, root) {
+  if (inherits(e, "tflspec_spec_keys")) return(.spec_key_problems(e, root))
   w <- sub("^[A-Za-z_.]+\\(\\): ", "", as.character(e$where %||% .study_file)[1L])
   r <- normalizePath(root, "/", mustWork = FALSE)
   if (startsWith(w, paste0(r, "/"))) w <- substring(w, nchar(r) + 2L)
@@ -251,15 +254,15 @@
     # step with the state's view.  One of an old form, which this tflspec
     # no longer reads, is said as files that do not read are: the study
     # open as last saved, and no save until they are changed)
-    a <- tryCatch(.spec_attach(s), tflspec_old_form = function(e) e)
-    if (inherits(a, "tflspec_old_form")) {
+    a <- tryCatch(.spec_attach(s), tflspec_spec_form = function(e) e)
+    if (inherits(a, "tflspec_spec_form")) {
       s$spec <- list(status = "invalid", files = diff, problems = .old_form_problems(a, s$path),
                      old_form = TRUE)
       return(s)
     }
     s <- a
     s$spec <- list(status = "same", files = diff)
-    return(s)
+    return(.spec_said_keys(s))
   }
   parts <- if (full) c("books", "ard", "lf", "meta", "fig") else
     unique(.spec_part_of(changed))
@@ -297,7 +300,7 @@
     # (a state of an earlier version had no record: nothing to say)
     s$spec <- list(status = if (length(changed) && !is.null(st$files))
       "touched" else "same", files = diff)
-    return(s)
+    return(.spec_said_keys(s))
   }
   out <- .changed_outputs(n, r, chg)
   # the parts that changed taken in, the others kept as the study had them
@@ -313,7 +316,19 @@
                  # the study before: what a draft or unsaved changes were
                  # made against (merged with .merge_parts())
                  was = list(planner = s$planner, meta = s$meta))
-  r
+  .spec_said_keys(r)
+}
+
+# A study opened (`s`, its `spec` the open's status) whose study.yml has keys
+# it does not take (the spec's `key_problems`, .spec_load()): the study open
+# without them, their problems said with the open's (`spec$problems`, the
+# warnings; `spec$keys` TRUE)
+.spec_said_keys <- function(s) {
+  kp <- s$planner$spec$key_problems
+  if (!NROW(kp)) return(s)
+  s$spec$problems <- rbind(s$spec$problems %||% .spec_problems(), kp)
+  s$spec$keys <- TRUE
+  s
 }
 
 # Three-way merge by part (#274 2.6): `mine` (a draft, a session's unsaved

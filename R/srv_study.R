@@ -282,6 +282,16 @@
   spec_problems_ui <- function(sp, sfx = "") {
     pr <- sp$problems
     old <- isTRUE(sp$old_form)
+    # (study.yml's keys it does not take: the study open without them,
+    # .spec_said_keys(); saved, the file keeps them as they are)
+    if (!identical(sp$status, "invalid") && isTRUE(sp$keys)) {
+      return(shiny::tagList(
+        shiny::p(t("Some keys of the definition files are not keys the SPEC takes, so they were not read. The study is open without them. Change the files as each line below says, then load them.")),
+        spec_problems_table(pr[pr$severity %in% "warning", , drop = FALSE]),
+        shiny::div(class = "d-flex flex-wrap gap-2",
+          .btn(paste0("spec_reload", sfx), t("Load from the definition files"),
+               class = "btn-sm btn-primary"))))
+    }
     shiny::tagList(
       shiny::p(if (old) t("The definition files are of an older form of the SPEC, which this tflspec no longer reads. The study is open as it was last saved. Change the files as each line below says, then load them. Until then the study cannot be saved.") else
         t("The definition files were changed outside tflplanner but could not be read. The study is open as it was last saved. Fix the files and load them, or write the files back from the last save. Until then the study cannot be saved.")),
@@ -322,11 +332,12 @@
     if (identical(sp$status, "invalid")) {
       return(shiny::div(class = "alert alert-warning", spec_problems_ui(sp)))
     }
+    keys <- if (isTRUE(sp$keys)) shiny::div(class = "alert alert-warning", spec_problems_ui(sp))
     if (identical(sp$status, "adopted")) {
-      return(shiny::div(
+      return(shiny::tagList(keys, shiny::div(
         class = "alert alert-info py-2",
         shiny::div(t("The definition files were changed outside tflplanner; the changes were loaded.")),
-        spec_changes_ui(sp)))
+        spec_changes_ui(sp))))
     }
     if (identical(sp$status, "imported")) {
       return(shiny::div(
@@ -339,7 +350,7 @@
         shiny::div(class = "small",
                    sprintf(t("The files before the import are kept in %s."), sp$backup))))
     }
-    NULL
+    keys
   })
   # a draft left by a session that did not save: take it back, or drop it
   offer_draft <- function(s) {

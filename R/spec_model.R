@@ -60,8 +60,13 @@
       where[[o$id]] <- rel
     }
   }
-  list(study = tflspec::tfl_read_study_spec(root), outputs = outputs, text = text,
-       where = where, base = NULL, meta = NULL)
+  # (a key study.yml does not take: the study without it, the key's
+  # problem in `key_problems`, said when the study opens: .adopt_spec())
+  study <- .study_spec_read(root)
+  kp <- attr(study, "key_problems")
+  attr(study, "key_problems") <- NULL
+  list(study = study, outputs = outputs, text = text,
+       where = where, base = NULL, meta = NULL, key_problems = kp)
 }
 
 # tflspec::tfl_sheets_from_spec() with the template reports expanded first
@@ -291,8 +296,42 @@
 # old forms (`tflspec_old_form`) is raised again, for the user to see what
 # to write instead; any other gives NULL
 .old_form_reraise <- function(e) {
-  if (inherits(e, "tflspec_old_form")) stop(e)
+  if (inherits(e, "tflspec_spec_form")) stop(e)
   NULL
+}
+
+# A study folder's study as tflspec reads it (tflspec::tfl_read_study_spec()),
+# every read of the app's: a key its files do not take (tflspec's
+# `tflspec_spec_keys`, of the family `tflspec_spec_form`) does not keep the
+# study from opening.  The study read without those keys (the condition's
+# `spec`), the keys' problems as the attribute `key_problems`
+# (.spec_key_problems(), warnings); a stop with no study beside it is
+# raised again.
+.study_spec_read <- function(root) {
+  tryCatch(tflspec::tfl_read_study_spec(root), tflspec_spec_keys = function(e) {
+    if (is.null(e$spec)) stop(e)
+    s <- e$spec
+    attr(s, "key_problems") <- .spec_key_problems(e, root, "warning")
+    s
+  })
+}
+
+# The problems of tflspec's stop of a file's keys (`e`, `tflspec_spec_keys`)
+# found in the study folder `root` as the app's problems (.spec_problems()):
+# a row a key, its file (relative to the study folder), the key's path and
+# line, and the YAML to write under it
+.spec_key_problems <- function(e, root, severity = "error") {
+  rel <- function(f) {
+    f <- as.character(f)
+    ab <- grepl("^([A-Za-z]:)?/", chartr("\\", "/", f)) & file.exists(f)
+    f[ab] <- normalizePath(f[ab], "/")
+    r <- paste0(normalizePath(root, "/", mustWork = FALSE), "/")
+    ifelse(startsWith(f, r), substring(f, nchar(r) + 1L), f)
+  }
+  p <- e$problems
+  if (!NROW(p)) return(.spec_problems(rel(as.character(e$file %||% .study_file)[1L]), conditionMessage(e), severity))
+  more <- if ("more" %in% names(p)) ifelse(is.na(p$more) | !nzchar(p$more), "", paste0("\n", p$more)) else ""
+  .spec_problems(rel(p$file), paste0("`", p$key, "`: ", p$text, more), severity)
 }
 
 # The edits of the view taken into the spec.  `meta`: the study's fields
@@ -450,7 +489,7 @@
       st <- NULL
       function() {
         if (is.null(st) && !is.null(was)) {
-          st <<- tryCatch(tflspec::tfl_read_study_spec(was$dir), error = .old_form_reraise)
+          st <<- tryCatch(.study_spec_read(was$dir), error = .old_form_reraise)
         }
         st
       }
@@ -879,24 +918,22 @@
 }
 
 # The study's rounding, forced on every report (canon 1.33): defaults.yml's
-# `force:` (study$force, its one plan_digits(rounding = ) item), "sas" or
+# `force:`, as tflspec reads it (tflspec::tfl_study_rounding()), "sas" or
 # "r"; NA when the study forces none (options(rtfreporter.rounding)).  A
 # planner with no spec yet: the view's study key (the study sheet's
 # `rounding`, which the bridge writes to `force:`).
 .forced_rounding <- function(p) {
   if (!is.null(p$spec$study)) {
-    for (it in p$spec$study$force$content %||% list()) {
-      r <- it$args$rounding
-      if (identical(as.character(it$fn), "plan_digits") && length(r) == 1L) return(as.character(r))
-    }
-    return(NA_character_)
+    r <- if (inherits(p$spec$study, "tfl_study_spec")) tflspec::tfl_study_rounding(p$spec$study)
+    return(if (length(r) == 1L && !is.na(r)) as.character(r) else NA_character_)
   }
   r <- unname(p$study[["rounding"]] %||% NA_character_)
   if (length(r) == 1L && !is.na(r) && nzchar(r)) as.character(r) else NA_character_
 }
 
-# The study's rounding set: defaults.yml's `force:` (study$force; NA: none,
-# options(rtfreporter.rounding)), written straight into its defaults.yml
+# The study's rounding set: defaults.yml's `force:` (NA: none,
+# options(rtfreporter.rounding)), set by tflspec::tfl_study_rounding() and
+# written straight into its defaults.yml in tflspec's one form
 # (tflspec::tfl_write_study_part()), and the view's study row with it, in
 # the view and in the base.  Never study.yml's settings, never a card of
 # the defaults' content (both are old forms that stop, canon 11-10 :369).
@@ -910,8 +947,7 @@
   p <- .spec_sync(p, p$spec$meta)
   attr(p, "changed") <- NULL
   sp <- p$spec
-  sp$study$force <- if (is.na(v)) list() else
-    list(content = list(tflspec::tfl_item("plan_digits", list(rounding = v), "force")))
+  sp$study <- tflspec::tfl_study_rounding(sp$study, if (is.na(v)) NULL else v)
   rel <- file.path(study_layout()[["spec"]], "defaults.yml")
   # (one writer of defaults.yml: every block it does not write is kept)
   sp$text[[rel]] <- .study_part_lines(sp$study, "defaults", old = sp$text[[rel]])

@@ -226,7 +226,7 @@
       pv <- tryCatch(preview_now(), error = function(e) NULL)
       cur <- shiny::isolate(input[[bid("hdr_n")]])
       now <- if (is.null(cur)) bform$hdr_n else if (nzchar(cur)) cur else NA_character_
-      ch <- header_n_choices(attr(pv$pages, "n_candidates"), keys, now, tr = t)
+      ch <- col_header_values_choices(attr(pv$pages, "n_candidates"), keys, now, tr = t)
       shiny::tagList(
         shiny::radioButtons(bid("hdr_n"), NULL, choiceNames = unname(as.list(names(ch$choices))),
                             choiceValues = unname(as.list(ch$choices)),
@@ -422,7 +422,7 @@
            l <- hdr_now()
            if (is.null(l)) "keep" else header_write(l)
          },
-         header_n = if (!is.null(get("hdr_n"))) {
+         col_header_values = if (!is.null(get("hdr_n"))) {
            v <- get("hdr_n")
            if (nzchar(v)) v else NA_character_
          },

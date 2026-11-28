@@ -3,6 +3,10 @@ kind: table
 label: 'Systolic blood pressure: change from baseline at week 24 (cycle 9 day 1)'
 extends:
   - defaults
+codelists:
+  TRT01A:
+    - value: Drug X
+    - value: Control
 data:
   - id: adsl_saf
     from: ADSL
@@ -40,10 +44,6 @@ analysis:
         - min
         - max
       purpose: PRIMARY OUTCOME MEASURE
-codelists:
-  TRT01A:
-    - value: Drug X
-    - value: Control
 content:
   - table_plan:
       cols: TRT01A

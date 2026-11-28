@@ -635,19 +635,19 @@ test_that("plan_cell_style(): cols, where, the looks as fields, each call its ow
   expect_match(html(.field_colour("x", NULL, "#CC0000", NULL)), '"create":true', fixed = TRUE)
 })
 
-test_that("plan_col_header(values = ): what {n} counts, header_n kept when it is none of the choices", {
+test_that("plan_col_header(values = ): what {n} counts, col_header_values kept when it is none of the choices", {
   skip_on_cran()
-  ch <- header_n_choices(NULL, "TRT01A", "n = table")
+  ch <- col_header_values_choices(NULL, "TRT01A", "n = table")
   expect_true("n = table" %in% ch$choices)
   expect_identical(ch$selected, "n = table")
   expect_match(names(ch$choices)[ch$choices == "n = table"], "As the sheets say", fixed = TRUE)
   # one of the choices: not twice
-  expect_identical(sum(header_n_choices(NULL, "TRT01A", "table")$choices == "table"), 1L)
+  expect_identical(sum(col_header_values_choices(NULL, "TRT01A", "table")$choices == "table"), 1L)
   pg <- data.frame(scope = c("page", "page", "table", "table"), page = c("ALT", "ALT", NA, NA),
                    column = c("A", "B", "A", "B"), value = c(10, 12, 50, 52),
                    stringsAsFactors = FALSE)
   attr(pg, "differ") <- TRUE
-  ch2 <- header_n_choices(pg, "TRT01A", "N = table")
+  ch2 <- col_header_values_choices(pg, "TRT01A", "N = table")
   expect_identical(ch2$selected, "N = table")
   expect_null(ch2$warn)
   # its alignment (Edit as R) kept: the style sheet's col_header_align

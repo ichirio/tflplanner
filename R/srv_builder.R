@@ -184,7 +184,7 @@
     p0 <- shiny::isolate(rv$p)
     hd <- .builder_args(guarded(builder_items(p0, id, m)) %||% list(), "plan_col_header")
     bform$hdr <- hdr_uid(header_read(.header_df(hd$header), st$key))
-    bform$hdr_n <- .header_n_text(hd$values)
+    bform$hdr_n <- .col_header_values_text(hd$values)
     hdr_ver(shiny::isolate(hdr_ver()) + 1L)
     v <- st$variables
     bs <- builder_stats()
