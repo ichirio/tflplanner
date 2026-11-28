@@ -29,7 +29,7 @@ setup_tflplanner(home = tempfile("tflplanner-home"))
 # (a few seconds: it writes and runs the ARD program)
 s <- create_sample_study(run = FALSE)
 s <- save_study(s)
-update_study_ard(s, "T-14-1-2")$ok  # makes the report's rows of the study ARD
+invisible(run_study(s, "T-14-1-2"))  # its full program makes its ARD
 head(study_ard(s, "T-14-1-2"), 3)
 }
 options(old)

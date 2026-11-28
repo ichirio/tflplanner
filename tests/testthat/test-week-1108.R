@@ -33,7 +33,7 @@ rework_run <- function(h, proc, id = "T-14-1-1") {
   s <- h$s
   s$planner$outputs$process_code[s$planner$outputs$output_id == id] <- proc
   s <- suppressMessages(save_study(s, home = h$home))
-  suppressMessages(update_study_ard(s, id))
+  suppressMessages(proto_make_ard(s, id))
   unlink(file.path(s$path, "output", "tfl", paste0(id, ".rtf")))
   list(s = s, run = run_program(s, id))
 }

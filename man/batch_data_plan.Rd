@@ -4,12 +4,12 @@
 \alias{batch_data_plan}
 \title{The data an official run would keep}
 \usage{
-batch_data_plan(study, parts = c("ard", "tfl"), output_ids = NULL)
+batch_data_plan(study, parts = c("full", "ard"), output_ids = NULL)
 }
 \arguments{
 \item{study}{An \code{rtfstudy}.}
 
-\item{parts}{\code{"ard"}, \code{"tfl"} or both.}
+\item{parts}{\code{"full"} or \code{"ard"} (the run).}
 
 \item{output_ids}{The reports of the run; \code{NULL} for every report.}
 }

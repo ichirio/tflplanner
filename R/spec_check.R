@@ -210,7 +210,7 @@
         paste0(id, ": the report's program does not read as R: ", trimws(msg))))
     }
     if (!is.null(spec) && id %in% a$analyses$output_id) {
-      code <- tryCatch(ard_program_code(spec, id, codelists = .study_codelists(p)),
+      code <- tryCatch(ard_program_code(p, id),
                        error = function(e) e)
       if (inherits(code, "error")) {
         out <- rbind(out, .problem_rows(.sheet_file("ard", "", ard_file, id), "analyses", "", "",

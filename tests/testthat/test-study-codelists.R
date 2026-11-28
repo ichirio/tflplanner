@@ -205,7 +205,7 @@ test_that("the ARD built with a report's own lists is built, not outdated (progr
   cl_home()
   s <- save_study(cl_study("CL6"))
   # the ARD program of the planner
-  u <- update_study_ard(s, "DM2")
+  u <- proto_make_ard(s, "DM2")
   expect_true(u$ok)
   expect_identical(ard_status(s)$state[ard_status(s)$output_id == "DM2"], "built")
   # the study ARD tflspec builds from the spec, with the lists it takes from

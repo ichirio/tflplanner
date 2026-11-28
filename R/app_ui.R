@@ -1040,7 +1040,7 @@ app_ui <- function(lang = "en") {
           class = "d-flex flex-wrap gap-3 align-items-center",
           shiny::radioButtons(
             "batch_parts", NULL, inline = TRUE,
-            stats::setNames(c("ard", "all"),
+            stats::setNames(c("ard", "full"),
                             t(c("ARD", "ARD, then reports")))),
           shiny::checkboxInput("batch_code",
                                t("keep the code in the run folder"),

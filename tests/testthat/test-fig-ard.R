@@ -42,17 +42,17 @@ test_that("the sample's F-14-2-3 reads T-14-2-2's ARD in its data section", {
   expect_identical(.fig_ard_source(p, "F-14-2-3"), list(kind = "table", id = "T-14-2-2"))
   d <- fig_design(p, "F-14-2-3")
   expect_true(.fig_reads_ard(d, "F-14-2-3"))
-  code <- program_code(p, "F-14-2-3")
+  code <- unlist(strsplit(program_code(p, "F-14-2-3"), "\n", fixed = TRUE))
   i_data <- grep("^# ---- data ", code)
-  i_ard <- which(code == "ard <- readRDS(file.path(path_ard, \"ard.rds\")) |>")
+  # (PROTOTYPE: the table's own ARD file)
+  i_ard <- which(code == "ard <- read_report_ard(\"T-14-2-2\")")
   # (the ADaM data is read once, in the study's setup: the data section
   # derives its set from the `adtte` that is there)
   i_adam <- grep("^adtte_sub <- adtte", code)[1L]
   expect_length(i_ard, 1L)
   expect_false(any(grepl("^adtte <- readRDS", code)))
   expect_true(i_data < i_ard && i_ard < i_adam)
-  expect_identical(code[i_ard + 1L], "  filter(output_id == \"T-14-2-2\")")
-  expect_match(code[i_ard + 2L], "run programs/ard/T-14-2-2.R first", fixed = TRUE)
+  expect_identical(code[i_ard + 2L], "ard_built <- report_ard_definition(\"T-14-2-2\")")
   # the medians: one annotate a arm, its number the ARD's; the hazard
   # ratios: the estimate and its CI on one line (#311)
   expect_identical(sum(grepl("ard_value(ard, \"KM\", \"prob\", \"estimate\", TRT01A = ",
@@ -66,9 +66,10 @@ test_that("the sample's F-14-2-3 reads T-14-2-2's ARD in its data section", {
   expect_true(any(grepl("stop(\"F-14-2-3 reads an ARD: choose it in the figure's step 2 (analysis).\")",
                         code0, fixed = TRUE)))
   expect_false(any(grepl("^ard <- ", code0)))
-  # its own: its rows
+  # its own: made in its program (PROTOTYPE), or a stop when it has no analyses
   po <- set_fig_ard_source(p, "F-14-2-3", "own")
-  expect_true("  filter(output_id == \"F-14-2-3\")" %in% program_code(po, "F-14-2-3"))
+  expect_true(any(grepl("F-14-2-3 has no analyses in the ARD definition.",
+                        program_code(po, "F-14-2-3"), fixed = TRUE)))
   # a figure that reads no ARD and has none: no lines at all
   expect_null(.fig_ard_lines(p, "F-14-2-1"))
 })
@@ -85,7 +86,7 @@ test_that("the checks: no source, not made yet, then each piece against the rows
   expect_identical(pr$severity, "warning")
   expect_match(pr$problem, "not made yet")
   # made: the design's pieces are in it
-  u <- suppressMessages(update_study_ard(s, "T-14-2-2"))
+  u <- suppressMessages(proto_make_ard(s, "T-14-2-2"))
   expect_true(u$ok)
   expect_identical(nrow(.fig_ard_problems(s, "F-14-2-3")), 0L)
   d <- fig_design(s$planner, "F-14-2-3")
@@ -128,7 +129,7 @@ test_that("a figure whose ARD has no rows yet says which and how to make it", {
 test_that("the preview prints the table's medians", {
   skip_if_not_installed("ggsurvfit")
   s <- fig_ard_study()
-  suppressMessages(update_study_ard(s, "T-14-2-2"))
+  suppressMessages(proto_make_ard(s, "T-14-2-2"))
   r <- preview_figure(s, "F-14-2-3", max_px = 600)
   expect_null(r$error)
   expect_true(file.exists(r$png))
@@ -172,7 +173,7 @@ test_that("a table deleted, or an analysis dropped from it: the figure's checks 
   # its KM analysis dropped from the definition: an error even while the
   # ARD made before still has the rows
   s$planner <- p
-  suppressMessages(update_study_ard(s, "T-14-2-2"))
+  suppressMessages(proto_make_ard(s, "T-14-2-2"))
   an <- p$ard$analyses
   p2 <- p
   p2$ard$analyses <- an[!(an$output_id %in% "T-14-2-2" & an$analysis_id == "KM"), , drop = FALSE]
@@ -239,7 +240,7 @@ test_that("the study review lists a figure's ARD problems as F04-F08, each with 
   expect_identical(r$args[[1L]], "T-GONE")
   expect_match(r$message, "(deleted, or renamed by hand)", fixed = TRUE)
   # made, then a piece the ARD cannot answer: F08, in the designer
-  expect_true(suppressMessages(update_study_ard(s, "T-14-2-2"))$ok)
+  expect_true(suppressMessages(proto_make_ard(s, "T-14-2-2"))$ok)
   expect_identical(nrow(rv(s)), 0L)
   d <- fig_design(s$planner, "F-14-2-3")
   k <- which(vapply(d$layers, function(l) identical(l$layer, "ard_number"), NA))[1L]
@@ -328,8 +329,8 @@ test_that("a forest_hr template figure's program reads its ARD, no stop()", {
                        group = "TRT01A")
   code <- program_code(p, "F-9-1")
   expect_false(any(grepl("stop(\"F-9-1 reads an ARD", code, fixed = TRUE)))
-  expect_true(any(grepl("readRDS(", code, fixed = TRUE)))
-  expect_true(any(grepl('filter(output_id == "F-9-1")', code, fixed = TRUE)))
+  # (PROTOTYPE: its ARD made in its program, saved to its own file)
+  expect_true(any(grepl("save_report_ard(ard, report_id", code, fixed = TRUE)))
   expect_true(any(grepl("record_report(report_id, ard = ard_built)", code, fixed = TRUE)))
   # a designed figure that truly has none still stops, saying where to choose it
   d <- set_fig_ard_source(p, "F-14-2-3", NULL)
@@ -441,7 +442,9 @@ test_that("a figure's own ARD for its preview: the study ARD's while built, else
       made <<- made + 1L
       list(ard = rows_df)
     },
-    study_ard_rows = function(study, output_id) rows_df[0, ])
+    .report_ard_rows = function(study, output_id, current = FALSE) {
+      if (identical(built, "built")) rows_df[0, ]
+    })
   a <- .fig_preview_ard(s, "F-9-1")
   expect_identical(made, 1L)
   expect_identical(a$rows, rows_df)

@@ -24,8 +24,8 @@ The program, one element per line.
 \code{batch_code()} is \code{programs/batch.R}: the study's programs (the ARD
 programs, the report programs, what each report makes) and the runner
 that runs them into a batch folder.  \code{autoexec_all_code()} is
-\code{programs/autoexec_all.R} (the ARD, then the reports); see also
-\code{\link[=ard_autoexec_code]{ard_autoexec_code()}} and \code{\link[=autoexec_code]{autoexec_code()}}.
+\code{programs/autoexec_all.R} (the full run: every report's full program);
+see also \code{\link[=ard_autoexec_code]{ard_autoexec_code()}}.
 }
 \examples{
 x <- add_output(new_planner(), "T-14-1-1", type = "table")

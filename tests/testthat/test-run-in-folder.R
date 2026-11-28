@@ -63,7 +63,7 @@ test_that("the data variable of a catalog path is tflspec's rule: a path outside
 test_that("an official run leaves the study's working output as it was", {
   skip_if_not_installed("cards")
   o <- rif_study("RIF2")
-  u <- update_study_ard(o, "DM")
+  u <- proto_make_ard(o, "DM")
   expect_true(u$ok)
   tree <- function() {
     f <- list.files(file.path(o$path, "output"), recursive = TRUE, full.names = TRUE)
@@ -101,7 +101,7 @@ test_that("an official run refuses a data path outside the study, and makes no f
   expect_match(txt, "outside the study folder", fixed = TRUE)
   expect_identical(nrow(list_batches(o)), 0L)
   # a preview of the same ARD still reads the file where it is
-  u <- update_study_ard(o, "DM")
+  u <- proto_make_ard(o, "DM")
   expect_true(u$ok)
 })
 

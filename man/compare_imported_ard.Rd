@@ -36,7 +36,7 @@ r <- run_ard(s, "T-14-1-2")  # the report's ARD, made in its own R process
 f <- tempfile(fileext = ".rds")
 saveRDS(r$ard, f)  # (here the same ARD stands for one made elsewhere)
 imp <- import_ard(s, f, output_id = "T-14-1-2", source = "CRO")
-update_study_ard(s, "T-14-1-2")  # the report's own ARD
+invisible(run_study(s, "T-14-1-2"))  # the report's own ARD
 s$planner <- use_imported_ard(s$planner, "T-14-1-2", imp$file)
 if (requireNamespace("cards", quietly = TRUE)) {
   cards::is_ard_equal(compare_imported_ard(s, "T-14-1-2"))  # double programming

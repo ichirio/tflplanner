@@ -27,9 +27,10 @@ test_that("ARDs are taken in, used, compared, replaced and removed on the ARD ta
   s$planner <- first_table(s$planner, "T1", "data/adam/adsl.rds", adsl,
                            "SAFFL", "TRT01A", c("AGE", "SEX"))
   save_study(s)
-  run_ard(s)
+  # (PROTOTYPE: the report's own ARD file, made by its ARD program)
+  proto_make_ard(s, "T1")
   # the report's own ARD, written out as another program would hand it over
-  own <- study_ard_rows(s, "T1")
+  own <- .report_ard_rows(s, "T1")
   skip_if(is.null(own) || !nrow(own))
   f1 <- file.path(tempdir(), "t1_cro.rds")
   f2 <- file.path(tempdir(), "t1_cro_v2.rds")

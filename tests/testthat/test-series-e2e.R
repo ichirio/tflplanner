@@ -142,8 +142,7 @@ series_e2e <- function(t, kind, args, ids, in_code = character(), home, gap = NU
   got_ids <- p$ard$analyses$analysis_id[p$ard$analyses$output_id %in% id]
   expect_true("BIGN" %in% got_ids)
   a <- structure(p$ard, class = "tfl_ard_spec")
-  prog <- tryCatch(suppressWarnings(ard_program_code(a, id, dir = s$path,
-                                                    codelists = .study_codelists(p))),
+  prog <- tryCatch(suppressWarnings(ard_program_code(p, id)),
                    error = function(e) e)
   run <- tryCatch(suppressWarnings(.ard_spec_code(.ard_spec(p$ard), output_id = id, save = FALSE,
                                                   dir = s$path, codelists = .study_codelists(p))),

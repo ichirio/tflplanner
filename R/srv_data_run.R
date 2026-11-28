@@ -147,7 +147,7 @@
         paste(miss, collapse = ", ")), "warning"))
     }
     if (!is.null(rv$job)) return(notify(t("A run is going on"), "warning"))
-    px <- guarded(run_batch(s, c("ard", "tfl"), wait = FALSE))
+    px <- guarded(run_batch(s, "full", wait = FALSE))
     if (is.null(px)) return()
     rv$job <- px
     rv$job_kind <- "official"
@@ -160,7 +160,6 @@
   start_batch <- function(parts, code, exclude = NULL, set = NULL, data = FALSE) {
     if (!is.null(rv$job)) return(notify(t("A run is going on"), "warning"))
     if (dirty() && !do_save()) return()
-    parts <- if (identical(parts, "all")) c("ard", "tfl") else parts
     # the runner that can leave reports out (a study saved by an earlier
     # tflplanner has an older one)
     if ((length(exclude) || length(set) || isTRUE(data)) &&
@@ -179,7 +178,7 @@
     rv$job_study <- rv$study$meta$study_id
     # (the parts that are there only: no blank where none is)
     what <- c(t("the official run:"),
-              paste(t(c(ard = "ARD", tfl = "Reports")[parts]), collapse = ", "),
+              t(c(ard = "ARD", full = "ARD, then reports")[[parts]]),
               if (length(set) && nzchar(set)) sprintf(t("(the report set %s)"), set),
               if (length(exclude)) sprintf(t("(%d left out)"), length(exclude)))
     rv$job_what <- paste(what[nzchar(what)], collapse = " ")
@@ -339,7 +338,7 @@
   # the run: a named batch when the ticks are its reports; else the ticks
   # (the reports unticked left out)
   batch_go <- function() {
-    parts <- input$batch_parts %||% "all"
+    parts <- input$batch_parts %||% "full"
     ids <- batch_ids()
     ticks <- intersect(input$batch_reports %||% ids, ids)
     s <- chosen_set()
@@ -355,8 +354,7 @@
   output$batch_data_size <- shiny::renderUI({
     if (!isTRUE(input$batch_data)) return(NULL)
     shiny::req(has_study())
-    parts <- input$batch_parts %||% "all"
-    parts <- if (identical(parts, "all")) c("ard", "tfl") else parts
+    parts <- input$batch_parts %||% "full"
     ids <- batch_ids()
     ticks <- intersect(input$batch_reports %||% ids, ids)
     d <- tryCatch(batch_data_plan(list(path = rv$study$path, planner = rv$p), parts, ticks),
@@ -379,8 +377,8 @@
         t("Not found, not kept: %s."), paste(gone, collapse = ", "))))
   })
   shiny::observeEvent(input$batch_run, {
-    parts <- input$batch_parts %||% "all"
-    if (parts %in% c("ard", "all") && !is.null(ard_valid())) {
+    parts <- input$batch_parts %||% "full"
+    if (!is.null(ard_valid())) {
       return(notify(t("Correct the ARD definition first."), "warning"))
     }
     ids <- batch_ids()
@@ -499,7 +497,8 @@
                              '{priority: \'event\'}); return false;">\U0001F4C2</a>'),
                       esc(t("Open its folder")), esc(d$batch)) else character(nrow(d))),
                     b = d$started,
-                    c = t(c(ard = "ARD", report = "Reports",
+                    # (PROTOTYPE: a full run's folder is the runner's "report")
+                    c = t(c(ard = "ARD", report = "ARD, then reports",
                             all = "ARD, then reports")[d$what]),
                     d = st,
                     f = ifelse(d$code, "\u2713", ""),
@@ -623,7 +622,7 @@
   # run of the same kind before it, or any two; what changed only
   # a run as the list shows it: its folder, what it ran, how it ended
   cmp_labels <- function(d) {
-    what <- t(c(ard = "ARD", report = "Reports", all = "ARD, then reports")[d$what])
+    what <- t(c(ard = "ARD", report = "ARD, then reports", all = "ARD, then reports")[d$what])
     st <- t(c(done = "done", failed = "errors", incomplete = "stopped", running = "running")[d$state])
     stats::setNames(d$batch, paste0(d$batch, "  \u00b7 ", what, " \u00b7 ", st))
   }

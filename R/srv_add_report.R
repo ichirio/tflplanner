@@ -1395,7 +1395,7 @@
     shiny::req(id)
     a <- structure(rv$p$ard, class = "tfl_ard_spec")
     code <- if (any(a$analyses$output_id %in% id)) tryCatch(
-      ard_program_code(a, id, dir = rv$study$path, codelists = .study_codelists(rv$p)),
+      ard_program_code(rv$p, id),
       error = function(e) paste(t("The code cannot be written yet:"), conditionMessage(e)))
     shiny::req(!is.null(code))
     paste(code, collapse = "\n")

@@ -27,7 +27,7 @@ test_that("a report program named like a generated file stops the save, nothing 
   s <- .pn_study()
   id <- s$planner$outputs$output_id[1]
   before <- .pn_md5(s$path)
-  for (nm in c("report_setup.R", "Report_Setup.R", "fig_setup.R", "autoexec_report.R",
+  for (nm in c("report_setup.R", "Report_Setup.R", "fig_setup.R", "onepass_helpers.R",
                "study_setup.R", "batch.R", "autoexec_all.R", "study_helpers.R",
                "ard_setup.R", "autoexec_ard.R", "company_setup.R", "study_user.R")) {
     expect_error(save_study(.pn_program(s, id, nm)), "writes itself", info = nm)

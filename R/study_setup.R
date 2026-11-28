@@ -78,8 +78,24 @@ study_helpers_code <- function(date = Sys.Date()) {
 # write programs/study_helpers.R (its row of what the save did)
 .save_study_helpers <- function(root) {
   f <- file.path(root, .study_helpers_path())
-  data.frame(file = f, status = .put_program(study_helpers_code(), f, root),
+  op <- file.path(root, .onepass_helpers_path())
+  data.frame(file = c(f, op),
+             status = c(.put_program(study_helpers_code(), f, root),
+                        .put_program(.onepass_helpers_code(), op, root)),
              stringsAsFactors = FALSE)
+}
+
+# programs/onepass_helpers.R (PROTOTYPE, tflspec#1032): tflspec's
+# save_report_ard(), read_report_ard() and collect_ard(), which the full
+# and ARD programs and the runs call
+.onepass_helpers_code <- function() {
+  c(.banner(
+      paste("Program    :", .onepass_helpers_path()),
+      "The reports' own ARD files (output/ard/report/<id>.rds) and the study",
+      "ARD collected from them (tflspec's prototype helpers).",
+      paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"))),
+    readLines(system.file("helpers", "onepass_helpers.R", package = "tflspec"),
+              warn = FALSE))
 }
 
 # programs/study_setup.R, relative to the study folder: next to the

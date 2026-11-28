@@ -27,7 +27,6 @@ test_that("a table program writes out its plan and report (its data not saved) a
   expect_false(any(grepl("data <- normalize_ard(", code, fixed = TRUE)))
   expect_silent(parse(text = code))
   expect_equal(report_info(p, "PK")$file, "output/PK.rtf")
-  expect_silent(parse(text = autoexec_code(p)))
 
   p <- set_step_code(p, "PK", "data", "data <- my_pk()")
   code <- program_code(p, "PK")

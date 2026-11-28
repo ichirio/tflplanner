@@ -30,7 +30,7 @@ test_that("the study ARD's errors and warnings are listed, and a row opens its a
   s <- open_study(s$path)
   s$planner <- add_output(s$planner, "T2", type = "table")
   save_study(s)
-  own <- study_ard_rows(s, "T1")
+  own <- proto_study_rows(s, "T1")
   f <- file.path(tempdir(), "cro_t2.rds")
   own$output_id <- "T2"
   saveRDS(own, f)

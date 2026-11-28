@@ -110,9 +110,11 @@ study_status <- function(study) {
 #' every report or the ones named -- each in its own `Rscript` process.
 #' They write the working RTFs (output/tfl/); what each printed is kept in
 #' `logs/preview/` until the next preview, and no log of record is made.
-#' A table's rows of the study ARD, and those a figure prints numbers of,
-#' are made first when they are not made from the definition as it is now
-#' ([update_study_ard()]).  The official run is [run_batch()].
+#' PROTOTYPE (tflspec#1032): each is the report's full program, which makes
+#' its own ARD (`output/ard/report/<id>.rds`); a report whose figure reads
+#' another report's ARD runs after it, and that report runs too.  The
+#' working study ARD is then collected from the reports' files.  The
+#' official run is [run_batch()].
 #'
 #' @param study An `rtfstudy` (saved: the programs run from disk).
 #' @param output_id Reports to run; `NULL` runs all.
@@ -136,22 +138,12 @@ study_status <- function(study) {
 run_study <- function(study, output_id = NULL, wait = TRUE) {
   p <- study$planner
   ids <- output_id %||% p$outputs$output_id
+  # a figure reading another report's ARD: that report first
+  needs <- .batch_reads_needs(.batch_report_reads(p))
+  ids <- .run_order(unique(c(unlist(needs[ids], use.names = FALSE), ids)), needs)
+  ids <- intersect(ids, p$outputs$output_id)
   # a package a report needs, not installed: said before anything runs (#682)
   .need_report_pkgs(p, ids)
-  # a figure printing an ARD's numbers: that ARD first, when it is not made
-  # from its definition now (as the official run does, #293); a table's own
-  # likewise -- the builder's preview makes its ARD apart and leaves the
-  # study ARD as it is (#428), so a table run reads its rows made here
-  need <- unique(stats::na.omit(vapply(ids, function(id)
-    tryCatch(.fig_ard_need(p, id), error = function(e) NA_character_), "")))
-  need <- unique(c(need, ids[vapply(ids, function(id)
-    identical(report_info(p, id)$type, "table") && .ard_from_definition(p, id), NA)]))
-  if (length(need)) {
-    st <- tryCatch(ard_status(study), error = function(e) NULL)
-    for (tb in need) {
-      if (!identical(st$state[match(tb, st$output_id)], "built")) update_study_ard(study, tb)
-    }
-  }
   progs <- vapply(ids, function(id) report_info(p, id)$program, "")
   lay <- study_layout()
   # a small runner: each program in its own Rscript, what it prints kept
@@ -172,6 +164,9 @@ run_study <- function(study, output_id = NULL, wait = TRUE) {
     "  cat(if (identical(rc, 0L)) \"OK   \" else \"ERROR\", p, \"\\n\")",
     "  if (!identical(rc, 0L)) bad <- bad + 1L",
     "}",
+    "# the working study ARD: the reports' own ARD files",
+    sprintf("source(%s)", encodeString(.onepass_helpers_path(), quote = "\"")),
+    "invisible(collect_ard())",
     "quit(status = if (bad) 1L else 0L)"), f)
   px <- processx::process$new(file.path(R.home("bin"), "Rscript"), f,
                               wd = study$path, stdout = NULL,

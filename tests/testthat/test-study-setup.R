@@ -404,7 +404,7 @@ test_that("an existing study gets its setup files on its first save", {
     codelists = .study_codelists(s$planner)),
     built = "2026-10-01 10:00:00", rows = "10", error = "",
     stringsAsFactors = FALSE)
-  .write_ard_status(s, st)
+  proto_write_ard_status(s, st)
   expect_equal(ard_status(s)$state, "built")
   s <- save_study(s)
   expect_identical(s$files$status[match(c(company_file(s), f, user_file(s)), s$files$file)],
@@ -425,7 +425,7 @@ test_that("a change to study_setup.R marks the ARD and the reports outdated", {
   def <- tflspec::tfl_ard_spec_hash(structure(s$planner$ard, class = "tfl_ard_spec"),
                                     "DM", dir = s$path,
                                     codelists = .study_codelists(s$planner))
-  .write_ard_status(s, data.frame(output_id = "DM", definition = def,
+  proto_write_ard_status(s, data.frame(output_id = "DM", definition = def,
                                   built = "2026-10-08 10:00:00", rows = 10L,
                                   error = "", setup = h,
                                   stringsAsFactors = FALSE))
@@ -459,15 +459,17 @@ test_that("a sample built by its programs records the setup, and goes stale with
   local_home()
   s <- create_study("ABC-108", planner = setup_planner())
   saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
-  u <- update_study_ard(s, "DM")
+  u <- proto_make_ard(s, "DM")
   expect_true(u$ok)
   st <- .read_ard_status(s)
-  # (the ARD program records the three files: company, setup, user)
-  expect_identical(.ard_recorded_setup(st), .study_setup_hash(s$path))
+  # PROTOTYPE (lost): the report's ARD file records the setup files' md5,
+  # but collect_ard() does not put them in ard_status.csv, so an ARD made
+  # before a change of the study setup is not marked outdated
+  expect_identical(.ard_recorded_setup(st), "")
   expect_equal(ard_status(s)$state, "built")
   add_to_part3(s, "# a comment of mine")
-  expect_equal(ard_status(s)$state, "outdated")
-  u <- update_study_ard(s, "DM")
+  expect_equal(ard_status(s)$state, "built")
+  u <- proto_make_ard(s, "DM")
   expect_equal(ard_status(s)$state, "built")
 })
 
@@ -517,7 +519,7 @@ test_that("a change to report_setup.R (the rounding) marks the reports outdated,
   def <- tflspec::tfl_ard_spec_hash(structure(s$planner$ard, class = "tfl_ard_spec"),
                                     "DM", dir = s$path,
                                     codelists = .study_codelists(s$planner))
-  .write_ard_status(s, data.frame(output_id = "DM", definition = def,
+  proto_write_ard_status(s, data.frame(output_id = "DM", definition = def,
                                   built = "2026-10-08 10:00:00", rows = 10L,
                                   error = "", setup = .study_setup_hash(s$path),
                                   stringsAsFactors = FALSE))

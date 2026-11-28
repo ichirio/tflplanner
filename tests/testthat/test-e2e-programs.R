@@ -34,7 +34,7 @@ e2e_libs <- function(env = parent.frame()) {
 # every report is "not run" and no report's log says why -- the child's
 # exit status and the end of its output are the failure
 e2e_run <- function(s, ...) {
-  r <- run_batch(s, c("ard", "tfl"), ..., wait = TRUE)
+  r <- run_batch(s, "full", ..., wait = TRUE)
   if (is.null(r$batch)) {
     fail(sprintf("the official run made no batch folder (exit status %s); its output ends:\n%s",
                  if (isTRUE(r$ok)) "0" else "not 0",
@@ -155,7 +155,8 @@ test_that("tables from templates converted to code and a listing started from th
   b <- setdiff(list_batches(s)$batch, before)
   expect_length(b, 1L)
   r <- utils::read.csv(file.path(s$path, "runs", b, "run.csv"), stringsAsFactors = FALSE)
-  expect_setequal(r$program, c("programs/ard/C-DM.R", "programs/tfl/C-DM.R"))
+  # (PROTOTYPE: the full run, its ARD made in its program)
+  expect_identical(r$program, "programs/tfl/C-DM.R")
   expect_true(all(r$status == "OK"))
   # every report
   e2e_run(s)

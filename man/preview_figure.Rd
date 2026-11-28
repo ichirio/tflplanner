@@ -50,7 +50,7 @@ setup_tflplanner(home = tempfile("tflplanner-home"))
 \donttest{
 # (about 10 seconds: it makes the sample study, its ARD and the figure)
 s <- save_study(create_sample_study(run = FALSE))
-update_study_ard(s, "T-14-2-2")  # the ARD the figure reads
+invisible(run_study(s, "T-14-2-2"))  # the ARD the figure reads
 p <- preview_figure(s, "F-14-2-3")
 p$png      # the picture, in a temporary folder
 p$size     # its size on the page

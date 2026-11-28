@@ -380,11 +380,11 @@ test_that("no missing need when nothing is needed or the needed is selected too"
   expect_identical(nrow(.batch_missing_needs(needs, character())), 0L)
 })
 
-test_that("the reads of tables are their own ARD; a listing reads none; no report, no row", {
+test_that("a table reads no ARD (its own is made in it); a listing none; no report, no row", {
   p <- bc_planner()
   r <- .batch_report_reads(p)
   expect_identical(names(r), c("report", "reads", "kind", "reason"))
-  expect_identical(r$reads[r$kind == "own"], c("DM", "VS"))
+  expect_false(any(c("DM", "VS") %in% r$report))
   expect_false("L1" %in% r$report)
   expect_identical(nrow(.batch_report_reads(new_planner())), 0L)
 })
@@ -446,13 +446,13 @@ test_that("the study's own functions are scanned for outside paths, sorted, R fi
 
 # ---- the generated programs ----------------------------------------------------
 
-test_that("the autoexec for both parts says how to run it, and runs the ARD then the reports", {
+test_that("the autoexec of the full run says how to run it, and runs the full programs", {
   code <- autoexec_all_code(date = as.Date("2026-03-04"))
   expect_true(any(grepl("Rscript programs/autoexec_all.R", code, fixed = TRUE)))
   expect_true(any(grepl("--no-code", code, fixed = TRUE)))
   expect_true(any(grepl("--data", code, fixed = TRUE)))
   expect_true(any(grepl("Generated  : tflplanner .*, 2026-03-04$", code)))
-  expect_true("run_batch(c(\"ard\", \"tfl\"), commandArgs(trailingOnly = TRUE))" %in% code)
+  expect_true("run_batch(\"tfl\", commandArgs(trailingOnly = TRUE))" %in% code)
 })
 
 test_that("an autoexec body of one part names that part alone", {
@@ -488,10 +488,9 @@ test_that("a save writes the runner, the setups and the autoexec files, then non
   s <- bc_make("BCW")
   root <- s$path
   out <- .save_batch_programs(s$planner, root)
-  expect_identical(nrow(out), 5L)
+  expect_identical(nrow(out), 4L)
   expect_identical(basename(out$file),
-                   c("batch.R", "fig_setup.R", "report_setup.R", "autoexec_all.R",
-                     "autoexec_report.R"))
+                   c("batch.R", "fig_setup.R", "report_setup.R", "autoexec_all.R"))
   expect_true(all(file.exists(out$file)))
   # nothing changed: nothing written
   again <- .save_batch_programs(s$planner, root)
@@ -516,10 +515,11 @@ bc_stub <- function(id, body = "", flags = "--exclude= --batch --data") {
   s
 }
 
-test_that("a run of the reports alone is refused", {
+test_that("a run is full or ard, nothing else", {
   bc_home()
   s <- bc_stub("BCR1")
-  expect_error(run_batch(s, "tfl"), "ARD only")
+  expect_error(run_batch(s, "tfl"), "should be one of")
+  expect_error(run_batch(s, c("ard", "tfl")), "length 1")
 })
 
 test_that("a run of a study that was not saved says to save it first", {
@@ -528,7 +528,7 @@ test_that("a run of a study that was not saved says to save it first", {
   unlink(file.path(s$path, "programs", "ard", .ard_autoexec_file))
   expect_error(run_batch(s, "ard"), "save it first")
   unlink(file.path(s$path, "programs", .autoexec_all_file))
-  expect_error(run_batch(s, c("ard", "tfl")), "autoexec_all.R yet")
+  expect_error(run_batch(s, "full"), "autoexec_all.R yet")
 })
 
 test_that("a runner written by an earlier tflplanner cannot leave reports out or run a batch", {

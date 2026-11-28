@@ -23,8 +23,10 @@ test_that("a figure from an ARD records the definition it read; batch.R knows it
   expect_identical(.fig_ard_need(p, "F-14-2-3"), "T-14-2-2")
   expect_identical(.fig_ard_need(p, "T-14-2-2"), NA_character_)
   expect_identical(.fig_ard_need(p, "F-14-2-1"), NA_character_)
-  code <- program_code(p, "F-14-2-3")
-  expect_true("ard_built <- ard_fingerprint(\"T-14-2-2\")" %in% code)
+  code <- unlist(strsplit(program_code(p, "F-14-2-3"), "\n", fixed = TRUE))
+  # (PROTOTYPE: the table's own ARD file, and the definition it records)
+  expect_true("ard <- read_report_ard(\"T-14-2-2\")" %in% code)
+  expect_true("ard_built <- report_ard_definition(\"T-14-2-2\")" %in% code)
   expect_true("record_report(report_id, ard = ard_built)" %in% code)
   # the others record no ARD
   expect_true("record_report(report_id)" %in% program_code(p, "T-14-2-2"))
@@ -34,28 +36,27 @@ test_that("a figure from an ARD records the definition it read; batch.R knows it
   # (one element a statement: a line each)
   lines_of <- function(x) unlist(strsplit(x, "\n", fixed = TRUE))
   b <- lines_of(batch_code(p, root = s$path))
-  # .batch_needs: a report program -> the reports whose ARD it reads (#790)
-  needs_of <- function(lines) {
-    i <- grep("^[.]batch_needs <- ", lines)
-    j <- grep("^# a report program -> why the ARD", lines)
-    eval(parse(text = paste(lines[i:(j - 1L)], collapse = "\n")))
-  }
-  n <- needs_of(b)
+  # PROTOTYPE: a report runs after the reports whose ARD it reads (the
+  # programs' order in .batch_programs); the runner's .batch_needs are none
+  n <- .batch_report_needs(p)
   # (F-14-2-2's own code reads T-14-2-2's ARD too, as its ARD source)
-  expect_true("T-14-2-2" %in% n[["programs/tfl/F-14-2-2.R"]])
-  expect_true("T-14-2-2" %in% n[["programs/tfl/F-14-2-3.R"]])
-  # the forest plot reads its own ARD (#293 P6): made first too
-  expect_true("F-14-2-4" %in% n[["programs/tfl/F-14-2-4.R"]])
-  # a table reads its own ARD
-  expect_true("T-14-2-2" %in% n[["programs/tfl/T-14-2-2.R"]])
+  expect_true("T-14-2-2" %in% n[["F-14-2-2"]])
+  expect_true("T-14-2-2" %in% n[["F-14-2-3"]])
+  # the forest plot makes its own ARD, a table its own: no need
+  expect_null(n[["F-14-2-4"]])
+  expect_null(n[["T-14-2-2"]])
+  i <- grep("^[.]batch_programs <- ", b)
+  progs <- eval(parse(text = paste(b[i:(grep("^[.]batch_ard_outputs <- ", b) - 1L)], collapse = "\n")))
+  expect_lt(match("programs/tfl/T-14-2-2.R", progs$tfl), match("programs/tfl/F-14-2-3.R", progs$tfl))
+  expect_true(any(grepl("^[.]batch_needs <- list[(][)]", b)))
   # no figure from an ARD: that figure reads none
   p0 <- set_fig_ard_source(set_fig_ard_source(set_fig_ard_source(p, "F-14-2-3", NULL),
                                                 "F-14-2-4", NULL), "F-14-2-2", NULL)
-  n0 <- needs_of(lines_of(batch_code(p0, root = s$path)))
+  n0 <- .batch_report_needs(p0)
   # .batch_unresolved: nothing in the sample is unresolved
   un <- eval(parse(text = grep("^[.]batch_unresolved <- ", b, value = TRUE)))
   expect_identical(un, character())
-  expect_false("T-14-2-2" %in% n0[["programs/tfl/F-14-2-3.R"]])
+  expect_false("T-14-2-2" %in% n0[["F-14-2-3"]])
   expect_false(any(grepl("batch_needs_hash", b, fixed = TRUE)))
 })
 
@@ -98,7 +99,7 @@ test_that("the figure turns outdated with the table's ARD, and the preview and t
   # screens read the latest run (a preview or a hand run leaves the working
   # output/, which the report's state does not read)
   both <- c("T-14-2-2", "F-14-2-3")
-  b1 <- run_batch(s, c("ard", "tfl"), only = both, code = FALSE)
+  b1 <- run_batch(s, "full", only = both, code = FALSE)
   expect_true(b1$ok)
   ard_run <- ard_status(s, "run")
   expect_identical(ard_run$state[ard_run$output_id == "T-14-2-2"], "built")
@@ -113,32 +114,32 @@ test_that("the figure turns outdated with the table's ARD, and the preview and t
   expect_identical(fig_state(s), list(status = "outdated", why = "ard:T-14-2-2"))
   # the working ARD made again (a design aid's): the figure's state is its
   # run's, so it is to be made again all the same
-  suppressMessages(update_study_ard(s, "T-14-2-2"))
+  suppressMessages(proto_make_ard(s, "T-14-2-2"))
   expect_identical(fig_state(s), list(status = "outdated", why = "ard:T-14-2-2"))
   Sys.sleep(1.1)
-  b2 <- run_batch(s, c("ard", "tfl"), only = both, code = FALSE)
+  b2 <- run_batch(s, "full", only = both, code = FALSE)
   expect_true(b2$ok)
   expect_identical(fig_state(s), list(status = "ok", why = ""))
-  # changed again; an official run of the figure alone does not start: it
-  # reads the ARD of a report the run does not select (#790)
+  # changed again; an official run of the figure alone (PROTOTYPE: the
+  # runner does not check it; the app does, .batch_missing_needs()): the
+  # figure stops, its table's ARD is not in the run
   an$code[k] <- sub("150)", "150, 180)", an$code[k], fixed = TRUE)
   s$planner$ard$analyses <- an
   s <- suppressMessages(save_study(s))
-  b0 <- run_batch(s, c("ard", "tfl"), only = "F-14-2-3", code = FALSE)
-  expect_false(b0$ok)
-  expect_null(b0$batch)
-  expect_true(any(grepl("F-14-2-3 reads the ARD of T-14-2-2", b0$output, fixed = TRUE)))
-  # with the table selected too: its ARD, then the table and the figure
   Sys.sleep(1.1)
-  b <- run_batch(s, c("ard", "tfl"), only = c("T-14-2-2", "F-14-2-3"), code = FALSE)
-  expect_identical(b$result$part, c("ard", "tfl", "tfl"))
-  expect_identical(b$result$program, c("programs/ard/T-14-2-2.R", "programs/tfl/T-14-2-2.R",
-                                       "programs/tfl/F-14-2-3.R"))
+  b0 <- run_batch(s, "full", only = "F-14-2-3", code = FALSE)
+  expect_false(b0$ok)
+  expect_identical(nrow(.batch_missing_needs(.batch_report_needs(s$planner), "F-14-2-3")), 1L)
+  # with the table selected too: the table's full program, then the figure
+  Sys.sleep(1.1)
+  b <- run_batch(s, "full", only = c("T-14-2-2", "F-14-2-3"), code = FALSE)
+  expect_identical(b$result$part, c("tfl", "tfl"))
+  expect_identical(b$result$program, c("programs/tfl/T-14-2-2.R", "programs/tfl/F-14-2-3.R"))
   expect_identical(fig_state(s), list(status = "ok", why = ""))
   # nothing changed: made again all the same (a run never reads an ARD an
   # earlier run left, #790), in a run folder of its own
   Sys.sleep(1.1)
-  b2 <- run_batch(s, c("ard", "tfl"), only = c("T-14-2-2", "F-14-2-3"), code = FALSE)
+  b2 <- run_batch(s, "full", only = c("T-14-2-2", "F-14-2-3"), code = FALSE)
   expect_identical(b2$result$program, b$result$program)
   expect_false(identical(b2$batch, b$batch))
   expect_true(dir.exists(b$batch))
@@ -152,8 +153,8 @@ test_that("the runs table says why", {
 # An official run makes the ARD its reports read (#790): the ARD only, or
 # the ARD then the reports; never the reports alone, and a report never
 # reads an ARD an earlier run left.
-test_that("an official run is the ARD only, or the ARD then the reports", {
-  expect_error(run_batch(list(), "tfl"), "the ARD only (parts = \"ard\")", fixed = TRUE)
+test_that("an official run is full or ard (PROTOTYPE)", {
+  expect_error(run_batch(list(), "tfl"), "should be one of")
 })
 
 # the runner (tflspec::tfl_runner_file()) with the lists batch.R gives it, its
@@ -321,7 +322,8 @@ test_that("a lookup that fails for one report is that report's reason; the other
     .fig_ard_source = function(x, output_id) stop("boom"))
   r <- .batch_report_reads(p)
   expect_identical(names(r), c("report", "reads", "kind", "reason"))
-  expect_identical(.batch_reads_needs(r), list(`T-1` = "T-1", `T-2` = "T-2"))
+  # (PROTOTYPE: a table's own ARD is no need)
+  expect_length(.batch_reads_needs(r), 0L)
   expect_identical(.batch_reads_unresolved(r), c(`F-1` = "lookup failed: boom"))
   expect_identical(.batch_report_needs(p), .batch_reads_needs(r))
 })

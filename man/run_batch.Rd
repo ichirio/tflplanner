@@ -7,7 +7,7 @@
 \usage{
 run_batch(
   study,
-  parts = c("ard", "tfl"),
+  parts = c("full", "ard"),
   code = TRUE,
   data = FALSE,
   only = NULL,
@@ -21,9 +21,9 @@ list_batches(study)
 \arguments{
 \item{study}{An \code{rtfstudy}.}
 
-\item{parts}{\code{"ard"} (the ARD only) or \code{c("ard", "tfl")} (the ARD,
-then the reports from it).  There is no run of the reports alone:
-the reports of a run are made from the ARD the same run makes.}
+\item{parts}{\code{"full"} (every report's full program: its data, its ARD,
+its content and page in one process) or \code{"ard"} (the ARD programs: the
+same data and analysis lines).  PROTOTYPE (tflspec#1032).}
 
 \item{code}{Keep the code in the batch folder.}
 
@@ -31,7 +31,7 @@ the reports of a run are made from the ARD the same run makes.}
 
 \item{only}{Programs or outputs to run; \code{NULL} for all.}
 
-\item{exclude}{Reports to leave out (their ARD program and their report
+\item{exclude}{Reports to leave out (their ARD program and their full
 program), by output id or program name; \code{NULL} for none.  The batch
 folder's \code{batch.txt} lists the programs left out.}
 
@@ -54,20 +54,20 @@ stopped) -- and when it \code{finished}.
 }
 \description{
 \code{run_batch()} runs the study's official-run program -- the ARD
-(\code{programs/ard/autoexec_ard.R}), the reports
-(\code{programs/tfl/autoexec_report.R}) or both (\code{programs/autoexec_all.R})
--- which makes a batch folder \verb{runs/<date>_<time>_<what>/} with each
+programs (\code{programs/ard/autoexec_ard.R}) or every report's full program
+(\code{programs/autoexec_all.R}) -- which makes a batch folder \verb{runs/<date>_<time>_<what>/} with each
 program's log, what the run made, the R and package versions
 (\code{session_info.txt}, and the study's \code{renv.lock} when it has one), with
-\code{code = TRUE} the programs and definition workbooks it ran, and with
+the study's programs and definition files copied in (the folder is the
+code: \code{code} is accepted and does nothing), and with
 \code{data = TRUE} the data files its programs read.  \code{list_batches()} lists
 a study's batch folders.
 }
 \details{
 The data kept are the files of the data catalog the run's programs read
 (\code{\link[=batch_data_plan]{batch_data_plan()}}): each ARD program its report's datasets, each
-report program its own (a listing's, a figure's) or the ARD taken in it
-reads.  They go to the batch folder's \verb{data/} under the path they have
+full program those and its own (a listing's, a figure's) or the ARD
+taken in it reads.  They go to the batch folder's \verb{data/} under the path they have
 in the study folder (\code{data/data/adam/adsl.rds}; a file outside it under
 \verb{data/external/}), listed in \code{data_manifest.csv} with their size, md5
 and time.  With the code and the logs, that is everything the run read:

@@ -22,9 +22,11 @@ Runs report programs on their own (a preview), from the study folder --
 every report or the ones named -- each in its own \code{Rscript} process.
 They write the working RTFs (output/tfl/); what each printed is kept in
 \verb{logs/preview/} until the next preview, and no log of record is made.
-A table's rows of the study ARD, and those a figure prints numbers of,
-are made first when they are not made from the definition as it is now
-(\code{\link[=update_study_ard]{update_study_ard()}}).  The official run is \code{\link[=run_batch]{run_batch()}}.
+PROTOTYPE (tflspec#1032): each is the report's full program, which makes
+its own ARD (\verb{output/ard/report/<id>.rds}); a report whose figure reads
+another report's ARD runs after it, and that report runs too.  The
+working study ARD is then collected from the reports' files.  The
+official run is \code{\link[=run_batch]{run_batch()}}.
 }
 \examples{
 # a home in the temporary folder: used in this R session only, nothing

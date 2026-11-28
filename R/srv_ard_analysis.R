@@ -503,7 +503,7 @@
     rv$status_ver
     tg <- ard_target()
     if (is.null(tg) || !has_study()) return(NULL)
-    a <- tryCatch(study_ard_rows(current_study(), tg), error = function(e) NULL)
+    a <- tryCatch(.report_ard_rows(current_study(), tg), error = function(e) NULL)
     if (is.null(a) || !nrow(a)) return(NULL)
     tryCatch(tflspec::tfl_ard_conditions(a), error = function(e) NULL)
   })

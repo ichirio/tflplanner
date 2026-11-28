@@ -228,8 +228,10 @@ test_that("a line of the program leads to the card that wrote it", {
   p3 <- own_levels(p, id)
   code3 <- unlist(strsplit(paste(program_code(p3, id), collapse = "\n"), "\n", fixed = TRUE))
   m3 <- builder_code_map(code3, builder_items(p3, id))
-  at <- grep("^cl_sex <- ", code3)[1L]
-  expect_false(is.na(at))
+  # (PROTOTYPE: the analysis step above has the ARD's own code lists too;
+  # the plan's are the last)
+  at <- utils::tail(grep("^cl_sex <- ", code3), 1L)
+  expect_length(at, 1L)
   expect_identical(m3$path[match(at, m3$line)], "plan_levels")
   # nothing outside the plan
   expect_true(is.na(path_of("^generate_rtfreport")))

@@ -184,35 +184,39 @@ test_that(".fig_ard_why reads the figure's own run folder, the working files wit
   expect_identical(unname(.fig_ard_why(s, c("F1", "F2"))), c("ard:DM", "ard:DM"))
 })
 
-test_that("study_ard_rows falls back to the run's rows, read only, when they match the definition", {
+test_that("a report's ARD falls back to the run's file, read only, when it matches the definition", {
   local_home()
   s <- lr_study("LR8")
   t0 <- Sys.time() + 600  # after the study's files were written, as a real run is
-  work <- file.path(s$path, "output", "ard", "ard.rds")
+  work <- file.path(s$path, "output", "ard", "report", "DM.rds")
+  made <- function(stat, definition = .ard_hash_now(s, "DM")) {
+    structure(data.frame(output_id = "DM", stat = stat), made = list(definition = definition))
+  }
   # no run, no working ARD
-  expect_null(study_ard_rows(s, "DM"))
-  d <- fake_run(s$path, "20260101_100000_all", "ard", "DM", finished = t0 - 100,
-                ard_status = lr_ard_row(s, "DM"))
-  saveRDS(data.frame(output_id = "DM", stat = c(1, 2, 3)), file.path(d, "output", "ard", "ard.rds"))
-  r <- study_ard_rows(s, "DM")
+  expect_null(.report_ard_rows(s, "DM"))
+  d <- fake_run(s$path, "20260101_100000_all", "tfl", "DM", finished = t0 - 100)
+  dir.create(file.path(d, "output", "ard", "report"), recursive = TRUE)
+  saveRDS(made(c(1, 2, 3)), file.path(d, "output", "ard", "report", "DM.rds"))
+  r <- .report_ard_rows(s, "DM")
   expect_identical(r$stat, c(1, 2, 3))
+  expect_null(attr(r, "made"))
   # read only: nothing was copied into output/
   expect_false(file.exists(work))
-  expect_false(file.exists(file.path(s$path, "output", "ard", "ard_status.csv")))
   # the definition has moved on since the run: no rows from it
   s2 <- s
   s2$planner$ard$analyses$statistics[1L] <- "N | mean"
-  expect_null(study_ard_rows(s2, "DM"))
-  # the working ARD, made from the definition now, is the one read
+  expect_null(.report_ard_rows(s2, "DM"))
+  # the working file, made from the definition now, is the one read
   dir.create(dirname(work), recursive = TRUE)
-  saveRDS(data.frame(output_id = "DM", stat = 9), work)
-  .write_ard_status(s, lr_ard_row(s, "DM"))
-  expect_identical(study_ard_rows(s, "DM")$stat, 9)
-  # the working ARD of another definition: the run's rows, which match
-  .write_ard_status(s, lr_ard_row(s, "DM", definition = "an earlier definition"))
-  expect_identical(study_ard_rows(s, "DM")$stat, c(1, 2, 3))
-  # neither matches: the working rows as they are
-  expect_identical(study_ard_rows(s2, "DM")$stat, 9)
+  saveRDS(made(9), work)
+  expect_identical(.report_ard_rows(s, "DM")$stat, 9)
+  # the working file of another definition: the run's rows, which match
+  saveRDS(made(c(9, 9), definition = "an earlier definition"), work)
+  Sys.setFileTime(work, Sys.time() + 60)
+  expect_identical(.report_ard_rows(s, "DM")$stat, c(1, 2, 3))
+  # neither matches: the working rows as they are; current = TRUE: none
+  expect_identical(.report_ard_rows(s2, "DM")$stat, c(9, 9))
+  expect_null(.report_ard_rows(s2, "DM", current = TRUE))
 })
 
 test_that("the stamp of the runs changes when a run's batch.txt appears", {

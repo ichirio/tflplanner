@@ -84,7 +84,7 @@ ard_card_summary <- function(meta, page_by = character(), tr = function(x) x) {
 #' # (a few seconds: it writes the study's spec workbooks)
 #' s <- create_sample_study(run = FALSE)
 #' s <- save_study(s)
-#' invisible(update_study_ard(s, "T-14-1-1"))  # the report's ARD, made by its program
+#' invisible(run_study(s, "T-14-1-1"))  # its full program makes its ARD
 #' ard <- rtfreporter::normalize_ard(study_ard(s, "T-14-1-1"))
 #' pages <- preview_pages(s$planner, "T-14-1-1", ard)
 #' head(pages[[1]]$data)

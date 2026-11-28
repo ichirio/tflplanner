@@ -49,8 +49,9 @@ test_that("a study's programs read its folders by their variables; previews as t
   setup <- readLines(file.path(s$path, "programs", "ard", "ard_setup.R"))
   expect_false(any(grepl("^library\\(", setup)))
   rep <- readLines(file.path(s$path, "programs", "tfl", report_info(s$planner, "DM")$program))
-  expect_true(any(grepl("readRDS(file.path(path_ard, \"ard.rds\")) |>", rep, fixed = TRUE)))
-  expect_true(any(grepl("  filter(output_id == report_id) |>", rep, fixed = TRUE)))
+  # (PROTOTYPE: the table makes its ARD in its program, none read)
+  expect_false(any(grepl("readRDS(file.path(path_ard, \"ard.rds\")) |>", rep, fixed = TRUE)))
+  expect_true(any(startsWith(rep, "save_report_ard(ard, report_id")))
   # (the report's data is not saved: the study ARD holds it, #405)
   expect_false(any(grepl("saveRDS(", rep, fixed = TRUE)))
   # written once: saved again, the programs are as they were
@@ -71,8 +72,8 @@ test_that("a study whose setup does not attach dplyr keeps dplyr::", {
   writeLines(txt[txt != "library(dplyr)"], f)
   s <- open_study("CO-2")
   rep <- program_code(s$planner, "DM")
-  expect_true(any(grepl("  dplyr::filter(output_id == report_id) |>", rep, fixed = TRUE)))
-  ard <- ard_program_code(.ard_spec(s$planner$ard), "DM")
+  expect_true(any(grepl("dplyr::select(ard, -c(output_id", rep, fixed = TRUE)))
+  ard <- ard_program_code(s$planner, "DM")
   expect_true(any(grepl("library(dplyr)", ard_setup_code(.ard_spec(s$planner$ard)),
                         fixed = TRUE)))
   expect_false(any(grepl("dplyr::", ard[!startsWith(ard, "#")], fixed = TRUE)))

@@ -1378,8 +1378,7 @@
       }
     }
     tryCatch(switch(scope,
-      report = ard_program_code(a, id, dir = rv$study$path,
-                                codelists = .study_codelists(rv$p)),
+      report = ard_program_code(rv$p, id),
       setup = ard_setup_code(a),
       autoexec = ard_autoexec_code(a)),
       error = function(e) msg(paste(

@@ -325,7 +325,7 @@ remove_imported_ard <- function(study, import_id) {
 #' # (a few seconds: it writes and runs the ARD program)
 #' s <- create_sample_study(run = FALSE)
 #' s <- save_study(s)
-#' update_study_ard(s, "T-14-1-2")$ok  # makes the report's rows of the study ARD
+#' invisible(run_study(s, "T-14-1-2"))  # its full program makes its ARD
 #' head(study_ard(s, "T-14-1-2"), 3)
 #' }
 #' options(old)
@@ -333,7 +333,7 @@ remove_imported_ard <- function(study, import_id) {
 study_ard <- function(study, output_id) {
   ids <- c("output_id", "analysis_id", "population_id")
   f <- .ard_import_of(study$planner, output_id)
-  a <- if (is.null(f)) study_ard_rows(study, output_id) else {
+  a <- if (is.null(f)) .report_ard_rows(study, output_id) else {
     p <- file.path(.import_dir(study), f)
     if (!file.exists(p)) stop("The ARD taken in for ", output_id, ", ", f,
                               ", is not in input/ard/.", call. = FALSE)
@@ -369,7 +369,7 @@ study_ard <- function(study, output_id) {
 #' f <- tempfile(fileext = ".rds")
 #' saveRDS(r$ard, f)  # (here the same ARD stands for one made elsewhere)
 #' imp <- import_ard(s, f, output_id = "T-14-1-2", source = "CRO")
-#' update_study_ard(s, "T-14-1-2")  # the report's own ARD
+#' invisible(run_study(s, "T-14-1-2"))  # the report's own ARD
 #' s$planner <- use_imported_ard(s$planner, "T-14-1-2", imp$file)
 #' if (requireNamespace("cards", quietly = TRUE)) {
 #'   cards::is_ard_equal(compare_imported_ard(s, "T-14-1-2"))  # double programming
@@ -383,7 +383,7 @@ compare_imported_ard <- function(study, output_id, file = NULL) {
   }
   file <- file %||% .ard_import_of(study$planner, output_id)
   if (is.null(file)) stop(output_id, " names no ARD taken in.", call. = FALSE)
-  own <- study_ard_rows(study, output_id)
+  own <- .report_ard_rows(study, output_id)
   if (is.null(own) || !nrow(own)) {
     stop("The study ARD has no rows for ", output_id, ": make its ARD first.",
          call. = FALSE)

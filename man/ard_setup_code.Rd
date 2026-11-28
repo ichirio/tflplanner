@@ -8,13 +8,7 @@
 \usage{
 ard_setup_code(spec, date = Sys.Date())
 
-ard_program_code(
-  spec,
-  output_id,
-  date = Sys.Date(),
-  dir = ".",
-  codelists = NULL
-)
+ard_program_code(x, output_id, date = Sys.Date())
 
 ard_autoexec_code(spec, date = Sys.Date())
 }
@@ -23,17 +17,9 @@ ard_autoexec_code(spec, date = Sys.Date())
 
 \item{date}{The date stamped in the banner.}
 
+\item{x}{A \code{tflplanner}.}
+
 \item{output_id}{The output.}
-
-\item{dir}{The study folder: the fingerprint recorded with the ARD reads
-the study's own analysis functions (its key \code{source}) from it.}
-
-\item{codelists}{The reports' code lists (the table definition's
-\code{codelists} sheet, every row a report's), or \code{NULL}: each column the
-report's analyses read that its code lists list becomes a factor in
-their order before the analyses, so the ARD keeps the order and counts
-a value no record has (0) (\code{\link[tflspec:tfl_ard_code]{tflspec::tfl_ard_code()}}).  They are part of
-the fingerprint.}
 }
 \value{
 The code, one element per line.
@@ -45,7 +31,10 @@ sources: the study's setup (\code{programs/study_setup.R}, see
 the stat_fmt formats, and the option that makes \code{save_ard()} (the
 study's \code{programs/study_helpers.R}, see \code{\link[=study_helpers_code]{study_helpers_code()}}) record
 the study setup each ARD was built with.
-\code{ard_program_code()} is one output's program, \verb{programs/ard/<output_id>.R}.  \code{ard_autoexec_code()} is
+\code{ard_program_code()} is one report's ARD program, \verb{programs/ard/<output_id>.R}
+(PROTOTYPE, tflspec#1032: the data and analysis lines of the report's
+full program, \code{\link[tflspec:tfl_onepass_program]{tflspec::tfl_onepass_program()}}; \code{NULL} when the report
+makes no ARD).  \code{ard_autoexec_code()} is
 \code{programs/ard/autoexec_ard.R}, which runs them from the study folder --
 all, or the ones named (\verb{Rscript programs/ard/autoexec_ard.R T-14-1-1})
 -- each in its own R process with its log in \verb{logs/ard/}.

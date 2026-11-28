@@ -443,10 +443,26 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 
 # A report's program, or its data part (`part = "data"`), made by tflspec
 # in the code context the session has now (the study's, while
-# .with_study_code() runs; else none)
+# .with_study_code() runs; else none).  PROTOTYPE (tflspec#1032): the
+# program is the report's full program (`kind = "full"`: data, analysis,
+# content, page; its ARD made in it) or its ARD program (`kind = "ard"`:
+# the same data and analysis lines; NULL when it makes no ARD), both by
+# tflspec::tfl_onepass_program().
 .report_program <- function(x, output_id, date = Sys.Date(), part = "program",
-                            todo = TRUE) {
+                            todo = TRUE, kind = "full") {
   ctx <- .live_context_args()
+  if (identical(part, "program")) {
+    spec <- if (nrow(x$ard$analyses %||% data.frame())) {
+      tryCatch(.ard_spec_last(x$ard), error = function(e) NULL)
+    }
+    return(tflspec::tfl_onepass_program(
+      .report_values(x, output_id), kind = kind, spec = spec,
+      codelists = .study_codelists(x), dir = .code_context$root %||% ".",
+      study = .code_spec(x)$study, shared = .report_shared(x, output_id),
+      standards = .report_standards(), attached = ctx$attached,
+      study_code = ctx$study_code, series_dir = .program_series_dirs(),
+      layout = study_layout(), date = date, generator = .setup_generator()))
+  }
   tflspec::tfl_report_program(
     .report_values(x, output_id), study = .code_spec(x)$study,
     shared = .report_shared(x, output_id), standards = .report_standards(),
@@ -847,35 +863,4 @@ report_setup_code <- function(x, date = Sys.Date()) {
     return(rep(NA_character_, length(output_id)))
   }
   st$setup[match(output_id, st$output_id)]
-}
-
-#' The program that runs every report program
-#'
-#' `programs/tfl/autoexec_report.R` runs from the study folder.  It runs the
-#' programs in the order of the report list -- or only the ones named on
-#' its command line (`Rscript programs/tfl/autoexec_report.R DM.R AE.R`) --
-#' each in its own `Rscript` process with the study folder as its working
-#' directory and its log in `logs/`, and ends with a table of what passed
-#' (`logs/autoexec_report.csv`).
-#'
-#' @param x An `tflplanner`.
-#' @param date The date stamped in the banner.
-#' @return The program, one element per line.
-#' @examples
-#' # a home in the temporary folder: used in this R session only, nothing
-#' # is written to your settings
-#' old <- options(tflplanner.home = NULL)
-#' setup_tflplanner(home = tempfile("tflplanner-home"))
-#' \donttest{
-#' s <- create_sample_study(run = FALSE)
-#' head(autoexec_code(s$planner), 6)
-#' }
-#' options(old)
-#' @export
-autoexec_code <- function(x, date = Sys.Date()) {
-  lay <- study_layout()
-  c(.autoexec_banner(file.path(lay[["programs_tfl"]], .autoexec_report_file),
-                     "Official run of the report programs, in the report list's order.",
-                     "T-14-1-1.R       only these", date),
-    .autoexec_body("tfl"))
 }
