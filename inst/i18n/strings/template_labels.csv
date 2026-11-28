@@ -329,3 +329,4 @@
 "The censoring column (0 is the event, any other value a censoring).","打ち切りの列（0 がイベント、0 以外は打ち切り）。"
 "The unit the analysis and the axis use; AVAL is converted from its unit, AVALU, to it (tte_time()).","解析と軸で使う単位。AVAL は元の単位 AVALU からこの単位に変換される（tte_time()）。"
 "The column of the time to event. AVAL is converted from its unit, AVALU, by tte_time(); another column is used as it is (in the axis's unit already).","イベントまでの時間の列。AVAL は元の単位 AVALU から tte_time() で変換される。別の列はそのまま使われる（すでに軸の単位）。"
+"More statistics of the continuous variables for the ARD, by their names in tfl_ard_statistics() (with the company's and the study's own); the ARD has the statistics the cells name, then these.","ARD に足す連続変数の統計量（tfl_ard_statistics() の名前で。会社・試験の独自のものも）。ARD にはセルが使う統計量、続いてこれらが入る。"
