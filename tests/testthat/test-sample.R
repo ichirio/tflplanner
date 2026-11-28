@@ -178,10 +178,11 @@ test_that("the sample's SPEC fixes of the 2026-11-25 reviews reach its programs"
     a <- ard_prog(id)
     expect_true(has(a, "COUNTRY == \"CHN\" ~ \"CHINESE\""), label = id)
     expect_true(has(a, "RACE == \"ASIAN\" ~ \"OTHER\""), label = id)
-    # (the ARD program's list: codes only since tflspec's CANON-3; the
-    # labelled entry is the tflspec before it)
-    expect_true(has(a, "OTHER = \"Other\"") ||
-                  any(grepl("^cl_asiansub <- c\\(.*\"OTHER\"", a)), label = id)
+    # (the ARD program's list holds OTHER: codes only since tflspec's
+    # CANON-3, one line or one code a line when long)
+    at <- grep("^cl_asiansub <- c\\(", a)[1L]
+    end <- at - 1L + match(TRUE, grepl("\\)\\s*$", a[at:length(a)]))
+    expect_true(!is.na(at) && any(grepl("\"OTHER\"", a[at:end], fixed = TRUE)), label = id)
   }
   # F-14-2-4: a subgroup's failing Cox model does not stop the ARD; a
   # subgroup with no estimate prints NE (not dropped), by a named limit
