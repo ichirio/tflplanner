@@ -158,7 +158,7 @@
       choices = shiny::selectizeInput(
         input_id, lab, union(as.character(shown), as.character(prm$choices)),
         selected = as.character(shown), multiple = TRUE, width = "100%", options = rm_btn),
-      # (a pick from the def's source words: report_data, study_data, ...;
+      # (a pick from the def's source words: objects(data), study_data, ...;
       # a value it does not offer kept, and one typed where the def allows)
       pick = ,
       picks = {
