@@ -539,14 +539,12 @@ $", "", yaml::as.yaml(list(tokens = tokens))), "
 }
 
 # One study part's file written from the spec (tflspec::tfl_write_study_part()),
-# and the view's study rows (blank and @<pattern>) of the report sheets
-# made again from it
-.spec_set_study_part <- function(p, part, name = NULL) {
+# and the view's study rows (blank and @<configuration>) of the report
+# sheets made again from it
+.spec_set_study_part <- function(p, part) {
   sp <- p$spec
-  rel <- if (identical(part, "patterns")) {
-    file.path(study_layout()[["spec"]], "patterns", paste0(name, ".yml"))
-  } else file.path(study_layout()[["spec"]], paste0(part, ".yml"))
-  sp$text[[rel]] <- .study_part_lines(sp$study, part, name, old = sp$text[[rel]])
+  rel <- file.path(study_layout()[["spec"]], paste0(part, ".yml"))
+  sp$text[[rel]] <- .study_part_lines(sp$study, part, old = sp$text[[rel]])
   sp$text <- sp$text[sort(names(sp$text), method = "radix")]
   p$spec <- sp
   .spec_view_study_page(p)
@@ -559,10 +557,10 @@ $", "", yaml::as.yaml(list(tokens = tokens))), "
 # `codelists:`, `adam_meta:`, `figure_style:`, `options:`, `ai:` ..., are read
 # by tflspec or written by hand, by tflspec or the AI kit), see
 # .keep_study_blocks(); one the writer writes too is the old one.
-.study_part_lines <- function(study, part, name = NULL, old = NULL) {
+.study_part_lines <- function(study, part, old = NULL) {
   f <- tempfile("tflplanner-part", fileext = ".yml")
   on.exit(unlink(f), add = TRUE)
-  tflspec::tfl_write_study_part(study, part, f, name = name)
+  tflspec::tfl_write_study_part(study, part, f)
   lines <- readLines(f, encoding = "UTF-8", warn = FALSE)
   if (identical(part, "defaults") && length(old)) lines <- .keep_study_blocks(lines, old)
   lines
@@ -613,12 +611,11 @@ $", "", yaml::as.yaml(list(tokens = tokens))), "
   st <- p$spec$study
   lean <- st
   if (!is.null(lean$defaults)) lean$defaults["content"] <- list(NULL)
-  lean$patterns <- lapply(lean$patterns, function(l) { l["content"] <- list(NULL); l })
   lean$styles <- lapply(lean$styles, function(l) { l["content"] <- list(NULL); l })
   v <- .planner_from_spec(lean, list())
   no_id <- function(d) { d$output_id <- NULL; rownames(d) <- NULL; d }
   # (the study's default configuration and tokens are the blank rows; the
-  # other configurations and the patterns have no rows in the sheets)
+  # other configurations have no rows in the sheets)
   for (s in report_sheets()) {
     new <- sheet_rows(v, s, NA_character_)
     old <- sheet_rows(p, s, NA_character_)

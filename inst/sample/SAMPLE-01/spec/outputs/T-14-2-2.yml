@@ -11,7 +11,7 @@ data:
     from: ADTTE
     subjects_in: adsl_saf
     where: !r PARAMCD == "TTSKIN"
-ard:
+analysis:
   analyses:
     - id: BIGN
       method: categorical

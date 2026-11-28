@@ -8,7 +8,7 @@ data:
   - id: adsl_scrf
     from: ADSL
     population: SCRF
-ard:
+analysis:
   analyses:
     - id: BIGN
       method: categorical

@@ -208,10 +208,10 @@
 # template's own parameters), and any other key directly under `template:`
 # -- all read as one map in the file's order, a later one winning.  A
 # built-in template (tflspec's .tpl_spec_args()): `args:` and the two parts
-# `ard:` and `content:` (a name in two places stops there; here the first
+# `analysis:` and `content:` (a name in two places stops there; here the first
 # is kept).
 .tpl_arg_steps <- c("data", "analysis", "content", "page")
-.tpl_builtin_parts <- c("ard", "content")
+.tpl_builtin_parts <- c("analysis", "content")
 .tpl_is_series <- function(name) grepl("/", as.character(name)[1L], fixed = TRUE)
 .tpl_secs_for <- function(name) if (.tpl_is_series(name)) .tpl_arg_steps else .tpl_builtin_parts
 .tpl_is_map <- function(v) is.list(v) && !is.null(names(v))
@@ -304,18 +304,12 @@
   t
 }
 
-# The section a new argument of a report by step goes to: its `step:` as
-# the template's form names it (a built-in template's analysis step is its
-# `ard:` part); NA (flat) when the template does not say, or the step is no
-# section of that form
+# The section a new argument of a report by step goes to: its `step:` (the
+# step's name is the YAML key in both forms, `analysis:`); NA (flat) when
+# the template does not say, or the step is no section of that form
 .tpl_arg_step <- function(name, arg, secs = character()) {
   st <- as.character(.arg_def(.tpl_defs(name), arg)$step %||% NA_character_)[1L]
   if (is.na(st)) return(NA_character_)
-  if (.tpl_is_series(name)) {
-    if (identical(st, "ard")) st <- "analysis"
-  } else if (identical(st, "analysis")) {
-    st <- "ard"
-  }
   if (st %in% .tpl_secs_for(name)) st else NA_character_
 }
 
@@ -965,7 +959,7 @@
 # its id begins with -- adsl_sub: ADSL; else the report's dataset), a
 # variable's values, the card's arguments and the template's params.
 # `rows`: the template's data rows and the report's own (.tpl_data_rows());
-# their ids are the report's data (report_data), NULL: the report's dataset
+# their ids are the report's data (objects(data)), NULL: the report's dataset
 .tpl_table_ctx <- function(data, dataset = NULL, args = list(), params = list(),
                            populations = NULL, rows = NULL) {
   ds <- function(x) {
@@ -974,11 +968,12 @@
   }
   has_rows <- is.data.frame(rows) && nrow(rows) > 0L
   list(
-    # (the source words of a pick: the study's data, the report's -- the ids
-    # of its data rows (tflspec's arg defs: a data row's id), else its `data`
-    # argument or dataset -- and the study's analysis sets)
+    # (the source words of a pick: the study's data, the report's objects --
+    # its data: the ids of its data rows (tflspec's arg defs: a data row's
+    # id), else its `data` argument or dataset -- and the study's analysis
+    # sets)
     study_data = ds(names(data)),
-    report_data = if (has_rows) unique(rows$id) else ds(c(args$data, if (is.null(args$data)) dataset)),
+    objects = list(data = if (has_rows) unique(rows$id) else ds(c(args$data, if (is.null(args$data)) dataset))),
     populations = populations,
     # (vars(adsl_sub): the data row's dataset's columns -- not every
     # dataset's: its `from`, else the dataset its id names or begins with,
