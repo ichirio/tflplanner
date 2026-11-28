@@ -52,9 +52,11 @@ test_that("a figure whose content is its code: its datasets read, its code, repo
   expect_false(any(grepl("report_content <- function", code, fixed = TRUE)))
   expect_silent(parse(text = code))
   # no ARD unless the report reads one; its own analyses as `ard`
-  expect_false(any(grepl("this report's ARD", code, fixed = TRUE)))
+  # (PROTOTYPE: own analyses made in the program; F-1 has none, so it stops)
+  expect_false(any(grepl("save_report_ard(ard,", code, fixed = TRUE)))
   q <- set_fig_ard_source(p, "F-1", "own")
-  expect_true(any(grepl("this figure's ARD", program_code(q, "F-1"), fixed = TRUE)))
+  expect_true(any(grepl("F-1 has no analyses in the ARD definition.", program_code(q, "F-1"),
+                        fixed = TRUE)))
   q <- use_imported_ard(p, "F-1", "f1.rds")
   expect_true(any(grepl("input/ard/f1.rds", program_code(q, "F-1"), fixed = TRUE)))
 })
@@ -296,9 +298,10 @@ test_that("the sample's figures of their own code: F-14-2-2 reads T-14-2-2's ARD
 ", fixed = TRUE))
   expect_true("risk_df <- tfl_km_risk(ard, km_fit)" %in% code)
   # the ARD read by the program (its source's rows), not by the code
-  expect_true(any(grepl("filter(output_id == \"T-14-2-2\")", code, fixed = TRUE)))
+  # (PROTOTYPE: the table's own ARD file)
+  expect_true("ard <- read_report_ard(\"T-14-2-2\")" %in% code)
   expect_false(any(grepl("km_ard", code, fixed = TRUE)))
-  expect_true(any(grepl("ard_built <- ard_fingerprint", code, fixed = TRUE)))
+  expect_true("ard_built <- report_ard_definition(\"T-14-2-2\")" %in% code)
   expect_true("record_report(report_id, ard = ard_built)" %in% code)
   expect_identical(.fig_ard_need(p, "F-14-2-2"), "T-14-2-2")
   expect_identical(nrow(.rules_step_code(p)), 0L)

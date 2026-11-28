@@ -133,7 +133,9 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
     "",
     "# PROTOTYPE (tflspec#1032): the study ARD is collect_ard() of the reports'",
     "# own ARD files, once the run's programs have run",
-    sprintf("source(%s, local = TRUE)", encodeString(.onepass_helpers_path(), quote = "\"")),
+    sprintf("if (file.exists(%s)) source(%s, local = TRUE)",
+            encodeString(.onepass_helpers_path(), quote = "\""),
+            encodeString(.onepass_helpers_path(), quote = "\"")),
     ".batch_ard_conditions_of <- .batch_ard_conditions",
     ".batch_ard_conditions <- function(f) {",
     "  collect_ard(path = .batch_ard)",
@@ -331,7 +333,7 @@ autoexec_all_code <- function(date = Sys.Date()) {
   infos <- lapply(ids, function(id) report_info(x, id))
   tfl <- lapply(seq_along(ids), function(i) {
     imp <- .ard_import_of(x, ids[i])
-    unique(c(if (ids[i] %in% a_ids) path_of(.report_datasets(x, ids[i], "table")),
+    unique(c(if (ids[i] %in% a_ids && is.null(imp)) path_of(.report_datasets(x, ids[i], "table")),
       if (!identical(infos[[i]]$type, "table"))
       path_of(.report_datasets(x, ids[i], infos[[i]]$type)),
       if (!is.null(imp)) file.path(lay[["ard_import"]], imp)))
@@ -845,7 +847,11 @@ compare_batches <- function(study, batch, against = NULL) {
   if (!file.exists(x)) return("new")
   if (identical(unname(tools::md5sum(x)), unname(tools::md5sum(y)))) return("identical")
   if (grepl("[.]rds$", x, ignore.case = TRUE)) {
-    same <- tryCatch(identical(readRDS(x), readRDS(y)), error = function(e) FALSE)
+    # (PROTOTYPE: a report's ARD file records what made it, run and time;
+    # its fmt_fun closures are made in the program's own environment)
+    un <- function(f) structure(readRDS(f), made = NULL)
+    same <- tryCatch(identical(un(x), un(y), ignore.environment = TRUE),
+                     error = function(e) FALSE)
     return(if (same) "same object" else "different")
   }
   if (grepl("[.](rtf|csv|txt)$", x, ignore.case = TRUE) &&
@@ -859,7 +865,9 @@ compare_batches <- function(study, batch, against = NULL) {
   x <- readLines(f, warn = FALSE, encoding = "UTF-8")
   for (p in c("[0-9]{4}-[0-9]{2}-[0-9]{2}[ T][0-9]{2}:[0-9]{2}(:[0-9]{2})?",
               "[0-9]{1,2}[A-Za-z]{3}[0-9]{4} +[0-9]{1,2}:[0-9]{2}(:[0-9]{2})?",
-              "\\\\(creatim|revtim|printim)[^}]*")) {
+              "\\\\(creatim|revtim|printim)[^}]*",
+              # (PROTOTYPE: the run that made a report's ARD, ard_status.csv)
+              "\"run[0-9a-f]+\"")) {
     x <- gsub(p, "<time>", x, perl = TRUE, useBytes = TRUE)
   }
   x

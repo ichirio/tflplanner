@@ -61,13 +61,14 @@ test_that("the study ARD grows output by output, and says where it stands", {
   # DM's rows were left as they were
   expect_equal(nrow(a2[a2$output_id == "DM", ]), nrow(a[a$output_id == "DM", ]))
 
-  # the definition moves on: outdated; a failed update (PROTOTYPE: a hand
-  # run, its error not recorded): still outdated, ARD kept
+  # the definition moves on: outdated; a definition that does not hold
+  # writes no program (PROTOTYPE: a hand run runs the one there, of the
+  # definition before): still outdated
   s$planner$ard$analyses$statistics[1] <- "N | mean"
   expect_equal(ard_status(s)$state[1], "outdated")
   s$planner$ard$analyses$method[2] <- "cards::ard_nope"
   s <- save_study(s)
-  expect_false(proto_make_ard(s, "SEX")$ok)
+  proto_make_ard(s, "SEX")
   expect_equal(ard_status(s)$state[2], "outdated")
   a3 <- readRDS(file.path(s$path, "output", "ard", "ard.rds"))
   expect_identical(a3, a2)

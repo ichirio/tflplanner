@@ -297,7 +297,7 @@ test_that("the official run: nothing ticked is refused; reports left out; a repo
         report = c("DM", "VS", "L1"), reads = c("DM", "VS", "DM"), kind = "own",
         reason = NA_character_, stringsAsFactors = FALSE),
       .env = test_frame)
-    session$setInputs(batch_set = ".all", batch_parts = "all", batch_reports = c("VS", "L1"),
+    session$setInputs(batch_set = ".all", batch_parts = "full", batch_reports = c("VS", "L1"),
                       batch_run = 5)
     expect_length(asked, 2L)
     expect_length(modals(), 1L)
@@ -308,11 +308,11 @@ test_that("the official run: nothing ticked is refused; reports left out; a repo
     expect_length(modals(), 1L)
     expect_length(asked, 3L)
     expect_length(asked[[3L]]$exclude, 0L)
-    expect_match(rv$job_what, "^the official run: ARD, Reports$")
+    expect_match(rv$job_what, "^the official run: ARD, then reports$")
     # the AI's reports with a changed draft or places to confirm: said first
     rv$job <- NULL
     warn <<- list(newer = "DM", confirm = c("VS", "L1"))
-    session$setInputs(batch_parts = "all", batch_reports = c("DM", "VS", "L1"), batch_run = 7)
+    session$setInputs(batch_parts = "full", batch_reports = c("DM", "VS", "L1"), batch_run = 7)
     expect_length(asked, 3L)
     expect_match(modals()[2L], "Their draft changed after they were adopted .*: DM\\.")
     expect_match(modals()[2L], "places the AI left to confirm .*: VS, L1\\.")
@@ -340,7 +340,7 @@ test_that("an official run that ends is said from its run folder: how many progr
   shiny::testServer(server_for("DR"), {
     rv <- session$userData$rv
     last <- function() notes()[[length(notes())]]
-    session$setInputs(nav = "runs", batch_parts = "all", batch_run = 1)
+    session$setInputs(nav = "runs", batch_parts = "full", batch_run = 1)
     expect_identical(rv$job_batches_before, character())
     end_run()
     session$elapse(1100)

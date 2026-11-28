@@ -15,7 +15,7 @@ test_that("the sample study's programs all run (ARD, then the reports)", {
   withr::local_options(tflplanner.home = home)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
   s <- suppressMessages(create_sample_study(run = FALSE))
-  b <- suppressMessages(run_batch(s, c("ard", "tfl")))
+  b <- suppressMessages(run_batch(s, "full"))
   if (!isTRUE(b$ok)) {
     for (f in file.path(b$batch, b$result$log[b$result$status != "OK"])) {
       cat("\n====", f, "\n")

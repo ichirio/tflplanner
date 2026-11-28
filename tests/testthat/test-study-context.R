@@ -29,7 +29,8 @@ attached <- function() .code_context$opts$tflspec.attached
 # a report's program keeps `dplyr::` (its setup does not attach dplyr, or
 # no study's setup is assumed)
 keeps_dplyr <- function(p) {
-  any(grepl("dplyr::filter(output_id == report_id)", program_code(p, "DM"),
+  # (PROTOTYPE: the table makes its ARD in its program)
+  any(grepl("dplyr::select(ard, -c(output_id", program_code(p, "DM"),
             fixed = TRUE))
 }
 

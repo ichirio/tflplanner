@@ -122,14 +122,12 @@ test_that("the runner takes an output id as a program name, and --exclude too", 
   progs <- function(b) basename(b$result$program)
   expect_identical(report_info(o$planner, "DM")$program, "t_dm.R")
 
-  # an id: the ARD program (DM.R) and the report program (t_dm.R) of the report
-  b <- run_batch(o, c("ard", "tfl"), only = "DM")
-  expect_identical(progs(b), c("DM.R", "t_dm.R"))
+  # an id: the report's full program (t_dm.R; PROTOTYPE: its ARD made in it)
+  b <- run_batch(o, "full", only = "DM")
+  expect_identical(progs(b), "t_dm.R")
   Sys.sleep(1.1)
-  # a file name still works, with or without .R (an official run makes the
-  # ARD first, so the ARD program is named too)
-  expect_identical(progs(run_batch(o, c("ard", "tfl"), only = c("DM.R", "t_dm"))),
-                   c("DM.R", "t_dm.R"))
+  # a file name still works, with or without .R (its ARD program's name too)
+  expect_identical(progs(run_batch(o, "full", only = c("DM.R", "t_dm"))), "t_dm.R")
   Sys.sleep(1.1)
   expect_identical(progs(run_batch(o, "ard", only = "VS.R")), "VS.R")
   Sys.sleep(1.1)
@@ -141,7 +139,6 @@ test_that("the runner takes an output id as a program name, and --exclude too", 
   setwd(old)
   left <- grep("^Left out: ", out, value = TRUE)
   expect_length(left, 1L)
-  expect_match(left, "DM.R", fixed = TRUE)
   expect_match(left, "t_dm.R", fixed = TRUE)
   Sys.sleep(1.1)
   # a name that matches nothing (a typing slip) stops, naming it, in --only
@@ -150,7 +147,7 @@ test_that("the runner takes an output id as a program name, and --exclude too", 
   expect_false(b$ok)
   expect_true(any(grepl("The name 'NOPE' stands for no output.", b$output, fixed = TRUE)))
   Sys.sleep(1.1)
-  b <- run_batch(o, c("ard", "tfl"), exclude = "DMX")
+  b <- run_batch(o, "full", exclude = "DMX")
   expect_false(b$ok)
   expect_true(any(grepl("The name 'DMX' stands for no output.", b$output, fixed = TRUE)))
 })
@@ -212,10 +209,10 @@ test_that("the data each program reads, by the data catalog", {
   p <- use_imported_ard(p, "VS", "vs_cro.rds")
   d <- .batch_data_files(p)
   expect_identical(d[["programs/ard/DM.R"]], "data/adam/adsl.rds")
-  # a listing reads its dataset; a table's report program the study ARD
-  # (kept anyway), or the ARD taken in it reads
+  # a listing reads its dataset; a table's full program its ARD's data
+  # (PROTOTYPE), or the ARD taken in it reads
   expect_identical(d[["programs/tfl/L1.R"]], "data/adam/adae.rds")
-  expect_length(d[["programs/tfl/DM.R"]], 0L)
+  expect_identical(d[["programs/tfl/DM.R"]], "data/adam/adsl.rds")
   expect_identical(d[["programs/tfl/VS.R"]], "input/ard/vs_cro.rds")
   # batch.R carries them
   code <- batch_code(p)
@@ -235,7 +232,8 @@ test_that("an official run keeps the data its programs read, and the versions", 
   expect_identical(plan$path, "data/adam/adsl.rds")
   expect_identical(plan$size, file.size(adsl))
   expect_identical(plan$programs, "DM.R, VS.R")
-  expect_identical(nrow(batch_data_plan(o, "tfl")), 0L)
+  # (PROTOTYPE: the full programs make the ARD, so they read its data)
+  expect_identical(batch_data_plan(o, "full")$path, "data/adam/adsl.rds")
 
   # off by default: no data, but the R and package versions
   b <- run_batch(o, "ard")
@@ -410,12 +408,12 @@ test_that("two official runs of the sample compared after a data fix", {
   withr::local_options(tflplanner.home = home)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
   s <- suppressMessages(sample_study_copy())
-  b1 <- run_batch(s, c("ard", "tfl"), data = TRUE, only = "T-14-1-1")
+  b1 <- run_batch(s, "full", data = TRUE, only = "T-14-1-1")
   expect_true(file.exists(file.path(b1$batch, "programs", "study_helpers.R")))
   expect_true(file.exists(file.path(b1$batch, "output", "tfl", "report_status.csv")))
   Sys.sleep(1.1)
   # as it is: nothing changed
-  b2 <- run_batch(s, c("ard", "tfl"), data = TRUE, only = "T-14-1-1")
+  b2 <- run_batch(s, "full", data = TRUE, only = "T-14-1-1")
   r <- compare_batches(s, basename(b2$batch))
   expect_length(attr(r, "changed")$inputs, 0L)
   expect_length(attr(r, "changed")$outputs, 0L)
@@ -423,7 +421,7 @@ test_that("two official runs of the sample compared after a data fix", {
   # a data fix: that input, and the results that read it
   adsl <- file.path(s$path, "data", "adam", "adsl.rds")
   saveRDS(readRDS(adsl)[-1, ], adsl)
-  b3 <- run_batch(s, c("ard", "tfl"), data = TRUE, only = "T-14-1-1")
+  b3 <- run_batch(s, "full", data = TRUE, only = "T-14-1-1")
   r3 <- compare_batches(s, basename(b3$batch))
   expect_identical(attr(r3, "changed")$inputs, "data/adam/adsl.rds")
   # (the study ARD; a table's data is not saved per report, #405)
@@ -455,8 +453,9 @@ test_that("only declared reads are needs: a quoted id in a report's code is not"
   p <- set_step_code(p, "L1", "data",
     "data <- readRDS(file.path(path_ard, \"ard.rds\")) |> filter(output_id == \"DM\")")
   n <- .batch_report_needs(p)
-  # a report's own ARD (it has analyses); a listing with none reads none
-  expect_identical(n, list(DM = "DM", VS = "VS"))
+  # (PROTOTYPE: a report's own ARD is made in it, no need); a listing
+  # with none reads none
+  expect_length(n, 0L)
   expect_false("L1" %in% names(n))
   # a selected L1 without DM is not refused
   expect_identical(nrow(.batch_missing_needs(n, c("L1", "VS"))), 0L)
