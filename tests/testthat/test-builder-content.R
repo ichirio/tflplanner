@@ -285,7 +285,8 @@ test_that("a required card says Required; the arrow is the open state's; the sel
 
 test_that("the decimals' card: its heading, where they go, and plan_cells' lines lit with it", {
   skip_on_cran()
-  p <- sample_planner()
+  # (the report's own card: the sample's study standard has no plan_digits())
+  p <- .builder_item_write(sample_planner(), "T-14-1-1", "plan_digits", list(continuous = list(mean = 1L)))
   items <- builder_items(p, "T-14-1-1")
   h <- html(.table_cards(items[match("plan_digits", fns_of(items))]))
   expect_match(h, "rp-meaning\">Decimals and rounding<", fixed = TRUE)
@@ -397,11 +398,9 @@ test_that("a form of its own reads a check against the item's own value, as the 
   expect_length(r$check, 0L)
 })
 
-test_that("the rounding's choices say SAS, R, IEC 60559; the YAML keeps sas, r, iec60559 (#417)", {
-  h <- html(.rounding_field("n", "sas"))
-  expect_match(h, '<option value="sas" selected>SAS</option>', fixed = TRUE)
-  expect_match(h, '<option value="r">R</option>', fixed = TRUE)
-  expect_match(h, '<option value="iec60559">IEC 60559</option>', fixed = TRUE)
+test_that("the forced rounding says SAS or R; the YAML keeps sas, r (#417, canon 1.33)", {
+  expect_match(html(.rounding_field("n", "sas")), '<option value="sas" selected>SAS</option>', fixed = TRUE)
+  expect_match(html(.rounding_field("n", "r")), '<option value="r" selected>R</option>', fixed = TRUE)
 })
 
 test_that("an ordered field of several values is dragged to reorder (#417)", {

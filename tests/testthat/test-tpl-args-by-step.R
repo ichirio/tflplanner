@@ -131,7 +131,7 @@ test_that("T-14-1-1T in SAMPLE-01 has no empty required argument and its preview
   expect_false(identical(e$content, a$content))
 })
 
-test_that("the arguments are read where tflspec reads them: directly under template:, and a built-in template's ard: (#751 item 1)", {
+test_that("the arguments are read where tflspec reads them: directly under template:, and a built-in template's analysis: (#751 item 1)", {
   # (a series template: an argument directly under `template:` is one)
   t <- list(name = "s/x", continuous = "AGE", analysis = list(by = "TRT01A"))
   expect_identical(.tpl_args_of(t), list(continuous = "AGE", by = "TRT01A"))
@@ -145,9 +145,9 @@ test_that("the arguments are read where tflspec reads them: directly under templ
   expect_identical(.tpl_args_of(w), list(by = "TRT01A"))
   # (an empty map is no section for tflspec: an argument)
   expect_identical(.tpl_args_of(list(name = "s/x", content = list())), list(content = list()))
-  # (a built-in template: args:, then its ard: and content: parts; other keys are not read)
-  b <- list(name = "demog", args = list(by = "ARM"), ard = list(continuous = "AGE", by = "X"),
-            content = list(max_rows = 9L), analysis = list(categorical = "SEX"))
+  # (a built-in template: args:, then its analysis: and content: parts; other keys, the old ard: too, are not read)
+  b <- list(name = "demog", args = list(by = "ARM"), analysis = list(continuous = "AGE", by = "X"),
+            content = list(max_rows = 9L), ard = list(categorical = "SEX"))
   expect_identical(.tpl_args_of(b), list(by = "ARM", continuous = "AGE", max_rows = 9L))
 })
 

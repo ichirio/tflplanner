@@ -171,14 +171,14 @@ test_that("the adam_meta: block is put in place, before styles:, and taken out w
 test_that("study.yml's own settings replace a key tflspec wrote: quoted or not, with its lines under it", {
   f <- tempfile(fileext = ".yml")
   on.exit(unlink(f))
-  writeLines(c("study_id: S", "settings:", "  rounding: sas", "  'adam_levels': codelists",
+  writeLines(c("study_id: S", "settings:", "  output_path: output/tfl", "  'adam_levels': codelists",
                "  adam_levels_file:", "    - old.xml", "    - older.xml", "  style: standard",
                "keys:", "  id: USUBJID"), f)
   .study_yml_own_settings(f, c(adam_levels = "define_xml", adam_levels_file = "data/adam/define.xml"))
   y <- yaml::read_yaml(f)
   expect_identical(y$settings$adam_levels, "define_xml")
   expect_identical(y$settings$adam_levels_file, "data/adam/define.xml")
-  expect_identical(y$settings$rounding, "sas")
+  expect_identical(y$settings$output_path, "output/tfl")
   expect_identical(y$settings$style, "standard")
   expect_identical(y$keys$id, "USUBJID")
   expect_identical(sum(grepl("adam_levels:", readLines(f), fixed = TRUE)), 1L)

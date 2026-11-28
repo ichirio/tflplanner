@@ -91,7 +91,7 @@
 }
 
 # A report's packages of Suggests: its template's, its file's code (its
-# own `ard:`, its R items), its ARD analyses', its designed figure's
+# own `analysis:`, its R items), its ARD analyses', its designed figure's
 .report_needs <- function(p, output_id, templates = NULL) {
   o <- tryCatch(.code_spec(p)$outputs[[output_id]], error = function(e) NULL) %||%
     p$spec$outputs[[output_id]]

@@ -50,6 +50,9 @@
 .rp-badge-standards { background: #eef6ff; border-color: #cfe2ff; color: #1d4ed8; }
 .rp-badge-template { background: #f5f3ff; border-color: #ddd6fe; color: #6d28d9; }
 .rp-badge-ard { background: #fff7ed; border-color: #fed7aa; color: #9a3412; }
+.rp-badge-force { background: #f3f4f6; border-color: #9ca3af; color: #374151; }
+.rp-badge-force::before { content: '\\1F512'; margin-right: .2rem; font-size: 10px; }
+.rp-field-locked select.rp-locked { cursor: not-allowed; }
 .rp-card-stage { font-size: 10.5px; color: #9ca3af; margin-left: auto; white-space: nowrap; }
 .rp-card-stage + .rp-card-menu { margin-left: 0; }
 .rp-card-sep-note { color: #9ca3af; letter-spacing: 0; }

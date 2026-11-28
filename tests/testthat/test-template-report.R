@@ -47,11 +47,13 @@ test_that("a list argument reads and writes as lines of a small table", {
 })
 
 test_that("an argument's origin: the report's, the study standard's, the default", {
+  # (a study reference: sd_missing; the rounding is no reference but the
+  # study's force, canon 1.33)
   study <- list(defaults = list(content = list(
-    list(fn = "plan_digits", args = list(rounding = "sas")))))
-  prm <- list(name = "rounding", study = "plan_digits.rounding")
+    list(fn = "plan_cells", args = list(sd_missing = "-")))))
+  prm <- list(name = "sd_missing", study = "plan_cells.sd_missing")
   expect_identical(.tpl_arg_origin(study, prm, list())$from, "study")
-  expect_identical(.tpl_arg_origin(study, prm, list(rounding = "r"))$from, "own")
+  expect_identical(.tpl_arg_origin(study, prm, list(sd_missing = "NE"))$from, "own")
   expect_identical(.tpl_arg_origin(study, list(name = "x"), list())$from, "default")
 })
 
@@ -150,28 +152,29 @@ test_that("an argument tflspec filled from the study is the study standard's, wi
 
 test_that("plan_digits in a template report: a variable's decimals the report's own, the rounding every report's", {
   skip_on_cran()
-  # (summary: its plan_digits is the study standard's card; demog has no rounding argument now)
+  # (summary: no plan_digits of the study standard's -- the study's rounding
+  # is its force, not a card; demog has no rounding argument now)
   p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
   o <- tflspec::tfl_output("T-99", "table", common = list(population = "SAF"),
                            template = list(name = "summary",
                                          args = list(by = "TRT01A", continuous = "AGE", categorical = "SEX")))
   p <- .spec_add_output(p, o, population = "SAF")
-  it <- Filter(function(x) identical(x$fn, "plan_digits"), builder_items(p, "T-99"))[[1L]]
-  expect_identical(it$from, "defaults")
-  # a variable's decimals: this table's (the rounding stays the study's)
-  q <- .spec_set_item(p, "T-99", "plan_digits", c(it$args, list(AGE = 1L)), below_args = "rounding")
+  expect_length(Filter(function(x) identical(x$fn, "plan_digits"), builder_items(p, "T-99")), 0L)
+  # a variable's decimals: this table's (a rounding given stays the study's)
+  q <- .spec_set_item(p, "T-99", "plan_digits", list(AGE = 1L, rounding = "r"), below_args = "rounding")
   own <- Filter(function(x) identical(x$fn, "plan_digits"), q$spec$outputs[["T-99"]]$content)
   expect_length(own, 1L)
   expect_identical(own[[1L]]$args$AGE, 1L)
   expect_null(own[[1L]]$args$rounding)
   expect_identical(Filter(function(x) identical(x$fn, "plan_digits"), builder_items(q, "T-99"))[[1L]]$from, "own")
-  # the rounding: the study's defaults.yml, every report's -- not the report's file
+  # the rounding: the study's defaults.yml force:, every report's -- not the report's file
   r <- .spec_set_rounding(q, "r")
   expect_true(any(grepl("rounding: r", r$spec$text[["spec/defaults.yml"]], fixed = TRUE)))
+  expect_identical(r$spec$study$force$content[[1L]]$args$rounding, "r")
   expect_false(any(grepl("rounding", r$spec$text[[r$spec$where[["T-99"]]]], fixed = TRUE)))
-  # the field says so
+  # the field says so: the study standard, forced
   h <- as.character(.rounding_field("c", "r"))
-  expect_match(h, "Applies to every report", fixed = TRUE)
+  expect_match(h, "Study standard (forced)", fixed = TRUE)
 })
 
 test_that("a template report converted to code: its items on the usual cards, its program without the template", {

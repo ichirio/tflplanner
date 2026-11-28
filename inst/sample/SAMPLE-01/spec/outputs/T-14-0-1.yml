@@ -4,7 +4,7 @@ label: 'Study information: dictionary versions and the dates of the data (no ana
   set)'
 extends:
   - defaults
-ard:
+analysis:
   analyses:
     - id: INFO
       label: Study information

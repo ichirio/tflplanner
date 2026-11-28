@@ -173,19 +173,35 @@ test_that("plan_columns(): a width a column, the decimal alignment, the row titl
   expect_identical(nrow(sheet_rows(r0, "columns", "T-14-1-1")), 0L)
 })
 
-test_that("plan_digits()' rounding: a choice, the study's (written there)", {
+test_that("plan_digits()' rounding: the study's forced one, shown locked; the card writes no rounding (canon 1.33)", {
   skip_on_cran()
   h <- html(.rounding_field("d", "sas"))
-  expect_match(h, 'id="d__rounding"', fixed = TRUE)
-  for (v in c("sas", "r", "iec60559")) expect_match(h, sprintf('value="%s"', v), fixed = TRUE)
-  expect_match(h, "Study standard", fixed = TRUE)
+  # shown, not chosen: a disabled field with no input (nothing to read back)
+  expect_false(grepl('id="d__rounding"', h, fixed = TRUE))
+  expect_match(h, 'data-field="d__rounding"', fixed = TRUE)
+  expect_match(h, "rp-field-locked", fixed = TRUE)
+  expect_match(h, "disabled", fixed = TRUE)
+  expect_match(h, '<option value="sas" selected>SAS</option>', fixed = TRUE)
+  expect_false(grepl('value="r"', h, fixed = TRUE))
+  expect_match(h, 'data-from="force"', fixed = TRUE)
+  expect_match(h, ">Study standard (forced)<", fixed = TRUE)
+  expect_match(h, "Set on the Study tab", fixed = TRUE)
+  hj <- html(.rounding_field("d", "r", lang = "ja"))
+  expect_match(hj, "試験標準（強制）", fixed = TRUE)
+  expect_match(html(.rounding_field("d", NA)), "None forced", fixed = TRUE)
+  # the sample forces sas: the field says it
   p <- sample_planner()
+  expect_identical(.forced_rounding(p), "sas")
+  # a rounding the card's arguments carry is not written: not the
+  # report's, not the study's
   it <- item(builder_items(p, "T-14-1-1"), "plan_digits")
   args <- it$own_args %||% it$args
   args$rounding <- "r"
   q <- .builder_item_write(p, "T-14-1-1", "plan_digits", args)
-  expect_identical(unname(q$study[["rounding"]]), "r")
-  expect_identical(item(builder_items(q, "T-14-1-1"), "plan_digits")$args$rounding, "r")
+  expect_identical(.forced_rounding(q), "sas")
+  expect_identical(unname(q$study[["rounding"]]), "sas")
+  expect_null(item(builder_items(q, "T-14-1-1"), "plan_digits")$args$rounding)
+  expect_identical(q$spec$text[["spec/defaults.yml"]], p$spec$text[["spec/defaults.yml"]])
   expect_identical(tr("Rounding", "ja"), "丸め方 (rounding)")
 })
 

@@ -15,7 +15,7 @@ data:
   - id: adsl_enr_1
     from: ADSL
     population: ENR
-ard:
+analysis:
   analyses:
     - id: BIGN
       method: categorical
