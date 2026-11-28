@@ -133,18 +133,11 @@ test_that("the analysis form: a function needing a missing package is marked, ch
   }))
 })
 
-test_that("a template's packages: its own, through the template it is made from", {
-  tt <- data.frame(name = c("km", "km_survival", "co_km", "demog", "ancova"),
-                   from = c(NA, "km", "km_survival", NA, NA), stringsAsFactors = FALSE)
-  expect_identical(.template_needs("km_survival", tt), c("survival", "ggsurvfit"))
-  expect_identical(.template_needs("co_km", tt), c("survival", "ggsurvfit"))
-  expect_identical(.template_needs("ancova", tt), "emmeans")
-  expect_identical(.template_needs("demog", tt), character())
-  expect_identical(.template_needs(NA_character_, tt), character())
-  # the real catalog: tflspec's km variants
-  real <- tflspec::tfl_templates()
-  skip_if_not("km_cumulative" %in% real$name)
-  expect_true(all(c("survival", "ggsurvfit") %in% .template_needs("km_cumulative", real)))
+test_that("a template's packages: its own", {
+  expect_identical(.template_needs("km"), c("survival", "ggsurvfit"))
+  expect_identical(.template_needs("ancova"), "emmeans")
+  expect_identical(.template_needs("demog"), character())
+  expect_identical(.template_needs(NA_character_), character())
   # code that names a package, or a model's package
   expect_identical(.pkgs_in_code("fit <- mmrm::mmrm(AVAL ~ ARM, data = d)"), "mmrm")
   expect_identical(.pkgs_in_code("cardx::ard_regression(x, method = \"lmer\", package = \"mmrm\")"), "mmrm")
@@ -154,12 +147,10 @@ test_that("a template's packages: its own, through the template it is made from"
 
 test_that("a template report whose package is missing stops before it is run", {
   p <- add_output(add_output(new_planner(), "F1"), "T2")
-  p$spec <- list(outputs = list(F1 = list(template = list(name = "km_survival", args = list()))))
-  tt <- data.frame(name = c("km", "km_survival"), from = c(NA, "km"), stringsAsFactors = FALSE)
-  expect_true(all(c("survival", "ggsurvfit") %in% .report_needs(p, "F1", tt)))
-  expect_identical(.report_needs(p, "T2", tt), character())
+  p$spec <- list(outputs = list(F1 = list(template = list(name = "km", args = list()))))
+  expect_true(all(c("survival", "ggsurvfit") %in% .report_needs(p, "F1")))
+  expect_identical(.report_needs(p, "T2"), character())
   missing_pkgs("ggsurvfit")
-  testthat::local_mocked_bindings(tfl_templates = function(...) tt, .package = "tflspec")
   e <- tryCatch(.need_report_pkgs(p, c("F1", "T2")), error = function(e) e)
   expect_s3_class(e, "tflplanner_need_pkg")
   expect_identical(e$packages, "ggsurvfit")

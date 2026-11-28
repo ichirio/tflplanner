@@ -439,7 +439,7 @@ test_that("a template figure's preview draws the picture, says when the definiti
 })
 
 test_that("a template figure with a set: its preview and its expanded code are the set's subjects; a set tflspec cannot make them for is the pane's message, no R error (canon 11-15)", {
-  skip_if_not("km_survival" %in% tflspec::tfl_templates()$name)
+  skip_if_not("km" %in% tflspec::tfl_templates()$name)
   skip_if_not("study" %in% names(formals(tflspec::tfl_content_run)),
               "this tflspec's tfl_content_run() takes no study (tflspec A2-2)")
   id <- sample_for_add("FSJ")
@@ -463,13 +463,13 @@ test_that("a template figure with a set: its preview and its expanded code are t
     .package = "tflspec")
   shiny::testServer(server_for(id), {
     rv <- session$userData$rv
-    session$setInputs(add = 1, modal_type = "figure", modal_how = "template", modal_tpl_figure = "km_survival",
+    session$setInputs(add = 1, modal_type = "figure", modal_how = "template", modal_tpl_figure = "km",
                       modal_id = "SJ-1", modal_desc = "", modal_section = "",
-                      mtpl_km_survival___data_ds = "ADTTE", mtpl_km_survival___data_param = "TTSKIN",
-                      mtpl_km_survival__population = "SAF", mtpl_km_survival__by = "TRT01A")
+                      mtpl_km__param = "TTSKIN",
+                      mtpl_km__population = "SAF", mtpl_km__by = "TRT01A")
     suppressWarnings(suppressMessages(session$setInputs(add_ok = 1)))
     rid <- "F-SJ-1"
-    expect_identical(rv$p$spec$outputs[[rid]]$data$population, "SAF")
+    expect_identical(.o_population(rv$p$spec$outputs[[rid]]), "SAF")
     # (the result tabs as the browser has them: Report result selected)
     session$setInputs(target = rid, nav = "make", step = "content", content_nav = "content",
                       fig_right = "result")
@@ -690,8 +690,8 @@ test_that("the dialog shows a key argument open under the required ones, marked,
   shown <- watch_add()
   shiny::testServer(server_for(id), {
     session$setInputs(add = 1, modal_type = "table", modal_how = "template",
-                      modal_tpl_table = "ae_soc_pt", modal_id = "")
-    prm <- .tpl_shown(.tpl_params("ae_soc_pt"))
+                      modal_tpl_table = "ae_max_grade", modal_id = "")
+    prm <- .tpl_shown(.tpl_params("ae_max_grade"))
     top <- names(Filter(function(x) !isTRUE(x$required) && .tpl_is_key(x), prm))
     skip_if(!length(top), "this tflspec has no key tier")
     rest <- setdiff(names(Filter(function(x) !isTRUE(x$required), prm)), top)
@@ -700,8 +700,8 @@ test_that("the dialog shows a key argument open under the required ones, marked,
     expect_match(more, sprintf("More arguments (%d)", length(rest)), fixed = TRUE)
     fold <- sub("^.*<details", "<details", more)
     for (nm in top) {
-      expect_match(more, sprintf('id="mtpl_ae_soc_pt__%s"', nm), fixed = TRUE)
-      expect_false(grepl(sprintf('id="mtpl_ae_soc_pt__%s"', nm), fold, fixed = TRUE))
+      expect_match(more, sprintf('id="mtpl_ae_max_grade__%s"', nm), fixed = TRUE)
+      expect_false(grepl(sprintf('id="mtpl_ae_max_grade__%s"', nm), fold, fixed = TRUE))
     }
   })
 })
@@ -733,150 +733,6 @@ test_that("Add from a series template copies it into the study and says so", {
     expect_true("T-TC-2" %in% rv$p$outputs$output_id)
     new <- add_notes(shown)[seq_len(length(shown$notes) - n) + n]
     expect_false(any(grepl("Copied the template", new, fixed = TRUE)))
-  })
-})
-
-test_that("a KM template's data card: its button says what it does, an action, not a save (#754)", {
-  id <- sample_for_add("KMB")
-  shown <- watch_add()
-  shiny::testServer(server_for(id), {
-    rv <- session$userData$rv
-    o <- tflspec::tfl_output("F-KMB-1", "figure", label = "KM",
-                             template = list(name = "km_survival"),
-                             data = list(steps = .tpl_steps_from("ADTTE", NULL, "", "")))
-    rv$p <- .spec_add_output(rv$p, o, label = "KM")
-    session$setInputs(target = "F-KMB-1", nav = "make", step = "data")
-    session$flushReact()
-    h <- add_html(output$tpl_card_data$html)
-    expect_match(h, ">Match the analysis set</span></button>", fixed = TRUE)
-    expect_match(h, "Writes the report&#39;s data: steps from these fields", fixed = TRUE)
-    expect_false(grepl(">Apply</span></button>", h, fixed = TRUE))
-    expect_match(h, "the program keeps the set&#39;s subjects", fixed = TRUE)
-    # (the data: steps written, the set the report's data `population:` --
-    # no join step of it, the program keeps its subjects; no `common:`, canon 11-15)
-    session$setInputs(tpl_data_ds = "ADTTE", tpl_data_param = "", tpl_data_pop = "SAF",
-                      tpl_data_filter = "", tpl_data_apply = 1)
-    o <- rv$p$spec$outputs[["F-KMB-1"]]
-    f <- .tpl_steps_fields(o$data$steps)
-    expect_false(f$join)
-    expect_identical(vapply(o$data$steps, function(s) s$step, ""), "read")
-    expect_identical(o$data$population, "SAF")
-    # (the set on the report's data map, never `common:` -- A2-T)
-    expect_null(o$common)
-    expect_false(grepl("join", paste(rv$p$spec$text[["spec/outputs/F-KMB-1.yml"]], collapse = "\n"),
-                       fixed = TRUE))
-    # (the card says what keeps the subjects: the report's set, not a join)
-    h <- add_text(output$tpl_card_data$html)
-    expect_match(h, "Analysis set: SAF (", fixed = TRUE)
-    expect_match(h, "the report's set: the program keeps its subjects.", fixed = TRUE)
-    expect_false(grepl("(join)", h, fixed = TRUE))
-    expect_false(grepl("also have the analysis set's join", h, fixed = TRUE))
-  })
-})
-
-test_that("an old KM report with the set's join and `common: population` still reads its set; the card says the join, and Match takes it out (canon 11-15)", {
-  id <- sample_for_add("KMO")
-  shown <- watch_add()
-  shiny::testServer(server_for(id), {
-    rv <- session$userData$rv
-    pops <- rv$p$ard$populations
-    k <- match("SAF", pops$population_id)
-    skip_if(is.na(k), "the sample study has no SAF")
-    saf <- as.list(pops[k, intersect(c("population_id", "dataset", "where"), names(pops)), drop = FALSE])
-    # (as #868 and before wrote it: the set in `common:`, its join a step)
-    o <- tflspec::tfl_output("F-KMO-1", "figure", label = "KM", common = list(population = "SAF"),
-                             template = list(name = "km_survival"),
-                             data = list(steps = .tpl_steps_from("ADTTE", saf, "")))
-    rv$p <- .spec_add_output(rv$p, o, label = "KM", population = "SAF")
-    # (read as it is: not written again)
-    before <- rv$p$spec$text[["spec/outputs/F-KMO-1.yml"]]
-    expect_identical(.o_population(rv$p$spec$outputs[["F-KMO-1"]]), "SAF")
-    session$setInputs(target = "F-KMO-1", nav = "make", step = "data")
-    session$flushReact()
-    h <- add_text(output$tpl_card_data$html)
-    expect_identical(rv$p$spec$text[["spec/outputs/F-KMO-1.yml"]], before)
-    expect_true(.tpl_steps_fields(rv$p$spec$outputs[["F-KMO-1"]]$data$steps)$join)
-    expect_match(h, "Analysis set: SAF (", fixed = TRUE)
-    expect_match(h, "the report's set: the program keeps its subjects.", fixed = TRUE)
-    expect_match(h, "The steps also have the analysis set's join", fixed = TRUE)
-    expect_false(grepl("is not the analysis set's", h, fixed = TRUE))
-    # Match: the join taken out, the set on the data, `common:` gone
-    session$setInputs(tpl_data_ds = "ADTTE", tpl_data_param = "", tpl_data_pop = "SAF",
-                      tpl_data_filter = "", tpl_data_apply = 1)
-    o2 <- rv$p$spec$outputs[["F-KMO-1"]]
-    expect_false(.tpl_steps_fields(o2$data$steps)$join)
-    expect_identical(o2$data$population, "SAF")
-    expect_null(o2$common$population)
-    h <- add_text(output$tpl_card_data$html)
-    expect_false(grepl("The steps also have the analysis set's join", h, fixed = TRUE))
-  })
-})
-
-test_that("a KM template in the dialog: the report's set is the table's control, the study's sets only; Create writes the data's population, no common: and no join (#868)", {
-  skip_if_not("km_survival" %in% tflspec::tfl_templates()$name)
-  id <- sample_for_add("KMD")
-  shown <- watch_add()
-  shiny::testServer(server_for(id), {
-    rv <- session$userData$rv
-    session$setInputs(add = 1, modal_type = "figure", modal_how = "template",
-                      modal_tpl_figure = "km_survival", modal_id = "")
-    dlg <- add_html(add_modal(shown))
-    # (no control of its own, no flag choices)
-    expect_false(grepl("___data_pop", dlg, fixed = TRUE))
-    expect_false(grepl('value="flag:', dlg, fixed = TRUE))
-    # the control a table's report set has: its id, its label, the study's sets
-    sel_of <- function(html, input_id) {
-      m <- regmatches(html, regexpr(sprintf('(?s)<select id="%s".*?</select>', input_id), html, perl = TRUE))
-      expect_length(m, 1L)
-      v <- regmatches(m, gregexpr('value="[^"]*"', m))[[1L]]
-      sub('^value="([^"]*)"$', "\\1", v)
-    }
-    label_of <- function(html, input_id) {
-      at <- as.integer(regexpr(sprintf('for="%s"', input_id), html, fixed = TRUE))
-      expect_gt(at, 0L)
-      substr(html, at, at + 400L)
-    }
-    sets <- as.character(stats::na.omit(rv$p$ard$populations$population_id))
-    expect_setequal(sel_of(dlg, "mtpl_km_survival__population"), c("", sets))
-    expect_match(label_of(dlg, "mtpl_km_survival__population"), "This report(&#39;|')s population")
-    # (the table's: the same label and choices)
-    session$setInputs(modal_type = "table", modal_tpl_table = "demog")
-    req <- add_html(output$mtpl_demog___req_box$html)
-    expect_match(label_of(req, "mtpl_demog__population"), "This report(&#39;|')s population")
-    expect_setequal(sel_of(req, "mtpl_demog__population"), c("", sets))
-    # (ADSL's Y/N flags no set says: told under it, to be registered in the study)
-    fl <- .tpl_flags_undefined(.tpl_data_cols(rv$study$path, rv$p)[["ADSL"]], rv$p$ard$populations)
-    if (length(fl)) {
-      expect_match(dlg, "is registered as a study population (spec/data.yml populations) first", fixed = TRUE)
-    }
-    # Create: the set on the report's data, the steps the dataset's and its parameter's
-    session$setInputs(modal_type = "figure", modal_tpl_figure = "km_survival", modal_id = "KM-1",
-                      modal_desc = "", modal_section = "",
-                      mtpl_km_survival___data_ds = "ADTTE", mtpl_km_survival___data_param = "TTSKIN",
-                      mtpl_km_survival__population = "SAF", mtpl_km_survival__by = "TRT01A")
-    suppressMessages(session$setInputs(add_ok = 1))
-    o <- rv$p$spec$outputs[["F-KM-1"]]
-    expect_false(is.null(o))
-    expect_identical(o$data$population, "SAF")
-    expect_null(o$common$population)
-    expect_identical(vapply(o$data$steps, function(s) s$step, ""), c("read", "param"))
-    expect_null(o$template$args$population)
-    txt <- paste(rv$p$spec$text[["spec/outputs/F-KM-1.yml"]], collapse = "\n")
-    expect_false(grepl("common:", txt, fixed = TRUE))
-    expect_false(grepl("join", txt, fixed = TRUE))
-    # (the toc line's set, which the report list reads)
-    toc <- Filter(function(e) identical(e$id, "F-KM-1"), rv$p$spec$study$toc$outputs)
-    expect_identical(toc[[1L]]$population, "SAF")
-    # no set chosen: none written (a KM type may have none)
-    session$setInputs(add = 2, modal_type = "figure", modal_how = "template", modal_tpl_figure = "km_survival",
-                      modal_id = "KM-2", modal_desc = "", modal_section = "",
-                      mtpl_km_survival___data_ds = "ADTTE", mtpl_km_survival___data_param = "TTSKIN",
-                      mtpl_km_survival__population = "", mtpl_km_survival__by = "TRT01A")
-    suppressMessages(session$setInputs(add_ok = 2))
-    o2 <- rv$p$spec$outputs[["F-KM-2"]]
-    expect_false(is.null(o2))
-    expect_null(o2$data$population)
-    expect_null(o2$common$population)
   })
 })
 
@@ -921,55 +777,20 @@ test_that("Create for a figure template with a shown `population`: the set on th
   })
 })
 
-test_that("a switch to a KM type writes no join: the report's set goes on its data, the dialog says so (canon 11-15)", {
-  skip_if_not("km_survival" %in% tflspec::tfl_templates()$name)
-  id <- sample_for_add("KMS")
-  shown <- watch_add()
-  shiny::testServer(server_for(id), {
-    rv <- session$userData$rv
-    # (the layout `km`: its analysis set a shown argument)
-    session$setInputs(add = 1, modal_type = "figure", modal_how = "template", modal_tpl_figure = "km",
-                      modal_id = "KS-1", modal_desc = "", modal_section = "",
-                      mtpl_km__by = "TRT01A", mtpl_km__param = "OS", mtpl_km__population = "SAF")
-    suppressWarnings(suppressMessages(session$setInputs(add_ok = 1)))
-    expect_identical(.tpl_of(rv$p, "F-KS-1")$name, "km")
-    expect_identical(.o_population(rv$p$spec$outputs[["F-KS-1"]]), "SAF")
-    session$setInputs(target = "F-KS-1", nav = "make", step = "content", content_nav = "content")
-    session$setInputs(tpl_switch = "km_survival")
-    dlg <- add_text(add_modal(shown))
-    expect_match(dlg, "To the report's data: steps: param", fixed = TRUE)
-    expect_match(dlg, "Analysis set SAF: the report's, kept", fixed = TRUE)
-    expect_false(grepl("steps: param, population", dlg, fixed = TRUE))
-    expect_false(grepl("Arguments dropped:[^.]*population", dlg))
-    suppressWarnings(suppressMessages(session$setInputs(tpl_switch_ok = 1)))
-    o <- rv$p$spec$outputs[["F-KS-1"]]
-    expect_identical(.tpl_of(rv$p, "F-KS-1")$name, "km_survival")
-    expect_identical(vapply(o$data$steps, function(s) s$step, ""), c("read", "param"))
-    expect_identical(o$data$population, "SAF")
-    expect_null(o$common$population)
-    expect_null(o$template$args$population)
-    txt <- paste(rv$p$spec$text[["spec/outputs/F-KS-1.yml"]], collapse = "\n")
-    expect_false(grepl("join", txt, fixed = TRUE))
-    expect_false(grepl("common:", txt, fixed = TRUE))
-    toc <- Filter(function(e) identical(e$id, "F-KS-1"), rv$p$spec$study$toc$outputs)
-    expect_identical(toc[[1L]]$population, "SAF")
-  })
-})
-
-test_that("a switch from a KM type (its set on its data) to forest_hr: the report's set is forest_hr's `population` argument too, its card has it (review M12)", {
-  skip_if_not(all(c("km_survival", "forest_hr") %in% tflspec::tfl_templates()$name))
+test_that("a switch from km (its set on its data) to forest_hr: the report's set is forest_hr's `population` argument too, its card has it (review M12)", {
+  skip_if_not(all(c("km", "forest_hr") %in% tflspec::tfl_templates()$name))
   skip_if_not(.tpl_pop_is_arg(.tpl_params("forest_hr")), "forest_hr takes no set argument")
   id <- sample_for_add("KMF")
   shown <- watch_add()
   shiny::testServer(server_for(id), {
     rv <- session$userData$rv
-    session$setInputs(add = 1, modal_type = "figure", modal_how = "template", modal_tpl_figure = "km_survival",
+    session$setInputs(add = 1, modal_type = "figure", modal_how = "template", modal_tpl_figure = "km",
                       modal_id = "KF-1", modal_desc = "", modal_section = "",
-                      mtpl_km_survival___data_ds = "ADTTE", mtpl_km_survival___data_param = "TTSKIN",
-                      mtpl_km_survival__population = "SAF", mtpl_km_survival__by = "TRT01A")
+                      mtpl_km__param = "TTSKIN",
+                      mtpl_km__population = "SAF", mtpl_km__by = "TRT01A")
     suppressWarnings(suppressMessages(session$setInputs(add_ok = 1)))
     rid <- "F-KF-1"
-    expect_identical(rv$p$spec$outputs[[rid]]$data$population, "SAF")
+    expect_identical(.o_population(rv$p$spec$outputs[[rid]]), "SAF")
     expect_null(.tpl_of(rv$p, rid)$args$population)
     session$setInputs(target = rid, nav = "make", step = "content", content_nav = "content")
     session$setInputs(tpl_switch = "forest_hr")
@@ -1026,7 +847,7 @@ test_that("the dialog has one control for the report's set on every figure templ
   shiny::testServer(server_for(id), {
     rv <- session$userData$rv
     figs <- .tpl_list("figure")$name
-    want <- intersect(c("km_survival", "forest_hr", "tflspec_v1/forest_hr", "tflspec_v1/km_simple"), figs)
+    want <- intersect(c("km", "forest_hr", "tflspec_v1/forest_hr", "tflspec_v1/km_simple"), figs)
     skip_if(!length(want), "no figure template to look at")
     fl <- .tpl_flags_undefined(.tpl_data_cols(rv$study$path, rv$p)[["ADSL"]], rv$p$ard$populations)
     for (i in seq_along(want)) {

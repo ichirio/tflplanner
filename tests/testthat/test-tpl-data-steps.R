@@ -1,14 +1,11 @@
-# A template whose data stage is the report's (a KM type): the card's
-# data fields and the report's `data:` steps (#483)
+# The report's `data:` steps and the card's data fields (#483)
 
-test_that("the card hides the parameters the template takes from the study standard", {
-  skip_if_not("km_survival" %in% tflspec::tfl_templates()$name)
-  prm <- .tpl_params("km_survival")
-  expect_true(.tpl_own_data(prm))
+test_that("km shows its data stage and its look: none of its parameters is hidden", {
+  prm <- .tpl_params("km")
+  expect_false(.tpl_own_data(prm))
   shown <- names(.tpl_shown(prm))
-  expect_false(any(c("population", "data", "param", "where", "event", "theme") %in% shown))
+  expect_true(all(c("population", "data", "param", "where", "event", "theme") %in% shown))
   expect_true(all(c("by", "time", "censor", "time_unit") %in% shown))
-  expect_false(.tpl_own_data(.tpl_params("km")))
 })
 
 test_that("the fields write the steps, and read them back", {
@@ -36,13 +33,11 @@ test_that("steps the fields cannot say are not taken apart", {
   expect_false(.tpl_steps_fields(st2)$fields)
 })
 
-test_that("a KM type report with the card's steps resolves", {
-  skip_if_not("km_survival" %in% tflspec::tfl_templates()$name)
+test_that("a km report with the card's steps resolves", {
   s <- tflspec::tfl_read_study_spec(system.file("extdata", "spec-yaml", package = "tflspec"))
   pop <- list(population_id = "SAF", dataset = "ADSL", where = "SAFFL == \"Y\"")
   o <- tflspec::tfl_output("F-9", "figure", extends = "none",
-                           template = list(name = "km_survival", args = list(by = "TRT01A")))
-  expect_error(tflspec::tfl_resolve_output(o, s), "data:")
+                           template = list(name = "km", args = list(by = "TRT01A")))
   o$data <- list(steps = .tpl_steps_from("ADTTE", pop, "PFS"))
   expect_true(attr(tflspec::tfl_resolve_output(o, s), "template")$ok)
 })
@@ -60,16 +55,15 @@ test_that("a join no longer the analysis set's is told", {
 })
 
 test_that("the study's treatment is the `by`'s suggestion, not its value, and ADSL's flags no population says are found (to be told, #868)", {
-  skip_if_not("km_survival" %in% tflspec::tfl_templates()$name)
   study <- list(study = list(settings = list(treatment = "TRT01P")))
-  prm <- .tpl_params("km_survival")
+  prm <- .tpl_params("km")
   # (`by` is required with no default and no study source: the study's
   # treatment is the planner's suggestion, written only when picked --
   # PRINCIPLES 1.14-1.16; empty, it is missing, study or not)
   expect_null(.tpl_study_value(study, prm$by))
-  expect_identical(.tpl_suggest("km_survival", "by", "TRT01P", study = study), "TRT01P")
-  expect_true("by" %in% .tpl_missing("km_survival", list()))
-  expect_true("by" %in% .tpl_missing("km_survival", list(), study))
+  expect_identical(.tpl_suggest("km", "by", "TRT01P", study = study), "TRT01P")
+  expect_true("by" %in% .tpl_missing("km", list()))
+  expect_true("by" %in% .tpl_missing("km", list(), study))
   adsl <- data.frame(SAFFL = c("Y", "N"), ITTFL = c("Y", "Y"), EFFFL = c("N", ""),
                      TRTFL = c("A", "B"), AGE = 1:2)
   pops <- data.frame(population_id = "SAF", dataset = "ADSL", where = "SAFFL == \"Y\"")
@@ -77,22 +71,17 @@ test_that("the study's treatment is the `by`'s suggestion, not its value, and AD
   expect_identical(.tpl_flags_undefined(NULL), character())
 })
 
-test_that("a KM type's analysis set is asked as the report's set, not an argument, and may be left out (#868)", {
-  skip_if_not("km_survival" %in% tflspec::tfl_templates()$name)
-  prm <- .tpl_params("km_survival")
+test_that("km's analysis set is asked as the report's set, not an argument, and may be left out (#868)", {
+  prm <- .tpl_params("km")
   expect_true(.tpl_asks_report_pop(prm))
   expect_false(.tpl_pop_of_report(prm))
-  # (every template has the one control; the layout `km` takes the set as a
-  # shown argument too: the setter, .write_report_population(), writes
-  # it with the report's set -- not the dialog's arguments; review H5)
-  expect_true(.tpl_asks_report_pop(.tpl_params("km")))
+  # (every template has the one control; km takes the set as a shown
+  # argument: the setter, .write_report_population(), writes it with the
+  # report's set -- not the dialog's arguments; review H5)
   a <- .tpl_dialog_args(prm, list(population = "SAF", by = "TRT01A"))
   expect_null(attr(a, "missing"))
-  expect_identical(attr(a, "population"), "SAF")
-  expect_null(a$population)
   b <- .tpl_dialog_args(prm, list(population = "", by = "TRT01A"))
   expect_null(attr(b, "missing"))
-  expect_null(attr(b, "population"))
 })
 
 test_that("the report's set control is for every template; a shown `population` is no field of its own, it is written as the argument too (#868)", {

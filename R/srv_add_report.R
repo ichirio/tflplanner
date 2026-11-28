@@ -474,15 +474,12 @@
       if (ok) "false" else "true")))
   })
   # the report head's mark of the template: "Template: demog (summary)";
-  # a variant "demog_jp (a variant of demog)" when tflspec tells the base
   tpl_head_link <- function(id) {
     tp <- .tpl_of(rv$p, id)
     if (is.null(tp)) return(NULL)
     info <- tryCatch(tflspec::tfl_templates(), error = function(e) NULL)
     row <- if (!is.null(info)) info[info$name == tp$name, , drop = FALSE]
-    base <- if (!is.null(row) && nrow(row) && "base" %in% names(row)) row$base[1L] else NA
-    extra <- if (length(base) && !is.na(base) && nzchar(base)) sprintf(t("a variant of %s"), base) else
-      if (!is.null(row) && nrow(row) && "layout" %in% names(row)) row$layout[1L] else NA
+    extra <- if (!is.null(row) && nrow(row) && "layout" %in% names(row)) row$layout[1L] else NA
     shiny::tags$a(
       href = "#", class = "small",
       onclick = "Shiny.setInputValue('tpl_goto_card', Math.random(), {priority: 'event'}); return false;",
@@ -1235,9 +1232,7 @@
           shiny::tags$ul(
             class = "dropdown-menu dropdown-menu-end",
             shiny::tags$li(shiny::tags$a(class = "dropdown-item disabled", href = "#",
-                                         t("Save as a template ..."))),
-            shiny::tags$li(shiny::tags$a(class = "dropdown-item disabled", href = "#",
-                                         t("Make a variant ..."))))),
+                                         t("Save as a template ..."))))),
         if (nzchar(.tpl_desc_of(tp$name))) shiny::div(class = "small text-muted w-100",
                                                       t(.tpl_desc_of(tp$name))),
         head_missing, head_extra)))

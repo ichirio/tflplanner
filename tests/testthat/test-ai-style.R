@@ -63,7 +63,7 @@ write_learned <- function(dir) {
     "  demog:",
     "    n_form: {value: \"N = xx\", seen: 3, of: 4}",
     "    zero: {value: \"-\", seen: 1, of: 4}",
-    "  ae_soc_pt:",
+    "  hierarchical:",
     "    first_row: {value: \"Any TEAE\", seen: 2, of: 2}"), f)
   f
 }
@@ -83,7 +83,7 @@ test_that("the result is set against the standard, ticked lines adopted into the
   ticks <- .style_default_ticks(d)
   expect_true(ticks[at("all", "font")])            # new
   expect_true(ticks[at("demog", "n_form")])        # differs
-  expect_true(ticks[at("ae_soc_pt", "first_row")]) # new
+  expect_true(ticks[at("hierarchical", "first_row")]) # new
   expect_false(ticks[at("all", "stub_heading")])   # same
   expect_false(ticks[at("demog", "zero")])         # by hand
   expect_false(any(ticks[d$status == "not learned"]))

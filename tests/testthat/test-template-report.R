@@ -211,7 +211,7 @@ test_that("the step an argument is drawn in: the table, the name's default, else
   expect_identical(.tpl_arg_section(tab$template[1L], tab$argument[1L]), tab$section[1L])
   i <- which(tab$argument == "param_order")[1L]
   expect_identical(.tpl_arg_section(tab$template[i], "param_order"), "content")
-  # not in the table (a company template, a variant): by the name
+  # not in the table (a company template): by the name
   for (a in c("population", "subset", "where", "data", "param", "paramcd")) {
     expect_identical(.tpl_arg_section("company_tpl", a), "data")
   }

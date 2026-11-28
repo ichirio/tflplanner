@@ -42,9 +42,7 @@
 # ---- what needs which package ------------------------------------------------
 
 # The templates whose programs call a package of Suggests (tflspec's
-# templates do not declare their packages: kept here).  A template made
-# from another (`from` in tflspec::tfl_templates(): km_survival from km, a
-# company's variant) needs what that one needs.
+# templates do not declare their packages: kept here).
 .template_pkgs <- list(
   km = c("survival", "ggsurvfit"),
   km_table = "survival",
@@ -76,23 +74,15 @@
   unique(c(own, .pkgs_in_code(fn)))
 }
 
-# A template's packages, through the templates it is made from
-.template_needs <- function(name, templates = NULL) {
-  templates <- templates %||% tryCatch(tflspec::tfl_templates(), error = function(e) NULL)
-  out <- character()
-  seen <- character()
-  while (length(name) == 1L && !is.na(name) && nzchar(name) && !name %in% seen) {
-    seen <- c(seen, name)
-    out <- c(out, .template_pkgs[[name]])
-    k <- if (is.data.frame(templates)) match(name, templates$name) else NA_integer_
-    name <- if (is.na(k)) NA_character_ else templates$from[k]
-  }
-  unique(out)
+# A template's packages
+.template_needs <- function(name) {
+  if (length(name) != 1L || is.na(name) || !nzchar(name)) return(character())
+  unique(.template_pkgs[[name]])
 }
 
 # A report's packages of Suggests: its template's, its file's code (its
 # own `ard:`, its R items), its ARD analyses', its designed figure's
-.report_needs <- function(p, output_id, templates = NULL) {
+.report_needs <- function(p, output_id) {
   o <- tryCatch(.code_spec(p)$outputs[[output_id]], error = function(e) NULL) %||%
     p$spec$outputs[[output_id]]
   tpl <- if (is.list(o$template)) as.character(o$template$name %||% NA_character_) else NA_character_
@@ -102,7 +92,7 @@
     if (is.null(d)) character() else attr(tflspec::tfl_fig_design_code(
       d, output_id, setup = TRUE, save = FALSE), "libs")
   }, error = function(e) character())
-  unique(c(.template_needs(tpl, templates),
+  unique(c(.template_needs(tpl),
            if (!is.null(o)) .pkgs_in_code(tryCatch(deparse(unclass(o)), error = function(e) "")),
            if (NROW(an)) .pkgs_in_code(c(an$method, an$args, an$code)),
            intersect(fig, .code_pkgs)))
@@ -112,9 +102,8 @@
 # the reports and the packages
 .need_report_pkgs <- function(p, output_ids) {
   if (!length(output_ids)) return(invisible(TRUE))
-  tt <- tryCatch(tflspec::tfl_templates(), error = function(e) NULL)
   needs <- lapply(stats::setNames(output_ids, output_ids), function(id)
-    tryCatch(.report_needs(p, id, tt), error = function(e) character()))
+    tryCatch(.report_needs(p, id), error = function(e) character()))
   all <- unique(unlist(needs))
   miss <- all[!.pkg_installed(all)]
   if (!length(miss)) return(invisible(TRUE))
