@@ -3,11 +3,20 @@ kind: table
 label: Subject disposition
 extends:
   - defaults
+codelists:
+  TRT01A:
+    - value: Drug X
+    - value: Control
+  EOSSTT:
+    - value: ONGOING
+      label: Ongoing (in follow-up)
+    - value: DISCONTINUED
+      label: Discontinued
 data:
   - id: adsl_saf
     from: ADSL
     population: SAF
-ard:
+analysis:
   analyses:
     - id: BIGN
       method: categorical
@@ -27,15 +36,6 @@ ard:
         - 'n'
         - p
       purpose: PRIMARY OUTCOME MEASURE
-codelists:
-  TRT01A:
-    - value: Drug X
-    - value: Control
-  EOSSTT:
-    - value: ONGOING
-      label: Ongoing (in follow-up)
-    - value: DISCONTINUED
-      label: Discontinued
 content:
   - table_plan:
       cols: TRT01A

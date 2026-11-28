@@ -1,6 +1,7 @@
 id: F-14-2-3
 kind: figure
 label: KM curves of the time to first skin disorder (designed)
+template: km_simple
 extends:
   - defaults
 data:
@@ -78,7 +79,6 @@ page:
     orientation: landscape
   report:
     ard_source: table:T-14-2-2
-template: km_simple
 plot:
   x_label: Time (Days)
   y_label: Probability of No Skin Disorder

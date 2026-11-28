@@ -134,22 +134,17 @@ builder_code_map <- function(lines, items) {
 # One item of a table written into the report's YAML: the `k`-th item of
 # `fn` given these arguments -- its whole arguments, as the card says them
 # (.spec_set_item(): the report's own layer holds what differs from the
-# layers below).  plan_digits()' rounding is the study's, one for every
-# report: it stays the layers', and a new one is the study's rounding.
+# layers below).  plan_digits()' rounding is the study's, forced on every
+# report (defaults.yml `force:`, set on the Study tab, canon 1.33): the
+# card never writes it -- it stays the layers' -- nor the study's.
 .builder_item_write <- function(x, output_id, fn, args, k = 1L) {
   if (identical(fn, "plan_nest")) {
     its <- builder_items(x, output_id)
     x <- .spec_set_item(x, output_id, fn, args, k)
     return(.nest_order_kept(x, output_id, its))
   }
-  rd <- if (identical(fn, "plan_digits")) args$rounding
-  x <- .spec_set_item(x, output_id, fn, args, k,
-                      below_args = if (identical(fn, "plan_digits")) "rounding" else character())
-  if (!is.null(rd) && !inherits(rd, "tfl_r") &&
-      !identical(as.character(rd), unname(x$study[["rounding"]] %||% NA_character_))) {
-    x <- .spec_set_rounding(x, as.character(rd))
-  }
-  x
+  .spec_set_item(x, output_id, fn, args, k,
+                 below_args = if (identical(fn, "plan_digits")) "rounding" else character())
 }
 
 # ... and the report's own `k`-th item of `fn` taken away: its layers' apply

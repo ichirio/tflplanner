@@ -184,7 +184,7 @@
     p0 <- shiny::isolate(rv$p)
     hd <- .builder_args(guarded(builder_items(p0, id, m)) %||% list(), "plan_col_header")
     bform$hdr <- hdr_uid(header_read(.header_df(hd$header), st$key))
-    bform$hdr_n <- .header_n_text(hd$values)
+    bform$hdr_n <- .col_header_values_text(hd$values)
     hdr_ver(shiny::isolate(hdr_ver()) + 1L)
     v <- st$variables
     bs <- builder_stats()
@@ -436,10 +436,10 @@
     bodies <- list(
       table_plan = tp_body, plan_cells = cells_body, plan_col_header = hdr_body,
       plan_total = shiny::uiOutput(bid("total_ui")),
-      # plan_digits(): the rounding (the study's: every report's) and the
-      # statistics' decimals
+      # plan_digits(): the rounding (the study's, forced on every report:
+      # shown locked) and the statistics' decimals
       plan_digits = if (has("plan_digits")) shiny::tagList(
-        .rounding_field(card_id("plan_digits"), shiny::isolate(rv$p$study[["rounding"]]), lang),
+        .rounding_field(card_id("plan_digits"), .forced_rounding(shiny::isolate(rv$p)), lang),
         if (cont) digits_ui),
       plan_labels = labels_body,
       # plan_levels(): each variable's values in order (dragged), its empty
@@ -1055,21 +1055,6 @@
       if (!was_present || !identical(fresh$from, it$from)) rv$bver <- rv$bver + 1L
     }
   }), ignoreInit = TRUE)
-  # plan_digits()' rounding: the study's (every report's), written into
-  # the study's defaults.yml
-  shiny::observeEvent({
-    bform_drawn()
-    input[[paste0(card_id("plan_digits"), "__rounding")]]
-  }, {
-    v <- input[[paste0(card_id("plan_digits"), "__rounding")]]
-    shiny::req(!is.null(v), nzchar(v), identical(bform$id, bcur()),
-               is.null(.part_of(bform$id)))
-    if (identical(unname(rv$p$study[["rounding"]]), v)) return()
-    p2 <- guarded(.spec_set_rounding(rv$p, v))
-    if (is.null(p2)) return()
-    rv$p <- p2
-    rv$btouched <- TRUE
-  }, ignoreInit = TRUE)
   # plan_levels(.drop_empty = ): a variable's values with no record hidden
   # (variables$empty_levels "hide") or shown
   shiny::observe(builder_guard({

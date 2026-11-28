@@ -106,8 +106,8 @@
 }
 
 # The study keys a report's program is written from (#738): the planner's
-# own study keys, .study_keys -- rounding (builder_content_code.R, the
-# digits' source), output_path (programs.R, the RTF's place), program_dir.
+# own study keys, .study_keys -- rounding (the study's force, defaults.yml
+# `force:`), output_path (programs.R, the RTF's place), program_dir.
 # The study's own settings (treatment, sd_missing, adam_levels) reach a
 # program through the spec's study.yml settings: (kept whole below).
 .program_key_study <- function(study) {

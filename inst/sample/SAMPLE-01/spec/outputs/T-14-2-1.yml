@@ -3,6 +3,10 @@ kind: table
 label: 'Systolic blood pressure: change from baseline at week 24 (cycle 9 day 1)'
 extends:
   - defaults
+codelists:
+  TRT01A:
+    - value: Drug X
+    - value: Control
 data:
   - id: adsl_saf
     from: ADSL
@@ -11,7 +15,7 @@ data:
     from: ADVS
     subjects_in: adsl_saf
     where: !r PARAMCD == "SYSBP" & AVISIT == "CYCLE 9 DAY 1"
-ard:
+analysis:
   analyses:
     - id: BIGN
       method: categorical
@@ -40,10 +44,6 @@ ard:
         - min
         - max
       purpose: PRIMARY OUTCOME MEASURE
-codelists:
-  TRT01A:
-    - value: Drug X
-    - value: Control
 content:
   - table_plan:
       cols: TRT01A

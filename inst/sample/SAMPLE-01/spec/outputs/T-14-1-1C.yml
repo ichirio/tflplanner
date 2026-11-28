@@ -1,15 +1,21 @@
 id: T-14-1-1C
 kind: table
 label: Demographics (a code SPEC)
-common:
-  treatment: TRT01A
 extends:
   - defaults
+codelists:
+  TRT01A:
+    - value: Drug X
+      label: Drug X 200 mg
+    - value: Control
+      label: Control 100 mg
+common:
+  treatment: TRT01A
 data:
   - id: adsl_sub
     from: ADSL
     population: SAF
-ard:
+analysis:
   analyses:
     - id: BIGN
       method: cards::ard_tabulate
@@ -118,12 +124,6 @@ ard:
         - p=xx.x%
         - AGE:mean=1
         - AGE:sd=2
-codelists:
-  TRT01A:
-    - value: Drug X
-      label: Drug X 200 mg
-    - value: Control
-      label: Control 100 mg
 content:
   - table_plan:
       cols: TRT01A

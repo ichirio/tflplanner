@@ -187,7 +187,7 @@
   dir.create(file.path(d, "spec"), recursive = TRUE)
   on.exit(unlink(d, recursive = TRUE), add = TRUE)
   writeLines(c("# defaults", block), file.path(d, "spec", "defaults.yml"), useBytes = TRUE)
-  tflspec::tfl_read_study_spec(d)
+  .study_spec_read(d)
 }
 
 # The lines of the top-level block `key` of `lines` (a YAML file's), the

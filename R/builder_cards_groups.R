@@ -139,6 +139,7 @@ from_badge <- function(from, lang = "en", own = NULL) {
   name <- if (grepl(":", from, fixed = TRUE)) sub("^[^:]*:", "", from) else NULL
   text <- switch(kind,
                  defaults = t("Study standard"),
+                 force = t("Study standard (forced)"),
                  standards = t("Company standard"),
                  pattern = paste(t("Pattern"), name),
                  template = t("Template"),

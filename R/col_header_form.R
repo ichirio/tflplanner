@@ -200,23 +200,23 @@ header_write <- function(lines) {
 # The tokens a header cell of this table may carry: the column's keys
 # ({col}, and {col1} {col2} ... for several), the population at each depth
 # ({n}, {n1} ...), the total over the cell's columns ({n:sum}), and {N} when
-# the table's header_n names one
-header_token_choices <- function(keys, header_n = NA) {
+# the table's col_header_values (`values`) names one
+header_token_choices <- function(keys, values = NA) {
   k <- length(keys)
   depth <- if (k > 1L) seq_len(k) else integer()
   c("{col}", if (length(depth)) paste0("{col", depth, "}"),
     "{n}", if (length(depth)) paste0("{n", depth, "}"), "{n:sum}",
-    if (length(header_n) == 1L && !is.na(header_n) && grepl("\\bN\\s*=", header_n)) "{N}")
+    if (length(values) == 1L && !is.na(values) && grepl("\\bN\\s*=", values)) "{N}")
 }
 
 # What the header's {n} counts, as choices: the populations the ARD states
 # (`cand`: rtfreporter::plan_n_candidates()), each with its values; the
-# value of each is what tables$header_n holds.  `now`: header_n as it is.
+# value of each is what tables$col_header_values holds.  `now`: col_header_values as it is.
 # One population (or two with the same numbers): it alone, chosen, and
-# header_n as it is; two that differ: each, both, nothing chosen unless
-# header_n says, and a warning then; no preview (the builder needs an
+# col_header_values as it is; two that differ: each, both, nothing chosen unless
+# col_header_values says, and a warning then; no preview (the builder needs an
 # ARD, so only when it could not be made): the three in words.
-header_n_choices <- function(cand, keys, now = NA_character_, tr = function(x) x) {
+col_header_values_choices <- function(cand, keys, now = NA_character_, tr = function(x) x) {
   keep <- if (is.na(now %||% NA_character_)) "" else now
   by <- paste(keys, collapse = " \u00d7 ")
   both <- "n = page | N = table"
@@ -232,7 +232,7 @@ header_n_choices <- function(cand, keys, now = NA_character_, tr = function(x) x
     if (length(v) > 4L) v <- c(utils::head(v, 4L), "\u2026")
     paste(v, collapse = " / ")
   }
-  # header_n as it is, when it is none of the choices (n = table, N =
+  # col_header_values as it is, when it is none of the choices (n = table, N =
   # table alone): a choice of its own, kept -- not lost by the form
   other <- function(ch) {
     if (!nzchar(keep) || keep %in% ch) return(ch)

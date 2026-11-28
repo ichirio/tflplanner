@@ -4,11 +4,25 @@ label: 'Age group and sex: the ARD keeps cards'' default n, N and p; the table p
   n (%) and leaves the N rows out'
 extends:
   - defaults
+codelists:
+  TRT01A:
+    - value: Drug X
+    - value: Control
+  SEX:
+    - value: F
+      label: Female
+    - value: M
+      label: Male
+  AGEGR1:
+    - value: <65
+      label: <65 years
+    - value: '>=65'
+      label: '>=65 years'
 data:
   - id: adsl_saf
     from: ADSL
     population: SAF
-ard:
+analysis:
   analyses:
     - id: BIGN
       method: categorical
@@ -26,20 +40,6 @@ ard:
         - AGEGR1
         - SEX
       purpose: PRIMARY OUTCOME MEASURE
-codelists:
-  TRT01A:
-    - value: Drug X
-    - value: Control
-  SEX:
-    - value: F
-      label: Female
-    - value: M
-      label: Male
-  AGEGR1:
-    - value: <65
-      label: <65 years
-    - value: '>=65'
-      label: '>=65 years'
 content:
   - table_plan:
       cols: TRT01A

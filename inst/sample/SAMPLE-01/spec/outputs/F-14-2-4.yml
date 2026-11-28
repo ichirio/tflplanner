@@ -2,72 +2,23 @@ id: F-14-2-4
 kind: figure
 label: Hazard ratio of the time to first skin disorder by subgroup (forest plot, its
   own ARD)
+template: forest_hr
 extends:
   - defaults
-ard:
-  analysis_data:
-    - id: adtte_saf_ttskin
-      from: ADTTE
-      population: SAF
-      where: !r PARAMCD == "TTSKIN"
-      add:
-        - SEX
-        - AGEGR1
-    - id: adsl_saf
-      from: ADSL
-  analyses:
-    - id: HR
-      label: Hazard ratio, all subjects
-      method: custom
-      data: adtte_saf_ttskin
-      code: !r |-
-        cox <- survival::coxph(survival::Surv(AVAL, CNSR == 0) ~ TRT01A, data = data)
-        cardx::ard_regression(cox, exponentiate = TRUE)
-      purpose: SECONDARY OUTCOME MEASURE
-    - id: HR_SEX
-      label: Hazard ratio by SEX
-      method: custom
-      data: adtte_saf_ttskin
-      code: !r |-
-        cards::ard_strata(
-          data,
-          .strata = SEX,
-          .f = ~ tryCatch(
-            cardx::ard_regression(
-              survival::coxph(survival::Surv(AVAL, CNSR == 0) ~ TRT01A, data = .x),
-              exponentiate = TRUE
-            ),
-            error = function(e) {
-              warning("HR_SEX: the Cox model of a subgroup failed (",
-                      conditionMessage(e), "); the figure prints its hazard ratio NE",
-                      call. = FALSE)
-              NULL
-            }
-          )
-        )
-      purpose: SECONDARY OUTCOME MEASURE
-    - id: HR_AGEGR1
-      label: Hazard ratio by AGEGR1
-      method: custom
-      data: adtte_saf_ttskin
-      code: !r |-
-        cards::ard_strata(
-          data,
-          .strata = AGEGR1,
-          .f = ~ tryCatch(
-            cardx::ard_regression(
-              survival::coxph(survival::Surv(AVAL, CNSR == 0) ~ TRT01A, data = .x),
-              exponentiate = TRUE
-            ),
-            error = function(e) {
-              warning("HR_AGEGR1: the Cox model of a subgroup failed (",
-                      conditionMessage(e), "); the figure prints its hazard ratio NE",
-                      call. = FALSE)
-              NULL
-            }
-          )
-        )
-      purpose: SECONDARY OUTCOME MEASURE
+codelists:
+  TRT01A:
+    - value: Control
+    - value: Drug X
+  SEX:
+    - value: F
+      label: Female
+    - value: M
+      label: Male
+  AGEGR1:
+    - value: <65
+      label: <65 years
+    - value: '>=65'
+      label: '>=65 years'
 data:
   source: code
   steps:
@@ -131,20 +82,70 @@ data:
             y = rev(row_number())
           )
   population: SAF
-codelists:
-  TRT01A:
-    - value: Control
-    - value: Drug X
-  SEX:
-    - value: F
-      label: Female
-    - value: M
-      label: Male
-  AGEGR1:
-    - value: <65
-      label: <65 years
-    - value: '>=65'
-      label: '>=65 years'
+analysis:
+  analysis_data:
+    - id: adtte_saf_ttskin
+      from: ADTTE
+      population: SAF
+      where: !r PARAMCD == "TTSKIN"
+      add:
+        - SEX
+        - AGEGR1
+    - id: adsl_saf
+      from: ADSL
+  analyses:
+    - id: HR
+      label: Hazard ratio, all subjects
+      method: custom
+      data: adtte_saf_ttskin
+      code: !r |-
+        cox <- survival::coxph(survival::Surv(AVAL, CNSR == 0) ~ TRT01A, data = data)
+        cardx::ard_regression(cox, exponentiate = TRUE)
+      purpose: SECONDARY OUTCOME MEASURE
+    - id: HR_SEX
+      label: Hazard ratio by SEX
+      method: custom
+      data: adtte_saf_ttskin
+      code: !r |-
+        cards::ard_strata(
+          data,
+          .strata = SEX,
+          .f = ~ tryCatch(
+            cardx::ard_regression(
+              survival::coxph(survival::Surv(AVAL, CNSR == 0) ~ TRT01A, data = .x),
+              exponentiate = TRUE
+            ),
+            error = function(e) {
+              warning("HR_SEX: the Cox model of a subgroup failed (",
+                      conditionMessage(e), "); the figure prints its hazard ratio NE",
+                      call. = FALSE)
+              NULL
+            }
+          )
+        )
+      purpose: SECONDARY OUTCOME MEASURE
+    - id: HR_AGEGR1
+      label: Hazard ratio by AGEGR1
+      method: custom
+      data: adtte_saf_ttskin
+      code: !r |-
+        cards::ard_strata(
+          data,
+          .strata = AGEGR1,
+          .f = ~ tryCatch(
+            cardx::ard_regression(
+              survival::coxph(survival::Surv(AVAL, CNSR == 0) ~ TRT01A, data = .x),
+              exponentiate = TRUE
+            ),
+            error = function(e) {
+              warning("HR_AGEGR1: the Cox model of a subgroup failed (",
+                      conditionMessage(e), "); the figure prints its hazard ratio NE",
+                      call. = FALSE)
+              NULL
+            }
+          )
+        )
+      purpose: SECONDARY OUTCOME MEASURE
 content:
   - vline:
       xintercept: 1.0
@@ -181,7 +182,6 @@ page:
     orientation: landscape
   report:
     ard_source: own
-template: forest_hr
 plot:
   x_label: Hazard Ratio (95% CI), Drug X vs Control
   legend: none

@@ -13,7 +13,6 @@ packages:
   cardx: 0.3.4
   ggplot2: 4.0.3
 settings:
-  rounding: sas
   style: standard
   output_path: output/tfl
   program_dir: programs/tfl

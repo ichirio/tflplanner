@@ -60,7 +60,7 @@ builder_write <- function(x, output_id, state, was = NULL) {
     tb$label[1L] <- .row_label_write(st$row_label)
   }
   # whose {n} the header prints (the form asks only when a cell uses {n})
-  if (!is.null(st$header_n)) tb$header_n[1L] <- st$header_n
+  if (!is.null(st$col_header_values)) tb$col_header_values[1L] <- st$col_header_values
   if (is.na(tb$rows[1L]) && (is.null(was) || put_key)) tb$rows[1L] <- "group = variable"
 
 
@@ -139,7 +139,8 @@ builder_write <- function(x, output_id, state, was = NULL) {
                                 drop_empty = TRUE)
   }
   # the column header and whose {n} it prints: plan_col_header()
-  hw <- .builder_header_write(its, st, if (!same_cell(tb$header_n, tb_was$header_n)) tb$header_n[1L])
+  hv <- if (!same_cell(tb$col_header_values, tb_was$col_header_values)) tb$col_header_values[1L]
+  hw <- .builder_header_write(its, st, hv)
   if (!is.null(hw)) w[[length(w) + 1L]] <- hw
   fin <- function(x) if (length(w)) .spec_set_items(x, id, w) else x
 
@@ -275,9 +276,9 @@ builder_write <- function(x, output_id, state, was = NULL) {
 
 # plan_col_header() as the form says it: its header lines (`st$header`, the
 # form's rows, or a preset's name) where they differ from the plan's, whose
-# {n} (`header_n`: the tables sheet's form, NULL unchanged) -- its other
+# {n} (`col_header_values`: the tables sheet's form, NULL unchanged) -- its other
 # arguments kept.  NULL: no change.
-.builder_header_write <- function(its, st, header_n = NULL) {
+.builder_header_write <- function(its, st, col_header_values = NULL) {
   ch <- .builder_args(its, "plan_col_header") %||% list()
   new <- ch
   rows <- if (is.data.frame(st$header)) st$header else
@@ -288,7 +289,7 @@ builder_write <- function(x, output_id, state, was = NULL) {
     rows$output_id <- NULL
     if (!.same_header(.header_df(ch$header), rows)) new$header <- .header_list(rows)
   }
-  if (!is.null(header_n)) new$values <- .header_n_values(header_n)
+  if (!is.null(col_header_values)) new$values <- .col_header_values_list(col_header_values)
   if (identical(tflspec::tfl_args_to_r("plan_col_header", new),
                 tflspec::tfl_args_to_r("plan_col_header", ch))) return(NULL)
   list(fn = "plan_col_header", args = new, drop_empty = TRUE)

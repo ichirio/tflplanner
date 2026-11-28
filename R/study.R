@@ -391,5 +391,12 @@ open_study <- function(study, home = tflplanner_home()) {
             paste0("  ", sp$problems$file, ": ", sp$problems$message,
                    collapse = "\n"))
   }
+  if (!identical(sp$status, "invalid") && isTRUE(sp$keys)) {
+    kp <- sp$problems[sp$problems$severity %in% "warning", , drop = FALSE]
+    message("Some keys of the definition files are not keys the SPEC takes; the ",
+            "study is open without them. Change the files as each line says ",
+            "(then reload_from_spec()):\n",
+            paste0("  ", kp$file, ": ", kp$message, collapse = "\n"))
+  }
   invisible(s)
 }

@@ -119,9 +119,12 @@ test_that("saving study.yml keeps every key the writer does not write, a setting
   expect_true("  language: English" %in% k2$lines)
   expect_false("  language: Japanese" %in% k2$lines)
   # no settings: in the new text: one of its own; an old flow map's keys as
-  # the YAML package writes them; an old block at 4 spaces at 2
+  # the YAML package writes them -- an old `rounding` too: not a setting
+  # the writer writes (the study's rounding is defaults.yml's force:), so
+  # kept as it was, for the read to say where it moved; an old block at 4
+  # spaces at 2
   k3 <- .keep_study_yml_keys(new[-(4:5)], c("study_id: X", "settings: {rounding: sas, extra: 3}"))
-  expect_identical(k3$lines, c(new[-(4:5)], "settings:", "  extra: 3"))
+  expect_identical(k3$lines, c(new[-(4:5)], "settings:", "  rounding: sas", "  extra: 3"))
   k4 <- .keep_study_yml_keys(new, c("settings:", "    rounding: sas", "    deep:", "      a: 1"))
   expect_identical(k4$lines, c(new[1:5], "  deep:", "    a: 1", new[6:8]))
   # nothing before: the writer's text
@@ -144,6 +147,14 @@ test_that("a study written whole keeps what of the folder's study.yml the writer
                      "# by hand", "formats:", "  pct: '%.1f'", "ai:", "  language: Japanese"))
 })
 
+test_that("the keys the save writes are keys study.yml takes (tflspec's list, spec-keys-v2)", {
+  expect_true(all(.study_yml_writer_keys() %in% .study_yml_keys()))
+  expect_true(all(.study_yml_writer_settings() %in% .study_yml_keys("settings")))
+  # (the study sheet's rounding is defaults.yml's force:, not a setting)
+  expect_false("rounding" %in% .study_yml_writer_settings())
+  expect_true(all(c("ai", "settings") %in% .study_yml_keys()))
+})
+
 test_that("a save keeps study.yml's unknown blocks, settings: keys and ai:; the writer's keys change (tflspec#910)", {
   f <- keys_study()
   before <- block_of(f)
@@ -159,6 +170,15 @@ test_that("a save keeps study.yml's unknown blocks, settings: keys and ai:; the 
   extra <- c("# by hand", "formats:", "  pct: '%.1f'")
   writeLines(c(x, extra), f, useBytes = TRUE)
   s <- suppressMessages(open_study("KS-1"))
+  # (keys study.yml does not take, spec-keys-v2: the study opens without
+  # them, each said; a save keeps them as written, never drops them)
+  expect_true(isTRUE(s$spec$keys))
+  pr <- s$spec$problems
+  expect_true(any(startsWith(pr$message, "`settings: my_key`: ")))
+  expect_true(any(startsWith(pr$message, "`formats`: ")))
+  # (each file relative to the study folder)
+  expect_true(all(pr$file == "study.yml"), info = paste(pr$file, collapse = ", "))
+  expect_true(all(pr$severity == "warning"))
   # a change that rewrites study.yml: the writer's keys change, the others stay
   s$planner$study[["rounding"]] <- "r"
   s$meta$title <- "A new title"
@@ -174,13 +194,15 @@ test_that("a save keeps study.yml's unknown blocks, settings: keys and ai:; the 
     expect_length(at, 1L)
     expect_identical(out[at + seq_along(before$ai) - 1L], before$ai)
     y <- yaml::read_yaml(f)
-    expect_identical(y$settings$rounding, "r")
+    # (the rounding: defaults.yml force:, not study.yml's settings)
+    expect_null(y$settings$rounding)
+    expect_identical(tflspec::tfl_study_rounding(.study_spec_read(dirname(f))), "r")
     expect_identical(y$settings$my_key, "kept")
     expect_identical(y$formats, list(pct = "%.1f"))
     expect_identical(y$ai$language, "ja")
-    # the spec in memory says so too
-    expect_identical(s$planner$spec$study$study$settings$my_key, "kept")
-    expect_identical(s$planner$spec$study$study$formats, list(pct = "%.1f"))
+    # the spec in memory: the keys it takes (the others are not read)
+    expect_null(s$planner$spec$study$study$settings$my_key)
+    expect_null(s$planner$spec$study$study$formats)
     expect_identical(s$planner$spec$study$study$ai$language, "ja")
     expect_true(all(spec_status("KS-1")$status == "same"))
     # (and the next save keeps them too, once)

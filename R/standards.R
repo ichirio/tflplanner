@@ -44,7 +44,7 @@
       value = c("en", "", "", "", "USUBJID", "output/ard/ard.rds",
                 "multiline", "", "30", "", "3", "2", "1"),
       note = c("the app's language: en or ja",
-               "a new study's rounding: r, sas, or blank (rtfreporter's)",
+               "a new study's rounding, forced on its reports (spec/defaults.yml force:): r, sas, or blank (none)",
                "the reports' font (Courier New, Arial ...); blank: rtfreporter's (Courier)",
                "the reports' font size in points (9, 10 ...); blank: rtfreporter's (9)",
                "the subject key of the ARD definition",
