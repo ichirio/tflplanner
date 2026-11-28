@@ -858,7 +858,9 @@
     }
   }))
   # A card switched on (or added): written with its usual values, or --
-  # a verb with none -- opened to be filled (its fields, or R); switched
+  # a verb with none -- written with no argument (`plan_filter()`) and
+  # opened to be filled (its fields, or R): adding a card is a change of
+  # the report, unsaved till Save, for every verb (#827); switched
   # off: the report's own rows of it taken away, the card kept, off (every
   # card stays; the menu's Remove takes one away).  The form is drawn
   # again either way.
@@ -871,8 +873,9 @@
     if (on) {
       bform$off_by[[id]] <- setdiff(off, it$fn)
       hier <- length(bform$st$hierarchy) > 0L
-      args <- .plan_starter_args(it$fn, bform$st, hier, meta = bform$meta)
-      if (!is.null(args)) {
+      args <- .plan_starter_args(it$fn, bform$st, hier, meta = bform$meta) %||% list()
+      # (a card the report's content has already: nothing more to write)
+      if (length(args) || !isTRUE(it$present)) {
         p2 <- guarded(.builder_item_write(rv$p, id, it$fn, args))
         if (is.null(p2)) return()
         rv$p <- p2
@@ -890,6 +893,15 @@
     }
     rv$bver <- rv$bver + 1L
   }
+  # the changes discarded (the top bar): the cards added or switched off
+  # since the save go with them -- the cards are the report's as saved
+  # (#827; before the form is drawn again)
+  shiny::observeEvent(rv$discard_ver, {
+    bform$added_by <- NULL
+    bform$off_by <- NULL
+    bform$undo <- NULL
+    bform$just_added <- NULL
+  }, ignoreInit = TRUE, priority = 10)
   # a card's Remove (its menu, any card not required): its rows taken away
   # when the code has it, the card dropped -- a usual card of the table's
   # kind comes back, off, when the form is drawn again

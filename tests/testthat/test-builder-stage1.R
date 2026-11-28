@@ -473,7 +473,7 @@ test_that("in the app: a switch writes and takes away; Add; the variables shown;
     expect_no_match(h, "Order of the column variables", fixed = TRUE)
     expect_match(tp, "A variable not here is added to the analysis in the analysis step.", fixed = TRUE)
     # "+ Add a card" below the cards: a verb with no usual value -- its
-    # card, on, waiting, lit
+    # card written with no argument (#827: adding is a change), lit
     h <- output$builder_form$html
     expect_match(h, "rp-add-menu", fixed = TRUE)
     # (no switch but the Total column's own)
@@ -485,7 +485,8 @@ test_that("in the app: a switch writes and takes away; Add; the variables shown;
     bf <- session$userData$bform
     cp <- .builder_item_at(bf$items, "plan_compare")
     expect_false(is.null(cp))
-    expect_true(cp$added)
+    expect_true(isTRUE(cp$present))
+    expect_true("plan_compare" %in% fns())
     expect_false(cp$switch)
     expect_match(output$builder_form$html, "rp-card-new", fixed = TRUE)
     # the menu's Remove: the added card gone, Add offers it again
