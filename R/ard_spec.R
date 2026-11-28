@@ -6,8 +6,9 @@
 # here belongs to a study: editing its rows, saving its definition and
 # programs in the study folder, running them there, and where each output's
 # ARD stands.  The catalogs the engine checks against are the company
-# standards' (sheets ard_methods and ard_statistics); every call to the
-# engine passes them.
+# standards' (sheets ard_methods and ard_statistics), the open study's own
+# statistics over the company's (spec/defaults.yml ard_statistics:); every
+# call to the engine passes them.
 
 # the sheets of an ARD definition and their columns (tflspec's)
 .ard_sheets <- function() lapply(tflspec::tfl_ard_spec_template(), names)
@@ -44,11 +45,45 @@
   m[keep, , drop = FALSE]
 }
 
+# The statistics catalog: the company standards', with the open study's own
+# rows over it (its spec/defaults.yml `ard_statistics:`, tflspec#1006) while
+# a study is open.  No study open, or a study without the block: the
+# company's, as it is.
 .std_ard_statistics <- function(kind = NULL) {
-  d <- company_standards()$ard_statistics
+  d <- .with_study_statistics(company_standards()$ard_statistics,
+                             .code_context$root)
   if (!is.null(kind)) d <- d[d$kind %in% kind, , drop = FALSE]
   rownames(d) <- NULL
   d
+}
+
+# `company` with the rows of the study at `root` over it, merged by
+# tflspec (.ard_statistics_of_study(): a row with the same statistic and
+# kind replaces the company's in its place, another is added at the end;
+# a row has group "study" unless it says one).  Kept while the study's
+# defaults.yml and the company's catalog are the same.  A tflspec without
+# the study layer: the company's catalog.  Rows tflspec does not take (it
+# stops on them, naming the row, when it makes the study's programs): the
+# company's catalog, with a warning.
+.study_stats_cache <- new.env(parent = emptyenv())
+.with_study_statistics <- function(company, root) {
+  if (is.null(root)) return(company)
+  f <- file.path(root, study_layout()[["spec"]], "defaults.yml")
+  if (!file.exists(f)) return(company)
+  merge <- get0(".ard_statistics_of_study", envir = asNamespace("tflspec"),
+                mode = "function", inherits = FALSE)
+  if (is.null(merge)) return(company)
+  key <- list(root, unname(tools::md5sum(f)), company)
+  k <- .study_stats_cache
+  if (!is.null(k$key) && identical(k$key, key)) return(k$value)
+  value <- tryCatch(merge(root, company) %||% company, error = function(e) {
+    warning("The study's own statistics are not used: ", conditionMessage(e),
+            call. = FALSE)
+    company
+  })
+  k$key <- key
+  k$value <- value
+  value
 }
 
 # the engine, with the company standards' catalogs

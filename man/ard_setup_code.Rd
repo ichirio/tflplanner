@@ -41,7 +41,8 @@ The code, one element per line.
 \description{
 \code{ard_setup_code()} is \code{programs/ard/ard_setup.R}, which every ARD program
 sources: the study's setup (\code{programs/study_setup.R}, see
-\code{\link[=study_setup_code]{study_setup_code()}}), cards, the statistics tflplanner computes (\code{\link[tflspec:tfl_ard_statistics]{tflspec::tfl_ard_statistics()}}, the company standards' catalog),
+\code{\link[=study_setup_code]{study_setup_code()}}), cards, the statistics tflplanner computes (\code{\link[tflspec:tfl_ard_statistics]{tflspec::tfl_ard_statistics()}}, the company standards' catalog with the study's own rows
+over it, its \code{spec/defaults.yml} \code{ard_statistics:}),
 the stat_fmt formats, and the option that makes \code{save_ard()} (the
 study's \code{programs/study_helpers.R}, see \code{\link[=study_helpers_code]{study_helpers_code()}}) record
 the study setup each ARD was built with.

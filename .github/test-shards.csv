@@ -89,6 +89,7 @@ test-spec-source.R,2,4.8
 test-spec-study-keys.R,2,0.1
 test-spec-yaml.R,2,0.7
 test-srv-data-run-gaps.R,2,2.5
+test-study-ard-statistics.R,2,0.8
 test-study-context.R,2,0.6
 test-study-status.R,2,1.8
 test-tpl-data-steps.R,2,0.0

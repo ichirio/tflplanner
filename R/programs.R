@@ -579,8 +579,8 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 
 # The ARD definition of the planner's sheets, kept for the next report of the
 # same sheets (#738): writing every report's program read it once per table
-# report (0.1 s each).  Cache key: the ARD sheets and the company's
-# statistics and methods it is read with.  A definition that does not hold
+# report (0.1 s each).  Cache key: the ARD sheets and the statistics (the
+# company's, the open study's own over them) and methods it is read with.  A definition that does not hold
 # is not kept: its error comes again each time.
 .ard_spec_cache <- new.env(parent = emptyenv())
 .ard_spec_last <- function(ard) {
