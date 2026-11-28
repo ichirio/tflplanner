@@ -3,7 +3,7 @@
 
 .nc_report <- function(where) {
   f <- tempfile(fileext = ".yml")
-  writeLines(c("id: T-1", "kind: table", "title: x", "content:", "- plan_filter:",
+  writeLines(c("id: T-1", "kind: table", "label: x", "content:", "- plan_filter:",
                paste0("    ", where)), f)
   f
 }
