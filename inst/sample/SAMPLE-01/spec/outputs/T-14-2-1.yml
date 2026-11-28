@@ -1,13 +1,12 @@
 id: T-14-2-1
 kind: table
 label: 'Systolic blood pressure: change from baseline at week 24 (cycle 9 day 1)'
-common:
-  population: SAF
 extends:
   - defaults
 data:
   - id: adsl_saf
     from: ADSL
+    population: SAF
   - id: advs_saf_sysbp
     from: ADVS
     subjects_in: adsl_saf

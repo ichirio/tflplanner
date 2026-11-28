@@ -138,8 +138,8 @@ test_that("tables from templates converted to code and a listing started from th
   p <- s$planner
   p <- e2e_tpl_code(p, "C-DM", "demog", list(by = "TRT01A", continuous = "AGE", categorical = "SEX"),
                     population = "SAF")
-  p <- e2e_tpl_code(p, "C-AE", "hierarchical", list(population = "SAF", hierarchy = c("AEBODSYS", "AEDECOD")))
-  p <- e2e_tpl_code(p, "C-AEGR", "ae_max_grade", list(population = "SAF"))
+  p <- e2e_tpl_code(p, "C-AE", "hierarchical", list(population = "SAF", by = "TRT01A", hierarchy = c("AEBODSYS", "AEDECOD")))
+  p <- e2e_tpl_code(p, "C-AEGR", "ae_max_grade", list(population = "SAF", by = "TRT01A"))
   p <- first_listing(p, "F-LAE", file.path(study_layout()[["adam"]], "adae.rds"), st$data$adae, columns = c("USUBJID", "AEDECOD", "AESEV"),
                      group = "TRT01A")
   p <- .set_report_batches(p, "C-DM", "Topline")

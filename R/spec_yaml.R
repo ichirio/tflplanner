@@ -1,5 +1,5 @@
 # The study definition as tflspec's YAML spec (2026-10-15): study.yml and
-# spec/ (data.yml, defaults.yml, toc.yml, patterns/,
+# spec/ (data.yml, defaults.yml, toc.yml,
 # outputs/<id>.yml), one file a report.  The planner holds the spec itself
 # and the sheets every screen edits are a view of it (spec_model.R, #407);
 # the view's edits go back through tflspec's tfl_yaml_from_sheets().  A study whose
@@ -27,11 +27,9 @@
 .spec_files_yaml <- function(root) {
   sp <- study_layout()[["spec"]]
   f <- c(.study_file, file.path(sp, c("data.yml", "defaults.yml", "toc.yml")))
-  for (d in c("patterns", "outputs")) {
-    dd <- file.path(root, sp, d)
-    if (dir.exists(dd)) {
-      f <- c(f, file.path(sp, d, sort(list.files(dd, "\\.ya?ml$", recursive = TRUE))))
-    }
+  dd <- file.path(root, sp, "outputs")
+  if (dir.exists(dd)) {
+    f <- c(f, file.path(sp, "outputs", sort(list.files(dd, "\\.ya?ml$", recursive = TRUE))))
   }
   f[file.exists(file.path(root, f))]
 }
@@ -233,7 +231,7 @@
   if (!length(k$kept$top) && !length(k$kept$settings)) return(p)
   p$spec$text[[.study_file]] <- k$lines
   if (!is.null(p$spec$study$study)) {
-    y <- tryCatch(tflspec::tfl_read_study_spec(root)$study, error = function(e) NULL)
+    y <- tryCatch(tflspec::tfl_read_study_spec(root)$study, error = .old_form_reraise)
     p$spec$study$study <- .keep_study_yml_values(p$spec$study$study, y, k$kept)
   }
   p
@@ -256,7 +254,7 @@
   # (written whole: the study's code lists, which a report's `list` cell
   # names, are the folder's defaults.yml's -- the bridge writes them back)
   scl <- if (whole && .has_yaml_spec(root)) {
-    tryCatch(tflspec::tfl_read_study_spec(root)$codelists %||% list(), error = function(e) NULL)
+    tryCatch(tflspec::tfl_read_study_spec(root)$codelists %||% list(), error = .old_form_reraise)
   }
   p <- .spec_sync(p, meta, codelists = scl)
   attr(p, "changed") <- NULL

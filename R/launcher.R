@@ -365,15 +365,17 @@
 
 # The launchers of other R x.y's whose R is not there any more: x.y ->
 # their icons.  A launcher is dead when its remembered Rscript is gone and no
-# R of its x.y is installed (`installed`, the x.y's that are).
+# R of its x.y is installed (`installed`, the x.y's that are).  A launcher
+# that remembers no R (no launcher.conf, or no r_home in it) has no Rscript:
+# on every system, not only where "/bin/Rscript" happens to be there.
 .dead_launchers <- function(dirs = .launcher_dirs(), xy = .r_xy(),
                             installed = .installed_xys(), os = .os()) {
   exe <- if (identical(os, "windows")) "Rscript.exe" else "Rscript"
   out <- list()
   for (k in setdiff(names(dirs), xy)) {
-    cf <- .read_launcher_conf(dirs[[k]])
-    rs <- file.path(cf$r_home %||% "", "bin", exe)
-    if (!file.exists(rs) && !k %in% installed) {
+    home <- .read_launcher_conf(dirs[[k]])$r_home %||% ""
+    gone <- !nzchar(home) || !file.exists(file.path(home, "bin", exe))
+    if (gone && !k %in% installed) {
       rec <- file.path(dirs[[k]], "shortcuts.txt")
       out[[k]] <- if (file.exists(rec)) readLines(rec, warn = FALSE) else character()
     }

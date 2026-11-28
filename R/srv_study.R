@@ -276,16 +276,21 @@
                                        style = "white-space: pre-wrap;",
                                        pr$message[i]))))))
   }
+  # (an old form of the SPEC, which this tflspec no longer reads: changed by
+  # hand as each line says, then loaded; the last save is of the old form
+  # too, so it is not offered to write back)
   spec_problems_ui <- function(sp, sfx = "") {
     pr <- sp$problems
+    old <- isTRUE(sp$old_form)
     shiny::tagList(
-      shiny::p(t("The definition files were changed outside tflplanner but could not be read. The study is open as it was last saved. Fix the files and load them, or write the files back from the last save. Until then the study cannot be saved.")),
+      shiny::p(if (old) t("The definition files are of an older form of the SPEC, which this tflspec no longer reads. The study is open as it was last saved. Change the files as each line below says, then load them. Until then the study cannot be saved.") else
+        t("The definition files were changed outside tflplanner but could not be read. The study is open as it was last saved. Fix the files and load them, or write the files back from the last save. Until then the study cannot be saved.")),
       spec_problems_table(pr),
       shiny::div(class = "d-flex flex-wrap gap-2",
         .btn(paste0("spec_reload", sfx), t("Load from the definition files"),
              class = "btn-sm btn-primary"),
-        .btn(paste0("spec_writeback", sfx), t("Write the files back from the last save"),
-             class = "btn-sm btn-outline-danger")))
+        if (!old) .btn(paste0("spec_writeback", sfx), t("Write the files back from the last save"),
+                       class = "btn-sm btn-outline-danger")))
   }
   spec_modal <- function() {
     shiny::showModal(shiny::modalDialog(
@@ -1469,7 +1474,7 @@
         shiny::selectizeInput(
           "study_treatment",
           with_tip(t("Treatment variable (settings.treatment)"),
-                   t("The variable of the treatment groups a template's by / group takes when the report does not say it (study.yml settings: treatment:). Blank: the template's own, TRT01A.")),
+                   t("The treatment variable the planner suggests (shown in grey) for a template's by / group (study.yml settings: treatment:). A report always writes its own by; it is never filled in from here.")),
           choices = unique(c("", now, adsl)), selected = now,
           options = list(create = TRUE, placeholder = "TRT01A"))
       }),

@@ -2,13 +2,12 @@ id: T-14-1-3
 kind: table
 label: 'Age group and sex: the ARD keeps cards'' default n, N and p; the table prints
   n (%) and leaves the N rows out'
-common:
-  population: SAF
 extends:
   - defaults
 data:
   - id: adsl_saf
     from: ADSL
+    population: SAF
 analysis:
   analyses:
     - id: BIGN

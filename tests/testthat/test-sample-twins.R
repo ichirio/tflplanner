@@ -36,7 +36,7 @@ twin_add_templates <- function(s, home) {
     expect_true(file.copy(f, file.path(s$path, "spec", "outputs", paste0(id, ".yml"))))
     o <- yaml::read_yaml(f, handlers = list(r = function(x) x))
     toc$outputs <- c(toc$outputs, list(list(id = id, kind = o$kind, label = o$label,
-                                            population = o$common$population)))
+                                            population = tflspec::tfl_report_set(o))))
   }
   yaml::write_yaml(toc, toc_file)
   # (the study reads only its own copies of the templates, as the Add

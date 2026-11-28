@@ -2,7 +2,6 @@ id: T-14-1-1T
 kind: table
 label: Demographics (a template SPEC, tflspec_v1/tflspec_summary; the twin of T-14-1-1C)
 common:
-  population: SAF
   treatment: TRT01A
 codelists:
   TRT01A:
@@ -12,6 +11,8 @@ codelists:
       label: Control 100 mg
 template:
   name: tflspec_v1/tflspec_summary
+  args:
+    population: SAF
   analysis:
     by:
       - TRT01A
