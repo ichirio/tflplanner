@@ -4,7 +4,7 @@ label: Hazard ratio of the time to first skin disorder by subgroup (forest plot,
   own ARD)
 extends:
   - defaults
-ard:
+analysis:
   analysis_data:
     - id: adtte_saf_ttskin
       from: ADTTE

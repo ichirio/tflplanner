@@ -118,6 +118,7 @@
 "Every report","全帳票"
 "The definition files were changed outside tflplanner; the changes were loaded.","定義ファイルが tflplanner の外で変更されていたため、その変更を読み込みました。"
 "The definition files were changed outside tflplanner but could not be read. The study is open as it was last saved. Fix the files and load them, or write the files back from the last save. Until then the study cannot be saved.","定義ファイルが tflplanner の外で変更されましたが、読み込めませんでした。試験は最後に保存した状態で開いています。ファイルを直して読み込み直すか、最後の保存内容でファイルを書き戻してください。それまで保存はできません。"
+"The definition files are of an older form of the SPEC, which this tflspec no longer reads. The study is open as it was last saved. Change the files as each line below says, then load them. Until then the study cannot be saved.","定義ファイルは古い形の SPEC で、この tflspec では読み込めません。試験は最後に保存した状態で開いています。下の各行のとおりにファイルを変更してから、読み込み直してください。それまで保存はできません。"
 "Row","行"
 "Write the files back from the last save","最後の保存内容でファイルを書き戻す"
 "What changed","変更内容"
