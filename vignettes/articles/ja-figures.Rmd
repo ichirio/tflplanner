@@ -75,6 +75,13 @@ draw <- function(design) {
 }
 ```
 
+```{r, include = FALSE}
+# The sample ADVS holds TRT01A since #697; section 4 joins it from ADSL, as
+# the text says, so the article's copy of ADVS leaves it out (no TRT01A.x /
+# TRT01A.y after the join).
+adam$ADVS$TRT01A <- NULL
+```
+
 ## 1. 準備
 
 ### 1.1 インストール
