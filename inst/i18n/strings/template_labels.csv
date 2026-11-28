@@ -321,3 +321,4 @@
 "Variable on the y axis","y 軸の変数"
 "Duration in days","期間の日数"
 "Visit shown","表示する来院"
+"More statistics of the continuous variables for the ARD, by their names in tfl_ard_statistics() (with the company's and the study's own); the ARD has the statistics the cells name, then these.","ARD に足す連続変数の統計量（tfl_ard_statistics() の名前で。会社・試験の独自のものも）。ARD にはセルが使う統計量、続いてこれらが入る。"
