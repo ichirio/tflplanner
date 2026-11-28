@@ -107,7 +107,7 @@ test_that("the program is tflspec's call, the model's fit first", {
   call <- grep("^content <- tflspec::km_curves\\(", code)
   expect_length(call, 1L)
   expect_true(length(fit) >= 1L && fit[1L] < call)
-  expect_match(paste(code, collapse = "\n"), "Surv_CNSR(AVAL, CNSR) ~ TRT01A", fixed = TRUE)
+  expect_match(paste(code, collapse = "\n"), "Surv(AVAL, CNSR == 0) ~ TRT01A", fixed = TRUE)
   expect_match(paste(code, collapse = "\n"), "time_unit = \"months\"", fixed = TRUE)
   # not the designer's empty plot
   expect_false(any(grepl("^plot <- ggplot\\(\\)", code)))
