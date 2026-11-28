@@ -19,6 +19,7 @@
   sd_missing = "Missing SD",
   missing_row = "Missing row",
   denominator = "Percentage denominator",
+  col_header_n_data = "Column-header N data",
   total = "Total column",
   exposure = "Exposure days variable",
   start = "Event start day",
