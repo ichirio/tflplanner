@@ -15,7 +15,8 @@ test_that(".tpl_suggest keeps the candidates the data has, in candidate order", 
   expect_identical(.tpl_suggest("demog", "categorical", cols), c("SEX", "RACE"))
   expect_identical(.tpl_suggest("stf_t02_demog", "categorical", cols, list = "stf"), c("SEX", "RACE"))
   expect_identical(.tpl_suggest("stf_t02_demog", "continuous", c("BMIBL", "AGE"), list = "stf"), "AGE")
-  expect_identical(.tpl_suggest("ae_soc_pt", "hierarchy", c("AEDECOD", "AEBODSYS")), c("AEBODSYS", "AEDECOD"))
+  expect_identical(.tpl_suggest("hierarchical", "hierarchy", c("AEDECOD", "AEBODSYS"), dataset = "ADAE"),
+               c("AEBODSYS", "AEDECOD"))
   expect_identical(.tpl_suggest("forest_hr", "subgroups", c("RACE", "SEX")), c("SEX", "RACE"))
   expect_identical(.tpl_suggest("ae_eair", "hierarchy", c("AEDECOD", "AEBODSYS")), c("AEBODSYS", "AEDECOD"))
 })
@@ -33,8 +34,8 @@ test_that(".tpl_suggest_for takes the dataset's columns as the dialog does", {
   data <- list(ADSL = example_adsl(), ADAE = data.frame(AEDECOD = "x", AEBODSYS = "y"))
   expect_identical(.tpl_suggest_for("demog", "continuous", data, list(data = "ADSL"),
                                     .tpl_params("demog")), c("AGE", "WEIGHTBL"))
-  expect_identical(.tpl_suggest_for("ae_soc_pt", "hierarchy", data, list(data = "ADAE"),
-                                    .tpl_params("ae_soc_pt")), c("AEBODSYS", "AEDECOD"))
+  expect_identical(.tpl_suggest_for("hierarchical", "hierarchy", data, list(data = "ADAE"),
+                                    .tpl_params("hierarchical")), c("AEBODSYS", "AEDECOD"))
   expect_identical(.tpl_suggest_for("km", "arm", data), character())
 })
 

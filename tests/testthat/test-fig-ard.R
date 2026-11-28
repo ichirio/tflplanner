@@ -301,6 +301,12 @@ tpl_fig_planner <- function(p, name, id, ...) {
   .spec_add_output(p, o, label = name, population = "SAF")
 }
 
+# (the km figure with what the removed km_survival type gave: the survival
+# curve, median line, risk table, p-value, censor marks, legend inside)
+km_survival_args <- list(param = "PFS", by = "TRT01A", y_type = "survival", median_line = TRUE,
+                         risk_table = TRUE, ci = "none", pvalue = TRUE, censor_marks = TRUE,
+                         legend = "inside")
+
 test_that("a template figure with analyses of its own reads its own ARD; one without, none", {
   s <- fig_ard_study()
   p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF",
@@ -314,7 +320,7 @@ test_that("a template figure with analyses of its own reads its own ARD; one wit
   q <- set_fig_ard_source(p, "F-9-1", "table:T-14-2-2")
   expect_identical(.fig_ard_source(q, "F-9-1")$kind, "table")
   # no analyses: none, as before
-  k <- tpl_fig_planner(s$planner, "km_survival", "F-9-2", by = "TRT01A")
+  k <- do.call(tpl_fig_planner, c(list(s$planner, "km", "F-9-2"), km_survival_args))
   expect_identical(NROW(ard_rows(k, "analyses", "F-9-2")), 0L)
   expect_identical(.fig_ard_source(k, "F-9-2")$kind, "none")
   # a designed figure's source is its row's, as before
@@ -351,13 +357,13 @@ test_that("Review does not say 'No dataset is read' of a figure reading an ARD",
   expect_true(any(r$output_id == "F-14-2-4" & r$message == "No dataset is read."))
 })
 
-test_that("a template figure's ARD tabs are on when it makes an ARD (forest_hr), off when it does not (km_survival, mean_se) (#514)", {
+test_that("a template figure's ARD tabs are on when it makes an ARD (forest_hr), off when it does not (km, mean_se) (#514)", {
   s <- fig_ard_study()
   p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF",
                        group = "TRT01A")
   expect_true(.report_uses_ard(p, "F-9-1"))
   p <- tpl_fig_planner(p, "mean_se", "F-9-2", param = "SYSBP", group = "TRT01A")
-  p <- tpl_fig_planner(p, "km_survival", "F-9-3", by = "TRT01A")
+  p <- do.call(tpl_fig_planner, c(list(p, "km", "F-9-3"), km_survival_args))
   expect_false(.report_uses_ard(p, "F-9-3"))
   expect_false(.report_uses_ard(p, "F-9-2"))
   # a table (template or not) and a figure of its own code keep their answers

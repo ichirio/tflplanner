@@ -9,7 +9,6 @@
 # one line on each template (tflspec's templates; the app translates it)
 .tpl_desc <- c(
   ae_overview = "Overview of adverse events",
-  ae_soc_pt = "Adverse events by SOC and PT",
   demog = "Demographics",
   stf_t02_demog = "Demographics, after FDA STF IG v2 Table 2",
   disposition = "Disposition",
@@ -24,18 +23,14 @@
   shift = "Shift table",
   summary = "Continuous and categorical variables by a column key",
   vs_change = "A vital sign's change",
-  ae_disc_soc_pt = "Adverse events leading to discontinuation by SOC and PT",
   ae_eair = "Exposure-adjusted incidence rates by SOC and PT",
   ae_rel_soc_pt = "Related adverse events by SOC and PT",
-  ae_ser_soc_pt = "Serious adverse events by SOC and PT",
   lab_abnormal = "Laboratory abnormalities",
   param_change = "Parameters' value and change",
   pk_conc = "PK concentrations by time point",
   stat_block = "Statistics from the study's ARD, a block a row",
   forest_hr = "Hazard ratio by subgroup (forest plot)",
   km = "Kaplan-Meier curves by group",
-  km_survival = "Kaplan-Meier survival curves with a risk table",
-  km_cumulative = "Cumulative incidence (1 - KM)",
   mean_ci = "Mean by visit with its CI",
   mean_se = "Mean by visit with its SE",
   waterfall = "Waterfall plot",
@@ -1232,7 +1227,7 @@
 # is shown) or "page" (the page's titles).  A tflplanner-side lookup, not a
 # part of the template: the table inst/extdata/template_arg_sections.csv
 # (the shipped templates' arguments), else the argument's name (the
-# company's templates, variants, a template not in the table), else "ard".
+# company's templates, a template not in the table), else "ard".
 # Where an argument is drawn only; it is saved as it was, in the report's
 # `template: {name, args}`.
 .tpl_sections <- c("data", "ard", "content", "page")
@@ -1271,7 +1266,7 @@
 .tpl_shown <- function(prm) Filter(function(x) !isTRUE(x$hidden), prm)
 
 # Whether the report says the template's data in its own `data:` steps
-# (the template hides its data stage: km_survival, km_cumulative)
+# (the template hides its data stage)
 .tpl_own_data <- function(prm) {
   any(vapply(prm, function(x) isTRUE(x$hidden) && identical(x$step, "data"), NA))
 }
@@ -1659,7 +1654,7 @@ $(document).on('shiny:connected', function() {
 # "study" with no key), "fallback" the default for when the study standard
 # is undefined, "default" with a study key a study reference with no value
 # (kind "none": no badge, the field says "(none)"), the rest (template,
-# default with no key, variant:<name>) the template's own.
+# default with no key) the template's own.
 .tpl_badge_of <- function(a, args, rows) {
   if (is.null(rows)) return(NULL)
   r <- rows[rows$param == a, , drop = FALSE]

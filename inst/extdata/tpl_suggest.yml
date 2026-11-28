@@ -24,15 +24,6 @@ disposition:
   data: ADSL
   categorical:
     max: [EOSSTT, DCSREAS]
-ae_soc_pt:
-  hierarchy:
-    max: [AEBODSYS, AEDECOD]
-ae_ser_soc_pt:
-  hierarchy:
-    max: [AEBODSYS, AEDECOD]
-ae_disc_soc_pt:
-  hierarchy:
-    max: [AEBODSYS, AEDECOD]
 ae_max_grade:
   hierarchy:
     max: [AEBODSYS, AEDECOD]
