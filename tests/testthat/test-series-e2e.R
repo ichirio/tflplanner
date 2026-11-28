@@ -58,7 +58,7 @@ series_card_type <- function(name, input, type, choices = NULL) {
   if (identical(input, "table")) return("table")
   # a condition, or any R: the R field
   if (identical(input, "condition") || identical(type, "r")) return("r")
-  # a pick of source words (report_data, study_data, ...): a choice
+  # a pick of source words (objects(data), study_data, ...): a choice
   if (identical(input, "pick") && length(unlist(choices)) && grepl("^(list<)?string>?$", type))
     return(if (startsWith(type, "list<")) "picks" else "pick")
   if (startsWith(type, "enum[")) return("choice")

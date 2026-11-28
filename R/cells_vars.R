@@ -424,7 +424,6 @@
   p <- .spec_set_study_part(p, "defaults")
   # (the view's study rows of the cells sheet, as the spec now says them)
   lean <- p$spec$study
-  lean$patterns <- list()
   lean$styles <- list()
   v <- .planner_from_spec(lean, list())
   old <- sheet_rows(p, "cells", NA_character_)
