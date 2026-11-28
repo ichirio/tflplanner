@@ -25,7 +25,7 @@ params:
   responder:
     type: level
     input: pick
-    choices: levels(category)
+    choices: levels(from_args(category))
     free: true
     default: CR
     step: analysis

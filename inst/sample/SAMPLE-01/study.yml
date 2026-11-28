@@ -5,7 +5,7 @@ phase: '2'
 description: 'The sample study of tflplanner: tflspec''s simulated oncology study
   XYZ-ONC-01 (Drug X vs Control); one study ARD and tables, a listing and a figure
   made from it.'
-spec_version: 1
+spec_version: 2
 packages:
   tflspec: 0.0.24.9136
   rtfreporter: 0.8.2.9066

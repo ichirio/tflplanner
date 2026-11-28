@@ -372,7 +372,7 @@ test_that("a part's id never reaches a program, a file or the table's sheets", {
   s <- suppressMessages(sample_study_copy())
   args <- list(name = "demog", absent = "skip",
                data = list(source = "dataset", dataset = "ADSL"),
-               content = .part_items_parse(paste0("- fn: table_plan\n  args:\n    cols: ", cols, "\n")))
+               content = .part_items_parse(paste0("- table_plan:\n    cols: ", cols, "\n")))
   s$planner <- .builder_item_write(s$planner, "T-14-1-2", "plan_append", args, 1L)
   s
 }

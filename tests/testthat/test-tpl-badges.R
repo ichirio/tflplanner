@@ -5,7 +5,7 @@
   skip_if_not(is.function(tryCatch(getExportedValue("tflspec", "tfl_tpl_args"), error = function(e) NULL)))
   d <- tempfile("badge-study")
   dir.create(file.path(d, "spec"), recursive = TRUE)
-  writeLines(c("study_id: X", "spec_version: 1", "settings:", "  sd_missing: \"-\""),
+  writeLines(c("study_id: X", "spec_version: 2", "settings:", "  sd_missing: \"-\""),
              file.path(d, "study.yml"))
   writeLines(c("content:", "  - plan_blanks:", "      where: between_groups"),
              file.path(d, "spec", "defaults.yml"))
@@ -42,7 +42,7 @@ test_that("demog: each of the four badges is on the right argument", {
   # a key the old lookup misses: given in the report, the study has plan_cells.default
   d <- tempfile("badge-cells")
   dir.create(file.path(d, "spec"), recursive = TRUE)
-  writeLines(c("study_id: X", "spec_version: 1"), file.path(d, "study.yml"))
+  writeLines(c("study_id: X", "spec_version: 2"), file.path(d, "study.yml"))
   writeLines(c("content:", "  - plan_cells:", "      default: \"{n} ({pct}%)\""), file.path(d, "spec", "defaults.yml"))
   rows2 <- .tpl_args_rows("demog", tflspec::tfl_read_study_spec(d), "SAF")
   b2 <- .tpl_badge_of("count_cell", list(count_cell = "{n}"), rows2)
