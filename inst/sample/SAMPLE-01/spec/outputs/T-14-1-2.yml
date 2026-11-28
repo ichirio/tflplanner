@@ -7,7 +7,7 @@ data:
   - id: adsl_saf
     from: ADSL
     population: SAF
-ard:
+analysis:
   analyses:
     - id: BIGN
       method: categorical
