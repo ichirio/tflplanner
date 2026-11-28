@@ -35,7 +35,8 @@
 #'
 #' `ard_setup_code()` is `programs/ard/ard_setup.R`, which every ARD program
 #' sources: the study's setup (`programs/study_setup.R`, see
-#' [study_setup_code()]), cards, the statistics tflplanner computes ([tflspec::tfl_ard_statistics()], the company standards' catalog),
+#' [study_setup_code()]), cards, the statistics tflplanner computes ([tflspec::tfl_ard_statistics()], the company standards' catalog with the study's own rows
+#' over it, its `spec/defaults.yml` `ard_statistics:`),
 #' the stat_fmt formats, and the option that makes `save_ard()` (the
 #' study's `programs/study_helpers.R`, see [study_helpers_code()]) record
 #' the study setup each ARD was built with.
