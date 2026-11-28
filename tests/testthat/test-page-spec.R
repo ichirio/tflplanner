@@ -67,8 +67,6 @@ test_that("an argument written into the report's file only, and back; the same a
                    c("  rtf_style:", "    row_height_twips: 300"))
   expect_error(.pgs_value("big", "pt"), "number of points")
   expect_identical(.pgs_value("8", "pt"), 16L)
-  expect_identical(.pgs_value("fit", "inches"), "fit")
-  expect_identical(.pgs_value("6", "inches"), 8640L)
   expect_s3_class(.pgs_value("(none)", "text"), "tfl_unset")
 })
 
@@ -250,10 +248,11 @@ test_that("the form: a card a function, the arguments with a value first, labels
   expect_match(h, "pg-badge-own", fixed = TRUE)
   expect_match(h, "data-act=\"reset\" title=\"Back to the study default\" data-fn=\"rtf_page\" data-arg=\"margin_top_in\"",
                fixed = TRUE)
-  # Standard and a pattern: both content cards
+  # Standard and a pattern: the tables' card (a figure's own settings are
+  # its content's tfl_image, tflspec#874)
   h <- as.character(.page_form_ui(p, NA, identity))
   expect_match(h, "rtf_tables", fixed = TRUE)
-  expect_match(h, "rtf_figures", fixed = TRUE)
+  expect_false(grepl("rtf_figures", h, fixed = TRUE))
 })
 
 test_that("step 3's form in the app: an argument, a line, the pattern, the study saved changes one file", {

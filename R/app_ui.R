@@ -655,6 +655,9 @@ app_ui <- function(lang = "en") {
               shiny::uiOutput("lf_preview_out")))))),
       shiny::conditionalPanel(
         "output.report_kind == 'figure'",
+        # its render settings, whatever makes it (tflspec#874): its
+        # content's tfl_image
+        shiny::uiOutput("fig_image_card"),
         shiny::div(
           class = "rp-tpl-only",
           bslib::layout_columns(

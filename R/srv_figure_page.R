@@ -571,11 +571,6 @@
     page_write(guarded(switch(a$act,
       reset = .pgs_set_arg(p, id, a$fn, a$arg, NULL),
       none = .pgs_set_arg(p, id, a$fn, a$arg, tflspec::tfl_unset()),
-      # a figure's size: both fit to the page, or both its own (none)
-      fig_fit = .pgs_set_arg(.pgs_set_arg(p, id, "rtf_figures", "width_twips", "fit"),
-                             id, "rtf_figures", "height_twips", "fit"),
-      fig_native = .pgs_set_arg(.pgs_set_arg(p, id, "rtf_figures", "width_twips", NULL),
-                                id, "rtf_figures", "height_twips", NULL),
       # a line of the layers below made the target's own, to change
       own = {
         r <- .pgs_lines(.pgs_spec(p), id, a$band)
@@ -736,5 +731,54 @@
   }
   shiny::observeEvent(input$add, ask_id(t("Add a report"), "add_ok",
                                         type = TRUE))
+
+  # The content step's tfl_image card of a figure (tflspec#874): its size
+  # on the page, alignment, dpi, PNG device -- the content's last item
+  fimg_ver <- shiny::reactiveVal(0L)
+  fimg_drawn <- new.env(parent = emptyenv())
+  output$fig_image_card <- shiny::renderUI({
+    rv$ver
+    fimg_ver()
+    id <- current()
+    shiny::req(id, identical(report_kind(), "figure"))
+    p <- shiny::isolate(rv$p)
+    fimg_drawn$id <- id
+    fimg_drawn$args <- .fig_image_own(.pgs_spec(p)$outputs[[id]])
+    .fig_image_card_ui(p, id, t, lang)
+  })
+  fimg_write <- function(args) {
+    id <- fimg_drawn$id
+    p2 <- guarded(.fig_image_set(rv$p, id, args))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    fimg_ver(fimg_ver() + 1L)
+  }
+  fimg_read <- shiny::debounce(shiny::reactive({
+    fimg_ver()
+    spec_card_read(input, .fig_image_cid, .fig_image_fn)
+  }), 250)
+  shiny::observeEvent(fimg_read(), {
+    r <- fimg_read()
+    was <- fimg_drawn$args
+    if (is.null(r) || is.null(was) || !identical(fimg_drawn$id, current())) return()
+    args <- spec_card_args(r, list(args = was), .fig_image_fn)
+    if (identical(args, was)) return()
+    fimg_write(args)
+  })
+  # fit to the page's body: both fit; its own size: both left out
+  shiny::observeEvent(input$fimg_fit, {
+    a <- fimg_drawn$args
+    shiny::req(!is.null(a))
+    a$width_in <- "fit"
+    a$height_in <- "fit"
+    fimg_write(a)
+  })
+  shiny::observeEvent(input$fimg_native, {
+    a <- fimg_drawn$args
+    shiny::req(!is.null(a))
+    a$width_in <- NULL
+    a$height_in <- NULL
+    fimg_write(a)
+  })
   .srv_keep(environment())
 }

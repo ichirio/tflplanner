@@ -150,11 +150,17 @@ set_fig_design <- function(x, output_id, design) {
   sprintf(t("%s x %s in%s"), sz$width_in, sz$height_in, w)
 }
 
-# the lines that draw a figure at its size on the page (step 3), its
-# design's dpi: `obj` becomes the figure the report places
+# A figure's dpi: its tfl_image's (the study's under it), else its
+# design's, else 300
+.fig_dpi_of <- function(x, output_id) {
+  d <- .fig_image_now(x, output_id)$dpi %||% fig_design(x, output_id)$plot$dpi %||% 300
+  as.numeric(d[1L])
+}
+
+# the lines that draw a figure at its size on the page, its dpi: `obj` becomes the figure the report places
 .fig_sized_lines <- function(x, output_id, obj = "plot") {
   sz <- .fig_size_of(x, output_id)
-  dpi <- as.numeric((fig_design(x, output_id)$plot$dpi %||% 300)[1L])
+  dpi <- .fig_dpi_of(x, output_id)
   c("",
     sprintf("# the figure drawn at its size on the page: %s, %s dpi",
             .fig_size_words(sz), dpi),
@@ -414,9 +420,11 @@ preview_figure <- function(study, output_id,
   sz <- .fig_size_of(study$planner, output_id)
   # a preview for the screen: that size, fewer dots (much faster); the
   # size reported is still the saved one
+  # its dpi: its tfl_image's, else the design's (as drawn here)
+  dpi <- as.numeric((.fig_image_now(study$planner, output_id)$dpi %||% design$plot$dpi %||% 300)[1L])
+  design$plot$dpi <- dpi
   if (!is.null(max_px)) {
     inches <- sz$width_in
-    dpi <- as.numeric(design$plot$dpi %||% 300)
     if (inches * dpi > max_px) design$plot$dpi <- max(72, floor(max_px / inches))
   }
   ds <- .fig_design_datasets(design, output_id)
@@ -500,7 +508,7 @@ preview_figure <- function(study, output_id,
   warns <- unique(warns[!grepl("was built under R version", warns)])
   size <- if (!is.null(e$fig_width)) {
     list(width = e$fig_width, height = e$fig_height, units = e$fig_units,
-         dpi = as.numeric(saved$plot$dpi %||% 300))
+         dpi = dpi)
   }
   list(png = png, size = size, problems = problems, advice = advice, warnings = warns,
        error = err, code = code,

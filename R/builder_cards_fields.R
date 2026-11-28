@@ -14,6 +14,9 @@
   alts <- c(setdiff(alts, "r"), intersect(alts, "r"))
   first <- alts[[1L]]
   if (grepl("^enum\\[", first)) return("enum")
+  # (a number or a word -- tfl_image(width_in = ) inches or fit: typed as
+  # text, read back as a number when it is one, .num_or_word_value())
+  if (.type_num_or_word(type)) return("string")
   if (grepl("^(list|vec)<", first)) {
     inner <- sub("^(list|vec)<(.*)>$", "\\2", first)
     return(if (grepl("^column", inner) || grepl("^string", inner) ||
@@ -27,6 +30,20 @@
     return(first)
   }
   "r"
+}
+
+# Is a type a number or a word (number|enum[fit])?
+.type_num_or_word <- function(type) {
+  if (is.null(type) || length(type) != 1L || is.na(type) || !nzchar(type)) return(FALSE)
+  alts <- .type_split(trimws(type), "|")
+  alts[[1L]] %in% c("number", "integer") && any(grepl("^enum\\[", alts))
+}
+
+# ... its value as typed: a number when it reads as one, else the word
+.num_or_word_value <- function(v) {
+  if (!is.character(v) || length(v) != 1L || is.na(v)) return(v)
+  n <- suppressWarnings(as.numeric(v))
+  if (is.na(n)) v else n
 }
 
 # Does a type take an R expression as its value?  One of its alternatives
