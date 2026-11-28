@@ -409,6 +409,10 @@ preview_figure <- function(study, output_id,
 # first); NULL reads the study ARD's rows as they are (.fig_ard_rows())
 .preview_figure <- function(study, output_id, design, max_px = NULL, ard = NULL) {
   if (is.null(design)) stop("The figure has no design.", call. = FALSE)
+  # the figure style its program is made and drawn with: the study's over
+  # the company's (.study_fig_style()), so the preview is the program's
+  old <- options(tflspec.fig_style = .study_fig_style(study$planner))
+  on.exit(options(old), add = TRUE)
   saved <- design
   # its size on the page (step 3)
   sz <- .fig_size_of(study$planner, output_id)
