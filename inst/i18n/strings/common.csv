@@ -1832,6 +1832,7 @@
 "The column the row text comes from; false for none.","行の文字を取る列。false ならなし。"
 "The statistic a key sorts by.","キーで並べるときの統計量。"
 "The tie-breaking family.","ちょうど半分の値の丸め方の種類。"
+"The tie-breaking family. A study's rounding is forced, in spec/defaults.yml `force:` (`force: {content: [{plan_digits: {rounding: sas}}]}`, sas or r): a table's own value that differs is warned of and takes the forced one; the study's content may not hold it.","ちょうど半分の値の丸め方の種類。試験の丸めは spec/defaults.yml の `force:` で強制します（`force: {content: [{plan_digits: {rounding: sas}}]}`、sas か r）。表が自分で書いた値が違うと警告し、強制の値を使います。試験の content には書けません。"
 "The digits of a statistic row (a table with stats = rows), by its label.","統計量の行（stats = rows の Table）の桁数。行のラベルごとに指定する。"
 "Variables whose levels with no data are left out.","データの無い水準を出さない変数。"
 "The level of another variable a variable's rows go under: {RACE: Asian}.","変数の行を入れる、別の変数の水準：{RACE: Asian}。"

@@ -38,9 +38,9 @@ test_that("a save of one edited field of the study defaults keeps every other bl
   k <- keep_sample()
   before <- yaml::read_yaml(k$file)
   keys_before <- top_keys(k$file)
-  expect_true(all(c("content", "codelists", "adam_meta", "styles", "figure_style",
+  expect_true(all(c("force", "content", "codelists", "adam_meta", "styles", "figure_style",
                     "options", "fictional_unknown_block") %in% names(before)))
-  # one field edited: the study's rounding (plan_digits() in content:)
+  # one field edited: the study's rounding (defaults.yml `force:`, canon-gap #1)
   s <- k$study
   s$planner <- .spec_set_rounding(s$planner, "r")
   s <- suppressMessages(save_study(s, home = k$home))
@@ -48,15 +48,14 @@ test_that("a save of one edited field of the study defaults keeps every other bl
   # every block, in its order
   expect_identical(top_keys(k$file), keys_before)
   # the blocks not edited: as they were
-  for (b in setdiff(names(before), "content")) {
+  for (b in setdiff(names(before), "force")) {
     expect_identical(after[[b]], before[[b]], label = b)
   }
   # the edited block: only the rounding changed
-  fn <- function(x) vapply(x, function(it) names(it)[1L], "")
-  expect_identical(fn(after$content), fn(before$content))
-  at <- which(fn(before$content) == "plan_digits")
-  expect_identical(after$content[[at]]$plan_digits$rounding, "r")
-  expect_identical(after$content[-at], before$content[-at])
+  expect_identical(before$force$content[[1L]]$plan_digits$rounding, "sas")
+  expect_identical(after$force$content[[1L]]$plan_digits$rounding, "r")
+  expect_identical(after$force$content[[1L]][names(after$force$content[[1L]]) != "plan_digits"],
+                   before$force$content[[1L]][names(before$force$content[[1L]]) != "plan_digits"])
 })
 
 test_that("a write of the study defaults with nothing edited gives the same blocks back (#794)", {
